@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { IfNode } from '../src/ai/ast';
+import type { IfNode, LoopNode, SetNode, WhileNode } from '../src/ai/ast';
 import { parse } from '../src/ai/parser';
 import { formatError } from '../src/ai/script_error';
 import { SAMPLE_AI } from '../src/data/templates/sample';
@@ -22,26 +22,27 @@ function conditionOf(expression: string) {
   return (statement as IfNode).condition;
 }
 
+/** The value of `set x = <expression>`; `n` is available as a variable. */
+function valueOf(expression: string) {
+  const body = parseOk(`set n = 0\nset x = ${expression}`);
+  return (body[1] as SetNode).value;
+}
+
 const VISIBLE = { kind: 'boolean_variable', name: 'enemy_visible' };
+const number = (value: number) => ({ kind: 'number', value });
+const sensor = (name: string) => ({ kind: 'sensor', name });
+const variable = (name: string) => ({ kind: 'variable', name });
+const arithmetic = (operator: string, left: unknown, right: unknown) => ({ kind: 'arithmetic', operator, left, right });
 const comparison = (name: string, operator: string, value: number) => ({
   kind: 'comparison',
   operator,
-  left: { kind: 'number_variable', name },
-  right: { kind: 'number', value },
+  left: sensor(name),
+  right: number(value),
 });
 
 describe('parser: statements', () => {
   it('parses every command', () => {
-    const source = [
-      'move forward',
-      'move backward',
-      'turn left',
-      'turn right',
-      'turn enemy',
-      'fire',
-      'wait',
-      'state EVADE',
-    ].join('\n');
+    const source = ['move forward', 'move backward', 'turn left', 'turn right', 'turn enemy', 'fire', 'wait', 'state EVADE'].join('\n');
     expect(parseOk(source)).toEqual([
       { kind: 'move', line: 1, direction: 'forward' },
       { kind: 'move', line: 2, direction: 'backward' },
@@ -56,14 +57,7 @@ describe('parser: statements', () => {
 
   it('parses a plain if', () => {
     expect(parseOk('if enemy_visible\n    fire')).toEqual([
-      {
-        kind: 'if',
-        line: 1,
-        condition: VISIBLE,
-        thenBody: [{ kind: 'fire', line: 2 }],
-        elseLine: null,
-        elseBody: [],
-      },
+      { kind: 'if', line: 1, condition: VISIBLE, thenBody: [{ kind: 'fire', line: 2 }], elseLine: null, elseBody: [] },
     ]);
   });
 
@@ -80,55 +74,82 @@ describe('parser: statements', () => {
     ]);
   });
 
-  it('parses nested blocks and returns to the outer block after them', () => {
+  it('parses loop', () => {
+    expect(parseOk('loop\n    fire\n    wait')).toEqual([
+      {
+        kind: 'loop',
+        line: 1,
+        body: [
+          { kind: 'fire', line: 2 },
+          { kind: 'wait', line: 3 },
+        ],
+      },
+    ]);
+  });
+
+  it('parses while with its condition', () => {
+    expect(parseOk('while hp > 50 and enemy_visible\n    fire\nwait')).toEqual([
+      {
+        kind: 'while',
+        line: 1,
+        condition: { kind: 'and', left: comparison('hp', '>', 50), right: VISIBLE },
+        body: [{ kind: 'fire', line: 2 }],
+      },
+      { kind: 'wait', line: 3 },
+    ]);
+  });
+
+  it('parses set', () => {
+    expect(parseOk('set count = 3')).toEqual([{ kind: 'set', line: 1, name: 'count', value: number(3) }]);
+  });
+
+  it('parses the sample AI: a loop around nested ifs, below a comment', () => {
     const body = parseOk(SAMPLE_AI);
-    expect(body.map((statement) => statement.kind)).toEqual(['if']);
+    expect(body.map((statement) => statement.kind)).toEqual(['loop']);
 
-    const outer = body[0] as IfNode;
-    expect(outer.line).toBe(1);
-    expect(outer.condition).toEqual({ kind: 'boolean_variable', name: 'blocked' });
-    expect(outer.thenBody).toEqual([
-      { kind: 'state', line: 2, state: 'SEARCH' },
-      { kind: 'turn', line: 3, direction: 'left' },
+    const loop = body[0] as LoopNode;
+    expect(loop.line).toBe(2);
+    const blocked = loop.body[0] as IfNode;
+    expect(blocked).toMatchObject({ line: 3, condition: { kind: 'boolean_variable', name: 'blocked' }, elseLine: 6 });
+    expect(blocked.thenBody).toEqual([
+      { kind: 'state', line: 4, state: 'SEARCH' },
+      { kind: 'turn', line: 5, direction: 'left' },
     ]);
-    expect(outer.elseLine).toBe(4);
-    expect(outer.elseBody.map((statement) => statement.kind)).toEqual(['if']);
 
-    const inSight = outer.elseBody[0] as IfNode;
-    expect(inSight.line).toBe(5);
-    expect(inSight.condition).toEqual(VISIBLE);
+    const inSight = blocked.elseBody[0] as IfNode;
+    expect(inSight).toMatchObject({ line: 7, condition: VISIBLE, elseLine: 16 });
     expect(inSight.thenBody.map((statement) => statement.kind)).toEqual(['turn', 'if']);
-    expect(inSight.elseLine).toBe(14);
     expect(inSight.elseBody).toEqual([
-      { kind: 'state', line: 15, state: 'SEARCH' },
-      { kind: 'move', line: 16, direction: 'forward' },
+      { kind: 'state', line: 17, state: 'SEARCH' },
+      { kind: 'move', line: 18, direction: 'forward' },
     ]);
 
-    const inRange = inSight.thenBody[1] as IfNode;
-    expect(inRange).toEqual({
+    expect(inSight.thenBody[1]).toEqual({
       kind: 'if',
-      line: 8,
+      line: 10,
       condition: comparison('enemy_distance', '<', 250),
       thenBody: [
-        { kind: 'state', line: 9, state: 'ATTACK' },
-        { kind: 'fire', line: 10 },
+        { kind: 'state', line: 11, state: 'ATTACK' },
+        { kind: 'fire', line: 12 },
       ],
-      elseLine: 11,
+      elseLine: 13,
       elseBody: [
-        { kind: 'state', line: 12, state: 'TRACK' },
-        { kind: 'move', line: 13, direction: 'forward' },
+        { kind: 'state', line: 14, state: 'TRACK' },
+        { kind: 'move', line: 15, direction: 'forward' },
       ],
     });
   });
 
-  it('accepts any consistent indentation width', () => {
-    const body = parseOk('if enemy_visible\n  fire\n  wait\nfire');
-    expect((body[0] as IfNode).thenBody).toHaveLength(2);
-    expect(body[1]).toEqual({ kind: 'fire', line: 4 });
+  it('nests loops, whiles and ifs, and returns to the outer block after them', () => {
+    const body = parseOk('loop\n  while enemy_visible\n    fire\n  if blocked\n    turn left\n  wait\nfire');
+    const loop = body[0] as LoopNode;
+    expect(loop.body.map((statement) => statement.kind)).toEqual(['while', 'if', 'wait']);
+    expect((loop.body[0] as WhileNode).body).toEqual([{ kind: 'fire', line: 3 }]);
+    expect(body[1]).toEqual({ kind: 'fire', line: 7 });
   });
 
   it('accepts an empty program', () => {
-    expect(parseOk('\n\n')).toEqual([]);
+    expect(parseOk('\n# nothing here\n')).toEqual([]);
   });
 });
 
@@ -139,65 +160,105 @@ describe('parser: conditions', () => {
     }
   });
 
-  it('compares against negative numbers and other variables', () => {
-    expect(conditionOf('enemy_angle > -10')).toEqual(comparison('enemy_angle', '>', -10));
-    expect(conditionOf('hp < ammo')).toEqual({
-      kind: 'comparison',
-      operator: '<',
-      left: { kind: 'number_variable', name: 'hp' },
-      right: { kind: 'number_variable', name: 'ammo' },
-    });
-  });
-
-  it('accepts every boolean variable on its own', () => {
+  it('accepts every true/false value on its own', () => {
     for (const name of ['enemy_visible', 'blocked', 'blocked_behind']) {
       expect(conditionOf(name)).toEqual({ kind: 'boolean_variable', name });
     }
+  });
+
+  it('compares against negative numbers, other values and arithmetic', () => {
+    expect(conditionOf('enemy_angle > -10')).toEqual(comparison('enemy_angle', '>', -10));
+    expect(conditionOf('hp < ammo')).toEqual({ kind: 'comparison', operator: '<', left: sensor('hp'), right: sensor('ammo') });
+    expect(conditionOf('hp + 10 < ammo * 2')).toEqual({
+      kind: 'comparison',
+      operator: '<',
+      left: arithmetic('+', sensor('hp'), number(10)),
+      right: arithmetic('*', sensor('ammo'), number(2)),
+    });
   });
 
   it('parses not', () => {
     expect(conditionOf('not enemy_visible')).toEqual({ kind: 'not', operand: VISIBLE });
   });
 
-  it('binds and tighter than or', () => {
+  it('binds and tighter than or, and not tighter than and', () => {
     expect(conditionOf('hp < 30 or enemy_visible and ammo > 0')).toEqual({
       kind: 'or',
       left: comparison('hp', '<', 30),
       right: { kind: 'and', left: VISIBLE, right: comparison('ammo', '>', 0) },
     });
-  });
-
-  it('binds not tighter than and', () => {
     expect(conditionOf('not enemy_visible and hp < 30')).toEqual({
       kind: 'and',
       left: { kind: 'not', operand: VISIBLE },
       right: comparison('hp', '<', 30),
     });
   });
+
+  it('groups conditions with parentheses', () => {
+    expect(conditionOf('(hp < 30 or enemy_visible) and ammo > 0')).toEqual({
+      kind: 'and',
+      left: { kind: 'or', left: comparison('hp', '<', 30), right: VISIBLE },
+      right: comparison('ammo', '>', 0),
+    });
+    expect(conditionOf('not (enemy_visible and blocked)')).toEqual({
+      kind: 'not',
+      operand: { kind: 'and', left: VISIBLE, right: { kind: 'boolean_variable', name: 'blocked' } },
+    });
+  });
+
+  it('tells arithmetic in parentheses from a condition in parentheses', () => {
+    expect(conditionOf('(hp + 10) * 2 > 100')).toEqual({
+      kind: 'comparison',
+      operator: '>',
+      left: arithmetic('*', arithmetic('+', sensor('hp'), number(10)), number(2)),
+      right: number(100),
+    });
+  });
+});
+
+describe('parser: arithmetic', () => {
+  it('multiplies and divides before it adds and subtracts, left to right', () => {
+    expect(valueOf('1 + 2 * 3')).toEqual(arithmetic('+', number(1), arithmetic('*', number(2), number(3))));
+    expect(valueOf('10 - 4 - 3')).toEqual(arithmetic('-', arithmetic('-', number(10), number(4)), number(3)));
+    expect(valueOf('8 / 4 / 2')).toEqual(arithmetic('/', arithmetic('/', number(8), number(4)), number(2)));
+  });
+
+  it('lets parentheses override that', () => {
+    expect(valueOf('(1 + 2) * 3')).toEqual(arithmetic('*', arithmetic('+', number(1), number(2)), number(3)));
+  });
+
+  it('reads variables of the program and sensor values', () => {
+    expect(valueOf('n + enemy_distance')).toEqual(arithmetic('+', variable('n'), sensor('enemy_distance')));
+  });
+
+  it('negates values', () => {
+    expect(valueOf('-5')).toEqual(number(-5));
+    expect(valueOf('-n')).toEqual({ kind: 'negate', operand: variable('n') });
+    expect(valueOf('3 - -2')).toEqual(arithmetic('-', number(3), number(-2)));
+  });
 });
 
 describe('parser: errors', () => {
   it('reports an unknown command with its line', () => {
     expect(errorsOf('fire\n\nshoot')).toEqual(['Line 3: Unknown command "shoot"']);
-  });
-
-  it('has no loops', () => {
-    expect(errorsOf('while enemy_visible\n    fire')[0]).toBe('Line 1: Unknown command "while"');
+    expect(errorsOf('for hp < 3\n    fire')[0]).toBe('Line 1: Unknown command "for"');
   });
 
   it('reports a missing condition', () => {
     expect(errorsOf('if\n    fire')).toEqual(['Line 1: Expected condition']);
+    expect(errorsOf('while\n    fire')).toEqual(['Line 1: Expected condition']);
   });
 
   it('reports an else without an if', () => {
     expect(errorsOf('fire\nelse\n    wait')).toEqual(['Line 2: Unexpected else']);
-    expect(errorsOf('if enemy_visible\n    fire\nwait\nelse\n    wait')).toEqual(['Line 4: Unexpected else']);
+    expect(errorsOf('loop\n    fire\nelse\n    wait')).toEqual(['Line 3: Unexpected else']);
   });
 
-  it('reports a missing block after if and else', () => {
+  it('reports a missing block after if, else, loop and while', () => {
     expect(errorsOf('if enemy_visible\nfire')).toEqual(['Line 1: Expected indented block']);
     expect(errorsOf('if enemy_visible\n    fire\nelse\nfire')).toEqual(['Line 3: Expected indented block']);
-    expect(errorsOf('if enemy_visible')).toEqual(['Line 1: Expected indented block']);
+    expect(errorsOf('loop')).toEqual(['Line 1: Expected indented block']);
+    expect(errorsOf('while enemy_visible\nfire')).toEqual(['Line 1: Expected indented block']);
   });
 
   it('reports indentation that opens no block', () => {
@@ -215,42 +276,47 @@ describe('parser: errors', () => {
     expect(errorsOf('move')).toEqual(['Line 1: Expected direction after "move"']);
     expect(errorsOf('move up')).toEqual(['Line 1: Unknown direction "up"']);
     expect(errorsOf('move enemy')).toEqual(['Line 1: Unknown direction "enemy"']);
-    expect(errorsOf('move left')).toEqual([
-      'Line 1: Robots cannot move sideways: use "turn left" and "move forward"',
-    ]);
-    expect(errorsOf('fire\nmove right')).toEqual([
-      'Line 2: Robots cannot move sideways: use "turn right" and "move forward"',
-    ]);
+    expect(errorsOf('move left')).toEqual(['Line 1: Robots cannot move sideways: use "turn left" and "move forward"']);
     expect(errorsOf('turn around')).toEqual(['Line 1: Unknown direction "around"']);
     expect(errorsOf('state')).toEqual(['Line 1: Expected state name after "state"']);
     expect(errorsOf('state attack')).toEqual(['Line 1: Unknown state "attack"']);
     expect(errorsOf('fire now')).toEqual(['Line 1: Unexpected "now" after "fire"']);
-    expect(errorsOf('move forward fast')).toEqual(['Line 1: Unexpected "fast" after "move forward"']);
+    expect(errorsOf('loop forever\n    fire')).toEqual(['Line 1: Unexpected "forever" after "loop"']);
   });
 
-  it('reports set as not supported', () => {
-    expect(errorsOf('set count 1')).toEqual(['Line 1: "set" is not supported yet']);
+  it('reports a faulty set', () => {
+    expect(errorsOf('set')).toEqual(['Line 1: Expected variable name after "set"']);
+    expect(errorsOf('set count 1')).toEqual(['Line 1: Expected "=" after "count"']);
+    expect(errorsOf('set count =')).toEqual(['Line 1: Expected value after "="']);
+    expect(errorsOf('set count = 1 2')).toEqual(['Line 1: Unexpected "2"']);
+    expect(errorsOf('set hp = 1')).toEqual(['Line 1: "hp" cannot be used as a variable name']);
+    expect(errorsOf('set loop = 1')).toEqual(['Line 1: "loop" cannot be used as a variable name']);
+  });
+
+  it('reports a variable that is never set, but allows one set further down', () => {
+    expect(errorsOf('if speed > 3\n    fire')).toEqual(['Line 1: Unknown variable "speed"']);
+    expect(errorsOf('set total = count + 1')).toEqual(['Line 1: Unknown variable "count"']);
+    expect(errorsOf('loop\n    if count > 3\n        fire\n    set count = count + 1\n    wait')).toEqual([]);
   });
 
   it('reports bad conditions', () => {
     const block = '\n    fire';
-    expect(errorsOf(`if speed > 3${block}`)).toEqual(['Line 1: Unknown variable "speed"']);
     expect(errorsOf(`if enemy_visible < 3${block}`)).toEqual(['Line 1: enemy_visible is not a number']);
-    expect(errorsOf(`if blocked == 1${block}`)).toEqual(['Line 1: blocked is not a number']);
     expect(errorsOf(`if hp < blocked${block}`)).toEqual(['Line 1: blocked is not a number']);
-    expect(errorsOf(`if hp < enemy_visible${block}`)).toEqual(['Line 1: enemy_visible is not a number']);
     expect(errorsOf(`if hp${block}`)).toEqual(['Line 1: Expected comparison after "hp"']);
     expect(errorsOf(`if hp <${block}`)).toEqual(['Line 1: Expected value after "<"']);
     expect(errorsOf(`if enemy_visible and${block}`)).toEqual(['Line 1: Expected condition']);
     expect(errorsOf(`if < 3${block}`)).toEqual(['Line 1: Expected condition']);
     expect(errorsOf(`if enemy_visible hp${block}`)).toEqual(['Line 1: Unexpected "hp"']);
+    expect(errorsOf(`if (hp > 3${block}`)).toEqual(['Line 1: Expected ")"']);
   });
 
   it('reports every faulty line, in order', () => {
-    const source = 'shoot\nif enemy_visible\n    move up\nelse\n    jump';
+    const source = 'shoot\nloop\n    move up\n    set hp = 2\n    jump';
     expect(errorsOf(source)).toEqual([
       'Line 1: Unknown command "shoot"',
       'Line 3: Unknown direction "up"',
+      'Line 4: "hp" cannot be used as a variable name',
       'Line 5: Unknown command "jump"',
     ]);
   });

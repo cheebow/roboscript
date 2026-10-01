@@ -6,6 +6,8 @@ export const MATCH_DEFAULTS = {
   seed: 1,
   /** sec, upper bound on real time consumed per frame (e.g. after the tab was in the background) */
   maxFrameTime: 0.25,
+  /** Most lines a program may run in one tick without an action, so an endless loop cannot hang a match. */
+  lineBudget: 1000,
 } as const;
 
 export const ROBOT_IDS = ['ALPHA', 'BRAVO'] as const;

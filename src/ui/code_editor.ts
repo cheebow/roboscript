@@ -46,10 +46,10 @@ type LineHighlight = ReturnType<typeof lineHighlight>;
 
 /** Lines marked as faulty by the last RUN. */
 const errorLines = lineHighlight('cm-error-line');
-/** Lines the AI executed on the tick being displayed. */
+/** Lines the program has already run since the displayed tick. */
 const executedLines = lineHighlight('cm-executed-line');
-/** Breakpoint lines that run on the next tick: where playback has stopped. */
-const nextLines = lineHighlight('cm-next-line');
+/** The line the program runs next. */
+const currentLine = lineHighlight('cm-current-line');
 
 class BreakpointMarker extends GutterMarker {
   toDOM(): Node {
@@ -116,7 +116,7 @@ const theme = EditorView.theme(
     '.cm-breakpoint-gutter': { width: '14px' },
     '.cm-breakpoint-gutter .cm-gutterElement': { color: 'var(--error)', textAlign: 'center' },
     '.cm-executed-line': { backgroundColor: 'var(--executed-line)' },
-    '.cm-next-line': { backgroundColor: 'var(--next-line)' },
+    '.cm-current-line': { backgroundColor: 'var(--current-line)' },
     '.cm-error-line': { backgroundColor: 'var(--error-line)' },
   },
   { dark: true },
@@ -124,7 +124,8 @@ const theme = EditorView.theme(
 
 /**
  * The RoboScript editor: line numbers, undo/redo, highlighting, breakpoints
- * (click the margin or a line number), and error / executed line marks.
+ * (click the margin or a line number), and marks for faulty lines, the lines
+ * already run and the line to run next.
  */
 export class CodeEditor {
   private readonly view: EditorView;
@@ -152,7 +153,7 @@ export class CodeEditor {
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           roboscriptHighlight(),
           executedLines.field,
-          nextLines.field,
+          currentLine.field,
           errorLines.field,
           theme,
           EditorView.updateListener.of((update) => {
@@ -182,9 +183,9 @@ export class CodeEditor {
     this.showLines(executedLines, lines);
   }
 
-  /** Marks the given 1-based lines as about to run. Cheap to call every frame. */
-  showNextLines(lines: readonly number[]): void {
-    this.showLines(nextLines, lines);
+  /** Marks the 1-based line the program runs next, or none. Cheap to call every frame. */
+  showCurrentLine(line: number | null): void {
+    this.showLines(currentLine, line === null ? [] : [line]);
   }
 
   /** The 1-based lines that currently have a breakpoint. */

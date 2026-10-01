@@ -67,36 +67,29 @@ describe('debug events of a match', () => {
 
   it('reports state changes with the line that set the state', () => {
     expect(select(events, { type: 'ai', robotId: 'ALPHA' })).toMatchObject([
-      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 15 },
-      { message: 'state SEARCH -> TRACK', sourceLine: 12 },
-      { message: 'state TRACK -> ATTACK', sourceLine: 9 },
+      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 17 },
+      { message: 'state SEARCH -> TRACK', sourceLine: 14 },
+      { message: 'state TRACK -> ATTACK', sourceLine: 11 },
     ]);
   });
 
-  it('reports movement and turning only when they change', () => {
+  it('reports a move or turn when it comes into use, not on every tick', () => {
     const actions = select(events, { type: 'action', robotId: 'ALPHA' }).filter(
       (event) => event.message !== 'fire',
     );
-    // Forward to the centre block, a quarter turn left, along the block, then towards the enemy and stop to fire.
+    // Forward to the centre block, a quarter turn left, along the block, then turning to and closing in on the enemy.
     expect(actions.map(({ message, sourceLine }) => ({ message, sourceLine }))).toEqual([
-      { message: 'move forward', sourceLine: 16 },
-      { message: 'move stop', sourceLine: null },
-      { message: 'turn left', sourceLine: 3 },
-      { message: 'move forward', sourceLine: 16 },
-      { message: 'turn stop', sourceLine: null },
-      { message: 'move stop', sourceLine: null },
-      { message: 'turn left', sourceLine: 3 },
-      { message: 'move forward', sourceLine: 16 },
-      { message: 'turn stop', sourceLine: null },
-      { message: 'turn enemy', sourceLine: 6 },
-      { message: 'move stop', sourceLine: null },
+      { message: 'move forward', sourceLine: 18 },
+      { message: 'turn left', sourceLine: 5 },
+      { message: 'turn enemy', sourceLine: 8 },
+      { message: 'move forward', sourceLine: 15 },
     ]);
   });
 
   it('reports every shot with the line that fired it', () => {
     const shots = select(events, { type: 'action', robotId: 'ALPHA', message: 'fire' });
     expect(shots).toHaveLength(ROBOT_DEFAULTS.maxAmmo - alpha.weapon.ammo);
-    expect(shots.every((event) => event.sourceLine === 10)).toBe(true);
+    expect(shots.every((event) => event.sourceLine === 12)).toBe(true);
   });
 
   it('reports every hit with the damage and remaining HP', () => {
@@ -137,6 +130,35 @@ describe('other debug events', () => {
     expect(select(logger.events, { type: 'warning' })).toMatchObject([
       { robotId: 'ALPHA', message: 'out of ammo' },
     ]);
+  });
+
+  it('reports an action again once it has been out of use for a second', () => {
+    const { tickRate } = MATCH_DEFAULTS;
+    const program = `loop\n    move forward\n    set n = 0\n    while n < ${tickRate + 5}\n        wait\n        set n = n + 1`;
+    const logger = new DebugLogger();
+    const simulation = createSimulation([compileBrain(program), new FixedBrain()], { maxMatchTime: 4, logger });
+    runToEnd(simulation);
+    const moves = select(logger.events, { type: 'action', message: 'move forward' });
+    expect(moves.length).toBeGreaterThan(1);
+    expect(moves[1].tick - moves[0].tick).toBe(tickRate + 6);
+  });
+
+  it('warns when a program runs off its end', () => {
+    const logger = new DebugLogger();
+    const simulation = createSimulation([compileBrain('move forward\nfire'), new FixedBrain()], { maxMatchTime: 1, logger });
+    runToEnd(simulation);
+    const warnings = select(logger.events, { type: 'warning' });
+    expect(warnings).toMatchObject([{ robotId: 'ALPHA', tick: 3 }]);
+    expect(warnings[0].message).toContain('program finished');
+  });
+
+  it('warns once when a loop never takes an action', () => {
+    const logger = new DebugLogger();
+    const simulation = createSimulation([compileBrain('loop\n    set n = n + 1'), new FixedBrain()], { maxMatchTime: 1, logger });
+    runToEnd(simulation);
+    const warnings = select(logger.events, { type: 'warning' });
+    expect(warnings).toMatchObject([{ robotId: 'ALPHA', tick: 1 }]);
+    expect(warnings[0].message).toContain('too many lines without an action');
   });
 
   it('reports a draw', () => {

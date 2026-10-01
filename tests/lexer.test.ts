@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { lex } from '../src/ai/lexer';
 
+function texts(source: string): string[] {
+  return lex(source).lines[0].tokens.map((token) => token.text);
+}
+
 describe('lexer', () => {
-  it('splits a line into words, numbers and operators', () => {
+  it('splits a line into words, numbers and symbols', () => {
     const { lines, errors } = lex('if enemy_distance <= 250');
     expect(errors).toEqual([]);
     expect(lines).toEqual([
@@ -12,7 +16,7 @@ describe('lexer', () => {
         tokens: [
           { type: 'word', text: 'if' },
           { type: 'word', text: 'enemy_distance' },
-          { type: 'operator', text: '<=' },
+          { type: 'symbol', text: '<=' },
           { type: 'number', text: '250', value: 250 },
         ],
       },
@@ -20,13 +24,20 @@ describe('lexer', () => {
   });
 
   it('reads every comparison operator', () => {
-    const { lines } = lex('< > <= >= == !=');
-    expect(lines[0].tokens.map((token) => token.text)).toEqual(['<', '>', '<=', '>=', '==', '!=']);
+    expect(texts('< > <= >= == !=')).toEqual(['<', '>', '<=', '>=', '==', '!=']);
   });
 
-  it('reads negative and decimal numbers', () => {
-    const { lines } = lex('if enemy_angle>-12.5');
-    expect(lines[0].tokens.at(-1)).toEqual({ type: 'number', text: '-12.5', value: -12.5 });
+  it('reads arithmetic, parentheses and assignment, with or without spaces', () => {
+    expect(texts('set n = (n+1) * 2 - 3/4')).toEqual(['set', 'n', '=', '(', 'n', '+', '1', ')', '*', '2', '-', '3', '/', '4']);
+    expect(texts('set n=n-1')).toEqual(['set', 'n', '=', 'n', '-', '1']);
+  });
+
+  it('reads decimal numbers, and a minus sign as a symbol of its own', () => {
+    const { tokens } = lex('if enemy_angle > -12.5').lines[0];
+    expect(tokens.slice(-2)).toEqual([
+      { type: 'symbol', text: '-' },
+      { type: 'number', text: '12.5', value: 12.5 },
+    ]);
   });
 
   it('measures indentation and keeps original line numbers across blank lines', () => {
@@ -35,6 +46,15 @@ describe('lexer', () => {
       { line: 1, indent: 0 },
       { line: 3, indent: 4 },
       { line: 5, indent: 8 },
+    ]);
+  });
+
+  it('ignores comments, whether they fill a line or follow code', () => {
+    const { lines, errors } = lex('# a note\nfire   # shoot!\n    # indented note\nwait');
+    expect(errors).toEqual([]);
+    expect(lines.map(({ line, tokens }) => ({ line, text: tokens.map((token) => token.text).join(' ') }))).toEqual([
+      { line: 2, text: 'fire' },
+      { line: 4, text: 'wait' },
     ]);
   });
 

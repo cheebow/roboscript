@@ -4,6 +4,8 @@ import { formatTimestamp } from './format';
 export interface TransportHandlers {
   /** Toggles between playing and paused. */
   playPause(): void;
+  /** Plays without stopping at breakpoints. */
+  playOn(): void;
   step(): void;
   stepBack(): void;
   seek(tick: number): void;
@@ -16,15 +18,21 @@ export interface TransportState {
   lastTick: number;
   tickRate: number;
   playing: boolean;
+  /** Whether there are breakpoints to play past: only when debugging. */
+  canPlayOn: boolean;
+  /** Whether there is anything left to step forward / back to. */
+  canStep: boolean;
+  canStepBack: boolean;
 }
 
 const SELECTED_CLASS = 'selected';
 const PAUSE_LABEL = 'PAUSE';
 const PLAY_LABEL = 'PLAY';
 
-/** The replay controls under the battle view: play / pause, single steps, seek bar, speed, clock. */
+/** The replay controls under the battle view: play / pause, play past breakpoints, single steps (a line or a tick), seek bar, speed, clock. */
 export class Transport {
   private readonly playButton = requireElement<HTMLButtonElement>('transport-play');
+  private readonly playOnButton = requireElement<HTMLButtonElement>('play-on');
   private readonly stepBackButton = requireElement<HTMLButtonElement>('step-back');
   private readonly stepButton = requireElement<HTMLButtonElement>('step');
   private readonly seekBar = requireElement<HTMLInputElement>('seek');
@@ -33,6 +41,7 @@ export class Transport {
 
   constructor(speeds: readonly number[], handlers: TransportHandlers) {
     this.playButton.addEventListener('click', handlers.playPause);
+    this.playOnButton.addEventListener('click', handlers.playOn);
     this.stepBackButton.addEventListener('click', handlers.stepBack);
     this.stepButton.addEventListener('click', handlers.step);
     this.seekBar.addEventListener('input', () => handlers.seek(this.seekBar.valueAsNumber));
@@ -54,8 +63,9 @@ export class Transport {
     const playLabel = state?.playing ? PAUSE_LABEL : PLAY_LABEL;
     if (this.playButton.textContent !== playLabel) this.playButton.textContent = playLabel;
     this.playButton.disabled = state === null;
-    this.stepBackButton.disabled = state === null || tick === 0;
-    this.stepButton.disabled = state === null || tick === lastTick;
+    this.playOnButton.disabled = state === null || !state.canPlayOn;
+    this.stepBackButton.disabled = state === null || !state.canStepBack;
+    this.stepButton.disabled = state === null || !state.canStep;
     this.seekBar.disabled = state === null;
     if (this.seekBar.max !== String(lastTick)) this.seekBar.max = String(lastTick);
     if (this.seekBar.valueAsNumber !== tick) this.seekBar.value = String(tick);

@@ -22,6 +22,28 @@ const MOVE_DIRECTIONS: readonly string[] = ['forward', 'backward'] satisfies Mov
 const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy'] satisfies TurnDirection[];
 const STATES: readonly string[] = ROBOT_STATES;
 
+/** Words with a meaning of their own, which a program may not use as a variable name. */
+const KEYWORDS: readonly string[] = [
+  'if',
+  'else',
+  'loop',
+  'while',
+  'set',
+  'move',
+  'turn',
+  'fire',
+  'wait',
+  'state',
+  'and',
+  'or',
+  'not',
+];
+
+/** Whether the word already means something in the language: a keyword or a sensor value. */
+export function isReservedWord(name: string): boolean {
+  return KEYWORDS.includes(name) || isBooleanVariable(name) || isNumberVariable(name);
+}
+
 export function isBooleanVariable(name: string): name is BooleanVariableName {
   return Object.hasOwn(BOOLEAN_VARIABLES, name);
 }

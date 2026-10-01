@@ -35,7 +35,8 @@ export class RobotController {
   private reading: SensorReading = EMPTY_READING;
   private blockedAhead = false;
   private blockedBack = false;
-  private executed: readonly number[] = [];
+  private lastAction: AIAction | null = null;
+  private readonly knownVariables = new Map<string, number>();
 
   constructor(options: RobotOptions) {
     this.id = options.id;
@@ -76,16 +77,22 @@ export class RobotController {
     this.blockedBack = behind;
   }
 
-  /** Source lines the brain executed on its latest decision. */
-  get executedLines(): readonly number[] {
-    return this.executed;
+  /** What the brain decided on the latest tick, or null before the first. */
+  get action(): AIAction | null {
+    return this.lastAction;
+  }
+
+  /** The values the brain's program has assigned to its own variables so far. */
+  get variables(): ReadonlyMap<string, number> {
+    return this.knownVariables;
   }
 
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
     const action = this.brain.decide(this.buildContext());
     if (action.state !== null) this.state = action.state;
-    this.executed = action.executedLines;
+    this.lastAction = action;
+    for (const { name, value } of action.assignments) this.knownVariables.set(name, value);
     return action;
   }
 

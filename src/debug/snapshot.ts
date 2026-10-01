@@ -1,4 +1,4 @@
-import type { RobotState } from '../sim/ai_context';
+import type { Assignment, RobotState } from '../sim/ai_context';
 import type { MatchResult, Simulation } from '../sim/simulation';
 import type { Vec2 } from '../sim/types';
 import type { EffectSnapshot } from './effects';
@@ -22,8 +22,12 @@ export interface RobotSnapshot {
   lastSeen: Vec2 | null;
   blocked: boolean;
   blockedBehind: boolean;
-  /** Source lines the AI executed on this tick, in order. */
+  /** Source lines the AI executed on this tick, in order; the last is the action it took. */
   executedLines: readonly number[];
+  /** What the AI assigned to its variables on this tick, in order. */
+  assignments: readonly Assignment[];
+  /** The AI's variables as they were after this tick. */
+  variables: Readonly<Record<string, number>>;
 }
 
 export interface BulletSnapshot {
@@ -73,7 +77,9 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         lastSeen: lastSeen === null ? null : { ...lastSeen },
         blocked: robot.blocked,
         blockedBehind: robot.blockedBehind,
-        executedLines: [...robot.executedLines],
+        executedLines: [...(robot.action?.executedLines ?? [])],
+        assignments: (robot.action?.assignments ?? []).map((assignment) => ({ ...assignment })),
+        variables: Object.fromEntries(robot.variables),
       };
     }),
     bullets: simulation.bullets.map((bullet) => ({

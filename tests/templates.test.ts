@@ -75,7 +75,6 @@ describe('turn mirroring', () => {
 });
 
 describe('CowardBot', () => {
-  const coward = () => compileBrain(enemySource('coward_bot'));
   const closeEnemy = {
     enemyVisible: true,
     enemyDistance: 200,
@@ -88,45 +87,60 @@ describe('CowardBot', () => {
     blockedBehind: false,
   };
 
-  it('backs away from a close enemy while shooting', () => {
-    expect(coward().decide(closeEnemy)).toMatchObject({ state: 'EVADE', move: 'backward', fire: true });
+  /** What CowardBot does, tick by tick, in an unchanging situation. */
+  function ticks(count: number, context: typeof closeEnemy) {
+    const coward = compileBrain(enemySource('coward_bot'));
+    return Array.from({ length: count }, () => coward.decide(context));
+  }
+
+  it('turns to a close enemy, shoots, and backs away, one tick each', () => {
+    const [turn, fire, retreat] = ticks(3, closeEnemy);
+    expect(turn).toMatchObject({ turn: 'enemy' });
+    expect(fire).toMatchObject({ fire: true });
+    expect(retreat).toMatchObject({ move: 'backward', state: 'EVADE' });
   });
 
   it('stands and fights when it cannot back away any further', () => {
-    const cornered = coward().decide({ ...closeEnemy, blockedBehind: true });
-    expect(cornered).toMatchObject({ state: 'ATTACK', move: null, turn: 'enemy', fire: true });
+    const [turn, fire, next] = ticks(3, { ...closeEnemy, blockedBehind: true });
+    expect(turn).toMatchObject({ turn: 'enemy' });
+    expect(fire).toMatchObject({ fire: true });
+    // No retreat: it goes straight back to aiming, now in ATTACK.
+    expect(next).toMatchObject({ turn: 'enemy', move: null, state: 'ATTACK' });
   });
 });
 
 // SPEC §32: the way the AI is written must clearly change who wins. Played in the default arena.
 describe('strategies against the enemies', () => {
-  it('the sample AI, as shipped, loses to DumbBot and CowardBot and beats AggressiveBot', () => {
-    for (const seed of SEEDS) {
-      expect(outcome(APPROACH, 'dumb_bot', seed)).toEqual({ winner: 'BRAVO', reason: 'destroyed' });
-      expect(outcome(APPROACH, 'coward_bot', seed)).toEqual({ winner: 'BRAVO', reason: 'destroyed' });
-      expect(outcome(APPROACH, 'aggressive_bot', seed)).toEqual({ winner: 'ALPHA', reason: 'destroyed' });
+  it('the sample AI loses to every enemy as shipped, without running out the clock', () => {
+    for (const enemyId of ENEMY_IDS) {
+      for (const seed of SEEDS) expect(outcome(APPROACH, enemyId, seed)).toEqual({ winner: 'BRAVO', reason: 'destroyed' });
     }
   });
 
-  it('the sample AI beats every enemy once it fires from further away', () => {
+  it('the sample AI beats DumbBot and AggressiveBot once it fires from further away', () => {
     const improved = APPROACH.replace('enemy_distance < 250', 'enemy_distance < 350');
     expect(improved).not.toBe(APPROACH);
-    for (const enemyId of ENEMY_IDS) expect(winners(improved, enemyId)).toEqual(['ALPHA']);
+    expect(winners(improved, 'dumb_bot')).toEqual(['ALPHA']);
+    expect(winners(improved, 'aggressive_bot')).toEqual(['ALPHA']);
+    expect(winners(improved, 'coward_bot')).toEqual(['BRAVO']);
   });
 
-  it('keeping distance beats DumbBot but not the enemies that fire from as far away', () => {
+  it('keeping distance beats DumbBot and holds the others to a draw', () => {
     expect(winners(KEEP_DISTANCE, 'dumb_bot')).toEqual(['ALPHA']);
     expect(winners(KEEP_DISTANCE, 'aggressive_bot')).toEqual(['DRAW']);
     expect(winners(KEEP_DISTANCE, 'coward_bot')).toEqual(['DRAW']);
   });
 
-  it('standing still beats DumbBot, which stops to fire inside its range', () => {
+  it('standing still and shooting from maximum range never loses', () => {
     expect(winners(TURRET, 'dumb_bot')).toEqual(['ALPHA']);
-    expect(winners(TURRET, 'aggressive_bot')).toEqual(['DRAW']);
+    expect(winners(TURRET, 'aggressive_bot')).toEqual(['ALPHA']);
+    expect(winners(TURRET, 'coward_bot')).not.toContain('BRAVO');
   });
 
-  it('rushing in never wins', () => {
-    for (const enemyId of ENEMY_IDS) expect(winners(RUSH, enemyId)).not.toContain('ALPHA');
+  it('rushing in beats DumbBot but not the enemies that fire from as far away', () => {
+    expect(winners(RUSH, 'dumb_bot')).toEqual(['ALPHA']);
+    expect(winners(RUSH, 'aggressive_bot')).toEqual(['DRAW']);
+    expect(winners(RUSH, 'coward_bot')).toEqual(['BRAVO']);
   });
 
   it('turning around the centre block on the same hand as the enemy never meets it', () => {

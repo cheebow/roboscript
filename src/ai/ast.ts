@@ -2,14 +2,21 @@ import type { MoveDirection, RobotState, TurnDirection } from '../sim/ai_context
 import type { BooleanVariableName, NumberVariableName } from './script_variables';
 
 export type ComparisonOperator = '<' | '>' | '<=' | '>=' | '==' | '!=';
+export type ArithmeticOperator = '+' | '-' | '*' | '/';
 
-export type NumberOperand =
+/** Something that evaluates to a number. */
+export type Expression =
   | { kind: 'number'; value: number }
-  | { kind: 'number_variable'; name: NumberVariableName };
+  /** A value the robot senses, e.g. `enemy_distance`. */
+  | { kind: 'sensor'; name: NumberVariableName }
+  /** A variable the program itself assigns with `set`. */
+  | { kind: 'variable'; name: string }
+  | { kind: 'negate'; operand: Expression }
+  | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression };
 
 export type ConditionNode =
   | { kind: 'boolean_variable'; name: BooleanVariableName }
-  | { kind: 'comparison'; operator: ComparisonOperator; left: NumberOperand; right: NumberOperand }
+  | { kind: 'comparison'; operator: ComparisonOperator; left: Expression; right: Expression }
   | { kind: 'not'; operand: ConditionNode }
   | { kind: 'and' | 'or'; left: ConditionNode; right: ConditionNode };
 
@@ -23,6 +30,29 @@ export interface IfNode {
   elseBody: StatementNode[];
 }
 
+/** Repeats its body forever. */
+export interface LoopNode {
+  kind: 'loop';
+  line: number;
+  body: StatementNode[];
+}
+
+/** Repeats its body for as long as the condition holds. */
+export interface WhileNode {
+  kind: 'while';
+  line: number;
+  condition: ConditionNode;
+  body: StatementNode[];
+}
+
+export interface SetNode {
+  kind: 'set';
+  line: number;
+  name: string;
+  value: Expression;
+}
+
+/** A statement that makes the robot do something, and takes one tick. */
 export type ActionNode =
   | { kind: 'move'; line: number; direction: MoveDirection }
   | { kind: 'turn'; line: number; direction: TurnDirection }
@@ -35,7 +65,7 @@ export interface StateNode {
   state: RobotState;
 }
 
-export type StatementNode = IfNode | ActionNode | StateNode;
+export type StatementNode = IfNode | LoopNode | WhileNode | SetNode | ActionNode | StateNode;
 
 export interface Program {
   body: StatementNode[];

@@ -1,21 +1,22 @@
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
-import type { AIAction, MoveDirection, RobotState, TurnDirection } from './ai_context';
+import type { AIAction, ProgramStatus, RobotState } from './ai_context';
 import type { MatchResult } from './simulation';
 
 export interface DebugEventSink {
   log(event: DebugEvent): void;
 }
 
-const STOPPED = 'stop';
-
 /**
- * Describes what happens in a Simulation as debug events. Movement and turning
- * are reported only when they change, so the log stays readable.
+ * Describes what happens in a Simulation as debug events. A robot usually
+ * repeats the same few actions tick after tick, so a move or turn is reported
+ * only when it comes into use: when that action, from that source line, has
+ * not been taken for about a second.
  */
 export class EventReporter {
   private tick = 0;
-  private readonly lastMove = new Map<string, MoveDirection | null>();
-  private readonly lastTurn = new Map<string, TurnDirection | null>();
+  /** The tick on which each robot last took each action. */
+  private readonly lastTaken = new Map<string, number>();
+  private readonly lastStatus = new Map<string, ProgramStatus>();
   private readonly warnedOutOfAmmo = new Set<string>();
 
   constructor(
@@ -41,14 +42,27 @@ export class EventReporter {
   }
 
   actionDecided(robotId: string, action: AIAction): void {
-    if (action.move !== (this.lastMove.get(robotId) ?? null)) {
-      this.emit('action', robotId, `move ${action.move ?? STOPPED}`, action.sourceLines.move);
+    if (action.move !== null) this.actionTaken(robotId, `move ${action.move}`, action.sourceLines.move);
+    if (action.turn !== null) this.actionTaken(robotId, `turn ${action.turn}`, action.sourceLines.turn);
+    this.programStatusIs(robotId, action.status);
+  }
+
+  private actionTaken(robotId: string, description: string, sourceLine: number | null): void {
+    const key = `${robotId} ${description} ${sourceLine}`;
+    const last = this.lastTaken.get(key);
+    if (last === undefined || this.tick - last > this.tickRate) this.emit('action', robotId, description, sourceLine);
+    this.lastTaken.set(key, this.tick);
+  }
+
+  /** Reports a program that has ended or that stalls, when it gets into that state. */
+  private programStatusIs(robotId: string, status: ProgramStatus): void {
+    if (status === (this.lastStatus.get(robotId) ?? 'running')) return;
+    this.lastStatus.set(robotId, status);
+    if (status === 'finished') {
+      this.emit('warning', robotId, 'program finished: the robot stops (use loop to keep it going)');
+    } else if (status === 'stalled') {
+      this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs move, turn, fire or wait)');
     }
-    if (action.turn !== (this.lastTurn.get(robotId) ?? null)) {
-      this.emit('action', robotId, `turn ${action.turn ?? STOPPED}`, action.sourceLines.turn);
-    }
-    this.lastMove.set(robotId, action.move);
-    this.lastTurn.set(robotId, action.turn);
   }
 
   fired(robotId: string, sourceLine: number | null): void {

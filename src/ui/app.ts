@@ -13,7 +13,7 @@ import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../data/templates';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
-import { type BreakpointHit, ReplayManager } from '../debug/replay_manager';
+import { type ProgramLine, ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
@@ -29,7 +29,7 @@ import { Toolbar } from './toolbar';
 import { Transport } from './transport';
 import { WatchPanel } from './watch_panel';
 
-/** RUN just plays the match; DEBUG also shows executed lines, the full log, and stops at breakpoints. */
+/** RUN just plays the match; DEBUG also shows the programs running line by line, the full log, and stops at breakpoints. */
 type Mode = 'run' | 'debug';
 
 const MS_PER_SECOND = 1000;
@@ -91,8 +91,9 @@ class App {
     this.toolbar.setProjectName(this.store?.loadInfo().name ?? ROBOT_IDS[PLAYER_INDEX]);
     this.transport = new Transport(PLAYBACK_SPEEDS, {
       playPause: () => this.togglePlay(),
-      step: () => this.replay?.step(),
-      stepBack: () => this.replay?.stepBack(),
+      playOn: () => this.replay?.playOn(),
+      step: () => this.step(),
+      stepBack: () => this.stepBack(),
       seek: (tick) => this.replay?.seek(tick),
       setSpeed: (speed) => this.setSpeed(speed),
     });
@@ -159,12 +160,12 @@ class App {
       tailTicks: REPLAY_TAIL_TICKS,
       speed: this.speed,
       breakpoints: mode === 'debug' ? this.workspaces.map((workspace) => breakpointSourceOf(workspace)) : [],
+      focus: ROBOT_IDS[this.shownFile.robotIndex],
     });
     this.events =
       mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
     this.replay.restart();
-    this.openBreakpointFile(this.replay.breakpointsAhead);
   }
 
   private showErrors(faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[]): void {
@@ -178,6 +179,17 @@ class App {
     if (!shownIsFaulty || this.shownFile.file !== 'main.bot') {
       this.showFile(codeFileOf(this.workspaces.indexOf(faulty[0].workspace)));
     }
+  }
+
+  /** One line of the program in view while debugging; otherwise one tick. */
+  private step(): void {
+    if (this.mode === 'debug') this.replay?.stepLine();
+    else this.replay?.step();
+  }
+
+  private stepBack(): void {
+    if (this.mode === 'debug') this.replay?.stepLineBack();
+    else this.replay?.stepBack();
   }
 
   private togglePlay(): void {
@@ -212,21 +224,26 @@ class App {
     if (this.replay !== null) this.replay.speed = speed;
   }
 
-  /** Goes to the moment of a log row, and to the line behind it in the code of the robot the row belongs to. */
+  /**
+   * Goes to the moment of a log row. A row that came from a line of code goes
+   * to just before that line ran, and shows it in the code of its robot.
+   */
   private jumpTo(event: DebugEvent): void {
-    this.replay?.seek(event.tick);
     const robotIndex = ROBOT_IDS.findIndex((id) => id === event.robotId);
-    if (event.sourceLine === null || robotIndex < 0) return;
-    const workspace = this.workspaces[robotIndex];
-    if (workspace.stale) return;
+    const workspace = robotIndex < 0 ? undefined : this.workspaces[robotIndex];
+    if (event.sourceLine === null || workspace === undefined || workspace.stale) {
+      this.replay?.seek(event.tick);
+      return;
+    }
+    this.replay?.seekToLine(event.tick, workspace.robotId, event.sourceLine);
     this.showFile(codeFileOf(robotIndex));
     workspace.editor.revealLine(event.sourceLine);
   }
 
   /** Shows the code of the robot whose breakpoint playback has just stopped at. */
-  private openBreakpointFile(hits: readonly BreakpointHit[]): void {
-    if (hits.length === 0) return;
-    const robotIndex = ROBOT_IDS.findIndex((id) => id === hits[0].robotId);
+  private openBreakpointFile(breakpoint: ProgramLine | null): void {
+    if (breakpoint === null) return;
+    const robotIndex = ROBOT_IDS.findIndex((id) => id === breakpoint.robotId);
     if (robotIndex >= 0) this.showFile(codeFileOf(robotIndex));
   }
 
@@ -262,6 +279,8 @@ class App {
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
     this.projectPanel.markSelected(file);
+    // Line-by-line stepping follows the program in view.
+    this.replay?.focusOn(robotId);
   }
 
   private frame = (now: number): void => {
@@ -269,26 +288,25 @@ class App {
     const wasPlaying = replay?.playing ?? false;
     replay?.advance((now - this.lastFrame) / MS_PER_SECOND);
     this.lastFrame = now;
+    if (wasPlaying && replay !== null) this.openBreakpointFile(replay.breakpoint);
 
-    const stoppedBefore = replay !== null && !replay.playing ? replay.breakpointsAhead : [];
-    if (wasPlaying) this.openBreakpointFile(stoppedBefore);
-
-    const snapshot = replay?.snapshot ?? this.idleSnapshot;
+    const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
-    this.battleView.render(snapshot, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
+    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
       sensorOf: debugging ? this.inspector.selected : null,
       overrun: replay?.overrun ?? 0,
     });
-    this.inspector.update(snapshot);
-    this.watch.update(snapshot.robots[this.inspector.selected]);
-    this.workspaces.forEach((workspace, robotIndex) => {
+    this.inspector.update(view);
+    const watched = view.robots[this.inspector.selected];
+    this.watch.update(watched, replay?.variablesOf(watched.id) ?? {});
+    for (const workspace of this.workspaces) {
       const showLines = debugging && !workspace.stale;
-      const nextLines = stoppedBefore.filter((hit) => hit.robotId === workspace.robotId).map((hit) => hit.line);
-      workspace.editor.showExecutedLines(showLines ? snapshot.robots[robotIndex].executedLines : []);
-      workspace.editor.showNextLines(showLines ? nextLines : []);
-    });
+      const current = showLines ? replay.currentLine(workspace.robotId) : null;
+      workspace.editor.showExecutedLines(showLines ? replay.linesSoFar(workspace.robotId) : []);
+      workspace.editor.showCurrentLine(current);
+    }
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
-    this.toolbar.setMessage(this.message(stoppedBefore));
+    this.toolbar.setMessage(this.message());
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
@@ -298,34 +316,36 @@ class App {
             lastTick: replay.lastTick,
             tickRate: replay.recording.tickRate,
             playing: replay.playing,
+            canPlayOn: debugging,
+            canStep: replay.canStep,
+            canStepBack: debugging ? replay.canStepBack : replay.tick > 0,
           },
       this.speed,
     );
     requestAnimationFrame(this.frame);
   };
 
-  /** `stoppedBefore`: the breakpoint lines the next tick will run, if playback is stopped at them. */
-  private message(stoppedBefore: readonly BreakpointHit[]): string {
-    const parts = [this.notice ?? this.replayStatus(stoppedBefore)];
+  private message(): string {
+    const parts = [this.notice ?? this.replayStatus()];
     const edited = this.workspaces.filter((workspace) => workspace.stale).map((workspace) => workspace.robotId);
     if (edited.length > 0) parts.push(`[${edited.join(', ')} ${STALE_NOTE}]`);
     if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
     return parts.join('   ');
   }
 
-  private replayStatus(stoppedBefore: readonly BreakpointHit[]): string {
+  private replayStatus(): string {
     if (this.replay === null) return READY_MESSAGE;
-    return `${this.mode.toUpperCase()}   ${this.playbackStatus(this.replay, stoppedBefore)}`;
+    return `${this.mode.toUpperCase()}   ${playbackStatus(this.replay)}`;
   }
+}
 
-  private playbackStatus(replay: ReplayManager, stoppedBefore: readonly BreakpointHit[]): string {
-    const { result } = replay.snapshot;
-    if (result !== null) return `${formatResult(result)} (${result.reason})`;
-    if (replay.playing) return 'PLAYING';
-    if (stoppedBefore.length === 0) return 'PAUSED';
-    const where = stoppedBefore.map((hit) => `${hit.robotId} line ${hit.line}`).join(', ');
-    return `BREAKPOINT   ${where} runs on the next tick. PLAY to continue, 1▶ to step.`;
-  }
+function playbackStatus(replay: ReplayManager): string {
+  const { result } = replay.snapshot;
+  if (result !== null) return `${formatResult(result)} (${result.reason})`;
+  if (replay.playing) return 'PLAYING';
+  const { breakpoint } = replay;
+  if (breakpoint === null) return 'PAUSED';
+  return `BREAKPOINT   ${breakpoint.robotId} line ${breakpoint.line}. PLAY: to the next breakpoint, ▶▶: play on, 1▶: step.`;
 }
 
 function codeFileOf(robotIndex: number): ProjectFile {

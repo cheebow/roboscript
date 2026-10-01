@@ -11,12 +11,15 @@ import { compileBrain, enemySource, runTicks } from './helpers';
 
 const { tickRate, maxFrameTime } = MATCH_DEFAULTS;
 const TICK = 1 / tickRate;
-/** In the sample AI: `fire`, run from the moment the enemy is close enough. */
-const FIRE_LINE = 10;
-/** In the sample AI: `move forward` with the enemy hidden, run from the first tick until the way is blocked. */
-const APPROACH_LINE = 16;
-/** In the sample AI: `if blocked`, run on every tick. */
-const FIRST_LINE = 1;
+// Lines of the sample AI (ALPHA's program).
+/** `loop`: passed once per round. */
+const LOOP_LINE = 2;
+/** `fire`: the action taken, on alternate ticks, once the enemy is close enough. */
+const FIRE_LINE = 12;
+/** What the sample runs on a tick with the enemy hidden and the way clear, ending in `move forward`. */
+const SEARCH_LINES = [2, 3, 6, 7, 16, 17, 18];
+/** `fire` in DumbBot (BRAVO's program). */
+const BRAVO_FIRE_LINE = 11;
 
 /** The real game setup: the sample AI against DumbBot. */
 function matchConfig(seed = 1): SimulationConfig {
@@ -41,11 +44,23 @@ function record(seed = 1) {
 function createReplay(breakpointLines: number[] | null = null, speed = 1, tailTicks = 0) {
   const breakpoints: BreakpointSource[] =
     breakpointLines === null ? [] : [{ robotId: 'ALPHA', lines: () => breakpointLines }];
-  return new ReplayManager(record(), { maxFrameTime, speed, breakpoints, tailTicks });
+  return new ReplayManager(record(), { maxFrameTime, speed, breakpoints, tailTicks, focus: 'ALPHA' });
 }
 
-function hit(line: number, robotId = 'ALPHA') {
-  return { robotId, line };
+/** A recording of one program (as ALPHA) against a robot that does nothing. */
+function replayOf(program: string, maxMatchTime = 2) {
+  const recording = recordMatch(
+    {
+      ...matchConfig(),
+      maxMatchTime,
+      robots: [
+        { id: 'ALPHA', brain: compileBrain(program) },
+        { id: 'BRAVO', brain: compileBrain('loop\n    wait') },
+      ],
+    },
+    EFFECT_LIFETIMES,
+  );
+  return new ReplayManager(recording, { maxFrameTime, speed: 1, breakpoints: [], tailTicks: 0, focus: 'ALPHA' });
 }
 
 /** Resumes and plays frame by frame until playback stops by itself. */
@@ -79,15 +94,25 @@ describe('recordMatch', () => {
     expect(snapshots.slice(0, -1).every((snapshot) => snapshot.result === null)).toBe(true);
   });
 
-  it('records the lines the AI executed on each tick', () => {
+  it('records the lines the AI ran on each tick, ending with the action it took', () => {
     const linesAt = (tick: number) => snapshots[tick].robots[0].executedLines;
     expect(linesAt(0)).toEqual([]);
-    expect(linesAt(1)).toEqual([1, 4, 5, 14, 15, 16]);
+    expect(linesAt(1)).toEqual(SEARCH_LINES);
+    expect(linesAt(2)).toEqual(SEARCH_LINES);
     const blockedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].blocked);
-    expect(linesAt(blockedAt)).toEqual([1, 2, 3]);
+    expect(linesAt(blockedAt)).toEqual([2, 3, 4, 5]);
+    // With the enemy in sight, one round of the loop takes two ticks: turn, then act.
     const sightedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
-    expect(linesAt(sightedAt)).toEqual([1, 4, 5, 6, 8, 11, 12, 13]);
-    expect(linesAt(snapshots.length - 1)).toEqual([1, 4, 5, 6, 8, 9, 10]);
+    expect(linesAt(sightedAt)).toEqual([2, 3, 6, 7, 8]);
+    expect(linesAt(sightedAt + 1)).toEqual([10, 13, 14, 15]);
+  });
+
+  it('records what the AI assigned to its variables, and their values after each tick', () => {
+    const { snapshots: counted } = replayOf('loop\n    set n = n + 1\n    wait').recording;
+    const alphaAt = (tick: number) => counted[tick].robots[0];
+    expect(alphaAt(0).variables).toEqual({});
+    expect(alphaAt(1)).toMatchObject({ variables: { n: 1 }, assignments: [{ afterLines: 2, name: 'n', value: 1 }] });
+    expect(alphaAt(3).variables).toEqual({ n: 3 });
   });
 
   it('records the debug events of the match', () => {
@@ -272,117 +297,284 @@ describe('ReplayManager: stepping', () => {
   });
 });
 
-describe('ReplayManager: breakpoints', () => {
-  const linesAt = (replay: ReplayManager, tick: number) => replay.recording.snapshots[tick].robots[0].executedLines;
+describe('ReplayManager: stepping by line', () => {
+  it('starts on the first line the program runs', () => {
+    const replay = createReplay();
+    expect(replay.tick).toBe(0);
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
+    expect(replay.linesSoFar('ALPHA')).toEqual([]);
+    expect(replay.canStepBack).toBe(false);
+  });
 
-  it('stops just before the tick on which a breakpoint line starts being executed', () => {
+  it('runs one line per step; lines that are not actions take no time', () => {
+    const replay = createReplay();
+    for (let step = 1; step < SEARCH_LINES.length; step++) {
+      replay.stepLine();
+      expect(replay.tick).toBe(0);
+      expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[step]);
+      expect(replay.linesSoFar('ALPHA')).toEqual(SEARCH_LINES.slice(0, step));
+    }
+  });
+
+  it('moves the match one tick on when the action line is run', () => {
+    const replay = createReplay();
+    for (let step = 1; step < SEARCH_LINES.length; step++) replay.stepLine();
+    const before = replay.snapshot.robots[0].x;
+
+    replay.stepLine();
+    expect(replay.tick).toBe(1);
+    expect(replay.snapshot.robots[0].x).not.toBe(before);
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
+    expect(replay.linesSoFar('ALPHA')).toEqual([]);
+  });
+
+  it('takes lines back, across a tick as well', () => {
+    const replay = createReplay();
+    replay.seek(1);
+    replay.stepLine();
+    replay.stepLineBack();
+    expect(replay.tick).toBe(1);
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
+
+    replay.stepLineBack();
+    expect(replay.tick).toBe(0);
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES.at(-1));
+
+    replay.seek(0);
+    replay.stepLineBack();
+    expect(replay.tick).toBe(0);
+  });
+
+  it('pauses playback', () => {
+    const replay = createReplay();
+    replay.play();
+    replay.stepLine();
+    expect(replay.playing).toBe(false);
+  });
+
+  it('steps only the program in focus; the other one is shown at the start of its tick', () => {
+    const replay = createReplay();
+    replay.stepLine();
+    replay.stepLine();
+    expect(replay.currentLine('BRAVO')).toBe(1);
+    expect(replay.linesSoFar('BRAVO')).toEqual([]);
+
+    replay.focusOn('BRAVO');
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
+    replay.stepLine();
+    expect(replay.currentLine('BRAVO')).toBe(2);
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
+  });
+
+  it('has no current line at the end of the match, and nothing more to step to', () => {
+    const replay = createReplay();
+    replay.seek(replay.lastTick);
+    expect(replay.currentLine('ALPHA')).toBeNull();
+    expect(replay.canStep).toBe(false);
+    replay.stepLine();
+    expect(replay.tick).toBe(replay.lastTick);
+  });
+
+  it('shows the variables as they stand line by line', () => {
+    const replay = replayOf('loop\n    set n = n + 1\n    set double = n * 2\n    wait');
+    expect(replay.variablesOf('ALPHA')).toEqual({});
+    replay.stepLine(); // past `loop`
+    replay.stepLine(); // past `set n`
+    expect(replay.variablesOf('ALPHA')).toEqual({ n: 1 });
+    replay.stepLine(); // past `set double`
+    expect(replay.variablesOf('ALPHA')).toEqual({ n: 1, double: 2 });
+    replay.stepLine(); // past `wait`: the tick is over
+    expect(replay.tick).toBe(1);
+    expect(replay.variablesOf('ALPHA')).toEqual({ n: 1, double: 2 });
+
+    replay.stepLineBack();
+    replay.stepLineBack();
+    expect(replay.variablesOf('ALPHA')).toEqual({ n: 1 });
+  });
+
+  it('keeps stepping tick by tick through a program that has finished', () => {
+    const replay = replayOf('move forward');
+    replay.stepLine();
+    expect(replay.tick).toBe(1);
+    expect(replay.currentLine('ALPHA')).toBeNull();
+    replay.stepLine();
+    expect(replay.tick).toBe(2);
+  });
+});
+
+describe('ReplayManager: view', () => {
+  it('shows each robot the sensor values its program is reading: those of the coming tick', () => {
+    const replay = createReplay();
+    const { snapshots } = replay.recording;
+    const sightedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
+
+    replay.seek(sightedAt - 1);
+    expect(replay.snapshot.robots[0].enemyVisible).toBe(false);
+    expect(replay.view.robots[0].enemyVisible).toBe(true);
+    expect(replay.view.robots[0].enemyDistance).toBe(snapshots[sightedAt].robots[0].enemyDistance);
+    // Everything else is the shown tick.
+    expect(replay.view.robots[0].x).toBe(replay.snapshot.robots[0].x);
+    expect(replay.view.tick).toBe(sightedAt - 1);
+  });
+
+  it('is the last snapshot itself at the end', () => {
+    const replay = createReplay();
+    replay.seek(replay.lastTick);
+    expect(replay.view).toBe(replay.snapshot);
+  });
+});
+
+describe('ReplayManager: breakpoints', () => {
+  it('stops just before the line runs', () => {
     const replay = createReplay([FIRE_LINE]);
     restartUntilStopped(replay);
 
     expect(replay.atEnd).toBe(false);
-    expect(linesAt(replay, replay.tick)).not.toContain(FIRE_LINE);
-    expect(linesAt(replay, replay.tick + 1)).toContain(FIRE_LINE);
-    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE)]);
+    expect(replay.breakpoint).toEqual({ robotId: 'ALPHA', line: FIRE_LINE });
+    expect(replay.currentLine('ALPHA')).toBe(FIRE_LINE);
+    expect(replay.linesSoFar('ALPHA')).toEqual([10, 11]);
+    // Nothing has been fired yet.
+    expect(replay.snapshot.robots[0].ammo).toBe(ROBOT_DEFAULTS.maxAmmo);
   });
 
-  it('shows the state before the line takes effect; one step executes it', () => {
-    const replay = createReplay([FIRE_LINE]);
-    restartUntilStopped(replay);
-    const ammoBefore = replay.snapshot.robots[0].ammo;
-    expect(ammoBefore).toBe(ROBOT_DEFAULTS.maxAmmo);
-
-    replay.step();
-    expect(replay.snapshot.robots[0].executedLines).toContain(FIRE_LINE);
-    expect(replay.snapshot.robots[0].ammo).toBe(ammoBefore - 1);
-    expect(replay.breakpointsAhead).toEqual([]);
-  });
-
-  it('plays on from a breakpoint without stopping while the line keeps being executed', () => {
+  it('runs the line with one step', () => {
     const replay = createReplay([FIRE_LINE]);
     restartUntilStopped(replay);
     const stoppedAt = replay.tick;
 
-    playUntilStopped(replay);
-    expect(replay.tick).toBeGreaterThan(stoppedAt);
-    expect(replay.atEnd).toBe(true);
+    replay.stepLine();
+    expect(replay.tick).toBe(stoppedAt + 1);
+    expect(replay.snapshot.robots[0].ammo).toBe(ROBOT_DEFAULTS.maxAmmo - 1);
+    expect(replay.breakpoint).toBeNull();
   });
 
-  it('stops before the first tick for a line that is executed from the start', () => {
-    const replay = createReplay([FIRST_LINE]);
-    replay.restart();
-    expect(replay.playing).toBe(false);
+  it('stops again every time the line comes round', () => {
+    const replay = createReplay([FIRE_LINE]);
+    restartUntilStopped(replay);
+    const first = replay.tick;
+
+    // The sample turns to the enemy and fires on alternate ticks.
+    playUntilStopped(replay);
+    expect(replay.tick).toBe(first + 2);
+    expect(replay.currentLine('ALPHA')).toBe(FIRE_LINE);
+    playUntilStopped(replay);
+    expect(replay.tick).toBe(first + 4);
+  });
+
+  it('stops before the very first line', () => {
+    const replay = createReplay([LOOP_LINE]);
+    restartUntilStopped(replay);
     expect(replay.tick).toBe(0);
-    expect(replay.breakpointsAhead).toEqual([hit(FIRST_LINE)]);
+    expect(replay.currentLine('ALPHA')).toBe(LOOP_LINE);
 
     playUntilStopped(replay);
-    expect(replay.atEnd).toBe(true);
+    expect(replay.tick).toBe(1);
+    expect(replay.currentLine('ALPHA')).toBe(LOOP_LINE);
   });
 
-  it('stops at each of several breakpoints in turn, every time a line starts being executed again', () => {
-    const replay = createReplay([APPROACH_LINE, FIRE_LINE]);
-    replay.restart();
-    const stops: number[][] = [];
-    while (!replay.atEnd) {
-      stops.push(replay.breakpointsAhead.map(({ line }) => line));
-      playUntilStopped(replay);
-    }
+  it('stops at two breakpoints on the same tick one after the other', () => {
+    const replay = createReplay([SEARCH_LINES[1], SEARCH_LINES[3]]);
+    restartUntilStopped(replay);
+    expect([replay.tick, replay.currentLine('ALPHA')]).toEqual([0, SEARCH_LINES[1]]);
+    playUntilStopped(replay);
+    expect([replay.tick, replay.currentLine('ALPHA')]).toEqual([0, SEARCH_LINES[3]]);
+    playUntilStopped(replay);
+    expect([replay.tick, replay.currentLine('ALPHA')]).toEqual([1, SEARCH_LINES[1]]);
+  });
 
-    // Driving on starts on the first tick and again after each turn at the block; firing starts last.
-    expect(stops[0]).toEqual([APPROACH_LINE]);
-    expect(stops.at(-1)).toEqual([FIRE_LINE]);
-    expect(stops.filter((lines) => lines.includes(APPROACH_LINE)).length).toBeGreaterThan(1);
-    expect(stops.every((lines) => lines.length === 1)).toBe(true);
+  it('does not stop again on a line it was stepped onto', () => {
+    const replay = createReplay([SEARCH_LINES[2]]);
+    replay.stepLine();
+    replay.stepLine();
+    expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[2]);
+
+    playUntilStopped(replay);
+    expect(replay.tick).toBe(1);
   });
 
   it('stops again when the match is replayed from the end', () => {
     const replay = createReplay([FIRE_LINE]);
     restartUntilStopped(replay);
-    const stoppedAt = replay.tick;
-    playUntilStopped(replay);
-    expect(replay.atEnd).toBe(true);
+    const first = replay.tick;
+    while (!replay.atEnd) playUntilStopped(replay);
 
     playUntilStopped(replay);
-    expect(replay.tick).toBe(stoppedAt);
+    expect(replay.tick).toBe(first);
   });
 
-  it('does not stop when stepping or seeking past a breakpoint', () => {
+  it('does not stop when stepping by tick or seeking past a breakpoint', () => {
+    const replay = createReplay([LOOP_LINE]);
+    replay.step();
+    replay.step();
+    expect(replay.tick).toBe(2);
+    replay.seek(50);
+    expect(replay.tick).toBe(50);
+    expect(replay.breakpoint).toBeNull();
+  });
+
+  it('plays on past every breakpoint when asked to', () => {
     const replay = createReplay([FIRE_LINE]);
     restartUntilStopped(replay);
     const stoppedAt = replay.tick;
 
-    replay.seek(0);
-    for (let tick = 0; tick < stoppedAt + 5; tick++) replay.step();
-    expect(replay.tick).toBe(stoppedAt + 5);
-    replay.seek(stoppedAt + 50);
-    expect(replay.tick).toBe(stoppedAt + 50);
+    replay.playOn();
+    expect(replay.breakpoint).toBeNull();
+    while (replay.playing) replay.advance(TICK);
+    expect(replay.atEnd).toBe(true);
+    // ALPHA fired several times on the way, each time passing the breakpoint.
+    expect(replay.snapshot.robots[0].ammo).toBeLessThan(ROBOT_DEFAULTS.maxAmmo - 1);
+    expect(replay.tick).toBeGreaterThan(stoppedAt + 2);
   });
 
-  it('reports no breakpoint ahead without a breakpoint source, and plays straight through', () => {
+  it('stops at breakpoints again once playing on has been paused', () => {
+    const replay = createReplay([LOOP_LINE]);
+    replay.playOn();
+    for (let frame = 0; frame < 5; frame++) replay.advance(TICK);
+    expect(replay.tick).toBe(5);
+
+    // The line playback was paused on has had its turn; the next time round is a stop.
+    replay.pause();
+    playUntilStopped(replay);
+    expect(replay.tick).toBe(6);
+    expect(replay.breakpoint).toEqual({ robotId: 'ALPHA', line: LOOP_LINE });
+  });
+
+  it('plays on from the beginning when at the end', () => {
+    const replay = createReplay([LOOP_LINE]);
+    replay.seek(replay.lastTick);
+    replay.playOn();
+    expect(replay.tick).toBe(0);
+    while (replay.playing) replay.advance(TICK);
+    expect(replay.atEnd).toBe(true);
+  });
+
+  it('plays straight through without a breakpoint source', () => {
     const replay = createReplay(null);
     restartUntilStopped(replay);
     expect(replay.atEnd).toBe(true);
-    replay.seek(0);
-    expect(replay.breakpointsAhead).toEqual([]);
+    expect(replay.breakpoint).toBeNull();
   });
 
-  it('stops for the breakpoints of either robot, at whichever comes first, and says whose it is', () => {
-    // Both programs fire from line 10: BRAVO (DumbBot) from further away, so it comes first.
+  it('stops for the breakpoints of either robot, at whichever comes first, and puts that robot in focus', () => {
+    // BRAVO (DumbBot) fires from further away than ALPHA, so its breakpoint comes first.
     const replay = new ReplayManager(record(), {
       maxFrameTime,
       speed: 1,
       tailTicks: 0,
+      focus: 'ALPHA',
       breakpoints: [
         { robotId: 'ALPHA', lines: () => [FIRE_LINE] },
-        { robotId: 'BRAVO', lines: () => [FIRE_LINE] },
+        { robotId: 'BRAVO', lines: () => [BRAVO_FIRE_LINE] },
       ],
     });
     restartUntilStopped(replay);
-    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE, 'BRAVO')]);
-    const bravoStop = replay.tick;
+    expect(replay.breakpoint).toEqual({ robotId: 'BRAVO', line: BRAVO_FIRE_LINE });
+    expect(replay.currentLine('BRAVO')).toBe(BRAVO_FIRE_LINE);
+    expect(replay.snapshot.robots[1].ammo).toBe(ROBOT_DEFAULTS.maxAmmo);
 
-    playUntilStopped(replay);
-    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE, 'ALPHA')]);
-    expect(replay.tick).toBeGreaterThan(bravoStop);
+    // Stepping now runs BRAVO's program.
+    replay.stepLine();
+    expect(replay.snapshot.robots[1].ammo).toBe(ROBOT_DEFAULTS.maxAmmo - 1);
   });
 
   it('reads the breakpoint lines as playback goes, so they can be changed meanwhile', () => {
@@ -392,6 +584,7 @@ describe('ReplayManager: breakpoints', () => {
       speed: 1,
       breakpoints: [{ robotId: 'ALPHA', lines: () => lines }],
       tailTicks: 0,
+      focus: 'ALPHA',
     });
     replay.restart();
     replay.advance(TICK);
@@ -400,6 +593,27 @@ describe('ReplayManager: breakpoints', () => {
     lines.push(FIRE_LINE);
     while (replay.playing) replay.advance(TICK);
     expect(replay.atEnd).toBe(false);
-    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE)]);
+    expect(replay.breakpoint).toEqual({ robotId: 'ALPHA', line: FIRE_LINE });
+  });
+});
+
+describe('ReplayManager: seekToLine', () => {
+  it('goes to just before the line ran on that tick, with its robot in focus', () => {
+    const replay = createReplay();
+    const { events } = replay.recording;
+    const shot = events.find((event) => event.robotId === 'BRAVO' && event.message === 'fire');
+    if (shot === undefined || shot.sourceLine === null) throw new Error('Expected BRAVO to fire');
+
+    replay.seekToLine(shot.tick, 'BRAVO', shot.sourceLine);
+    expect(replay.tick).toBe(shot.tick - 1);
+    expect(replay.currentLine('BRAVO')).toBe(BRAVO_FIRE_LINE);
+    expect(replay.playing).toBe(false);
+    expect(replay.snapshot.robots[1].ammo).toBe(ROBOT_DEFAULTS.maxAmmo);
+  });
+
+  it('goes to the tick itself when the line did not run on it', () => {
+    const replay = createReplay();
+    replay.seekToLine(5, 'ALPHA', FIRE_LINE);
+    expect(replay.tick).toBe(5);
   });
 });

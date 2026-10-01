@@ -10,7 +10,7 @@
   --error: #d97a7a;
   --error-line: rgba(217, 122, 122, 0.16);
   --executed-line: rgba(143, 199, 166, 0.13);
-  --next-line: rgba(212, 183, 122, 0.3);
+  --current-line: rgba(212, 183, 122, 0.3);
   --syntax-control: #b3a1d6;
   --syntax-command: #7fb4d6;
   --syntax-value: #d4b77a;
@@ -250,6 +250,20 @@ button {
 
 #load-template[hidden] {
   display: none;
+}
+
+/* The program's own variables sit above the sensor values, set apart by a rule,
+   so that they stay in view without scrolling. */
+.watch-variables:not(:empty) {
+  border-bottom: 1px solid var(--border);
+}
+
+.watch-variables .field-list {
+  padding-bottom: 4px;
+}
+
+.watch-sensors .field-list {
+  padding-top: 4px;
 }
 
 #watch-robot {

@@ -52,6 +52,45 @@ describe('blocked', () => {
   });
 });
 
+describe('blocked_behind', () => {
+  const facingRight: SpawnPoint = { x: 300, y: 300, rotation: 0 };
+  const behind = (spawns: [SpawnPoint, SpawnPoint], obstacles: Rect[] = []) =>
+    firstRobot(spawns, obstacles).blockedBehind;
+  /** An obstacle whose right edge touches the back of the robot. */
+  const atItsBack: Rect = { x: facingRight.x - radius - 50, y: 250, width: 50, height: 100 };
+
+  it('is false with open ground behind', () => {
+    expect(behind([facingRight, FAR_CORNER])).toBe(false);
+  });
+
+  it('is true with an obstacle directly behind', () => {
+    expect(behind([facingRight, FAR_CORNER], [atItsBack])).toBe(true);
+  });
+
+  it('is true with the arena wall behind', () => {
+    expect(behind([{ x: radius, y: 300, rotation: 0 }, FAR_CORNER])).toBe(true);
+  });
+
+  it('follows the heading: the same obstacle is ahead once the robot has turned around', () => {
+    const turnedAround: SpawnPoint = { ...facingRight, rotation: 180 };
+    const robot = firstRobot([turnedAround, FAR_CORNER], [atItsBack]);
+    expect(robot.blockedBehind).toBe(false);
+    expect(robot.blocked).toBe(true);
+  });
+
+  it('is independent of what is ahead', () => {
+    const ahead: Rect = { x: facingRight.x + radius, y: 250, width: 50, height: 100 };
+    const robot = firstRobot([facingRight, FAR_CORNER], [ahead]);
+    expect(robot.blocked).toBe(true);
+    expect(robot.blockedBehind).toBe(false);
+  });
+
+  it('does not count the other robot', () => {
+    const other: SpawnPoint = { x: facingRight.x - radius * 2, y: 300, rotation: 0 };
+    expect(behind([facingRight, other])).toBe(false);
+  });
+});
+
 describe('enemy_visible', () => {
   const watcher: SpawnPoint = { x: 300, y: 300, rotation: 0 };
   const enemy: SpawnPoint = { x: 600, y: 300, rotation: 180 };
@@ -84,6 +123,15 @@ describe('enemy_visible', () => {
 
   it('is true for a robot that exactly touches the obstacle it looks along', () => {
     expect(visible([watcher, enemy], [wallDownTo(watcher.y - radius)])).toBe(true);
+  });
+
+  it('is true for a robot tucked in beside the corner of an obstacle', () => {
+    // Regression: next to a corner a robot used to count as hidden behind the obstacle,
+    // which made it lose and regain sight of the enemy on alternate ticks.
+    const block: Rect = { x: 180, y: 400, width: 80, height: 80 };
+    const besideCorner: SpawnPoint = { x: 274.4, y: 389.8, rotation: 0 };
+    const inTheOpen: SpawnPoint = { x: 400, y: 390, rotation: 180 };
+    expect(visible([besideCorner, inTheOpen], [block])).toBe(true);
   });
 
   it('is false for both robots when an obstacle is between them', () => {

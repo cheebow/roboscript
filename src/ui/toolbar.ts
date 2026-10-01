@@ -1,8 +1,6 @@
 import { requireElement } from './dom';
 
 export interface ToolbarHandlers {
-  /** Called with the id of the enemy the player picked. */
-  selectEnemy(id: string): void;
   /** Called with the id of the arena the player picked. */
   selectArena(id: string): void;
   run(): void;
@@ -32,8 +30,7 @@ export class Toolbar {
   private readonly message = requireElement('message');
   private readonly pauseButton = requireElement<HTMLButtonElement>('pause');
 
-  constructor(handlers: ToolbarHandlers, enemies: Choices, arenas: Choices) {
-    setUpPicker('enemy', enemies, handlers.selectEnemy);
+  constructor(handlers: ToolbarHandlers, arenas: Choices) {
     setUpPicker('arena', arenas, handlers.selectArena);
 
     requireElement('run').addEventListener('click', handlers.run);

@@ -1,9 +1,14 @@
 import type { RobotStats } from '../data/robot_defaults';
 import { FieldList } from './field_list';
 
-/** Fills the container with a read-only list of the robot's stats, named as in SPEC §9. */
-export function renderConfig(container: HTMLElement, stats: RobotStats): void {
+/**
+ * Fills the container with a read-only description of one robot: which robot
+ * it is, what drives it, and its stats named as in SPEC §9.
+ */
+export function renderConfig(container: HTMLElement, robotId: string, ai: string, stats: RobotStats): void {
   const rows: [name: string, value: string][] = [
+    ['ID', robotId],
+    ['AI', ai],
     ['HP', `${stats.maxHp}`],
     ['MOVE_SPEED', `${stats.moveSpeed} units/sec`],
     ['ROTATE_SPEED', `${stats.rotateSpeed} deg/sec`],

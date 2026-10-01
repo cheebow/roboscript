@@ -8,13 +8,19 @@ export interface BreakpointSource {
   lines(): readonly number[];
 }
 
+/** A breakpoint line that is about to run. */
+export interface BreakpointHit {
+  robotId: string;
+  line: number;
+}
+
 export interface ReplayOptions {
   /** sec, upper bound on real time consumed by one advance() call. */
   maxFrameTime: number;
   /** Playback speed multiplier to start with. */
   speed: number;
-  /** null plays straight through. */
-  breakpoints: BreakpointSource | null;
+  /** One entry per robot whose breakpoints should stop playback; none plays straight through. */
+  breakpoints: readonly BreakpointSource[];
   /** Ticks to keep playing past the end, so the effects of the last tick can finish. */
   tailTicks: number;
 }
@@ -78,12 +84,15 @@ export class ReplayManager {
    * Breakpoint lines that the next tick executes and the shown tick did not.
    * Playback stops when this is not empty.
    */
-  get breakpointsAhead(): number[] {
-    const { breakpoints } = this.options;
-    if (breakpoints === null || this.atEnd) return [];
-    const executed = this.executedLines(this.cursor, breakpoints.robotId);
-    const executedNext = this.executedLines(this.cursor + 1, breakpoints.robotId);
-    return breakpoints.lines().filter((line) => executedNext.includes(line) && !executed.includes(line));
+  get breakpointsAhead(): BreakpointHit[] {
+    if (this.atEnd) return [];
+    return this.options.breakpoints.flatMap(({ robotId, lines }) => {
+      const executed = this.executedLines(this.cursor, robotId);
+      const executedNext = this.executedLines(this.cursor + 1, robotId);
+      return lines()
+        .filter((line) => executedNext.includes(line) && !executed.includes(line))
+        .map((line) => ({ robotId, line }));
+    });
   }
 
   /** Plays from the beginning, unless a breakpoint stops it before the first tick. */

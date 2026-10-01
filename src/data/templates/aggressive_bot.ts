@@ -1,7 +1,7 @@
 /** Never stops closing in on the enemy, and shoots whenever it is within weapon range (SPEC §30). */
 export const AGGRESSIVE_BOT = `if blocked
     state SEARCH
-    turn right
+    turn left
 else
     move forward
 

@@ -13,7 +13,6 @@
         <span id="message"></span>
         <div id="controls">
           <label class="picker">MAP <select id="arena"></select></label>
-          <label class="picker">VS <select id="enemy"></select></label>
           <button id="run" class="tool-button" type="button">RUN</button>
           <button id="pause" class="tool-button" type="button">PAUSE</button>
           <button id="reset" class="tool-button" type="button">RESET</button>
@@ -29,9 +28,9 @@
       <section id="editor" class="panel">
         <h2>
           <span id="editor-title"></span>
-          <button id="load-sample" class="tab" type="button" title="Replace the code with the sample AI (undo with Cmd/Ctrl+Z)">
-            LOAD SAMPLE
-          </button>
+          <select id="load-template" title="Replace the code with a template (undo with Cmd/Ctrl+Z)">
+            <option value="">LOAD TEMPLATE</option>
+          </select>
         </h2>
         <div id="code" class="panel-body"></div>
         <div id="config" class="panel-body" hidden></div>
@@ -67,7 +66,10 @@
       </section>
 
       <section id="watch" class="panel">
-        <h2>WATCH</h2>
+        <h2>
+          <span>WATCH</span>
+          <span id="watch-robot"></span>
+        </h2>
         <div id="watch-fields" class="panel-body"></div>
       </section>
     </div>

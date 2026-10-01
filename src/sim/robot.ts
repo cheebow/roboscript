@@ -34,6 +34,7 @@ export class RobotController {
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
   private blockedAhead = false;
+  private blockedBack = false;
   private executed: readonly number[] = [];
 
   constructor(options: RobotOptions) {
@@ -60,13 +61,19 @@ export class RobotController {
     return this.blockedAhead;
   }
 
+  /** Whether the way straight back was blocked on the latest tick. */
+  get blockedBehind(): boolean {
+    return this.blockedBack;
+  }
+
   sense(enemyPosition: Vec2): void {
     this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
   }
 
-  /** Tells the robot whether the simulation found the way straight ahead blocked this tick. */
-  noteBlocked(blocked: boolean): void {
-    this.blockedAhead = blocked;
+  /** Tells the robot which ways the simulation found blocked this tick. */
+  noteBlocked(ahead: boolean, behind: boolean): void {
+    this.blockedAhead = ahead;
+    this.blockedBack = behind;
   }
 
   /** Source lines the brain executed on its latest decision. */
@@ -127,6 +134,7 @@ export class RobotController {
       hp: this.hp,
       ammo: this.weapon.ammo,
       blocked: this.blockedAhead,
+      blockedBehind: this.blockedBack,
     };
   }
 }

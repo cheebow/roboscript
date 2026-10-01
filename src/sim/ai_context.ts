@@ -23,6 +23,8 @@ export interface AIContext {
   readonly ammo: number;
   /** An obstacle or a wall is directly ahead, so the robot cannot move forward. The other robot does not count. */
   readonly blocked: boolean;
+  /** An obstacle or a wall is directly behind, so the robot cannot move backward. The other robot does not count. */
+  readonly blockedBehind: boolean;
 }
 
 /** What the AI wants the robot to do on this tick. */

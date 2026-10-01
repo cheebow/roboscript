@@ -1,4 +1,4 @@
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 
 // Four ways a player might write their AI (SPEC §32), used to check that the
 // choice of strategy changes who wins. Those that move turn left around

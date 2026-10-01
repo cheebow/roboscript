@@ -21,6 +21,7 @@ export interface RobotSnapshot {
   enemyAngle: number;
   lastSeen: Vec2 | null;
   blocked: boolean;
+  blockedBehind: boolean;
   /** Source lines the AI executed on this tick, in order. */
   executedLines: readonly number[];
 }
@@ -71,6 +72,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         enemyAngle,
         lastSeen: lastSeen === null ? null : { ...lastSeen },
         blocked: robot.blocked,
+        blockedBehind: robot.blockedBehind,
         executedLines: [...robot.executedLines],
       };
     }),

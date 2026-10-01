@@ -234,6 +234,28 @@ button {
   cursor: pointer;
 }
 
+#load-template {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+#load-template:hover {
+  color: var(--text);
+}
+
+#load-template[hidden] {
+  display: none;
+}
+
+#watch-robot {
+  color: var(--text);
+}
+
 .tab:hover,
 .tab.selected {
   color: var(--text);

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IfNode } from '../src/ai/ast';
 import { parse } from '../src/ai/parser';
 import { formatError } from '../src/ai/script_error';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 
 function parseOk(source: string) {
   const { program, errors } = parse(source);
@@ -150,7 +150,7 @@ describe('parser: conditions', () => {
   });
 
   it('accepts every boolean variable on its own', () => {
-    for (const name of ['enemy_visible', 'blocked']) {
+    for (const name of ['enemy_visible', 'blocked', 'blocked_behind']) {
       expect(conditionOf(name)).toEqual({ kind: 'boolean_variable', name });
     }
   });

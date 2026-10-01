@@ -5,6 +5,7 @@ import { type AIContext, type MoveDirection, ROBOT_STATES, type RobotState, type
 export const BOOLEAN_VARIABLES = {
   enemy_visible: (context: AIContext) => context.enemyVisible,
   blocked: (context: AIContext) => context.blocked,
+  blocked_behind: (context: AIContext) => context.blockedBehind,
 };
 
 export const NUMBER_VARIABLES = {

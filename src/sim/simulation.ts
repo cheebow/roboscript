@@ -2,7 +2,7 @@ import type { RobotStats } from '../data/robot_defaults';
 import type { RobotBrain } from './ai_context';
 import { type Bullet, stepBullet } from './bullet';
 import { type DebugEventSink, EventReporter } from './event_reporter';
-import { circleIntersectsRect, distance, segmentRectHit } from './math';
+import { circleIntersectsRect, distance, segmentRectDistance } from './math';
 import { MatchRng } from './rng';
 import { RobotController } from './robot';
 import { ConeSensor } from './sensor';
@@ -134,7 +134,10 @@ export class Simulation {
     const wasVisible = robot.sensorReading.enemyVisible;
     robot.sense(enemy.position);
     const visible = robot.sensorReading.enemyVisible;
-    robot.noteBlocked(this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)));
+    robot.noteBlocked(
+      this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)),
+      this.hitsTerrain(robot.stepTarget('backward', this.tickDuration)),
+    );
     if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
   }
 
@@ -165,16 +168,8 @@ export class Simulation {
    * the enemy therefore also means it can be driven at, and shot at, directly.
    */
   private hasLineOfSight(from: Vec2, to: Vec2): boolean {
-    const margin = this.stats.radius - LINE_OF_SIGHT_TOLERANCE;
-    return !this.arena.obstacles.some((obstacle) => {
-      const widened = {
-        x: obstacle.x - margin,
-        y: obstacle.y - margin,
-        width: obstacle.width + margin * 2,
-        height: obstacle.height + margin * 2,
-      };
-      return segmentRectHit(from, to, widened) !== null;
-    });
+    const clearance = this.stats.radius - LINE_OF_SIGHT_TOLERANCE;
+    return this.arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
   }
 
   private enemyOf(robot: RobotController): RobotController {

@@ -110,3 +110,37 @@ export function segmentLeavesBounds(from: Vec2, to: Vec2, width: number, height:
   }
   return tLeave;
 }
+
+/** Shortest distance from a point to the segment between `from` and `to`. */
+export function pointSegmentDistance(point: Vec2, from: Vec2, to: Vec2): number {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return distance(point, from);
+  const t = clamp(((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSquared, 0, 1);
+  return Math.hypot(point.x - (from.x + dx * t), point.y - (from.y + dy * t));
+}
+
+/** Shortest distance from a point to the rectangle; 0 inside it. */
+export function pointRectDistance(point: Vec2, rect: Rect): number {
+  const nearestX = clamp(point.x, rect.x, rect.x + rect.width);
+  const nearestY = clamp(point.y, rect.y, rect.y + rect.height);
+  return Math.hypot(point.x - nearestX, point.y - nearestY);
+}
+
+/** Shortest distance between a segment and a rectangle; 0 if they touch or cross. */
+export function segmentRectDistance(from: Vec2, to: Vec2, rect: Rect): number {
+  if (segmentRectHit(from, to, rect) !== null) return 0;
+  // They do not cross, so the closest approach involves an end of the segment or a corner of the rectangle.
+  const corners: Vec2[] = [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y },
+    { x: rect.x, y: rect.y + rect.height },
+    { x: rect.x + rect.width, y: rect.y + rect.height },
+  ];
+  return Math.min(
+    pointRectDistance(from, rect),
+    pointRectDistance(to, rect),
+    ...corners.map((corner) => pointSegmentDistance(corner, from, to)),
+  );
+}

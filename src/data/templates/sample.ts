@@ -1,5 +1,5 @@
 /**
- * The program a new player starts with. Based on SPEC §31, extended for robots
+ * The program a new player starts with, and the first of the templates. Based on SPEC §31, extended for robots
  * that drive like tanks: turn away when the way ahead is blocked, fight the
  * enemy while it is in sight, and drive on to find it when it is hidden.
  */

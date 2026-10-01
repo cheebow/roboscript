@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
 import { DEFAULT_ARENA } from '../src/data/arenas';
-import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
-import { compileBrain, createSimulation, runToEnd } from './helpers';
+import { SAMPLE_AI } from '../src/data/templates/sample';
+import { compileBrain, createSimulation, enemySource, runToEnd } from './helpers';
 
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** Plays the real game setup: the player's script against DumbBot. */
 function playAgainstDumbBot(playerSource: string, seed: number) {
-  const simulation = createSimulation([compileBrain(playerSource), compileBrain(DUMB_BOT)], {
+  const simulation = createSimulation([compileBrain(playerSource), compileBrain(enemySource('dumb_bot'))], {
     arena: DEFAULT_ARENA,
     stats: ROBOT_DEFAULTS,
     seed,
@@ -22,7 +21,7 @@ function playAgainstDumbBot(playerSource: string, seed: number) {
 describe('bundled scripts', () => {
   it('compile without errors', () => {
     expect(compileScript(SAMPLE_AI)).toMatchObject({ ok: true });
-    expect(compileScript(DUMB_BOT)).toMatchObject({ ok: true });
+    expect(compileScript(enemySource('dumb_bot'))).toMatchObject({ ok: true });
   });
 
   it('refuses to compile a script with errors', () => {

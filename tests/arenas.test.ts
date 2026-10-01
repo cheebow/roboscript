@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARENAS, DEFAULT_ARENA, DEFAULT_ARENA_DEFINITION, findArena } from '../src/data/arenas';
-import { ENEMIES } from '../src/data/enemies';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { TEMPLATES, templateSource } from '../src/data/templates';
 import { circleIntersectsRect } from '../src/sim/math';
 import type { Rect } from '../src/sim/types';
 import { compileBrain, createSimulation, runToEnd } from './helpers';
@@ -58,16 +57,17 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
     }
   });
 
-  it('lets the sample AI fight every enemy to a finish, without running out the clock', () => {
-    for (const enemy of ENEMIES) {
-      for (const seed of SEEDS) {
-        const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(enemy.source)], {
-          arena,
-          stats: ROBOT_DEFAULTS,
-          seed,
-        });
-        runToEnd(simulation);
-        expect(simulation.result?.reason).toBe('destroyed');
+  it('lets every pair of templates fight to a finish, without running out the clock', () => {
+    for (const player of TEMPLATES) {
+      for (const enemy of TEMPLATES) {
+        for (const seed of SEEDS) {
+          const simulation = createSimulation(
+            [compileBrain(templateSource(player, 0)), compileBrain(templateSource(enemy, 1))],
+            { arena, stats: ROBOT_DEFAULTS, seed },
+          );
+          runToEnd(simulation);
+          expect(simulation.result?.reason, `${player.name} vs ${enemy.name}, seed ${seed}`).toBe('destroyed');
+        }
       }
     }
   });

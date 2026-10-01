@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ARENA } from '../src/data/arenas';
-import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, PLAYBACK_SPEEDS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 import { recordMatch } from '../src/debug/recorder';
 import { type BreakpointSource, ReplayManager } from '../src/debug/replay_manager';
 import { captureSnapshot } from '../src/debug/snapshot';
 import { Simulation, type SimulationConfig } from '../src/sim/simulation';
-import { compileBrain, runTicks } from './helpers';
+import { compileBrain, enemySource, runTicks } from './helpers';
 
 const { tickRate, maxFrameTime } = MATCH_DEFAULTS;
 const TICK = 1 / tickRate;
@@ -29,7 +28,7 @@ function matchConfig(seed = 1): SimulationConfig {
     seed,
     robots: [
       { id: 'ALPHA', brain: compileBrain(SAMPLE_AI) },
-      { id: 'BRAVO', brain: compileBrain(DUMB_BOT) },
+      { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')) },
     ],
   };
 }
@@ -38,10 +37,15 @@ function record(seed = 1) {
   return recordMatch(matchConfig(seed), EFFECT_LIFETIMES);
 }
 
+/** `breakpointLines` are ALPHA's; null plays without any breakpoint source. */
 function createReplay(breakpointLines: number[] | null = null, speed = 1, tailTicks = 0) {
-  const breakpoints: BreakpointSource | null =
-    breakpointLines === null ? null : { robotId: 'ALPHA', lines: () => breakpointLines };
+  const breakpoints: BreakpointSource[] =
+    breakpointLines === null ? [] : [{ robotId: 'ALPHA', lines: () => breakpointLines }];
   return new ReplayManager(record(), { maxFrameTime, speed, breakpoints, tailTicks });
+}
+
+function hit(line: number, robotId = 'ALPHA') {
+  return { robotId, line };
 }
 
 /** Resumes and plays frame by frame until playback stops by itself. */
@@ -278,7 +282,7 @@ describe('ReplayManager: breakpoints', () => {
     expect(replay.atEnd).toBe(false);
     expect(linesAt(replay, replay.tick)).not.toContain(FIRE_LINE);
     expect(linesAt(replay, replay.tick + 1)).toContain(FIRE_LINE);
-    expect(replay.breakpointsAhead).toEqual([FIRE_LINE]);
+    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE)]);
   });
 
   it('shows the state before the line takes effect; one step executes it', () => {
@@ -308,7 +312,7 @@ describe('ReplayManager: breakpoints', () => {
     replay.restart();
     expect(replay.playing).toBe(false);
     expect(replay.tick).toBe(0);
-    expect(replay.breakpointsAhead).toEqual([FIRST_LINE]);
+    expect(replay.breakpointsAhead).toEqual([hit(FIRST_LINE)]);
 
     playUntilStopped(replay);
     expect(replay.atEnd).toBe(true);
@@ -319,7 +323,7 @@ describe('ReplayManager: breakpoints', () => {
     replay.restart();
     const stops: number[][] = [];
     while (!replay.atEnd) {
-      stops.push(replay.breakpointsAhead);
+      stops.push(replay.breakpointsAhead.map(({ line }) => line));
       playUntilStopped(replay);
     }
 
@@ -361,12 +365,32 @@ describe('ReplayManager: breakpoints', () => {
     expect(replay.breakpointsAhead).toEqual([]);
   });
 
+  it('stops for the breakpoints of either robot, at whichever comes first, and says whose it is', () => {
+    // Both programs fire from line 10: BRAVO (DumbBot) from further away, so it comes first.
+    const replay = new ReplayManager(record(), {
+      maxFrameTime,
+      speed: 1,
+      tailTicks: 0,
+      breakpoints: [
+        { robotId: 'ALPHA', lines: () => [FIRE_LINE] },
+        { robotId: 'BRAVO', lines: () => [FIRE_LINE] },
+      ],
+    });
+    restartUntilStopped(replay);
+    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE, 'BRAVO')]);
+    const bravoStop = replay.tick;
+
+    playUntilStopped(replay);
+    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE, 'ALPHA')]);
+    expect(replay.tick).toBeGreaterThan(bravoStop);
+  });
+
   it('reads the breakpoint lines as playback goes, so they can be changed meanwhile', () => {
     const lines: number[] = [];
     const replay = new ReplayManager(record(), {
       maxFrameTime,
       speed: 1,
-      breakpoints: { robotId: 'ALPHA', lines: () => lines },
+      breakpoints: [{ robotId: 'ALPHA', lines: () => lines }],
       tailTicks: 0,
     });
     replay.restart();
@@ -376,6 +400,6 @@ describe('ReplayManager: breakpoints', () => {
     lines.push(FIRE_LINE);
     while (replay.playing) replay.advance(TICK);
     expect(replay.atEnd).toBe(false);
-    expect(replay.breakpointsAhead).toEqual([FIRE_LINE]);
+    expect(replay.breakpointsAhead).toEqual([hit(FIRE_LINE)]);
   });
 });

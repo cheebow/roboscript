@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ARENA } from '../src/data/arenas';
-import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 import { EffectTracker } from '../src/debug/effects';
 import { recordMatch } from '../src/debug/recorder';
-import { FixedBrain, NO_SPREAD_STATS, compileBrain, createSimulation } from './helpers';
+import { compileBrain, createSimulation, enemySource, FixedBrain, NO_SPREAD_STATS } from './helpers';
 
 describe('Simulation.tickEvents', () => {
   it('reports a shot at the muzzle on the tick it is fired', () => {
@@ -85,7 +84,7 @@ describe('effects in a recording', () => {
       seed: 1,
       robots: [
         { id: 'ALPHA', brain: compileBrain(SAMPLE_AI) },
-        { id: 'BRAVO', brain: compileBrain(DUMB_BOT) },
+        { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')) },
       ],
     },
     EFFECT_LIFETIMES,

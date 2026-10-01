@@ -7,8 +7,6 @@ export interface KeyValueStorage {
 export interface ProjectInfo {
   name: string;
   version: number;
-  /** Id of the enemy the player chose to fight; absent until they choose one. */
-  enemy?: string;
   /** Id of the arena the player chose; absent until they choose one. */
   arena?: string;
 }
@@ -19,27 +17,26 @@ export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
 const PROJECT_DIRECTORY = 'robograming/projects/alpha';
 export const PROJECT_INFO_KEY = `${PROJECT_DIRECTORY}/project.json`;
 export const MAIN_BOT_KEY = `${PROJECT_DIRECTORY}/main.bot`;
+export const BRAVO_BOT_KEY = `${PROJECT_DIRECTORY}/bravo.bot`;
+/** Where each robot's program is kept, in spawn order: the player's first. */
+const SOURCE_KEYS = [MAIN_BOT_KEY, BRAVO_BOT_KEY];
 
 /** Saves and loads the player's project. Storage failures are thrown to the caller. */
 export class ProjectStore {
+  /** `defaultSources` are what each robot starts with, in spawn order. */
   constructor(
     private readonly storage: KeyValueStorage,
-    private readonly defaultSource: string,
+    private readonly defaultSources: readonly string[],
   ) {}
 
-  /** The saved main.bot, or the default source if nothing was saved yet. */
-  loadSource(): string {
-    return this.storage.getItem(MAIN_BOT_KEY) ?? this.defaultSource;
+  /** The saved program of the robot at the given spawn index, or its default if nothing was saved yet. */
+  loadSource(robotIndex: number): string {
+    return this.storage.getItem(sourceKey(robotIndex)) ?? this.defaultSources[robotIndex];
   }
 
-  saveSource(source: string): void {
-    this.storage.setItem(PROJECT_INFO_KEY, JSON.stringify(this.loadInfo()));
-    this.storage.setItem(MAIN_BOT_KEY, source);
-  }
-
-  /** Remembers which enemy the player chose. */
-  saveEnemy(enemyId: string): void {
-    this.saveInfo({ enemy: enemyId });
+  saveSource(robotIndex: number, source: string): void {
+    this.saveInfo({});
+    this.storage.setItem(sourceKey(robotIndex), source);
   }
 
   /** Remembers which arena the player chose. */
@@ -65,10 +62,15 @@ export class ProjectStore {
   }
 }
 
+function sourceKey(robotIndex: number): string {
+  const key = SOURCE_KEYS[robotIndex];
+  if (key === undefined) throw new Error(`No program is kept for robot ${robotIndex}`);
+  return key;
+}
+
 function isProjectInfo(value: unknown): value is ProjectInfo {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
-  if (candidate.enemy !== undefined && typeof candidate.enemy !== 'string') return false;
   if (candidate.arena !== undefined && typeof candidate.arena !== 'string') return false;
   return typeof candidate.name === 'string' && typeof candidate.version === 'number';
 }

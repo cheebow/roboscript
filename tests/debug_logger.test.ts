@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ARENA } from '../src/data/arenas';
-import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 import type { DebugEvent } from '../src/debug/debug_event';
 import { DebugLogger } from '../src/debug/debug_logger';
-import { FixedBrain, NO_SPREAD_STATS, compileBrain, createSimulation, runToEnd } from './helpers';
+import { compileBrain, createSimulation, enemySource, FixedBrain, NO_SPREAD_STATS, runToEnd } from './helpers';
 
 /** Plays the sample AI against DumbBot and returns everything that was logged. */
 function playLogged(seed = 1, logger: DebugLogger | undefined = new DebugLogger()) {
-  const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(DUMB_BOT)], {
+  const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(enemySource('dumb_bot'))], {
     arena: DEFAULT_ARENA,
     stats: ROBOT_DEFAULTS,
     seed,

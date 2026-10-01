@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ARENA } from '../src/data/arenas';
-import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 import { MatchRng } from '../src/sim/rng';
 import type { Simulation } from '../src/sim/simulation';
-import { compileBrain, createSimulation } from './helpers';
+import { compileBrain, createSimulation, enemySource } from './helpers';
 
 function snapshot(simulation: Simulation): string {
   return JSON.stringify({
@@ -16,7 +15,7 @@ function snapshot(simulation: Simulation): string {
 
 /** Plays the default match and records the state after every tick. */
 function playMatch(seed: number): string[] {
-  const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(DUMB_BOT)], {
+  const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(enemySource('dumb_bot'))], {
     arena: DEFAULT_ARENA,
     stats: ROBOT_DEFAULTS,
     seed,

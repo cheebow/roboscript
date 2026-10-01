@@ -111,6 +111,8 @@ const theme = EditorView.theme(
       border: 'none',
       borderRight: '1px solid var(--border)',
     },
+    // Line numbers and the margin can be clicked to toggle breakpoints.
+    '.cm-gutterElement': { cursor: 'pointer' },
     '.cm-breakpoint-gutter': { width: '14px' },
     '.cm-breakpoint-gutter .cm-gutterElement': { color: 'var(--error)', textAlign: 'center' },
     '.cm-executed-line': { backgroundColor: 'var(--executed-line)' },
@@ -120,31 +122,22 @@ const theme = EditorView.theme(
   { dark: true },
 );
 
-/** Line numbers and the margin can be clicked to toggle breakpoints. */
-const clickableGutterTheme = EditorView.theme({ '.cm-gutterElement': { cursor: 'pointer' } });
-
-export interface CodeEditorOptions {
-  /** Called with the new text after every edit. */
-  onChange?: (source: string) => void;
-  /** Shows the code without letting it be edited; no breakpoints. */
-  readOnly?: boolean;
-}
-
 /**
  * The RoboScript editor: line numbers, undo/redo, highlighting, breakpoints
  * (click the margin or a line number), and error / executed line marks.
- * A read-only editor only shows highlighted code.
  */
 export class CodeEditor {
   private readonly view: EditorView;
   /** What each per-frame highlight currently shows, to skip updates that change nothing. */
   private readonly shown = new Map<LineHighlight, string>();
 
-  constructor(parent: HTMLElement, source: string, options: CodeEditorOptions = {}) {
-    const { onChange } = options;
-    const editing = options.readOnly
-      ? [EditorState.readOnly.of(true), EditorView.editable.of(false), lineNumbers()]
-      : [
+  /** `onChange` is called with the new text after every edit. */
+  constructor(parent: HTMLElement, source: string, onChange: (source: string) => void) {
+    this.view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: source,
+        extensions: [
           breakpoints,
           gutter({
             class: 'cm-breakpoint-gutter',
@@ -152,27 +145,19 @@ export class CodeEditor {
             domEventHandlers: { mousedown: toggleBreakpointOnLine },
           }),
           lineNumbers({ domEventHandlers: { mousedown: toggleBreakpointOnLine } }),
-          clickableGutterTheme,
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-          executedLines.field,
-          nextLines.field,
-          errorLines.field,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) onChange?.(update.state.doc.toString());
-          }),
-        ];
-    this.view = new EditorView({
-      parent,
-      state: EditorState.create({
-        doc: source,
-        extensions: [
-          ...editing,
           drawSelection(),
           indentUnit.of(INDENT),
           EditorState.tabSize.of(INDENT.length),
+          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           roboscriptHighlight(),
+          executedLines.field,
+          nextLines.field,
+          errorLines.field,
           theme,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) onChange(update.state.doc.toString());
+          }),
         ],
       }),
     });
@@ -182,7 +167,7 @@ export class CodeEditor {
     return this.view.state.doc.toString();
   }
 
-  /** Replaces the whole text. */
+  /** Replaces the whole text. The change can be undone like any edit. */
   setSource(source: string): void {
     this.view.dispatch({ changes: { from: 0, to: this.view.state.doc.length, insert: source } });
   }

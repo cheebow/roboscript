@@ -1,29 +1,43 @@
 import { createElement } from './dom';
 
-export const PROJECT_FILES = ['main.bot', 'config', 'enemy.bot'] as const;
-export type ProjectFile = (typeof PROJECT_FILES)[number];
+/** The files every robot has in the project tree. */
+export const ROBOT_FILES = ['main.bot', 'config'] as const;
+export type RobotFile = (typeof ROBOT_FILES)[number];
+
+/** One file of one robot. */
+export interface ProjectFile {
+  /** Index of the robot the file belongs to; 0 is the player's. */
+  robotIndex: number;
+  file: RobotFile;
+}
 
 const BRANCH = '├─ ';
 const LAST_BRANCH = '└─ ';
 
-/** The project tree. Clicking a file tells the app which one to show. */
+/** The project tree: one node per robot, each with its files. Clicking a file tells the app which one to show. */
 export class ProjectPanel {
-  private readonly entries = new Map<ProjectFile, HTMLButtonElement>();
+  private readonly entries: { file: ProjectFile; element: HTMLButtonElement }[] = [];
 
-  constructor(container: HTMLElement, projectName: string, onSelect: (file: ProjectFile) => void) {
-    const nodes: HTMLElement[] = [createElement('div', 'tree-node', projectName)];
-    PROJECT_FILES.forEach((file, index) => {
-      const branch = index === PROJECT_FILES.length - 1 ? LAST_BRANCH : BRANCH;
-      const entry = createElement('button', 'tree-file', `${branch}${file}`);
-      entry.type = 'button';
-      entry.addEventListener('click', () => onSelect(file));
-      this.entries.set(file, entry);
-      nodes.push(entry);
+  constructor(container: HTMLElement, robotIds: readonly string[], onSelect: (file: ProjectFile) => void) {
+    const nodes: HTMLElement[] = [];
+    robotIds.forEach((robotId, robotIndex) => {
+      nodes.push(createElement('div', 'tree-node', robotId));
+      ROBOT_FILES.forEach((name, index) => {
+        const file: ProjectFile = { robotIndex, file: name };
+        const branch = index === ROBOT_FILES.length - 1 ? LAST_BRANCH : BRANCH;
+        const element = createElement('button', 'tree-file', `${branch}${name}`);
+        element.type = 'button';
+        element.addEventListener('click', () => onSelect(file));
+        this.entries.push({ file, element });
+        nodes.push(element);
+      });
     });
     container.replaceChildren(...nodes);
   }
 
   markSelected(selected: ProjectFile): void {
-    for (const [file, entry] of this.entries) entry.classList.toggle('selected', file === selected);
+    for (const { file, element } of this.entries) {
+      element.classList.toggle('selected', file.robotIndex === selected.robotIndex && file.file === selected.file);
+    }
   }
 }

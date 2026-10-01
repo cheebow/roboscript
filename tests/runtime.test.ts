@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AIContext } from '../src/sim/ai_context';
-import { SAMPLE_AI } from '../src/data/sample_ai';
+import { SAMPLE_AI } from '../src/data/templates/sample';
 import { compileBrain } from './helpers';
 
 const BASE_CONTEXT: AIContext = {
@@ -12,6 +12,7 @@ const BASE_CONTEXT: AIContext = {
   hp: 100,
   ammo: 50,
   blocked: false,
+  blockedBehind: false,
 };
 
 function run(source: string, context: Partial<AIContext> = {}) {
@@ -78,6 +79,8 @@ describe('runtime: conditions', () => {
     expect(holds('enemy_visible', { enemyVisible: false })).toBe(false);
     expect(holds('blocked', { blocked: true })).toBe(true);
     expect(holds('blocked', { blocked: false })).toBe(false);
+    expect(holds('blocked_behind', { blockedBehind: true })).toBe(true);
+    expect(holds('blocked_behind', { blockedBehind: false })).toBe(false);
     expect(holds('enemy_distance == 120', { enemyDistance: 120 })).toBe(true);
     expect(holds('enemy_angle == -30', { enemyAngle: -30 })).toBe(true);
     expect(holds('hp == 40', { hp: 40 })).toBe(true);

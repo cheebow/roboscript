@@ -15,6 +15,8 @@ export interface ReplayOptions {
   speed: number;
   /** null plays straight through. */
   breakpoints: BreakpointSource | null;
+  /** Ticks to keep playing past the end, so the effects of the last tick can finish. */
+  tailTicks: number;
 }
 
 /**
@@ -32,6 +34,7 @@ export class ReplayManager {
   private isPlaying = false;
   /** Playback time not yet turned into ticks, in ticks. */
   private pending = 0;
+  private tail = 0;
 
   constructor(
     readonly recording: Recording,
@@ -66,6 +69,11 @@ export class ReplayManager {
     return this.cursor === this.lastTick;
   }
 
+  /** Ticks played past the end of the recording; the last snapshot stays on screen meanwhile. */
+  get overrun(): number {
+    return this.tail;
+  }
+
   /**
    * Breakpoint lines that the next tick executes and the shown tick did not.
    * Playback stops when this is not empty.
@@ -81,7 +89,7 @@ export class ReplayManager {
   /** Plays from the beginning, unless a breakpoint stops it before the first tick. */
   restart(): void {
     this.pause();
-    this.cursor = 0;
+    this.moveTo(0);
     this.isPlaying = this.breakpointsAhead.length === 0;
   }
 
@@ -112,20 +120,26 @@ export class ReplayManager {
     this.moveTo(Math.min(Math.max(Math.round(tick), 0), this.lastTick));
   }
 
-  /** Consumes real time while playing. Stops at the end or just before a breakpoint line runs. */
+  /** Consumes real time while playing. Stops after the end or just before a breakpoint line runs. */
   advance(elapsedSeconds: number): void {
     if (!this.isPlaying) return;
     const elapsed = Math.min(elapsedSeconds, this.options.maxFrameTime);
     this.pending += elapsed * this.speed * this.recording.tickRate;
     while (this.pending >= 1 && this.isPlaying) {
       this.pending -= 1;
-      this.moveTo(this.cursor + 1);
-      if (this.atEnd || this.breakpointsAhead.length > 0) this.pause();
+      if (this.atEnd) {
+        this.tail++;
+      } else {
+        this.moveTo(this.cursor + 1);
+      }
+      const finished = this.atEnd && this.tail >= this.options.tailTicks;
+      if (finished || this.breakpointsAhead.length > 0) this.pause();
     }
   }
 
   private moveTo(tick: number): void {
     this.cursor = tick;
+    this.tail = 0;
     this.furthest = Math.max(this.furthest, tick);
   }
 

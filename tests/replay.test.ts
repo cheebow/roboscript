@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ARENA } from '../src/data/default_arena';
 import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
-import { MATCH_DEFAULTS, PLAYBACK_SPEEDS } from '../src/data/match_defaults';
+import { EFFECT_LIFETIMES, MATCH_DEFAULTS, PLAYBACK_SPEEDS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { SAMPLE_AI } from '../src/data/sample_ai';
 import { recordMatch } from '../src/debug/recorder';
@@ -34,10 +34,14 @@ function matchConfig(seed = 1): SimulationConfig {
   };
 }
 
-function createReplay(breakpointLines: number[] | null = null, speed = 1) {
+function record(seed = 1) {
+  return recordMatch(matchConfig(seed), EFFECT_LIFETIMES);
+}
+
+function createReplay(breakpointLines: number[] | null = null, speed = 1, tailTicks = 0) {
   const breakpoints: BreakpointSource | null =
     breakpointLines === null ? null : { robotId: 'ALPHA', lines: () => breakpointLines };
-  return new ReplayManager(recordMatch(matchConfig()), { maxFrameTime, speed, breakpoints });
+  return new ReplayManager(record(), { maxFrameTime, speed, breakpoints, tailTicks });
 }
 
 /** Resumes and plays frame by frame until playback stops by itself. */
@@ -53,7 +57,7 @@ function restartUntilStopped(replay: ReplayManager): void {
 }
 
 describe('recordMatch', () => {
-  const recording = recordMatch(matchConfig());
+  const recording = record();
   const { snapshots } = recording;
 
   it('keeps one snapshot per tick, starting with the initial position', () => {
@@ -86,7 +90,7 @@ describe('recordMatch', () => {
   });
 
   it('records the same match for the same seed', () => {
-    const again = recordMatch(matchConfig());
+    const again = record();
     expect(again.snapshots).toEqual(snapshots);
     expect(again.events).toEqual(recording.events);
   });
@@ -100,7 +104,7 @@ describe('ReplayManager: seek', () => {
       runTicks(simulation, tick);
       replay.seek(tick);
       expect(replay.tick).toBe(tick);
-      expect(replay.snapshot).toEqual(captureSnapshot(simulation));
+      expect(replay.snapshot).toEqual({ ...captureSnapshot(simulation), effects: replay.snapshot.effects });
     }
   });
 
@@ -200,6 +204,42 @@ describe('ReplayManager: playback', () => {
     expect(replay.tick).toBe(0);
     expect(replay.playing).toBe(true);
     expect(replay.reachedTick).toBe(replay.lastTick);
+  });
+});
+
+describe('ReplayManager: tail', () => {
+  const TAIL = 5;
+
+  it('keeps playing past the end for the tail, showing the last snapshot', () => {
+    const replay = createReplay(null, 1, TAIL);
+    replay.seek(replay.lastTick - 1);
+    replay.play();
+    replay.advance(TICK);
+    expect(replay.atEnd).toBe(true);
+    expect(replay.playing).toBe(true);
+    expect(replay.overrun).toBe(0);
+
+    for (let tick = 1; tick < TAIL; tick++) {
+      replay.advance(TICK);
+      expect(replay.overrun).toBe(tick);
+      expect(replay.playing).toBe(true);
+    }
+    replay.advance(TICK);
+    expect(replay.overrun).toBe(TAIL);
+    expect(replay.playing).toBe(false);
+    expect(replay.tick).toBe(replay.lastTick);
+  });
+
+  it('forgets the tail when moving to another tick', () => {
+    const replay = createReplay(null, 1, TAIL);
+    playUntilStopped(replay);
+    expect(replay.overrun).toBe(TAIL);
+    replay.seek(replay.lastTick);
+    expect(replay.overrun).toBe(0);
+
+    playUntilStopped(replay);
+    replay.stepBack();
+    expect(replay.overrun).toBe(0);
   });
 });
 
@@ -316,10 +356,11 @@ describe('ReplayManager: breakpoints', () => {
 
   it('reads the breakpoint lines as playback goes, so they can be changed meanwhile', () => {
     const lines: number[] = [];
-    const replay = new ReplayManager(recordMatch(matchConfig()), {
+    const replay = new ReplayManager(record(), {
       maxFrameTime,
       speed: 1,
       breakpoints: { robotId: 'ALPHA', lines: () => lines },
+      tailTicks: 0,
     });
     replay.restart();
     replay.advance(TICK);

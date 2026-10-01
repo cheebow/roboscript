@@ -7,6 +7,8 @@ export interface KeyValueStorage {
 export interface ProjectInfo {
   name: string;
   version: number;
+  /** Id of the enemy the player chose to fight; absent until they choose one. */
+  enemy?: string;
 }
 
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
@@ -33,6 +35,11 @@ export class ProjectStore {
     this.storage.setItem(MAIN_BOT_KEY, source);
   }
 
+  /** Remembers which enemy the player chose. */
+  saveEnemy(enemyId: string): void {
+    this.storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...this.loadInfo(), enemy: enemyId }));
+  }
+
   /** The saved project.json, or the default project if it is missing or unreadable. */
   loadInfo(): ProjectInfo {
     const text = this.storage.getItem(PROJECT_INFO_KEY);
@@ -50,5 +57,6 @@ export class ProjectStore {
 function isProjectInfo(value: unknown): value is ProjectInfo {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
+  if (candidate.enemy !== undefined && typeof candidate.enemy !== 'string') return false;
   return typeof candidate.name === 'string' && typeof candidate.version === 'number';
 }

@@ -34,6 +34,11 @@ export class Inspector {
     this.select(this.selectedIndex);
   }
 
+  /** Index of the robot being inspected. */
+  get selected(): number {
+    return this.selectedIndex;
+  }
+
   update(snapshot: Snapshot): void {
     const robot = snapshot.robots[this.selectedIndex];
     const enemy = snapshot.robots.find((other) => other !== robot);

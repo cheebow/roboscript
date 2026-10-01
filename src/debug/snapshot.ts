@@ -1,6 +1,7 @@
 import type { RobotState } from '../sim/ai_context';
 import type { MatchResult, Simulation } from '../sim/simulation';
 import type { Vec2 } from '../sim/types';
+import type { EffectSnapshot } from './effects';
 
 export interface RobotSnapshot {
   id: string;
@@ -26,6 +27,9 @@ export interface RobotSnapshot {
 export interface BulletSnapshot {
   x: number;
   y: number;
+  /** Unit vector of its flight direction. */
+  directionX: number;
+  directionY: number;
 }
 
 /** Everything needed to display the match as it was after `tick` ticks. */
@@ -35,12 +39,17 @@ export interface Snapshot {
   time: number;
   robots: RobotSnapshot[];
   bullets: BulletSnapshot[];
+  /** Visual effects still running on this tick. */
+  effects: EffectSnapshot[];
   /** Set only once the match is over. */
   result: MatchResult | null;
 }
 
-/** Copies the current state out of a simulation; later ticks do not affect the copy. */
-export function captureSnapshot(simulation: Simulation): Snapshot {
+/**
+ * Copies the current state out of a simulation; later ticks do not affect the
+ * copy. `effects` are the effects running on this tick, if any are tracked.
+ */
+export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[] = []): Snapshot {
   return {
     tick: simulation.tick,
     time: simulation.time,
@@ -63,7 +72,13 @@ export function captureSnapshot(simulation: Simulation): Snapshot {
         executedLines: [...robot.executedLines],
       };
     }),
-    bullets: simulation.bullets.map((bullet) => ({ x: bullet.position.x, y: bullet.position.y })),
+    bullets: simulation.bullets.map((bullet) => ({
+      x: bullet.position.x,
+      y: bullet.position.y,
+      directionX: bullet.direction.x,
+      directionY: bullet.direction.y,
+    })),
+    effects,
     result: simulation.result,
   };
 }

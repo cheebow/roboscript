@@ -1,6 +1,6 @@
 import { createElement } from './dom';
 
-export const PROJECT_FILES = ['main.bot', 'config'] as const;
+export const PROJECT_FILES = ['main.bot', 'config', 'enemy.bot'] as const;
 export type ProjectFile = (typeof PROJECT_FILES)[number];
 
 const BRANCH = '├─ ';

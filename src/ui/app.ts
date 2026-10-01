@@ -1,8 +1,15 @@
 import { compileScript } from '../ai/roboscript';
 import { type ScriptError, formatError } from '../ai/script_error';
 import { DEFAULT_ARENA } from '../data/default_arena';
-import { DUMB_BOT } from '../data/enemies/dumb_bot';
-import { DEFAULT_PLAYBACK_SPEED, MATCH_DEFAULTS, PLAYBACK_SPEEDS, ROBOT_IDS } from '../data/match_defaults';
+import { ENEMIES, findEnemy } from '../data/enemies';
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  EFFECT_LIFETIMES,
+  MATCH_DEFAULTS,
+  PLAYBACK_SPEEDS,
+  REPLAY_TAIL_TICKS,
+  ROBOT_IDS,
+} from '../data/match_defaults';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { SAMPLE_AI } from '../data/sample_ai';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
@@ -43,10 +50,14 @@ class App {
   private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
   private readonly editor: CodeEditor;
+  private readonly enemyEditor: CodeEditor;
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
-  private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'));
+  private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
+  /** The enemy the next match is fought against. */
+  private enemy = findEnemy(this.store?.loadInfo().enemy ?? null);
+  private shownFile: ProjectFile = 'main.bot';
   /** The starting positions, shown while there is no match. */
   private readonly idleSnapshot = captureSnapshot(new Simulation(this.matchConfig(IDLE_BRAIN)));
 
@@ -66,12 +77,17 @@ class App {
 
   constructor() {
     const project = this.loadProject();
-    this.toolbar = new Toolbar({
-      run: () => this.start('run'),
-      debug: () => this.start('debug'),
-      playPause: () => this.togglePlay(),
-      reset: () => this.reset(),
-    });
+    this.toolbar = new Toolbar(
+      {
+        selectEnemy: (id) => this.selectEnemy(id),
+        run: () => this.start('run'),
+        debug: () => this.start('debug'),
+        playPause: () => this.togglePlay(),
+        reset: () => this.reset(),
+      },
+      ENEMIES,
+      this.enemy.id,
+    );
     this.toolbar.setProjectName(project.name);
     this.transport = new Transport(PLAYBACK_SPEEDS, {
       playPause: () => this.togglePlay(),
@@ -81,7 +97,8 @@ class App {
       setSpeed: (speed) => this.setSpeed(speed),
     });
     this.projectPanel = new ProjectPanel(requireElement('project-tree'), project.name, (file) => this.showFile(file));
-    this.editor = new CodeEditor(requireElement('code'), project.source, () => this.codeEdited());
+    this.editor = new CodeEditor(requireElement('code'), project.source, { onChange: () => this.codeEdited() });
+    this.enemyEditor = new CodeEditor(requireElement('enemy-code'), this.enemy.source, { readOnly: true });
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
     renderConfig(requireElement('config'), ROBOT_DEFAULTS);
     this.showFile('main.bot');
@@ -99,9 +116,10 @@ class App {
       return;
     }
     this.editor.showErrorLines([]);
-    const recording = recordMatch(this.matchConfig(result.brain));
+    const recording = recordMatch(this.matchConfig(result.brain), EFFECT_LIFETIMES);
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
+      tailTicks: REPLAY_TAIL_TICKS,
       speed: this.speed,
       breakpoints: mode === 'debug' ? { robotId: ROBOT_IDS[PLAYER_INDEX], lines: () => this.activeBreakpoints() } : null,
     });
@@ -128,6 +146,19 @@ class App {
     this.replay = null;
     this.events = [];
     this.notice = null;
+  }
+
+  /** Takes effect from the next RUN / DEBUG. */
+  private selectEnemy(id: string): void {
+    this.enemy = findEnemy(id);
+    this.enemyEditor.setSource(this.enemy.source);
+    this.showFile(this.shownFile);
+    if (this.store === null) return;
+    try {
+      this.store.saveEnemy(this.enemy.id);
+    } catch (error) {
+      this.saveProblem = `could not save the enemy choice: ${describeError(error)}`;
+    }
   }
 
   private setSpeed(speed: number): void {
@@ -162,15 +193,18 @@ class App {
       seed: this.seed,
       robots: [
         { id: ROBOT_IDS[0], brain: playerBrain },
-        { id: ROBOT_IDS[1], brain: compileBundled('dumb_bot', DUMB_BOT) },
+        { id: ROBOT_IDS[1], brain: compileBundled(this.enemy.id, this.enemy.source) },
       ],
     };
   }
 
   private showFile(file: ProjectFile): void {
+    this.shownFile = file;
     requireElement('code').hidden = file !== 'main.bot';
     requireElement('config').hidden = file !== 'config';
-    requireElement('editor-title').textContent = file;
+    requireElement('enemy-code').hidden = file !== 'enemy.bot';
+    requireElement('editor-title').textContent =
+      file === 'enemy.bot' ? `${file} — ${this.enemy.name} (read-only)` : file;
     this.projectPanel.markSelected(file);
   }
 
@@ -207,7 +241,10 @@ class App {
 
     const snapshot = replay?.snapshot ?? this.idleSnapshot;
     const player = snapshot.robots[PLAYER_INDEX];
-    this.battleView.render(snapshot, DEFAULT_ARENA, ROBOT_DEFAULTS);
+    this.battleView.render(snapshot, DEFAULT_ARENA, ROBOT_DEFAULTS, {
+      sensorOf: this.mode === 'debug' && replay !== null ? this.inspector.selected : null,
+      overrun: replay?.overrun ?? 0,
+    });
     this.inspector.update(snapshot);
     this.watch.update(player);
     const showLines = this.mode === 'debug' && replay !== null && !this.stale;

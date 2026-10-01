@@ -28,6 +28,15 @@ export interface SimulationConfig {
 
 export type MatchEndReason = 'destroyed' | 'timeout';
 
+export type TickEventKind = 'shot' | 'impact' | 'destroyed';
+
+/** Something that happened at a place in the arena during one tick. */
+export interface TickEvent {
+  kind: TickEventKind;
+  x: number;
+  y: number;
+}
+
 export interface MatchResult {
   /** null means DRAW. */
   winnerId: string | null;
@@ -48,6 +57,8 @@ export class Simulation {
   /** Number of ticks completed. */
   tick = 0;
   result: MatchResult | null = null;
+  /** Shots, impacts and destructions of the latest tick. */
+  tickEvents: TickEvent[] = [];
 
   private readonly rng: MatchRng;
   private readonly tickDuration: number;
@@ -89,6 +100,7 @@ export class Simulation {
   step(): void {
     if (this.result !== null) return;
     this.tick++;
+    this.tickEvents = [];
     this.reporter?.beginTick(this.tick);
 
     // Both robots sense and decide on the same snapshot, so update order
@@ -134,6 +146,7 @@ export class Simulation {
     const bullet = robot.weapon.fire(robot.id, robot.position, robot.rotation, this.rng);
     if (bullet !== null) {
       this.bullets.push({ ...bullet, id: this.nextBulletId++ });
+      this.tickEvents.push({ kind: 'shot', ...bullet.position });
       this.reporter?.fired(robot.id, sourceLine);
     } else if (robot.weapon.ammo === 0) {
       this.reporter?.outOfAmmo(robot.id, sourceLine);
@@ -162,6 +175,9 @@ export class Simulation {
 
     this.bullets = this.bullets.filter((bullet) => {
       const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets, this.stats.bulletRadius);
+      if (outcome.kind === 'hit' || outcome.kind === 'wall') {
+        this.tickEvents.push({ kind: 'impact', ...bullet.position });
+      }
       if (outcome.kind === 'hit') this.applyHit(bullet, outcome.targetId);
       return outcome.kind === 'flying';
     });
@@ -170,7 +186,9 @@ export class Simulation {
   private applyHit(bullet: Bullet, targetId: string): void {
     const target = this.robots.find((robot) => robot.id === targetId);
     if (target === undefined) throw new Error(`Bullet hit unknown robot "${targetId}"`);
+    const wasAlive = target.alive;
     target.takeDamage(bullet.damage);
+    if (wasAlive && !target.alive) this.tickEvents.push({ kind: 'destroyed', ...target.position });
     this.reporter?.hit(bullet.ownerId, target.id, bullet.damage, target.hp);
   }
 

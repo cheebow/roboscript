@@ -67,6 +67,15 @@ describe('ProjectStore', () => {
     expect(store.loadInfo()).toEqual(DEFAULT_PROJECT);
   });
 
+  it('remembers the chosen enemy, also across saving the source', () => {
+    const { store } = createStore();
+    expect(store.loadInfo().enemy).toBeUndefined();
+
+    store.saveEnemy('coward_bot');
+    store.saveSource('fire\n');
+    expect(store.loadInfo()).toEqual({ name: 'ALPHA', version: 1, enemy: 'coward_bot' });
+  });
+
   it('lets storage failures reach the caller', () => {
     const failing: KeyValueStorage = {
       getItem: () => null,

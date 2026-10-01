@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_ARENA } from '../src/data/default_arena';
+import { DEFAULT_ARENA } from '../src/data/arenas';
 import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
@@ -56,18 +56,21 @@ describe('debug events of a match', () => {
   });
 
   it('reports the moment each robot detects the enemy', () => {
+    // The centre block hides the robots from each other until both have driven around it.
     const detections = select(events, { type: 'sensor' });
     expect(detections.map(({ robotId, message }) => ({ robotId, message }))).toEqual([
       { robotId: 'ALPHA', message: 'enemy detected: BRAVO' },
       { robotId: 'BRAVO', message: 'enemy detected: ALPHA' },
     ]);
-    expect(detections[0].timestamp).toBeCloseTo(0.8);
+    expect(detections[0].tick).toBe(detections[1].tick);
+    expect(detections[0].tick).toBeGreaterThan(1);
   });
 
   it('reports state changes with the line that set the state', () => {
     expect(select(events, { type: 'ai', robotId: 'ALPHA' })).toMatchObject([
-      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 1 },
-      { message: 'state SEARCH -> ATTACK', sourceLine: 4 },
+      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 15 },
+      { message: 'state SEARCH -> TRACK', sourceLine: 12 },
+      { message: 'state TRACK -> ATTACK', sourceLine: 9 },
     ]);
   });
 
@@ -75,9 +78,17 @@ describe('debug events of a match', () => {
     const actions = select(events, { type: 'action', robotId: 'ALPHA' }).filter(
       (event) => event.message !== 'fire',
     );
+    // Forward to the centre block, a quarter turn left, along the block, then towards the enemy and stop to fire.
     expect(actions.map(({ message, sourceLine }) => ({ message, sourceLine }))).toEqual([
-      { message: 'turn right', sourceLine: 13 },
-      { message: 'move forward', sourceLine: 11 },
+      { message: 'move forward', sourceLine: 16 },
+      { message: 'move stop', sourceLine: null },
+      { message: 'turn left', sourceLine: 3 },
+      { message: 'move forward', sourceLine: 16 },
+      { message: 'turn stop', sourceLine: null },
+      { message: 'move stop', sourceLine: null },
+      { message: 'turn left', sourceLine: 3 },
+      { message: 'move forward', sourceLine: 16 },
+      { message: 'turn stop', sourceLine: null },
       { message: 'turn enemy', sourceLine: 6 },
       { message: 'move stop', sourceLine: null },
     ]);
@@ -86,7 +97,7 @@ describe('debug events of a match', () => {
   it('reports every shot with the line that fired it', () => {
     const shots = select(events, { type: 'action', robotId: 'ALPHA', message: 'fire' });
     expect(shots).toHaveLength(ROBOT_DEFAULTS.maxAmmo - alpha.weapon.ammo);
-    expect(shots.every((event) => event.sourceLine === 9)).toBe(true);
+    expect(shots.every((event) => event.sourceLine === 10)).toBe(true);
   });
 
   it('reports every hit with the damage and remaining HP', () => {

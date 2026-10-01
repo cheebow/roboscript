@@ -1,7 +1,5 @@
 /** Backs away when the enemy gets close, and shoots while keeping its distance (SPEC §30). */
-export const COWARD_BOT = `state SEARCH
-
-if enemy_visible
+export const COWARD_BOT = `if enemy_visible
     turn enemy
 
     if enemy_distance < 300
@@ -9,12 +7,17 @@ if enemy_visible
         move backward
         fire
     else
-        state ATTACK
-
         if enemy_distance < 400
+            state ATTACK
             fire
         else
+            state TRACK
             move forward
 else
-    turn right
+    state SEARCH
+
+    if blocked
+        turn right
+    else
+        move forward
 `;

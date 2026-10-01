@@ -4,6 +4,7 @@ import { type AIContext, type MoveDirection, ROBOT_STATES, type RobotState, type
 
 export const BOOLEAN_VARIABLES = {
   enemy_visible: (context: AIContext) => context.enemyVisible,
+  blocked: (context: AIContext) => context.blocked,
 };
 
 export const NUMBER_VARIABLES = {
@@ -16,7 +17,7 @@ export const NUMBER_VARIABLES = {
 export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;
 export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 
-const MOVE_DIRECTIONS: readonly string[] = ['forward', 'backward', 'left', 'right'] satisfies MoveDirection[];
+const MOVE_DIRECTIONS: readonly string[] = ['forward', 'backward'] satisfies MoveDirection[];
 const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy'] satisfies TurnDirection[];
 const STATES: readonly string[] = ROBOT_STATES;
 

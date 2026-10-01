@@ -76,6 +76,13 @@ describe('ProjectStore', () => {
     expect(store.loadInfo()).toEqual({ name: 'ALPHA', version: 1, enemy: 'coward_bot' });
   });
 
+  it('remembers the chosen arena alongside the chosen enemy', () => {
+    const { store } = createStore();
+    store.saveEnemy('coward_bot');
+    store.saveArena('open_field');
+    expect(store.loadInfo()).toEqual({ name: 'ALPHA', version: 1, enemy: 'coward_bot', arena: 'open_field' });
+  });
+
   it('lets storage failures reach the caller', () => {
     const failing: KeyValueStorage = {
       getItem: () => null,

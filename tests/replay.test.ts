@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_ARENA } from '../src/data/default_arena';
+import { DEFAULT_ARENA } from '../src/data/arenas';
 import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, PLAYBACK_SPEEDS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
@@ -13,10 +13,10 @@ import { compileBrain, runTicks } from './helpers';
 const { tickRate, maxFrameTime } = MATCH_DEFAULTS;
 const TICK = 1 / tickRate;
 /** In the sample AI: `fire`, run from the moment the enemy is close enough. */
-const FIRE_LINE = 9;
-/** In the sample AI: `turn right`, run only while searching. */
-const SEARCH_LINE = 13;
-/** In the sample AI: `state SEARCH`, run on every tick. */
+const FIRE_LINE = 10;
+/** In the sample AI: `move forward` with the enemy hidden, run from the first tick until the way is blocked. */
+const APPROACH_LINE = 16;
+/** In the sample AI: `if blocked`, run on every tick. */
 const FIRST_LINE = 1;
 
 /** The real game setup: the sample AI against DumbBot. */
@@ -78,10 +78,12 @@ describe('recordMatch', () => {
   it('records the lines the AI executed on each tick', () => {
     const linesAt = (tick: number) => snapshots[tick].robots[0].executedLines;
     expect(linesAt(0)).toEqual([]);
-    expect(linesAt(1)).toEqual([1, 3, 12, 13]);
-    const detected = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
-    expect(linesAt(detected)).toEqual([1, 3, 4, 6, 8, 10, 11]);
-    expect(linesAt(snapshots.length - 1)).toEqual([1, 3, 4, 6, 8, 9]);
+    expect(linesAt(1)).toEqual([1, 4, 5, 14, 15, 16]);
+    const blockedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].blocked);
+    expect(linesAt(blockedAt)).toEqual([1, 2, 3]);
+    const sightedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
+    expect(linesAt(sightedAt)).toEqual([1, 4, 5, 6, 8, 11, 12, 13]);
+    expect(linesAt(snapshots.length - 1)).toEqual([1, 4, 5, 6, 8, 9, 10]);
   });
 
   it('records the debug events of the match', () => {
@@ -312,15 +314,20 @@ describe('ReplayManager: breakpoints', () => {
     expect(replay.atEnd).toBe(true);
   });
 
-  it('stops at each of several breakpoints in turn', () => {
-    const replay = createReplay([SEARCH_LINE, FIRE_LINE]);
-    restartUntilStopped(replay);
-    expect(replay.tick).toBe(0);
-    expect(replay.breakpointsAhead).toEqual([SEARCH_LINE]);
+  it('stops at each of several breakpoints in turn, every time a line starts being executed again', () => {
+    const replay = createReplay([APPROACH_LINE, FIRE_LINE]);
+    replay.restart();
+    const stops: number[][] = [];
+    while (!replay.atEnd) {
+      stops.push(replay.breakpointsAhead);
+      playUntilStopped(replay);
+    }
 
-    playUntilStopped(replay);
-    expect(replay.breakpointsAhead).toEqual([FIRE_LINE]);
-    expect(replay.atEnd).toBe(false);
+    // Driving on starts on the first tick and again after each turn at the block; firing starts last.
+    expect(stops[0]).toEqual([APPROACH_LINE]);
+    expect(stops.at(-1)).toEqual([FIRE_LINE]);
+    expect(stops.filter((lines) => lines.includes(APPROACH_LINE)).length).toBeGreaterThan(1);
+    expect(stops.every((lines) => lines.length === 1)).toBe(true);
   });
 
   it('stops again when the match is replayed from the end', () => {

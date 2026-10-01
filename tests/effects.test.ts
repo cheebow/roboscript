@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_ARENA } from '../src/data/default_arena';
+import { DEFAULT_ARENA } from '../src/data/arenas';
 import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
@@ -35,7 +35,15 @@ describe('Simulation.tickEvents', () => {
   });
 
   it('reports an impact where a bullet hits a wall', () => {
-    const arena = { ...DEFAULT_ARENA, obstacles: [], spawns: DEFAULT_ARENA.spawns };
+    // The shooter stands near the right wall and faces it; the other robot is out of the way.
+    const arena = {
+      ...DEFAULT_ARENA,
+      obstacles: [],
+      spawns: [
+        { x: 900, y: 300, rotation: 0 },
+        { x: 100, y: 500, rotation: 0 },
+      ],
+    };
     const simulation = createSimulation([new FixedBrain({ fire: true }), new FixedBrain()], {
       arena,
       stats: { ...NO_SPREAD_STATS, maxAmmo: 1 },
@@ -45,7 +53,6 @@ describe('Simulation.tickEvents', () => {
       simulation.step();
       impacts.push(...simulation.tickEvents.filter((event) => event.kind === 'impact'));
     }
-    // The player starts on the right facing right, so its one shot ends at the right wall.
     expect(impacts).toHaveLength(1);
     expect(impacts[0].x).toBeCloseTo(arena.width);
   });

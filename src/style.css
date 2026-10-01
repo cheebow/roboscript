@@ -46,13 +46,13 @@ button {
 #app {
   height: 100%;
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 260px;
-  grid-template-rows: 34px minmax(0, 1fr) minmax(0, 1.3fr) 190px;
+  /* The battle view takes the two right-hand columns; INSPECTOR and WATCH sit under it. */
+  grid-template-columns: 180px minmax(320px, 3fr) minmax(0, 3.5fr) minmax(0, 3.5fr);
+  grid-template-rows: 34px minmax(0, 1fr) 224px;
   grid-template-areas:
-    'toolbar toolbar toolbar'
-    'project editor editor'
-    'battle battle inspector'
-    'log log watch';
+    'toolbar toolbar toolbar toolbar'
+    'project editor battle battle'
+    'log log inspector watch';
 }
 
 /* Toolbar */
@@ -85,12 +85,12 @@ button {
   gap: 6px;
 }
 
-#enemy-picker {
+.picker {
   margin-right: 10px;
   color: var(--muted);
 }
 
-#enemy {
+.picker select {
   padding: 2px 4px;
   border: 1px solid var(--border);
   background: var(--background);
@@ -133,15 +133,16 @@ button {
 
 #editor {
   grid-area: editor;
+  border-right: 1px solid var(--border);
 }
 
 #inspector {
   grid-area: inspector;
+  border-right: 1px solid var(--border);
 }
 
 #battle {
   grid-area: battle;
-  border-right: 1px solid var(--border);
 }
 
 #log {
@@ -233,6 +234,7 @@ button {
   cursor: pointer;
 }
 
+.tab:hover,
 .tab.selected {
   color: var(--text);
 }

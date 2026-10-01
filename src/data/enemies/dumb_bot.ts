@@ -1,14 +1,18 @@
-/** Turns until it sees the enemy, walks up to it, and shoots once close (SPEC §30). */
-export const DUMB_BOT = `state SEARCH
-
-if enemy_visible
-    state ATTACK
-    turn enemy
-
-    if enemy_distance < 300
-        fire
-    else
-        move forward
-else
+/** Drives up to the enemy and shoots once close; goes looking for it when it is hidden (SPEC §30). */
+export const DUMB_BOT = `if blocked
+    state SEARCH
     turn right
+else
+    if enemy_visible
+        turn enemy
+
+        if enemy_distance < 300
+            state ATTACK
+            fire
+        else
+            state TRACK
+            move forward
+    else
+        state SEARCH
+        move forward
 `;

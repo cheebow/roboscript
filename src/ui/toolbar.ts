@@ -3,6 +3,8 @@ import { requireElement } from './dom';
 export interface ToolbarHandlers {
   /** Called with the id of the enemy the player picked. */
   selectEnemy(id: string): void;
+  /** Called with the id of the arena the player picked. */
+  selectArena(id: string): void;
   run(): void;
   debug(): void;
   /** Toggles between playing and paused. */
@@ -10,9 +12,16 @@ export interface ToolbarHandlers {
   reset(): void;
 }
 
-export interface EnemyChoice {
+/** One entry of a toolbar picker. */
+export interface Choice {
   id: string;
   name: string;
+}
+
+/** What a picker offers, and which entry is selected to begin with. */
+export interface Choices {
+  options: readonly Choice[];
+  selectedId: string;
 }
 
 const PAUSE_LABEL = 'PAUSE';
@@ -23,11 +32,9 @@ export class Toolbar {
   private readonly message = requireElement('message');
   private readonly pauseButton = requireElement<HTMLButtonElement>('pause');
 
-  constructor(handlers: ToolbarHandlers, enemies: readonly EnemyChoice[], selectedEnemyId: string) {
-    const picker = requireElement<HTMLSelectElement>('enemy');
-    picker.replaceChildren(...enemies.map((enemy) => new Option(enemy.name, enemy.id)));
-    picker.value = selectedEnemyId;
-    picker.addEventListener('change', () => handlers.selectEnemy(picker.value));
+  constructor(handlers: ToolbarHandlers, enemies: Choices, arenas: Choices) {
+    setUpPicker('enemy', enemies, handlers.selectEnemy);
+    setUpPicker('arena', arenas, handlers.selectArena);
 
     requireElement('run').addEventListener('click', handlers.run);
     requireElement('debug').addEventListener('click', handlers.debug);
@@ -49,4 +56,11 @@ export class Toolbar {
     if (this.pauseButton.textContent !== label) this.pauseButton.textContent = label;
     this.pauseButton.disabled = !available;
   }
+}
+
+function setUpPicker(elementId: string, choices: Choices, onSelect: (id: string) => void): void {
+  const picker = requireElement<HTMLSelectElement>(elementId);
+  picker.replaceChildren(...choices.options.map((choice) => new Option(choice.name, choice.id)));
+  picker.value = choices.selectedId;
+  picker.addEventListener('change', () => onSelect(picker.value));
 }

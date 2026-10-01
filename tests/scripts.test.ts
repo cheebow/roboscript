@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
-import { DEFAULT_ARENA } from '../src/data/default_arena';
+import { DEFAULT_ARENA } from '../src/data/arenas';
 import { DUMB_BOT } from '../src/data/enemies/dumb_bot';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { SAMPLE_AI } from '../src/data/sample_ai';

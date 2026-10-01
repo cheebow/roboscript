@@ -9,6 +9,8 @@ export interface ProjectInfo {
   version: number;
   /** Id of the enemy the player chose to fight; absent until they choose one. */
   enemy?: string;
+  /** Id of the arena the player chose; absent until they choose one. */
+  arena?: string;
 }
 
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
@@ -37,7 +39,12 @@ export class ProjectStore {
 
   /** Remembers which enemy the player chose. */
   saveEnemy(enemyId: string): void {
-    this.storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...this.loadInfo(), enemy: enemyId }));
+    this.saveInfo({ enemy: enemyId });
+  }
+
+  /** Remembers which arena the player chose. */
+  saveArena(arenaId: string): void {
+    this.saveInfo({ arena: arenaId });
   }
 
   /** The saved project.json, or the default project if it is missing or unreadable. */
@@ -52,11 +59,16 @@ export class ProjectStore {
       return DEFAULT_PROJECT;
     }
   }
+
+  private saveInfo(changes: Partial<ProjectInfo>): void {
+    this.storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...this.loadInfo(), ...changes }));
+  }
 }
 
 function isProjectInfo(value: unknown): value is ProjectInfo {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
   if (candidate.enemy !== undefined && typeof candidate.enemy !== 'string') return false;
+  if (candidate.arena !== undefined && typeof candidate.arena !== 'string') return false;
   return typeof candidate.name === 'string' && typeof candidate.version === 'number';
 }

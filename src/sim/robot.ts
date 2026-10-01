@@ -8,9 +8,7 @@ import type { Weapon } from './weapon';
 /** Heading offset in deg for each move direction, relative to the robot's rotation. */
 const MOVE_HEADING_OFFSETS: Record<MoveDirection, number> = {
   forward: 0,
-  right: 90,
   backward: 180,
-  left: -90,
 };
 
 export interface RobotOptions {
@@ -35,6 +33,7 @@ export class RobotController {
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
+  private blockedAhead = false;
   private executed: readonly number[] = [];
 
   constructor(options: RobotOptions) {
@@ -56,8 +55,18 @@ export class RobotController {
     return this.reading;
   }
 
+  /** Whether the way straight ahead was blocked on the latest tick. */
+  get blocked(): boolean {
+    return this.blockedAhead;
+  }
+
   sense(enemyPosition: Vec2): void {
     this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
+  }
+
+  /** Tells the robot whether the simulation found the way straight ahead blocked this tick. */
+  noteBlocked(blocked: boolean): void {
+    this.blockedAhead = blocked;
   }
 
   /** Source lines the brain executed on its latest decision. */
@@ -79,25 +88,18 @@ export class RobotController {
     this.rotation = normalizeAngle(this.rotation + this.turnStep(direction, maxStep));
   }
 
-  /** Moves one tick's worth, sliding along whatever blocks the direct path. */
-  move(direction: MoveDirection | null, tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
-    if (direction === null) return;
+  /** Where one tick of movement in the given direction would take the robot if nothing were in the way. */
+  stepTarget(direction: MoveDirection, tickDuration: number): Vec2 {
     const heading = headingVector(this.rotation + MOVE_HEADING_OFFSETS[direction]);
     const step = this.stats.moveSpeed * tickDuration;
-    const dx = heading.x * step;
-    const dy = heading.y * step;
-    const { x, y } = this.position;
-    const candidates: Vec2[] = [
-      { x: x + dx, y: y + dy },
-      { x: x + dx, y },
-      { x, y: y + dy },
-    ];
-    for (const candidate of candidates) {
-      if (!isBlocked(candidate)) {
-        this.position = candidate;
-        return;
-      }
-    }
+    return { x: this.position.x + heading.x * step, y: this.position.y + heading.y * step };
+  }
+
+  /** Moves one tick's worth along the heading, or stays put if anything is in the way. */
+  move(direction: MoveDirection | null, tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
+    if (direction === null) return;
+    const target = this.stepTarget(direction, tickDuration);
+    if (!isBlocked(target)) this.position = target;
   }
 
   takeDamage(amount: number): void {
@@ -124,6 +126,7 @@ export class RobotController {
       enemyY: this.reading.lastSeen?.y ?? 0,
       hp: this.hp,
       ammo: this.weapon.ammo,
+      blocked: this.blockedAhead,
     };
   }
 }

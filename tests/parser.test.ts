@@ -35,8 +35,6 @@ describe('parser: statements', () => {
     const source = [
       'move forward',
       'move backward',
-      'move left',
-      'move right',
       'turn left',
       'turn right',
       'turn enemy',
@@ -47,14 +45,12 @@ describe('parser: statements', () => {
     expect(parseOk(source)).toEqual([
       { kind: 'move', line: 1, direction: 'forward' },
       { kind: 'move', line: 2, direction: 'backward' },
-      { kind: 'move', line: 3, direction: 'left' },
-      { kind: 'move', line: 4, direction: 'right' },
-      { kind: 'turn', line: 5, direction: 'left' },
-      { kind: 'turn', line: 6, direction: 'right' },
-      { kind: 'turn', line: 7, direction: 'enemy' },
-      { kind: 'fire', line: 8 },
-      { kind: 'wait', line: 9 },
-      { kind: 'state', line: 10, state: 'EVADE' },
+      { kind: 'turn', line: 3, direction: 'left' },
+      { kind: 'turn', line: 4, direction: 'right' },
+      { kind: 'turn', line: 5, direction: 'enemy' },
+      { kind: 'fire', line: 6 },
+      { kind: 'wait', line: 7 },
+      { kind: 'state', line: 8, state: 'EVADE' },
     ]);
   });
 
@@ -86,18 +82,43 @@ describe('parser: statements', () => {
 
   it('parses nested blocks and returns to the outer block after them', () => {
     const body = parseOk(SAMPLE_AI);
-    expect(body.map((statement) => statement.kind)).toEqual(['state', 'if']);
+    expect(body.map((statement) => statement.kind)).toEqual(['if']);
 
-    const outer = body[1] as IfNode;
-    expect(outer.line).toBe(3);
-    expect(outer.thenBody.map((statement) => statement.kind)).toEqual(['state', 'turn', 'if']);
-    expect(outer.elseLine).toBe(12);
-    expect(outer.elseBody).toEqual([{ kind: 'turn', line: 13, direction: 'right' }]);
+    const outer = body[0] as IfNode;
+    expect(outer.line).toBe(1);
+    expect(outer.condition).toEqual({ kind: 'boolean_variable', name: 'blocked' });
+    expect(outer.thenBody).toEqual([
+      { kind: 'state', line: 2, state: 'SEARCH' },
+      { kind: 'turn', line: 3, direction: 'left' },
+    ]);
+    expect(outer.elseLine).toBe(4);
+    expect(outer.elseBody.map((statement) => statement.kind)).toEqual(['if']);
 
-    const inner = outer.thenBody[2] as IfNode;
-    expect(inner.condition).toEqual(comparison('enemy_distance', '<', 250));
-    expect(inner.thenBody).toEqual([{ kind: 'fire', line: 9 }]);
-    expect(inner.elseBody).toEqual([{ kind: 'move', line: 11, direction: 'forward' }]);
+    const inSight = outer.elseBody[0] as IfNode;
+    expect(inSight.line).toBe(5);
+    expect(inSight.condition).toEqual(VISIBLE);
+    expect(inSight.thenBody.map((statement) => statement.kind)).toEqual(['turn', 'if']);
+    expect(inSight.elseLine).toBe(14);
+    expect(inSight.elseBody).toEqual([
+      { kind: 'state', line: 15, state: 'SEARCH' },
+      { kind: 'move', line: 16, direction: 'forward' },
+    ]);
+
+    const inRange = inSight.thenBody[1] as IfNode;
+    expect(inRange).toEqual({
+      kind: 'if',
+      line: 8,
+      condition: comparison('enemy_distance', '<', 250),
+      thenBody: [
+        { kind: 'state', line: 9, state: 'ATTACK' },
+        { kind: 'fire', line: 10 },
+      ],
+      elseLine: 11,
+      elseBody: [
+        { kind: 'state', line: 12, state: 'TRACK' },
+        { kind: 'move', line: 13, direction: 'forward' },
+      ],
+    });
   });
 
   it('accepts any consistent indentation width', () => {
@@ -126,6 +147,12 @@ describe('parser: conditions', () => {
       left: { kind: 'number_variable', name: 'hp' },
       right: { kind: 'number_variable', name: 'ammo' },
     });
+  });
+
+  it('accepts every boolean variable on its own', () => {
+    for (const name of ['enemy_visible', 'blocked']) {
+      expect(conditionOf(name)).toEqual({ kind: 'boolean_variable', name });
+    }
   });
 
   it('parses not', () => {
@@ -188,6 +215,12 @@ describe('parser: errors', () => {
     expect(errorsOf('move')).toEqual(['Line 1: Expected direction after "move"']);
     expect(errorsOf('move up')).toEqual(['Line 1: Unknown direction "up"']);
     expect(errorsOf('move enemy')).toEqual(['Line 1: Unknown direction "enemy"']);
+    expect(errorsOf('move left')).toEqual([
+      'Line 1: Robots cannot move sideways: use "turn left" and "move forward"',
+    ]);
+    expect(errorsOf('fire\nmove right')).toEqual([
+      'Line 2: Robots cannot move sideways: use "turn right" and "move forward"',
+    ]);
     expect(errorsOf('turn around')).toEqual(['Line 1: Unknown direction "around"']);
     expect(errorsOf('state')).toEqual(['Line 1: Expected state name after "state"']);
     expect(errorsOf('state attack')).toEqual(['Line 1: Unknown state "attack"']);
@@ -203,6 +236,8 @@ describe('parser: errors', () => {
     const block = '\n    fire';
     expect(errorsOf(`if speed > 3${block}`)).toEqual(['Line 1: Unknown variable "speed"']);
     expect(errorsOf(`if enemy_visible < 3${block}`)).toEqual(['Line 1: enemy_visible is not a number']);
+    expect(errorsOf(`if blocked == 1${block}`)).toEqual(['Line 1: blocked is not a number']);
+    expect(errorsOf(`if hp < blocked${block}`)).toEqual(['Line 1: blocked is not a number']);
     expect(errorsOf(`if hp < enemy_visible${block}`)).toEqual(['Line 1: enemy_visible is not a number']);
     expect(errorsOf(`if hp${block}`)).toEqual(['Line 1: Expected comparison after "hp"']);
     expect(errorsOf(`if hp <${block}`)).toEqual(['Line 1: Expected value after "<"']);

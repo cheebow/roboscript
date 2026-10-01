@@ -1,6 +1,6 @@
 import { compileScript } from '../ai/roboscript';
 import { type ScriptError, formatError } from '../ai/script_error';
-import { DEFAULT_ARENA } from '../data/default_arena';
+import { ARENAS, findArena } from '../data/arenas';
 import { ENEMIES, findEnemy } from '../data/enemies';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -15,7 +15,7 @@ import { SAMPLE_AI } from '../data/sample_ai';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
-import { captureSnapshot } from '../debug/snapshot';
+import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { DEFAULT_PROJECT, ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
@@ -57,9 +57,11 @@ class App {
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   /** The enemy the next match is fought against. */
   private enemy = findEnemy(this.store?.loadInfo().enemy ?? null);
+  /** The arena the next match is fought in. */
+  private arena = findArena(this.store?.loadInfo().arena ?? null);
   private shownFile: ProjectFile = 'main.bot';
-  /** The starting positions, shown while there is no match. */
-  private readonly idleSnapshot = captureSnapshot(new Simulation(this.matchConfig(IDLE_BRAIN)));
+  /** The starting positions in the chosen arena, shown while there is no match. */
+  private idleSnapshot = this.captureIdle();
 
   /** null while no match has been recorded. */
   private replay: ReplayManager | null = null;
@@ -80,13 +82,14 @@ class App {
     this.toolbar = new Toolbar(
       {
         selectEnemy: (id) => this.selectEnemy(id),
+        selectArena: (id) => this.selectArena(id),
         run: () => this.start('run'),
         debug: () => this.start('debug'),
         playPause: () => this.togglePlay(),
         reset: () => this.reset(),
       },
-      ENEMIES,
-      this.enemy.id,
+      { options: ENEMIES, selectedId: this.enemy.id },
+      { options: ARENAS, selectedId: this.arena.id },
     );
     this.toolbar.setProjectName(project.name);
     this.transport = new Transport(PLAYBACK_SPEEDS, {
@@ -100,6 +103,7 @@ class App {
     this.editor = new CodeEditor(requireElement('code'), project.source, { onChange: () => this.codeEdited() });
     this.enemyEditor = new CodeEditor(requireElement('enemy-code'), this.enemy.source, { readOnly: true });
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
+    requireElement('load-sample').addEventListener('click', () => this.editor.setSource(SAMPLE_AI));
     renderConfig(requireElement('config'), ROBOT_DEFAULTS);
     this.showFile('main.bot');
     requestAnimationFrame(this.frame);
@@ -153,12 +157,26 @@ class App {
     this.enemy = findEnemy(id);
     this.enemyEditor.setSource(this.enemy.source);
     this.showFile(this.shownFile);
-    if (this.store === null) return;
+    this.savePreference('enemy', () => this.store?.saveEnemy(this.enemy.id));
+  }
+
+  /** Takes effect from the next RUN / DEBUG; shown at once while there is no match. */
+  private selectArena(id: string): void {
+    this.arena = findArena(id);
+    this.idleSnapshot = this.captureIdle();
+    this.savePreference('map', () => this.store?.saveArena(this.arena.id));
+  }
+
+  private savePreference(what: string, save: () => void): void {
     try {
-      this.store.saveEnemy(this.enemy.id);
+      save();
     } catch (error) {
-      this.saveProblem = `could not save the enemy choice: ${describeError(error)}`;
+      this.saveProblem = `could not save the ${what} choice: ${describeError(error)}`;
     }
+  }
+
+  private captureIdle(): Snapshot {
+    return captureSnapshot(new Simulation(this.matchConfig(IDLE_BRAIN)));
   }
 
   private setSpeed(speed: number): void {
@@ -186,7 +204,7 @@ class App {
 
   private matchConfig(playerBrain: RobotBrain): SimulationConfig {
     return {
-      arena: DEFAULT_ARENA,
+      arena: this.arena.arena,
       stats: ROBOT_DEFAULTS,
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
@@ -203,6 +221,7 @@ class App {
     requireElement('code').hidden = file !== 'main.bot';
     requireElement('config').hidden = file !== 'config';
     requireElement('enemy-code').hidden = file !== 'enemy.bot';
+    requireElement('load-sample').hidden = file !== 'main.bot';
     requireElement('editor-title').textContent =
       file === 'enemy.bot' ? `${file} — ${this.enemy.name} (read-only)` : file;
     this.projectPanel.markSelected(file);
@@ -241,7 +260,7 @@ class App {
 
     const snapshot = replay?.snapshot ?? this.idleSnapshot;
     const player = snapshot.robots[PLAYER_INDEX];
-    this.battleView.render(snapshot, DEFAULT_ARENA, ROBOT_DEFAULTS, {
+    this.battleView.render(snapshot, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
       sensorOf: this.mode === 'debug' && replay !== null ? this.inspector.selected : null,
       overrun: replay?.overrun ?? 0,
     });

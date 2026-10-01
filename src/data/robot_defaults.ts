@@ -28,7 +28,10 @@ export const ROBOT_DEFAULTS: RobotStats = {
   // SPEC §9 says 300, but that is shorter than the spawn distance, so robots
   // that search by turning on the spot would never find each other.
   sensorRange: 1200,
-  sensorAngle: 90,
+  // SPEC §9 says 90, but robots drive like tanks: one that turns away to get
+  // around an obstacle would lose the enemy. The sensor sees all around
+  // instead, and obstacles hide what is behind them.
+  sensorAngle: 360,
   weaponRange: 400,
   shotDamage: 20,
   shotSpeed: 400,

@@ -1,38 +1,31 @@
 import type { RobotStats } from '../data/robot_defaults';
 import type { RobotSnapshot } from '../debug/snapshot';
 
-const FAN_FILL_ALPHA = 0.07;
-const FAN_EDGE_ALPHA = 0.35;
+const SIGHT_LINE_ALPHA = 0.3;
 const MARK_ALPHA = 0.9;
 // Sizes in arena units.
-const TARGET_FRAME_MARGIN = 7;
+/** Wide enough for the frame to pass outside the HP bar and inside the name label. */
+const TARGET_FRAME_MARGIN = 13;
 const TARGET_CORNER_LENGTH = 8;
 const LAST_SEEN_MARK_SIZE = 7;
 /** Line width of the marks, in screen pixels. */
 const MARK_LINE_PX = 1.5;
 
-/** The robot's field of view: a sector from its position, as wide as the sensor angle. */
-export function drawSensorFan(
+/** The line along which the robot sees the enemy; drawn only while it does. */
+export function drawSightLine(
   ctx: CanvasRenderingContext2D,
   robot: RobotSnapshot,
-  stats: RobotStats,
+  enemy: RobotSnapshot,
   color: string,
   pixel: number,
 ): void {
-  const heading = (robot.rotation * Math.PI) / 180;
-  const halfAngle = (stats.sensorAngle * Math.PI) / 360;
-
-  ctx.beginPath();
-  ctx.moveTo(robot.x, robot.y);
-  ctx.arc(robot.x, robot.y, stats.sensorRange, heading - halfAngle, heading + halfAngle);
-  ctx.closePath();
-
-  ctx.fillStyle = color;
+  if (!robot.enemyVisible) return;
   ctx.strokeStyle = color;
   ctx.lineWidth = pixel;
-  ctx.globalAlpha = FAN_FILL_ALPHA;
-  ctx.fill();
-  ctx.globalAlpha = FAN_EDGE_ALPHA;
+  ctx.globalAlpha = SIGHT_LINE_ALPHA;
+  ctx.beginPath();
+  ctx.moveTo(robot.x, robot.y);
+  ctx.lineTo(enemy.x, enemy.y);
   ctx.stroke();
   ctx.globalAlpha = 1;
 }

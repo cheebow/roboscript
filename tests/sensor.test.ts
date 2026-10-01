@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { ConeSensor } from '../src/sim/sensor';
 
-const { sensorRange, sensorAngle } = ROBOT_DEFAULTS;
+const { sensorRange } = ROBOT_DEFAULTS;
+/** The cone tests use a narrow sensor; the game's own sensor sees all around. */
+const sensorAngle = 90;
 const ORIGIN = { x: 500, y: 300 };
 const FACING_RIGHT = 0;
 
@@ -40,6 +42,25 @@ describe('ConeSensor', () => {
     expect(createSensor().scan(ORIGIN, FACING_RIGHT, pointAt(100, outside)).enemyVisible).toBe(false);
     expect(createSensor().scan(ORIGIN, FACING_RIGHT, pointAt(100, -outside)).enemyVisible).toBe(false);
     expect(createSensor().scan(ORIGIN, FACING_RIGHT, pointAt(100, 180)).enemyVisible).toBe(false);
+  });
+
+  it('sees in every direction with a cone of 360 degrees', () => {
+    const allRound = new ConeSensor(sensorRange, ROBOT_DEFAULTS.sensorAngle);
+    for (const angle of [0, 90, 180, -90]) {
+      expect(allRound.scan(ORIGIN, FACING_RIGHT, pointAt(100, angle)).enemyVisible).toBe(true);
+    }
+  });
+
+  it('does not see an enemy without a line of sight, but remembers where it was', () => {
+    let hidden = false;
+    const sensor = new ConeSensor(sensorRange, sensorAngle, () => !hidden);
+    const seenAt = pointAt(100, 0);
+    expect(sensor.scan(ORIGIN, FACING_RIGHT, seenAt).enemyVisible).toBe(true);
+
+    hidden = true;
+    const reading = sensor.scan(ORIGIN, FACING_RIGHT, pointAt(150, 0));
+    expect(reading.enemyVisible).toBe(false);
+    expect(reading.lastSeen).toEqual(seenAt);
   });
 
   it('reports the angle relative to its own heading, positive to the right', () => {

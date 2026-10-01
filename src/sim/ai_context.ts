@@ -1,7 +1,8 @@
 export const ROBOT_STATES = ['IDLE', 'SEARCH', 'TRACK', 'ATTACK', 'EVADE'] as const;
 export type RobotState = (typeof ROBOT_STATES)[number];
 
-export type MoveDirection = 'forward' | 'backward' | 'left' | 'right';
+/** Robots drive like tanks: along their heading only, never sideways. */
+export type MoveDirection = 'forward' | 'backward';
 export type TurnDirection = 'left' | 'right' | 'enemy';
 
 /**
@@ -9,6 +10,7 @@ export type TurnDirection = 'left' | 'right' | 'enemy';
  * robot itself (SPEC §35).
  */
 export interface AIContext {
+  /** The enemy is in sensor range and not hidden behind an obstacle. */
   readonly enemyVisible: boolean;
   /** Distance to the enemy, or to its last seen position when not visible. 0 if never seen. */
   readonly enemyDistance: number;
@@ -19,6 +21,8 @@ export interface AIContext {
   readonly enemyY: number;
   readonly hp: number;
   readonly ammo: number;
+  /** An obstacle or a wall is directly ahead, so the robot cannot move forward. The other robot does not count. */
+  readonly blocked: boolean;
 }
 
 /** What the AI wants the robot to do on this tick. */

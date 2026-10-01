@@ -21,18 +21,30 @@ export interface Sensor {
   scan(position: Vec2, rotation: number, enemyPosition: Vec2): SensorReading;
 }
 
-/** Forward-facing cone: sees the enemy only within range and field of view. */
+/** Tells whether anything stands between two points. */
+export type LineOfSight = (from: Vec2, to: Vec2) => boolean;
+
+const UNOBSTRUCTED: LineOfSight = () => true;
+
+/**
+ * Sees the enemy within range, inside a cone around the heading, and only with
+ * a free line of sight. A cone of 360 deg sees in every direction.
+ */
 export class ConeSensor implements Sensor {
   private lastSeen: Vec2 | null = null;
 
   constructor(
     private readonly range: number,
     private readonly angle: number,
+    private readonly hasLineOfSight: LineOfSight = UNOBSTRUCTED,
   ) {}
 
   scan(position: Vec2, rotation: number, enemyPosition: Vec2): SensorReading {
     const toEnemy = measure(position, rotation, enemyPosition);
-    const visible = toEnemy.distance <= this.range && Math.abs(toEnemy.angle) <= this.angle / 2;
+    const visible =
+      toEnemy.distance <= this.range &&
+      Math.abs(toEnemy.angle) <= this.angle / 2 &&
+      this.hasLineOfSight(position, enemyPosition);
     if (visible) this.lastSeen = { ...enemyPosition };
     if (this.lastSeen === null) return EMPTY_READING;
 

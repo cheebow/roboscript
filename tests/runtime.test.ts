@@ -11,6 +11,7 @@ const BASE_CONTEXT: AIContext = {
   enemyY: 0,
   hp: 100,
   ammo: 50,
+  blocked: false,
 };
 
 function run(source: string, context: Partial<AIContext> = {}) {
@@ -35,8 +36,8 @@ describe('runtime: commands', () => {
   });
 
   it('turns each command into the action and notes which line decided it', () => {
-    expect(run('move left\nturn enemy\nfire\nstate TRACK')).toEqual({
-      move: 'left',
+    expect(run('move backward\nturn enemy\nfire\nstate TRACK')).toEqual({
+      move: 'backward',
       turn: 'enemy',
       fire: true,
       state: 'TRACK',
@@ -75,6 +76,8 @@ describe('runtime: conditions', () => {
   it('reads each variable from the context', () => {
     expect(holds('enemy_visible', { enemyVisible: true })).toBe(true);
     expect(holds('enemy_visible', { enemyVisible: false })).toBe(false);
+    expect(holds('blocked', { blocked: true })).toBe(true);
+    expect(holds('blocked', { blocked: false })).toBe(false);
     expect(holds('enemy_distance == 120', { enemyDistance: 120 })).toBe(true);
     expect(holds('enemy_angle == -30', { enemyAngle: -30 })).toBe(true);
     expect(holds('hp == 40', { hp: 40 })).toBe(true);
@@ -108,22 +111,28 @@ describe('runtime: conditions', () => {
 });
 
 describe('runtime: executed lines', () => {
-  it('records the then-branch', () => {
+  it('records the path of the sample AI with the enemy in sight and close', () => {
     const action = run(SAMPLE_AI, { enemyVisible: true, enemyDistance: 100 });
-    expect(action.executedLines).toEqual([1, 3, 4, 6, 8, 9]);
+    expect(action.executedLines).toEqual([1, 4, 5, 6, 8, 9, 10]);
     expect(action).toMatchObject({ state: 'ATTACK', turn: 'enemy', fire: true, move: null });
   });
 
-  it('records a nested else-branch', () => {
+  it('records the path of the sample AI with the enemy in sight but far', () => {
     const action = run(SAMPLE_AI, { enemyVisible: true, enemyDistance: 400 });
-    expect(action.executedLines).toEqual([1, 3, 4, 6, 8, 10, 11]);
-    expect(action).toMatchObject({ state: 'ATTACK', turn: 'enemy', fire: false, move: 'forward' });
+    expect(action.executedLines).toEqual([1, 4, 5, 6, 8, 11, 12, 13]);
+    expect(action).toMatchObject({ state: 'TRACK', turn: 'enemy', fire: false, move: 'forward' });
   });
 
-  it('records the outer else-branch', () => {
+  it('records the path of the sample AI with the enemy hidden', () => {
     const action = run(SAMPLE_AI, { enemyVisible: false });
-    expect(action.executedLines).toEqual([1, 3, 12, 13]);
-    expect(action).toMatchObject({ state: 'SEARCH', turn: 'right', fire: false, move: null });
+    expect(action.executedLines).toEqual([1, 4, 5, 14, 15, 16]);
+    expect(action).toMatchObject({ state: 'SEARCH', turn: null, fire: false, move: 'forward' });
+  });
+
+  it('records the path of the sample AI with the way ahead blocked', () => {
+    const action = run(SAMPLE_AI, { enemyVisible: true, enemyDistance: 100, blocked: true });
+    expect(action.executedLines).toEqual([1, 2, 3]);
+    expect(action).toMatchObject({ state: 'SEARCH', turn: 'left', fire: false, move: null });
   });
 
   it('records only the if line when the condition fails and there is no else', () => {

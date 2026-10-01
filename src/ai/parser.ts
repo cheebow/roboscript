@@ -135,6 +135,9 @@ function parseCommand(line: LexedLine): StatementNode {
   switch (head.text) {
     case 'move': {
       if (argument === undefined) throw new LineError('Expected direction after "move"');
+      if (isSideways(argument.text)) {
+        throw new LineError(`Robots cannot move sideways: use "turn ${argument.text}" and "move forward"`);
+      }
       if (!isMoveDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
       expectEnd(rest, `move ${argument.text}`);
       return { kind: 'move', line: lineNumber, direction: argument.text };
@@ -160,6 +163,11 @@ function parseCommand(line: LexedLine): StatementNode {
     default:
       throw new LineError(`Unknown command "${head.text}"`);
   }
+}
+
+/** `move left` / `move right` are valid English but not valid moves: robots drive like tanks. */
+function isSideways(direction: string): boolean {
+  return direction === 'left' || direction === 'right';
 }
 
 function expectEnd(rest: Token[], command: string): void {

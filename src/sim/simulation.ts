@@ -2,7 +2,7 @@ import type { RobotStats } from '../data/robot_defaults';
 import type { RobotBrain } from './ai_context';
 import { type Bullet, stepBullet } from './bullet';
 import { type DebugEventSink, EventReporter } from './event_reporter';
-import { circleIntersectsRect, distance } from './math';
+import { circleIntersectsRect, distance, segmentRectHit } from './math';
 import { MatchRng } from './rng';
 import { RobotController } from './robot';
 import { ConeSensor } from './sensor';
@@ -25,6 +25,9 @@ export interface SimulationConfig {
   /** Receives debug events. The match plays the same with or without it. */
   logger?: DebugEventSink;
 }
+
+/** Keeps a robot that exactly touches an obstacle from counting as hidden behind it. */
+const LINE_OF_SIGHT_TOLERANCE = 1e-6;
 
 export type MatchEndReason = 'destroyed' | 'timeout';
 
@@ -84,7 +87,9 @@ export class Simulation {
           spawn: config.arena.spawns[index],
           stats: config.stats,
           brain: setup.brain,
-          sensor: new ConeSensor(config.stats.sensorRange, config.stats.sensorAngle),
+          sensor: new ConeSensor(config.stats.sensorRange, config.stats.sensorAngle, (from, to) =>
+            this.hasLineOfSight(from, to),
+          ),
           weapon: new Gun(config.stats, config.tickRate),
         }),
     );
@@ -129,6 +134,7 @@ export class Simulation {
     const wasVisible = robot.sensorReading.enemyVisible;
     robot.sense(enemy.position);
     const visible = robot.sensorReading.enemyVisible;
+    robot.noteBlocked(this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)));
     if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
   }
 
@@ -153,16 +159,41 @@ export class Simulation {
     }
   }
 
+  /**
+   * Whether a robot at one point can see a robot at the other: no obstacle
+   * comes within a robot's radius of the straight line between them. Seeing
+   * the enemy therefore also means it can be driven at, and shot at, directly.
+   */
+  private hasLineOfSight(from: Vec2, to: Vec2): boolean {
+    const margin = this.stats.radius - LINE_OF_SIGHT_TOLERANCE;
+    return !this.arena.obstacles.some((obstacle) => {
+      const widened = {
+        x: obstacle.x - margin,
+        y: obstacle.y - margin,
+        width: obstacle.width + margin * 2,
+        height: obstacle.height + margin * 2,
+      };
+      return segmentRectHit(from, to, widened) !== null;
+    });
+  }
+
   private enemyOf(robot: RobotController): RobotController {
     return this.robots[0] === robot ? this.robots[1] : this.robots[0];
   }
 
-  private isBlocked(robot: RobotController, position: Vec2): boolean {
+  /** Whether a robot at the given position would overlap a wall or an obstacle. */
+  private hitsTerrain(position: Vec2): boolean {
     const { radius } = this.stats;
     const { width, height, obstacles } = this.arena;
     if (position.x < radius || position.x > width - radius) return true;
     if (position.y < radius || position.y > height - radius) return true;
-    if (obstacles.some((obstacle) => circleIntersectsRect(position, radius, obstacle))) return true;
+    return obstacles.some((obstacle) => circleIntersectsRect(position, radius, obstacle));
+  }
+
+  /** Whether the robot cannot be at the given position: terrain or another robot is there. */
+  private isBlocked(robot: RobotController, position: Vec2): boolean {
+    if (this.hitsTerrain(position)) return true;
+    const { radius } = this.stats;
     return this.robots.some(
       (other) => other !== robot && other.alive && distance(position, other.position) < radius * 2,
     );

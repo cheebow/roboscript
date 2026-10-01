@@ -3,7 +3,7 @@ import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
 import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
-import { drawSensorFan, drawTargetMarks } from './debug_overlay';
+import { drawSightLine, drawTargetMarks } from './debug_overlay';
 import { drawEffects } from './effects_layer';
 import { DOT, ROBOT_PALETTES, WRECK_PALETTE, createRobotSprite } from './sprites';
 
@@ -24,19 +24,20 @@ const FONT_FAMILY = 'ui-monospace, Menlo, Consolas, monospace';
 // Sizes in screen pixels: they stay the same however the arena is scaled.
 const FRAME_MARGIN_PX = 8;
 const LABEL_FONT_PX = 11;
-const LABEL_GAP_PX = 3;
 const LABEL_LINE_PX = 13;
 const RESULT_FONT_PX = 22;
 // Sizes in arena units.
 const HP_BAR_HEIGHT = 3;
 const HP_BAR_GAP = 8;
+/** From the robot's edge down to its name; leaves room for the target frame in between. */
+const LABEL_GAP = 15;
 /** A bullet is drawn as a square of this size, with a dimmer one trailing behind it. */
 const BULLET_SIZE = DOT * 2;
 /** Near the top edge, clear of the robots, which tend to meet in the middle. */
 const RESULT_Y = 50;
 
 export interface RenderOptions {
-  /** Index of the robot whose sensor is drawn, or null to draw no debug overlay. */
+  /** Index of the robot whose view of the enemy is drawn, or null to draw no debug overlay. */
   sensorOf: number | null;
   /** Ticks played past the snapshot; ages its effects further. */
   overrun: number;
@@ -79,7 +80,9 @@ export class BattleView {
       ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
 
-    if (watcher !== undefined && watcher.alive) drawSensorFan(ctx, watcher, stats, watcherColor, pixel);
+    if (watcher !== undefined && watched !== undefined && watcher.alive) {
+      drawSightLine(ctx, watcher, watched, watcherColor, pixel);
+    }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats, debug));
@@ -160,7 +163,7 @@ export class BattleView {
     ctx.fillStyle = robot.alive ? this.colorOf(index) : COLORS.destroyed;
     ctx.fillRect(x - radius, barY, barWidth * (robot.hp / stats.maxHp), HP_BAR_HEIGHT);
 
-    const labelY = y + radius + LABEL_GAP_PX / this.scale;
+    const labelY = y + radius + LABEL_GAP;
     ctx.font = this.font(LABEL_FONT_PX);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';

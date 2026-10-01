@@ -35,6 +35,7 @@ export class RobotController {
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
+  private executed: readonly number[] = [];
 
   constructor(options: RobotOptions) {
     this.id = options.id;
@@ -59,10 +60,16 @@ export class RobotController {
     this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
   }
 
+  /** Source lines the brain executed on its latest decision. */
+  get executedLines(): readonly number[] {
+    return this.executed;
+  }
+
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
     const action = this.brain.decide(this.buildContext());
     if (action.state !== null) this.state = action.state;
+    this.executed = action.executedLines;
     return action;
   }
 

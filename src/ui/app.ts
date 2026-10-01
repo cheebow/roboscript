@@ -2,49 +2,62 @@ import { compileScript } from '../ai/roboscript';
 import { type ScriptError, formatError } from '../ai/script_error';
 import { DEFAULT_ARENA } from '../data/default_arena';
 import { DUMB_BOT } from '../data/enemies/dumb_bot';
-import { MATCH_DEFAULTS, ROBOT_IDS } from '../data/match_defaults';
+import { DEFAULT_PLAYBACK_SPEED, MATCH_DEFAULTS, PLAYBACK_SPEEDS, ROBOT_IDS } from '../data/match_defaults';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { SAMPLE_AI } from '../data/sample_ai';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
-import { DebugLogger } from '../debug/debug_logger';
+import { recordMatch } from '../debug/recorder';
+import { ReplayManager } from '../debug/replay_manager';
+import { captureSnapshot } from '../debug/snapshot';
 import { DEFAULT_PROJECT, ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
-import { MatchController } from '../sim/match_controller';
-import { type MatchResult, Simulation } from '../sim/simulation';
+import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
 import { CodeEditor } from './code_editor';
 import { renderConfig } from './config_view';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
-import { formatSeconds } from './format';
 import { Inspector } from './inspector';
 import { type ProjectFile, ProjectPanel } from './project_panel';
 import { Toolbar } from './toolbar';
+import { Transport } from './transport';
 import { WatchPanel } from './watch_panel';
+
+/** RUN just plays the match; DEBUG also shows executed lines, the full log, and stops at breakpoints. */
+type Mode = 'run' | 'debug';
 
 const MS_PER_SECOND = 1000;
 const SAVE_DELAY_MS = 400;
 const PLAYER_INDEX = 0;
 const READY_MESSAGE = 'Edit the code and press RUN.';
+const STALE_NOTE = 'code edited since this run';
 const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
+/** The event types shown in the log outside DEBUG mode. */
+const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 
-/** Wires the panels to a match: creates matches, runs the frame loop, saves the code. */
+/** Wires the panels to a recorded match: records matches, runs the frame loop, saves the code. */
 class App {
   private readonly seed = readSeed();
   private readonly store = openStore();
   private readonly toolbar: Toolbar;
+  private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
   private readonly editor: CodeEditor;
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'));
-  private readonly logView = new DebugLogView(requireElement('log-rows'));
+  private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'));
+  /** The starting positions, shown while there is no match. */
+  private readonly idleSnapshot = captureSnapshot(new Simulation(this.matchConfig(IDLE_BRAIN)));
 
-  private simulation = this.createSimulation(IDLE_BRAIN);
-  /** null while no match has been started (the arena then shows the starting positions). */
-  private controller: MatchController | null = null;
+  /** null while no match has been recorded. */
+  private replay: ReplayManager | null = null;
+  private mode: Mode = 'run';
+  private speed: number = DEFAULT_PLAYBACK_SPEED;
   private events: readonly DebugEvent[] = [];
-  /** Replaces the usual toolbar message until the next RUN or RESET. */
+  /** True once the code was edited after the last RUN / DEBUG: line numbers no longer match. */
+  private stale = false;
+  /** Replaces the usual toolbar message until the next RUN, DEBUG or RESET. */
   private notice: string | null = null;
   /** Set while the last attempt to save failed; shown next to the toolbar message. */
   private saveProblem: string | null = null;
@@ -54,60 +67,94 @@ class App {
   constructor() {
     const project = this.loadProject();
     this.toolbar = new Toolbar({
-      run: () => this.run(),
-      pause: () => this.togglePause(),
+      run: () => this.start('run'),
+      debug: () => this.start('debug'),
+      playPause: () => this.togglePlay(),
       reset: () => this.reset(),
     });
     this.toolbar.setProjectName(project.name);
+    this.transport = new Transport(PLAYBACK_SPEEDS, {
+      playPause: () => this.togglePlay(),
+      step: () => this.replay?.step(),
+      stepBack: () => this.replay?.stepBack(),
+      seek: (tick) => this.replay?.seek(tick),
+      setSpeed: (speed) => this.setSpeed(speed),
+    });
     this.projectPanel = new ProjectPanel(requireElement('project-tree'), project.name, (file) => this.showFile(file));
-    this.editor = new CodeEditor(requireElement('code'), project.source, () => this.scheduleSave());
+    this.editor = new CodeEditor(requireElement('code'), project.source, () => this.codeEdited());
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
     renderConfig(requireElement('config'), ROBOT_DEFAULTS);
     this.showFile('main.bot');
     requestAnimationFrame(this.frame);
   }
 
-  /** Starts a new match with the code in the editor, unless it has errors. */
-  private run(): void {
+  /** Records a match with the code in the editor and plays it back, unless the code has errors. */
+  private start(mode: Mode): void {
     this.save();
+    this.stale = false;
+    this.mode = mode;
     const result = compileScript(this.editor.source);
     if (!result.ok) {
       this.showErrors(result.errors);
       return;
     }
-    const logger = new DebugLogger();
     this.editor.showErrorLines([]);
-    this.simulation = this.createSimulation(result.brain, logger);
-    this.controller = new MatchController(this.simulation, MATCH_DEFAULTS.maxFrameTime);
-    this.events = logger.events;
+    const recording = recordMatch(this.matchConfig(result.brain));
+    this.replay = new ReplayManager(recording, {
+      maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
+      speed: this.speed,
+      breakpoints: mode === 'debug' ? { robotId: ROBOT_IDS[PLAYER_INDEX], lines: () => this.activeBreakpoints() } : null,
+    });
+    this.events =
+      mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
+    this.replay.restart();
   }
 
   private showErrors(errors: ScriptError[]): void {
     this.editor.showErrorLines(errors.map((error) => error.line));
-    this.clearMatch();
+    this.replay = null;
     this.events = errors.map((error) => appEvent('error', formatError(error), error.line));
     this.notice = `${errors.length} error(s). Fix the code and press RUN.`;
   }
 
-  private togglePause(): void {
-    if (this.controller?.running) this.controller.paused = !this.controller.paused;
+  private togglePlay(): void {
+    if (this.replay === null) return;
+    if (this.replay.playing) this.replay.pause();
+    else this.replay.play();
   }
 
   private reset(): void {
-    this.clearMatch();
+    this.replay = null;
     this.events = [];
     this.notice = null;
   }
 
-  /** Drops the current match and shows the starting positions again. */
-  private clearMatch(): void {
-    this.simulation = this.createSimulation(IDLE_BRAIN);
-    this.controller = null;
+  private setSpeed(speed: number): void {
+    this.speed = speed;
+    if (this.replay !== null) this.replay.speed = speed;
   }
 
-  private createSimulation(playerBrain: RobotBrain, logger?: DebugLogger): Simulation {
-    return new Simulation({
+  /** Goes to the moment of a log row, and to the source line behind it if there is one. */
+  private jumpTo(event: DebugEvent): void {
+    this.replay?.seek(event.tick);
+    if (event.sourceLine === null || this.stale) return;
+    this.showFile('main.bot');
+    this.editor.revealLine(event.sourceLine);
+  }
+
+  private codeEdited(): void {
+    if (this.replay !== null || this.events.length > 0) this.stale = true;
+    this.scheduleSave();
+  }
+
+  /** Breakpoints only count while the editor still shows the code that was run. */
+  private activeBreakpoints(): readonly number[] {
+    return this.stale ? [] : this.editor.breakpointLines();
+  }
+
+  private matchConfig(playerBrain: RobotBrain): SimulationConfig {
+    return {
       arena: DEFAULT_ARENA,
       stats: ROBOT_DEFAULTS,
       tickRate: MATCH_DEFAULTS.tickRate,
@@ -117,8 +164,7 @@ class App {
         { id: ROBOT_IDS[0], brain: playerBrain },
         { id: ROBOT_IDS[1], brain: compileBundled('dumb_bot', DUMB_BOT) },
       ],
-      logger,
-    });
+    };
   }
 
   private showFile(file: ProjectFile): void {
@@ -155,33 +201,56 @@ class App {
   }
 
   private frame = (now: number): void => {
-    this.controller?.advance((now - this.lastFrame) / MS_PER_SECOND);
+    const { replay } = this;
+    replay?.advance((now - this.lastFrame) / MS_PER_SECOND);
     this.lastFrame = now;
 
-    this.battleView.render(this.simulation);
-    this.inspector.update(this.simulation);
-    this.watch.update(this.simulation.robots[PLAYER_INDEX]);
-    this.logView.update(this.events);
-    this.toolbar.setMessage(this.message());
-    this.toolbar.setPauseState(this.controller?.running ?? false, this.controller?.paused ?? false);
+    const snapshot = replay?.snapshot ?? this.idleSnapshot;
+    const player = snapshot.robots[PLAYER_INDEX];
+    this.battleView.render(snapshot, DEFAULT_ARENA, ROBOT_DEFAULTS);
+    this.inspector.update(snapshot);
+    this.watch.update(player);
+    const showLines = this.mode === 'debug' && replay !== null && !this.stale;
+    const stoppedBefore = replay !== null && !replay.playing ? replay.breakpointsAhead : [];
+    this.editor.showExecutedLines(showLines ? player.executedLines : []);
+    this.editor.showNextLines(showLines ? stoppedBefore : []);
+    this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
+    this.toolbar.setMessage(this.message(stoppedBefore));
+    this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
+    this.transport.update(
+      replay === null
+        ? null
+        : {
+            tick: replay.tick,
+            lastTick: replay.lastTick,
+            tickRate: replay.recording.tickRate,
+            playing: replay.playing,
+          },
+      this.speed,
+    );
     requestAnimationFrame(this.frame);
   };
 
-  private message(): string {
-    const status = this.notice ?? this.matchStatus();
-    return this.saveProblem === null ? status : `${status}   [${this.saveProblem}]`;
+  /** `stoppedBefore`: the breakpoint lines the next tick will run, if playback is stopped at them. */
+  private message(stoppedBefore: readonly number[]): string {
+    const parts = [this.notice ?? this.replayStatus(stoppedBefore)];
+    if (this.stale) parts.push(`[${STALE_NOTE}]`);
+    if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
+    return parts.join('   ');
   }
 
-  private matchStatus(): string {
-    if (this.controller === null) return READY_MESSAGE;
-    const time = `T ${formatSeconds(this.simulation.time)}`;
-    return `${time}   ${describeMatch(this.simulation.result, this.controller.paused)}`;
+  private replayStatus(stoppedBefore: readonly number[]): string {
+    if (this.replay === null) return READY_MESSAGE;
+    return `${this.mode.toUpperCase()}   ${this.playbackStatus(this.replay, stoppedBefore)}`;
   }
-}
 
-function describeMatch(result: MatchResult | null, paused: boolean): string {
-  if (result !== null) return `${formatResult(result)} (${result.reason})`;
-  return paused ? 'PAUSED' : 'RUNNING';
+  private playbackStatus(replay: ReplayManager, stoppedBefore: readonly number[]): string {
+    const { result } = replay.snapshot;
+    if (result !== null) return `${formatResult(result)} (${result.reason})`;
+    if (replay.playing) return 'PLAYING';
+    if (stoppedBefore.length === 0) return 'PAUSED';
+    return `BREAKPOINT   line ${stoppedBefore.join(', ')} runs on the next tick. PLAY to continue, 1▶ to step.`;
+  }
 }
 
 /** An event raised by the IDE itself rather than by a match. */

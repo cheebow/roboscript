@@ -1,5 +1,6 @@
-import type { RobotController } from '../sim/robot';
-import type { MatchResult, Simulation } from '../sim/simulation';
+import type { RobotStats } from '../data/robot_defaults';
+import type { RobotSnapshot, Snapshot } from '../debug/snapshot';
+import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
 
 const COLORS = {
@@ -28,7 +29,7 @@ const HP_BAR_GAP = 8;
 /** Near the top edge, clear of the robots, which tend to meet in the middle. */
 const RESULT_Y = 50;
 
-/** Draws a Simulation onto a canvas. Reads state only; never mutates it. */
+/** Draws one snapshot of a match onto a canvas. */
 export class BattleView {
   private readonly context: CanvasRenderingContext2D;
   /** Screen pixels per arena unit. */
@@ -40,8 +41,7 @@ export class BattleView {
     this.context = context;
   }
 
-  render(simulation: Simulation): void {
-    const { arena, stats } = simulation;
+  render(snapshot: Snapshot, arena: Arena, stats: RobotStats): void {
     if (!this.fit(arena)) return;
     const ctx = this.context;
     const pixel = 1 / this.scale;
@@ -59,20 +59,15 @@ export class BattleView {
 
     ctx.fillStyle = COLORS.bullet;
     const bulletSize = stats.bulletRadius * 2;
-    for (const bullet of simulation.bullets) {
-      ctx.fillRect(
-        bullet.position.x - stats.bulletRadius,
-        bullet.position.y - stats.bulletRadius,
-        bulletSize,
-        bulletSize,
-      );
+    for (const bullet of snapshot.bullets) {
+      ctx.fillRect(bullet.x - stats.bulletRadius, bullet.y - stats.bulletRadius, bulletSize, bulletSize);
     }
 
-    simulation.robots.forEach((robot, index) => {
+    snapshot.robots.forEach((robot, index) => {
       this.drawRobot(robot, COLORS.robots[index % COLORS.robots.length], stats.radius, stats.maxHp);
     });
 
-    if (simulation.result !== null) this.drawResult(simulation.result, arena.width);
+    if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width);
 
     ctx.strokeStyle = COLORS.border;
     ctx.strokeRect(pixel / 2, pixel / 2, arena.width - pixel, arena.height - pixel);
@@ -103,9 +98,9 @@ export class BattleView {
     return true;
   }
 
-  private drawRobot(robot: RobotController, color: string, radius: number, maxHp: number): void {
+  private drawRobot(robot: RobotSnapshot, color: string, radius: number, maxHp: number): void {
     const ctx = this.context;
-    const { x, y } = robot.position;
+    const { x, y } = robot;
     const bodyColor = robot.alive ? color : COLORS.destroyed;
     const half = (radius * BODY_SCALE) / 2;
 

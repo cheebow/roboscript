@@ -15,7 +15,7 @@
           <button id="run" class="tool-button" type="button">RUN</button>
           <button id="pause" class="tool-button" type="button">PAUSE</button>
           <button id="reset" class="tool-button" type="button">RESET</button>
-          <button id="debug" class="tool-button" type="button" disabled>DEBUG</button>
+          <button id="debug" class="tool-button" type="button">DEBUG</button>
         </div>
       </header>
 
@@ -42,6 +42,14 @@
         <h2>BATTLE VIEW</h2>
         <div id="battle-frame">
           <canvas id="battle-canvas"></canvas>
+        </div>
+        <div id="transport">
+          <button id="transport-play" class="tool-button" type="button">PLAY</button>
+          <button id="step-back" class="tool-button" type="button" title="1 tick back">◀1</button>
+          <button id="step" class="tool-button" type="button" title="1 tick forward (STEP)">1▶</button>
+          <input id="seek" type="range" min="0" max="0" step="1" value="0" aria-label="Seek" />
+          <span id="speeds"></span>
+          <span id="clock"></span>
         </div>
       </section>
 

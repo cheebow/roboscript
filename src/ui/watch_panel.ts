@@ -1,4 +1,4 @@
-import type { RobotController } from '../sim/robot';
+import type { RobotSnapshot } from '../debug/snapshot';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber } from './format';
 
@@ -13,7 +13,7 @@ const VARIABLE_NAMES = [
   'last_seen_y',
 ] as const;
 
-/** Shows the variables the player's AI sees, under the names used in RoboScript. */
+/** Shows the variables the player's AI saw on the displayed tick, under their RoboScript names. */
 export class WatchPanel {
   private readonly fields: FieldList;
 
@@ -21,14 +21,14 @@ export class WatchPanel {
     this.fields = new FieldList(container, VARIABLE_NAMES);
   }
 
-  update(robot: RobotController): void {
-    const { enemyVisible, enemyDistance, enemyAngle, lastSeen } = robot.sensorReading;
+  update(robot: RobotSnapshot): void {
+    const { lastSeen } = robot;
     this.fields.set([
-      String(enemyVisible),
-      formatNumber(enemyDistance),
-      formatNumber(enemyAngle),
+      String(robot.enemyVisible),
+      formatNumber(robot.enemyDistance),
+      formatNumber(robot.enemyAngle),
       String(robot.hp),
-      String(robot.weapon.ammo),
+      String(robot.ammo),
       robot.state,
       lastSeen === null ? NO_VALUE : formatNumber(lastSeen.x),
       lastSeen === null ? NO_VALUE : formatNumber(lastSeen.y),

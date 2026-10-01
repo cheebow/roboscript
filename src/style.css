@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --background: #0b0d0f;
   --panel: #0f1215;
   --border: #2c333a;
@@ -8,6 +9,8 @@
   --selection: #263544;
   --error: #d97a7a;
   --error-line: rgba(217, 122, 122, 0.16);
+  --executed-line: rgba(143, 199, 166, 0.13);
+  --next-line: rgba(212, 183, 122, 0.3);
   --syntax-control: #b3a1d6;
   --syntax-command: #7fb4d6;
   --syntax-value: #d4b77a;
@@ -232,6 +235,78 @@ button {
   background: var(--background);
 }
 
+/* Replay controls */
+
+#transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+}
+
+#transport .tool-button {
+  min-width: 0;
+  padding: 1px 8px;
+}
+
+#transport #transport-play {
+  min-width: 52px;
+}
+
+#seek {
+  flex: 1;
+  min-width: 0;
+  height: 3px;
+  margin: 0 6px;
+  appearance: none;
+  background: var(--border);
+  cursor: pointer;
+}
+
+#seek::-webkit-slider-thumb {
+  width: 9px;
+  height: 13px;
+  appearance: none;
+  background: var(--text);
+}
+
+#seek::-moz-range-thumb {
+  width: 9px;
+  height: 13px;
+  border: 0;
+  border-radius: 0;
+  background: var(--text);
+}
+
+#seek:disabled {
+  cursor: default;
+}
+
+#seek:disabled::-webkit-slider-thumb {
+  background: var(--muted);
+}
+
+#seek:disabled::-moz-range-thumb {
+  background: var(--muted);
+}
+
+#speeds {
+  display: flex;
+  gap: 4px;
+}
+
+.speed.selected {
+  border-color: var(--text);
+}
+
+#clock {
+  min-width: 17ch;
+  color: var(--muted);
+  text-align: right;
+  white-space: pre;
+}
+
 /* Debug log */
 
 #log-rows {
@@ -243,6 +318,16 @@ button {
   gap: 1ch;
   padding: 0 10px;
   white-space: pre;
+  cursor: pointer;
+}
+
+.log-row:hover,
+.log-row.selected {
+  background: var(--selected);
+}
+
+.log-row.future {
+  opacity: 0.4;
 }
 
 .log-time {

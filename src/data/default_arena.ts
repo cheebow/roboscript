@@ -12,9 +12,10 @@ export const DEFAULT_ARENA: Arena = {
     { x: 300, y: 440, width: 130, height: 40 },
     { x: 570, y: 120, width: 130, height: 40 },
   ],
-  // Robots start back to back, so each has to search before it sees the other.
+  // The first spawn is the player's, on the right. Robots start back to back,
+  // so each has to search before it sees the other.
   spawns: [
-    { x: 120, y: 300, rotation: 180 },
     { x: 880, y: 300, rotation: 0 },
+    { x: 120, y: 300, rotation: 180 },
   ],
 };

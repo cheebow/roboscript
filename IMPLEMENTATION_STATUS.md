@@ -8,7 +8,7 @@
 | 1 | 戦闘エンジン | 完了（2026-10-01） |
 | 2 | RoboScript | 完了（2026-10-01） |
 | 3 | IDE UI | 完了（2026-10-01） |
-| 4 | DEBUG機能 | 未着手 |
+| 4 | DEBUG機能 | 完了（2026-10-01） |
 | 5 | Polish | 未着手 |
 
 ## 実行方法
@@ -19,7 +19,11 @@ npm run dev        # 表示された URL をブラウザで開く
 ```
 
 - 中央上の CODE EDITOR にプレイヤー（ALPHA）のAIコードが入っている。**RUN** で敵（BRAVO、`dumb_bot`）との試合が始まる。
-- **PAUSE** で一時停止 / 再開、**RESET** で初期配置に戻る。DEBUG は Phase 4 まで無効。
+- **DEBUG** で同じ試合を DEBUG モードで再生する（実行行のハイライト、全種類のログ、ブレークポイントでの停止）。
+- **PAUSE / PLAY** で停止 / 再開、**RESET** で初期配置に戻る。
+- BATTLE VIEW の下の操作列: PLAY / PAUSE、`◀1`（1tick戻る）、`1▶`（1tick進む = STEP）、シークバー、再生速度（0.25x〜4x）。
+- DEBUG LOG の行をクリックすると、その時点に戻り、該当するコード行へ移動する。
+- CODE EDITOR の行番号（またはその左の余白）をクリックすると、ブレークポイント（●）を設定 / 解除できる。DEBUG の再生は、その行が実行される直前で止まる（行が黄色になる）。PLAY で続行、`1▶` でその行を実行する。
 - 構文エラーがあると、該当行が赤くなり、DEBUG LOG に ERROR が出て、試合は始まらない。
 - コードは編集のたびにブラウザの localStorage へ自動保存され、再読み込みしても残る。サンプルAIに戻すには、ブラウザの開発者ツールで `robograming/projects/alpha/main.bot` のキーを削除する。
 - `?seed=数値` を URL に付けると seed を変えられる（例: `http://localhost:5173/?seed=7`）。
@@ -27,7 +31,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（102件）
+npm test           # Vitest（127件）
 npm run typecheck
 npm run build
 ```
@@ -56,8 +60,7 @@ src/
 │  ├─ bullet.ts            Bullet と1tick分の移動・衝突
 │  ├─ robot.ts             RobotController
 │  ├─ simulation.ts        Simulation（step() で1tick）と勝敗判定
-│  ├─ event_reporter.ts    試合中の出来事をデバッグイベントにする
-│  └─ match_controller.ts  実時間 → 固定tick の変換、一時停止
+│  └─ event_reporter.ts    試合中の出来事をデバッグイベントにする
 ├─ ai/                     RoboScript
 │  ├─ lexer.ts             行 → インデント幅とトークン列
 │  ├─ ast.ts               IfNode / ConditionNode / ActionNode / StateNode
@@ -68,12 +71,16 @@ src/
 │  └─ roboscript.ts        compileScript(source) → Brain またはエラー一覧
 ├─ debug/
 │  ├─ debug_event.ts       DebugEvent（tick / timestamp / robotId / type / message / sourceLine）
-│  └─ debug_logger.ts      DebugLogger（1試合分のイベントをメモリに保持）
+│  ├─ debug_logger.ts      DebugLogger（1試合分のイベントをメモリに保持）
+│  ├─ snapshot.ts          Snapshot（1tick分の表示用の状態）と captureSnapshot
+│  ├─ recorder.ts          recordMatch(config) → Recording（全スナップショット + イベント）
+│  └─ replay_manager.ts    ReplayManager（表示する tick、再生、速度、step、seek、ブレークポイント）
 ├─ project/
 │  └─ project_store.ts     main.bot と project.json の保存・読み込み
-├─ ui/                     画面。Simulation を読むだけで書き換えない
-│  ├─ app.ts               全体の配線（試合の生成、RUN / PAUSE / RESET、描画ループ、保存）
+├─ ui/                     画面。記録された Snapshot を表示する
+│  ├─ app.ts               全体の配線（試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
 │  ├─ toolbar.ts           上部バー
+│  ├─ transport.ts         再生操作（1tick移動、シークバー、速度、時刻）
 │  ├─ project_panel.ts     PROJECT ツリー
 │  ├─ code_editor.ts       CodeMirror のラッパー
 │  ├─ roboscript_highlight.ts  シンタックスハイライト
@@ -83,14 +90,79 @@ src/
 │  ├─ debug_log.ts         DEBUG LOG
 │  └─ field_list.ts / format.ts / dom.ts  共通部品
 ├─ view/
-│  └─ battle_view.ts       Canvas描画（Simulation を読むだけ）
+│  └─ battle_view.ts       Canvas描画（Snapshot を描く）
 ├─ main.ts
 └─ style.css
 tests/                     lexer / parser / runtime / scripts / sensor / weapon / movement /
-                           battle / determinism / debug_logger / project_store
+                           battle / determinism / debug_logger / project_store / replay
 ```
 
-指示書34章の `BattleController` の責務は、`Simulation`（tick・ロボット更新・勝敗）と `MatchController`（実時間での進行、一時停止）に分けている。
+指示書34章の `BattleController` の責務は、`Simulation`（tick・ロボット更新・勝敗）、`recordMatch`（試合開始から終了まで）、`ReplayManager`（pause・速度・reset 後の再生）に分けている。
+
+---
+
+## Phase 4: DEBUG機能
+
+### 方式
+
+RUN / DEBUG を押した時点で **試合を最後まで一気に計算し、画面はその記録を再生する**。
+
+```text
+RUN / DEBUG → recordMatch() が全tickを計算 → Recording（スナップショット列 + イベント）
+            → ReplayManager が表示する tick を決める → 各パネルがその tick の Snapshot を表示
+```
+
+試合は決定論的なので、先に計算しても結果は変わらない。PAUSE / STEP / シーク / ログクリック / ブレークポイントは、どれも「表示する tick を動かす」操作になっている。
+`snapshots[n]` は n tick 実行後の状態で、`DebugEvent.tick` と同じ数え方なので、ログの行からそのままジャンプできる。
+
+### 実装した内容
+
+- **記録**（23章）: tick ごとに時刻、各ロボットの位置・向き・HP・state・弾数・クールダウン・センサー値・実行した行、弾の位置、勝敗を保存（メモリのみ）
+- **再生操作**（24章）: PLAY / PAUSE（上部バーと操作列の両方にある）、STEP（`1▶`）、速度 0.25x / 0.5x / 1x / 2x / 4x。最後まで再生した後の PLAY は先頭から再生し直す
+- **追加した操作**（指示書にはない）: `◀1`（1tick戻る）、シークバー
+- **RUN と DEBUG**（25章）:
+
+  | | RUN | DEBUG |
+  |---|---|---|
+  | 実行行のハイライト | なし | 表示中の tick で ALPHA が実行した行を強調 |
+  | ブレークポイント | 無視 | 止まる |
+  | DEBUG LOG | SYSTEM / HIT / WARNING / ERROR のみ | 全種類 |
+  | 再生操作・ログクリック・INSPECTOR・WATCH | 使える | 使える |
+
+- **実行行の表示**（27章）: DEBUG モードで、表示中の tick に ALPHA が実行した行の背景を薄く色付けする
+- **ログクリック**（28章）: 再生を止めてそのイベントの tick へ移動し、ソース行があれば CODE EDITOR をその行へ移動して選択する。`config` 表示中なら `main.bot` に切り替わる
+- **ブレークポイント**（29章）: 行番号またはその左の余白をクリックして設定 / 解除。DEBUG の再生は、ブレークポイントの行が**実行される直前**で止まる
+  - 止まる位置: ALPHA が「次の tick で実行し、いまの tick では実行していない」行にブレークポイントがある tick。その行の効果（弾の発射など）はまだ画面に出ていない
+  - 表示: その行を黄色、直前の tick で実行した行を緑で示し、上部に `BREAKPOINT   line 9 runs on the next tick. PLAY to continue, 1▶ to step.` と出す
+  - `1▶` で 1tick 進めるとその行が実行される。PLAY で続行する。1tick目から実行される行に置くと、開始前（00.000）で止まる
+  - STEP やシークでは止まらない
+- **DEBUG LOG の表示範囲**: これまでに到達した最も先の tick までのイベントを表示する。シークで戻ったときは、現在位置より先の行を薄く表示する
+- **RUN 後にコードを編集した場合**: 行番号がずれるので、次の RUN / DEBUG まで実行行ハイライト・ブレークポイントでの停止・ログクリック時の行移動を止め、上部に `[code edited since this run]` と表示する
+- INSPECTOR / WATCH のセンサー値は、その tick の開始時にセンサーが読んだ値（AI が判断に使った値）を表示する
+
+### Phase 3 から変更した点
+
+| 項目 | 変更 |
+|---|---|
+| 試合の進め方 | 実時間で `Simulation` を進める方式から、先に全tickを計算して再生する方式へ |
+| `MatchController` | 削除（役割は `ReplayManager` に移った） |
+| BATTLE VIEW / INSPECTOR / WATCH | `Simulation` ではなく `Snapshot` を表示する |
+| 上部バー | DEBUG を有効化。PAUSE のラベルは停止中 `PLAY` になる。経過時間は BATTLE VIEW 下の時刻表示に移動 |
+| `RobotController` | 直近に実行した行を保持する `executedLines` を追加 |
+
+### 動作確認の結果
+
+- `npm test` 124件すべて成功、`npm run typecheck` と `npm run build` も成功
+- ブラウザ（ヘッドレスChrome、1440x900）で以下を確認。実行時エラーとコンソールの警告はなし
+  - RUN: 再生されて 6.833秒で `WINNER: BRAVO`。ログは SYSTEM と HIT のみ（11行）。実行行ハイライトなし
+  - DEBUG: 実行行がハイライトされ、ログに SYSTEM / SENSOR / AI / ACTION / HIT が出る（35行）
+  - PAUSE で停止、`1▶` で 1tick 進み、`◀1` で 1tick 戻る
+  - 速度: 0.25x で2秒再生すると 0.467秒ぶん、4x で1秒再生すると 4.000秒ぶん進む
+  - シークバー: 先頭や末尾へ移動できる
+  - ログの `ALPHA AI state SEARCH -> ATTACK` をクリック: 00.800 へ戻り、INSPECTOR / WATCH がその時点の値になり、エディタの4行目（`state ATTACK`）が選択され、それより後のログ行が薄くなる
+  - 9行目（`fire`）にブレークポイントを置いて DEBUG: 03.600（撃つ直前。弾数50のまま）で停止し、9行目が黄色になる。`1▶` で 03.633 へ進むと9行目が緑になり弾数が49になる。PLAY（上部でも操作列でも）で最後まで再生される。RUN では止まらない
+  - 1行目にブレークポイントを置いて DEBUG: 00.000 で停止する
+  - コードを1文字編集: 実行行ハイライトが消え、`[code edited since this run]` が表示される
 
 ---
 
@@ -246,6 +318,7 @@ Unexpected "now" after "fire"
 | 項目 | 採用した内容 |
 |---|---|
 | センサー範囲 | 300 → 1200（初期距離760より短く、その場で回転するAI同士が互いを見つけられなかったため。視野角90°は変更なし） |
+| 初期位置 | 自機 ALPHA が右、敵 BRAVO が左（指示書8章の図は A が左、B が右）。フィールドは点対称なので有利不利はない |
 | 初期の向き | 背中合わせ（開始直後に索敵の分岐が実行されるようにするため） |
 | 弾数の初期値 | 50 |
 | 弾の散らばり | ±2° |
@@ -259,6 +332,11 @@ Unexpected "now" after "fire"
 | エラーがある状態で RUN | 新しい試合を始めず、進行中の試合は破棄して初期配置に戻す |
 | INSPECTOR の位置 | BATTLE VIEW の右（指示書の図では CODE EDITOR の右）。試合中の状態なので戦闘画面の隣に置き、WATCH と同じ列に揃えた |
 | PAUSE | 指示書では Phase 4 だが Phase 3 で実装 |
+| 試合の計算 | RUN 時に最後まで計算してから再生する（指示書は逐次実行を前提にした書き方だが、決定論的なので結果は同じ） |
+| ブレークポイントの停止条件 | その行が実行され始める tick の直前で止まる（指示書は「実行された場合」。毎tick先頭から実行される言語なので全tickで止めると先へ進めず、実行後に止めるとデバッガとして違和感があるため） |
+| 1tick戻る、シークバー | 指示書にない操作を追加 |
+| DEBUG 時のセンサー範囲などの描画 | Phase 5 で実装（25章は DEBUG の表示に挙げているが、Phase 5 の完成条件に含まれている） |
+| RUN モードのログ | SYSTEM / HIT / WARNING / ERROR（25章の「最低限のログ」の中身をこう決めた） |
 | エラー行の赤表示 | 次の RUN まで残る（編集しても行に追従する） |
 
 ## 残課題
@@ -267,17 +345,17 @@ Unexpected "now" after "fire"
 2. **障害物がほとんど戦闘に関わらない。** センサーは障害物を透過し、両者は中央の通路をまっすぐ近づくので、障害物に触れずに決着する。
 3. **センサーが全域に届くので、一度見つけると見失いにくい。** 見失うのは相手が視野角90°の外に出たときだけ。
 4. ロボットは壁に正面から当たると止まったままになる。壁を検知する手段が `AIContext` にないため、AI側で回避できない。
-5. **BATTLE VIEW が小さい。** 大きさは中段の高さで決まっていて、1440x900 で 570x342、1100x700 では 382x229 になる。横長の画面では左右に余白が残る。
+5. **BATTLE VIEW が小さい。** 大きさは中段の高さで決まっていて、1440x900 で 515x309、1100x700 では 327x196 になる（Phase 4 で操作列を入れたぶん、さらに小さくなった）。横長の画面では左右に余白が残る。
 6. 保存したコードをサンプルAIに戻す操作が画面にない（開発者ツールで localStorage のキーを消す必要がある）。
 7. 画面の部品（`src/ui`）には自動テストがない。ブラウザでの画面キャプチャで確認している。
+8. ブレークポイントは保存されない（再読み込みで消える）。対象は ALPHA のコードだけ。
+9. リプレイはメモリ上にだけあり、ファイルへの保存はできない（指示書23章で後回し可とされている）。
 
-## 次のPhase（Phase 4: DEBUG機能）に必要な作業
+## 次のPhase（Phase 5: Polish）に必要な作業
 
-- `ReplayManager`: 各tickのスナップショット（時刻、両ロボットの位置・向き・HP・state、弾、実行行、センサー値）をメモリに保存し、seek / step できるようにする
-- 表示をスナップショット基準にする（BATTLE VIEW / INSPECTOR / WATCH が、ライブの `Simulation` ではなく選択中の tick の状態を表示する）
-- 再生操作: PLAY / PAUSE / STEP、速度 0.25x / 0.5x / 1x / 2x / 4x
-- RUN と DEBUG の分離（25章）。DEBUG ボタンを有効にする
-- 実行行のハイライト: `AIAction.executedLines` を CODE EDITOR に表示する
-- ログクリック: `DebugEvent.tick` のスナップショットへジャンプし、`sourceLine` があれば CODE EDITOR をその行へ移動する（MVP必須）
-- ブレークポイント: CODE EDITOR の余白クリックで設定 / 解除し、DEBUG 中にその行が実行されたら自動で PAUSE する
-- Replay のテスト（tick seek、state 復元）
+- ドット絵風のロボット・弾のスプライト（7章: 少ない色数、見やすさ優先）
+- DEBUG 時のオーバーレイ（25・26章）: センサー範囲と視野角の扇形、敵を検知したときのターゲット枠、最終観測位置。`Snapshot` に必要な値（向き、`enemyVisible`、`lastSeen`）は入っている
+- エフェクト（発射、命中、破壊）。短く控えめに
+- 敵AI 3種（30章: DumbBot / AggressiveBot / CowardBot）と選択UI。現在は `dumb_bot` 固定
+- 32章のゲーム性の確認: 接近型 / 遠距離維持型 / 回転索敵型 / 回避型で勝敗に差が出るか。残課題1〜4（seed、障害物、センサー、壁）はここで効いてくる
+- 38章の MVP 完成条件15項目の最終確認

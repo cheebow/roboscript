@@ -2,12 +2,14 @@ import { requireElement } from './dom';
 
 export interface ToolbarHandlers {
   run(): void;
-  pause(): void;
+  debug(): void;
+  /** Toggles between playing and paused. */
+  playPause(): void;
   reset(): void;
 }
 
 const PAUSE_LABEL = 'PAUSE';
-const RESUME_LABEL = 'RESUME';
+const PLAY_LABEL = 'PLAY';
 
 export class Toolbar {
   private readonly projectName = requireElement('project-name');
@@ -16,7 +18,8 @@ export class Toolbar {
 
   constructor(handlers: ToolbarHandlers) {
     requireElement('run').addEventListener('click', handlers.run);
-    this.pauseButton.addEventListener('click', handlers.pause);
+    requireElement('debug').addEventListener('click', handlers.debug);
+    this.pauseButton.addEventListener('click', handlers.playPause);
     requireElement('reset').addEventListener('click', handlers.reset);
   }
 
@@ -28,10 +31,10 @@ export class Toolbar {
     if (this.message.textContent !== text) this.message.textContent = text;
   }
 
-  /** `canPause` is false when there is no match in progress. */
-  setPauseState(canPause: boolean, paused: boolean): void {
-    const label = paused ? RESUME_LABEL : PAUSE_LABEL;
+  /** `available` is false when there is no match to play. */
+  setPlayback(available: boolean, playing: boolean): void {
+    const label = playing ? PAUSE_LABEL : PLAY_LABEL;
     if (this.pauseButton.textContent !== label) this.pauseButton.textContent = label;
-    this.pauseButton.disabled = !canPause;
+    this.pauseButton.disabled = !available;
   }
 }

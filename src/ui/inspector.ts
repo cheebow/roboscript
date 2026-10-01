@@ -1,4 +1,4 @@
-import type { Simulation } from '../sim/simulation';
+import type { Snapshot } from '../debug/snapshot';
 import { createElement } from './dom';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber, formatSeconds } from './format';
@@ -16,7 +16,7 @@ const FIELD_NAMES = [
   'COOLDOWN',
 ] as const;
 
-/** Shows the live state of one robot; the tabs choose which. */
+/** Shows the state of one robot at the displayed tick; the tabs choose which. */
 export class Inspector {
   private selectedIndex = 0;
   private readonly fields: FieldList;
@@ -34,21 +34,20 @@ export class Inspector {
     this.select(this.selectedIndex);
   }
 
-  update(simulation: Simulation): void {
-    const robot = simulation.robots[this.selectedIndex];
-    const enemy = simulation.robots.find((other) => other !== robot);
-    const { enemyVisible, enemyDistance } = robot.sensorReading;
+  update(snapshot: Snapshot): void {
+    const robot = snapshot.robots[this.selectedIndex];
+    const enemy = snapshot.robots.find((other) => other !== robot);
     this.fields.set([
       robot.id,
       String(robot.hp),
-      formatNumber(robot.position.x),
-      formatNumber(robot.position.y),
+      formatNumber(robot.x),
+      formatNumber(robot.y),
       formatNumber(robot.rotation),
       robot.state,
-      enemyVisible && enemy !== undefined ? enemy.id : NO_VALUE,
-      enemyVisible ? formatNumber(enemyDistance) : NO_VALUE,
-      String(robot.weapon.ammo),
-      formatSeconds(robot.weapon.cooldownTicks / simulation.tickRate),
+      robot.enemyVisible && enemy !== undefined ? enemy.id : NO_VALUE,
+      robot.enemyVisible ? formatNumber(robot.enemyDistance) : NO_VALUE,
+      String(robot.ammo),
+      formatSeconds(robot.cooldown),
     ]);
   }
 

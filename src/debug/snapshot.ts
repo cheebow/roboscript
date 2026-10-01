@@ -1,0 +1,69 @@
+import type { RobotState } from '../sim/ai_context';
+import type { MatchResult, Simulation } from '../sim/simulation';
+import type { Vec2 } from '../sim/types';
+
+export interface RobotSnapshot {
+  id: string;
+  x: number;
+  y: number;
+  /** deg */
+  rotation: number;
+  hp: number;
+  alive: boolean;
+  state: RobotState;
+  ammo: number;
+  /** Seconds until the weapon can fire again. */
+  cooldown: number;
+  // What the sensor reported at the start of the tick, i.e. what the AI decided on.
+  enemyVisible: boolean;
+  enemyDistance: number;
+  enemyAngle: number;
+  lastSeen: Vec2 | null;
+  /** Source lines the AI executed on this tick, in order. */
+  executedLines: readonly number[];
+}
+
+export interface BulletSnapshot {
+  x: number;
+  y: number;
+}
+
+/** Everything needed to display the match as it was after `tick` ticks. */
+export interface Snapshot {
+  tick: number;
+  /** Match time in sec. */
+  time: number;
+  robots: RobotSnapshot[];
+  bullets: BulletSnapshot[];
+  /** Set only once the match is over. */
+  result: MatchResult | null;
+}
+
+/** Copies the current state out of a simulation; later ticks do not affect the copy. */
+export function captureSnapshot(simulation: Simulation): Snapshot {
+  return {
+    tick: simulation.tick,
+    time: simulation.time,
+    robots: simulation.robots.map((robot) => {
+      const { enemyVisible, enemyDistance, enemyAngle, lastSeen } = robot.sensorReading;
+      return {
+        id: robot.id,
+        x: robot.position.x,
+        y: robot.position.y,
+        rotation: robot.rotation,
+        hp: robot.hp,
+        alive: robot.alive,
+        state: robot.state,
+        ammo: robot.weapon.ammo,
+        cooldown: robot.weapon.cooldownTicks / simulation.tickRate,
+        enemyVisible,
+        enemyDistance,
+        enemyAngle,
+        lastSeen: lastSeen === null ? null : { ...lastSeen },
+        executedLines: [...robot.executedLines],
+      };
+    }),
+    bullets: simulation.bullets.map((bullet) => ({ x: bullet.position.x, y: bullet.position.y })),
+    result: simulation.result,
+  };
+}

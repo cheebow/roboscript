@@ -1,0 +1,79 @@
+import { segmentCircleHit, segmentLeavesBounds, segmentRectHit } from './math';
+import type { Arena, Vec2 } from './types';
+
+export interface Bullet {
+  id: number;
+  ownerId: string;
+  position: Vec2;
+  /** unit vector */
+  direction: Vec2;
+  /** units/sec */
+  speed: number;
+  damage: number;
+  remainingRange: number;
+}
+
+export interface BulletTarget {
+  id: string;
+  position: Vec2;
+  radius: number;
+}
+
+export type BulletStepResult =
+  | { kind: 'flying' }
+  | { kind: 'expired' }
+  | { kind: 'wall' }
+  | { kind: 'hit'; targetId: string };
+
+/**
+ * Moves the bullet by one tick and reports what it ran into. The whole path of
+ * the tick is tested, so a fast bullet cannot skip over a target.
+ */
+export function stepBullet(
+  bullet: Bullet,
+  tickDuration: number,
+  arena: Arena,
+  targets: BulletTarget[],
+  bulletRadius: number,
+): BulletStepResult {
+  const travel = Math.min(bullet.speed * tickDuration, bullet.remainingRange);
+  const from = bullet.position;
+  const to = {
+    x: from.x + bullet.direction.x * travel,
+    y: from.y + bullet.direction.y * travel,
+  };
+
+  let wallT = segmentLeavesBounds(from, to, arena.width, arena.height);
+  for (const obstacle of arena.obstacles) {
+    const t = segmentRectHit(from, to, obstacle);
+    if (t !== null && (wallT === null || t < wallT)) wallT = t;
+  }
+
+  let hitT: number | null = null;
+  let hitId: string | null = null;
+  for (const target of targets) {
+    if (target.id === bullet.ownerId) continue;
+    const t = segmentCircleHit(from, to, target.position, target.radius + bulletRadius);
+    if (t !== null && (hitT === null || t < hitT)) {
+      hitT = t;
+      hitId = target.id;
+    }
+  }
+
+  if (hitT !== null && hitId !== null && (wallT === null || hitT < wallT)) {
+    bullet.position = pointAt(from, to, hitT);
+    return { kind: 'hit', targetId: hitId };
+  }
+  if (wallT !== null) {
+    bullet.position = pointAt(from, to, wallT);
+    return { kind: 'wall' };
+  }
+
+  bullet.position = to;
+  bullet.remainingRange -= travel;
+  return bullet.remainingRange <= 0 ? { kind: 'expired' } : { kind: 'flying' };
+}
+
+function pointAt(from: Vec2, to: Vec2, t: number): Vec2 {
+  return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+}

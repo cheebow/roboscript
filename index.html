@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ROBOGRAMING</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="toolbar">
+        <span id="project-name"></span>
+        <span id="message"></span>
+        <div id="controls">
+          <button id="run" class="tool-button" type="button">RUN</button>
+          <button id="pause" class="tool-button" type="button">PAUSE</button>
+          <button id="reset" class="tool-button" type="button">RESET</button>
+          <button id="debug" class="tool-button" type="button" disabled>DEBUG</button>
+        </div>
+      </header>
+
+      <section id="project" class="panel">
+        <h2>PROJECT</h2>
+        <div id="project-tree" class="panel-body"></div>
+      </section>
+
+      <section id="editor" class="panel">
+        <h2 id="editor-title"></h2>
+        <div id="code" class="panel-body"></div>
+        <div id="config" class="panel-body" hidden></div>
+      </section>
+
+      <section id="inspector" class="panel">
+        <h2>
+          <span>INSPECTOR</span>
+          <span id="inspector-tabs"></span>
+        </h2>
+        <div id="inspector-fields" class="panel-body"></div>
+      </section>
+
+      <section id="battle" class="panel">
+        <h2>BATTLE VIEW</h2>
+        <div id="battle-frame">
+          <canvas id="battle-canvas"></canvas>
+        </div>
+      </section>
+
+      <section id="log" class="panel">
+        <h2>DEBUG LOG</h2>
+        <div id="log-rows" class="panel-body"></div>
+      </section>
+
+      <section id="watch" class="panel">
+        <h2>WATCH</h2>
+        <div id="watch-fields" class="panel-body"></div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

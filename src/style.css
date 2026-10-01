@@ -1,0 +1,284 @@
+:root {
+  --background: #0b0d0f;
+  --panel: #0f1215;
+  --border: #2c333a;
+  --text: #c5ccd3;
+  --muted: #6f7a85;
+  --selected: #1b2229;
+  --selection: #263544;
+  --error: #d97a7a;
+  --error-line: rgba(217, 122, 122, 0.16);
+  --syntax-control: #b3a1d6;
+  --syntax-command: #7fb4d6;
+  --syntax-value: #d4b77a;
+  --syntax-variable: #8fc7a6;
+  --syntax-number: #d49a6a;
+  --font-family: ui-monospace, Menlo, Consolas, monospace;
+  --font-size: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: 1.5;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+#app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 260px;
+  grid-template-rows: 34px minmax(0, 1fr) minmax(0, 1.3fr) 190px;
+  grid-template-areas:
+    'toolbar toolbar toolbar'
+    'project editor editor'
+    'battle battle inspector'
+    'log log watch';
+}
+
+/* Toolbar */
+
+#toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 10px;
+  background: var(--panel);
+}
+
+#project-name {
+  letter-spacing: 0.08em;
+}
+
+#message {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  white-space: pre;
+  text-overflow: ellipsis;
+}
+
+#controls {
+  display: flex;
+  gap: 6px;
+}
+
+.tool-button {
+  min-width: 64px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  cursor: pointer;
+}
+
+.tool-button:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.tool-button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Panels */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+#project {
+  grid-area: project;
+  border-right: 1px solid var(--border);
+}
+
+#editor {
+  grid-area: editor;
+}
+
+#inspector {
+  grid-area: inspector;
+}
+
+#battle {
+  grid-area: battle;
+  border-right: 1px solid var(--border);
+}
+
+#log {
+  grid-area: log;
+  border-right: 1px solid var(--border);
+}
+
+#watch {
+  grid-area: watch;
+}
+
+.panel > h2 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: normal;
+  letter-spacing: 0.08em;
+}
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.panel-body[hidden] {
+  display: none;
+}
+
+/* Project tree */
+
+#project-tree {
+  padding: 6px 0;
+}
+
+.tree-node,
+.tree-file {
+  display: block;
+  width: 100%;
+  padding: 1px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  white-space: pre;
+}
+
+.tree-file {
+  cursor: pointer;
+}
+
+.tree-file:hover,
+.tree-file.selected {
+  background: var(--selected);
+}
+
+/* Inspector, Watch, config */
+
+.field-list {
+  padding: 6px 0;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+}
+
+.field-name {
+  color: var(--muted);
+}
+
+.field-value {
+  white-space: pre;
+}
+
+.tab {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.tab.selected {
+  color: var(--text);
+}
+
+/* Battle view */
+
+#battle-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--background);
+}
+
+/* Debug log */
+
+#log-rows {
+  padding: 4px 0;
+}
+
+.log-row {
+  display: flex;
+  gap: 1ch;
+  padding: 0 10px;
+  white-space: pre;
+}
+
+.log-time {
+  color: var(--muted);
+}
+
+.log-robot {
+  width: 5ch;
+}
+
+.log-type {
+  width: 7ch;
+  color: var(--muted);
+}
+
+.log-sensor .log-type {
+  color: var(--syntax-variable);
+}
+
+.log-ai .log-type {
+  color: var(--syntax-control);
+}
+
+.log-action .log-type {
+  color: var(--syntax-command);
+}
+
+.log-hit .log-type {
+  color: var(--syntax-number);
+}
+
+.log-warning .log-type {
+  color: var(--syntax-value);
+}
+
+.log-error .log-type,
+.log-error .log-message {
+  color: var(--error);
+}

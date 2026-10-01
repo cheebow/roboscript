@@ -3,7 +3,7 @@ export type RobotState = (typeof ROBOT_STATES)[number];
 
 /** Robots drive like tanks: along their heading only, never sideways. */
 export type MoveDirection = 'forward' | 'backward';
-export type TurnDirection = 'left' | 'right' | 'enemy';
+export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover';
 
 /**
  * Everything an AI is allowed to know on one tick. The AI never touches the
@@ -25,13 +25,30 @@ export interface AIContext {
   readonly blocked: boolean;
   /** An obstacle or a wall is directly behind, so the robot cannot move backward. The other robot does not count. */
   readonly blockedBehind: boolean;
+  /** Distance from the robot's edge to the nearest wall or obstacle straight ahead, behind, to the left and to the right. */
+  readonly wallAhead: number;
+  readonly wallBehind: number;
+  readonly wallLeft: number;
+  readonly wallRight: number;
+  /** An enemy bullet is on course to hit the robot where it stands. */
+  readonly bulletIncoming: boolean;
+  /** Distance and relative angle (deg, positive = to the right) to the nearest such bullet. 0 if there is none. */
+  readonly bulletDistance: number;
+  readonly bulletAngle: number;
+  /** A place hidden from the enemy (or from where it was last seen) can be driven to in a straight line. */
+  readonly coverVisible: boolean;
+  /** Distance and relative angle to that place. 0 if there is none, or if the robot is already hidden. */
+  readonly coverDistance: number;
+  readonly coverAngle: number;
 }
 
-/** What the AI wants the robot to do on this tick. A RoboScript program chooses one thing: move, turn, fire or nothing. */
+/** What the AI wants the robot to do on this tick. A RoboScript program chooses one thing: move, turn, fire, guard or nothing. */
 export interface AIAction {
   move: MoveDirection | null;
   turn: TurnDirection | null;
   fire: boolean;
+  /** Brace for this tick: hits do less damage. */
+  guard: boolean;
   /** null keeps the current state. */
   state: RobotState | null;
   /** Source lines the AI executed on this tick, in order. */
@@ -61,6 +78,7 @@ export interface ActionSourceLines {
   move: number | null;
   turn: number | null;
   fire: number | null;
+  guard: number | null;
   state: number | null;
 }
 
@@ -73,9 +91,10 @@ export function createIdleAction(): AIAction {
     move: null,
     turn: null,
     fire: false,
+    guard: false,
     state: null,
     executedLines: [],
-    sourceLines: { move: null, turn: null, fire: null, state: null },
+    sourceLines: { move: null, turn: null, fire: null, guard: null, state: null },
     assignments: [],
     status: 'running',
   };

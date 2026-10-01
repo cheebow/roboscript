@@ -1,6 +1,8 @@
 import { AGGRESSIVE_BOT } from './aggressive_bot';
+import { COVER_BOT } from './cover_bot';
 import { COWARD_BOT } from './coward_bot';
 import { DUMB_BOT } from './dumb_bot';
+import { GUARD_BOT } from './guard_bot';
 import { SAMPLE_AI } from './sample';
 
 /** A ready-made RoboScript program that can be loaded into either robot's editor. */
@@ -18,6 +20,8 @@ export const TEMPLATES: readonly Template[] = [
   { id: 'dumb_bot', name: 'DumbBot', source: DUMB_BOT },
   { id: 'aggressive_bot', name: 'AggressiveBot', source: AGGRESSIVE_BOT },
   { id: 'coward_bot', name: 'CowardBot', source: COWARD_BOT },
+  { id: 'guard_bot', name: 'GuardBot', source: GUARD_BOT },
+  { id: 'cover_bot', name: 'CoverBot', source: COVER_BOT },
 ];
 
 /** What each robot's editor holds until the player writes or loads something else, in spawn order. */

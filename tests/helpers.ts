@@ -3,7 +3,7 @@ import { formatError } from '../src/ai/script_error';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS, type RobotStats } from '../src/data/robot_defaults';
 import { findTemplate, templateSource } from '../src/data/templates';
-import { type AIAction, type RobotBrain, createIdleAction } from '../src/sim/ai_context';
+import { type AIAction, type AIContext, type RobotBrain, createIdleAction } from '../src/sim/ai_context';
 import { Simulation, type SimulationConfig } from '../src/sim/simulation';
 import type { Arena } from '../src/sim/types';
 
@@ -19,6 +19,29 @@ export const DUEL_ARENA: Arena = {
     { x: 400, y: 300, rotation: 0 },
     { x: 600, y: 300, rotation: 180 },
   ],
+};
+
+/** What a robot at full strength senses with nothing around it: no enemy seen, no bullets, no walls. */
+export const QUIET_CONTEXT: AIContext = {
+  enemyVisible: false,
+  enemyDistance: 0,
+  enemyAngle: 0,
+  enemyX: 0,
+  enemyY: 0,
+  hp: ROBOT_DEFAULTS.maxHp,
+  ammo: ROBOT_DEFAULTS.maxAmmo,
+  blocked: false,
+  blockedBehind: false,
+  wallAhead: 0,
+  wallBehind: 0,
+  wallLeft: 0,
+  wallRight: 0,
+  bulletIncoming: false,
+  bulletDistance: 0,
+  bulletAngle: 0,
+  coverVisible: false,
+  coverDistance: 0,
+  coverAngle: 0,
 };
 
 /** Repeats the same action every tick. */

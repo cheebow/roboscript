@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
 import { DEFAULT_ARENA } from '../src/data/arenas';
+import { DebugLogger } from '../src/debug/debug_logger';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, mirrorTurns, templateSource } from '../src/data/templates';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { compileBrain, createSimulation, enemySource, runToEnd } from './helpers';
-import { APPROACH, KEEP_DISTANCE, RUSH, TURRET } from './strategies';
+import { QUIET_CONTEXT, compileBrain, createSimulation, enemySource, runToEnd } from './helpers';
+import { APPROACH, DODGE, EARLY_GUARD, GUARD, KEEP_DISTANCE, RUSH, TURRET } from './strategies';
 
 const SEEDS = [1, 2, 3, 4, 5];
 
@@ -25,11 +26,18 @@ function winners(playerSource: string, enemyId: string): string[] {
 }
 
 /** The templates written as enemies; the player's own starting program is the sample. */
-const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot'];
+const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot'];
 
 describe('template list', () => {
-  it('offers the sample and the three enemies of the spec, each with a unique id', () => {
-    expect(TEMPLATES.map((template) => template.name)).toEqual(['Sample', 'DumbBot', 'AggressiveBot', 'CowardBot']);
+  it('offers the sample, the three enemies of the spec and two that defend themselves, each with a unique id', () => {
+    expect(TEMPLATES.map((template) => template.name)).toEqual([
+      'Sample',
+      'DumbBot',
+      'AggressiveBot',
+      'CowardBot',
+      'GuardBot',
+      'CoverBot',
+    ]);
     expect(new Set(TEMPLATES.map((template) => template.id)).size).toBe(TEMPLATES.length);
   });
 
@@ -62,30 +70,24 @@ describe('turn mirroring', () => {
     for (const template of TEMPLATES) expect(mirrorTurns(mirrorTurns(template.source))).toBe(template.source);
   });
 
-  it('gives the player templates that turn left and the enemy ones that turn right', () => {
+  it('gives the player templates that go left around obstacles and the enemy ones that go right', () => {
+    /** The turns a program makes, in the order they are written. */
+    const turns = (source: string) => source.match(/turn (left|right)/g) ?? [];
     for (const template of TEMPLATES) {
-      const forPlayer = templateSource(template, 0);
-      const forEnemy = templateSource(template, 1);
-      expect(forPlayer).toContain('turn left');
-      expect(forPlayer).not.toContain('turn right');
-      expect(forEnemy).toContain('turn right');
-      expect(forEnemy).not.toContain('turn left');
+      const forPlayer = turns(templateSource(template, 0));
+      const forEnemy = turns(templateSource(template, 1));
+      expect(forPlayer.at(-1)).toBe('turn left');
+      expect(forEnemy.at(-1)).toBe('turn right');
+      expect(forEnemy).toEqual(forPlayer.map((turn) => (turn === 'turn left' ? 'turn right' : 'turn left')));
     }
+    // Only CoverBot ever goes the other way: after hiding, to meet the enemy head-on.
+    const bothWays = TEMPLATES.filter((template) => new Set(turns(template.source)).size > 1);
+    expect(bothWays.map((template) => template.id)).toEqual(['cover_bot']);
   });
 });
 
 describe('CowardBot', () => {
-  const closeEnemy = {
-    enemyVisible: true,
-    enemyDistance: 200,
-    enemyAngle: 0,
-    enemyX: 0,
-    enemyY: 0,
-    hp: 100,
-    ammo: 50,
-    blocked: false,
-    blockedBehind: false,
-  };
+  const closeEnemy = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 200 };
 
   /** What CowardBot does, tick by tick, in an unchanging situation. */
   function ticks(count: number, context: typeof closeEnemy) {
@@ -106,6 +108,49 @@ describe('CowardBot', () => {
     expect(fire).toMatchObject({ fire: true });
     // No retreat: it goes straight back to aiming, now in ATTACK.
     expect(next).toMatchObject({ turn: 'enemy', move: null, state: 'ATTACK' });
+  });
+});
+
+describe('GuardBot', () => {
+  it('beats DumbBot, whose program it shares but for the guard', () => {
+    const guardBot = findTemplate('guard_bot')?.source ?? '';
+    expect(guardBot).toContain('guard');
+    expect(winners(guardBot, 'dumb_bot')).toEqual(['ALPHA']);
+  });
+
+  it('braces for most of the shots that hit it, a tick at a time', () => {
+    const logger = new DebugLogger();
+    const simulation = createSimulation([compileBrain(APPROACH), compileBrain(enemySource('guard_bot'))], {
+      arena: DEFAULT_ARENA,
+      stats: ROBOT_DEFAULTS,
+      logger,
+    });
+    runToEnd(simulation);
+    const hits = logger.events.filter((event) => event.type === 'hit' && event.robotId === 'ALPHA');
+    const guarded = hits.filter((hit) => hit.message.endsWith('(guarded)'));
+    expect(hits.length).toBeGreaterThan(0);
+    expect(guarded.length).toBeGreaterThan(hits.length / 2);
+  });
+});
+
+describe('CoverBot', () => {
+  it('goes into hiding once it is hurt, and comes out again', () => {
+    const logger = new DebugLogger();
+    const simulation = createSimulation(
+      [compileBrain(findTemplate('cover_bot')?.source ?? ''), compileBrain(enemySource('coward_bot'))],
+      { arena: DEFAULT_ARENA, stats: ROBOT_DEFAULTS, logger },
+    );
+    runToEnd(simulation);
+
+    const own = logger.events.filter((event) => event.robotId === 'ALPHA');
+    const messages = own.map((event) => event.message);
+    const evading = messages.indexOf('state ATTACK -> EVADE');
+    expect(evading).toBeGreaterThan(-1);
+    expect(messages).toContain('turn cover');
+    // Out of the enemy's sight after that, then back to looking for it.
+    const lost = messages.indexOf('enemy lost: BRAVO', evading);
+    expect(lost).toBeGreaterThan(evading);
+    expect(messages.indexOf('state EVADE -> SEARCH', lost)).toBeGreaterThan(lost);
   });
 });
 
@@ -135,6 +180,27 @@ describe('strategies against the enemies', () => {
     expect(winners(TURRET, 'dumb_bot')).toEqual(['ALPHA']);
     expect(winners(TURRET, 'aggressive_bot')).toEqual(['ALPHA']);
     expect(winners(TURRET, 'coward_bot')).not.toContain('BRAVO');
+    expect(winners(TURRET, 'guard_bot')).toEqual(['ALPHA']);
+    expect(winners(TURRET, 'cover_bot')).toEqual(['ALPHA']);
+  });
+
+  it('bracing on the very tick each bullet hits beats every enemy', () => {
+    for (const enemyId of ENEMY_IDS) expect(winners(GUARD, enemyId)).toEqual(['ALPHA']);
+  });
+
+  it('bracing a tick or two early costs more shots than it saves', () => {
+    // Without the guard, this AI beats AggressiveBot (see the improved sample above).
+    expect(winners(EARLY_GUARD, 'aggressive_bot')).toEqual(['BRAVO']);
+    expect(winners(EARLY_GUARD, 'coward_bot')).toEqual(['BRAVO']);
+    expect(winners(EARLY_GUARD, 'dumb_bot')).toEqual(['ALPHA']);
+  });
+
+  it('dodging until the enemy is out of ammo beats the enemies that keep shooting from afar', () => {
+    expect(winners(DODGE, 'dumb_bot')).toEqual(['ALPHA']);
+    expect(winners(DODGE, 'coward_bot')).toEqual(['ALPHA']);
+    expect(winners(DODGE, 'guard_bot')).toEqual(['ALPHA']);
+    // AggressiveBot keeps coming and shoots from too close to dodge.
+    expect(winners(DODGE, 'aggressive_bot')).toEqual(['BRAVO']);
   });
 
   it('rushing in beats DumbBot but not the enemies that fire from as far away', () => {

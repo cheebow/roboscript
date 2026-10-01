@@ -57,6 +57,7 @@ export type ActionNode =
   | { kind: 'move'; line: number; direction: MoveDirection }
   | { kind: 'turn'; line: number; direction: TurnDirection }
   | { kind: 'fire'; line: number }
+  | { kind: 'guard'; line: number }
   | { kind: 'wait'; line: number };
 
 export interface StateNode {

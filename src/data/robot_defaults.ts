@@ -19,6 +19,10 @@ export interface RobotStats {
   maxAmmo: number;
   radius: number;
   bulletRadius: number;
+  /** Share of a hit's damage that a guarding robot takes. */
+  guardDamageFactor: number;
+  /** sec, how much later the weapon can fire again for each tick spent guarding. */
+  guardRecovery: number;
 }
 
 export const ROBOT_DEFAULTS: RobotStats = {
@@ -40,4 +44,6 @@ export const ROBOT_DEFAULTS: RobotStats = {
   maxAmmo: 50,
   radius: 16,
   bulletRadius: 3,
+  guardDamageFactor: 0.5,
+  guardRecovery: 0.3,
 };

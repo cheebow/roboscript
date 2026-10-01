@@ -14,6 +14,16 @@ const SENSOR_NAMES = [
   'state',
   'last_seen_x',
   'last_seen_y',
+  'bullet_incoming',
+  'bullet_distance',
+  'bullet_angle',
+  'cover_visible',
+  'cover_distance',
+  'cover_angle',
+  'wall_ahead',
+  'wall_behind',
+  'wall_left',
+  'wall_right',
 ] as const;
 
 /**
@@ -38,7 +48,7 @@ export class WatchPanel {
 
   update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>): void {
     if (this.robotName.textContent !== robot.id) this.robotName.textContent = robot.id;
-    const { lastSeen } = robot;
+    const { lastSeen, incomingBullet, cover } = robot;
     this.sensors.set([
       String(robot.enemyVisible),
       formatNumber(robot.enemyDistance),
@@ -50,6 +60,16 @@ export class WatchPanel {
       robot.state,
       lastSeen === null ? NO_VALUE : formatNumber(lastSeen.x),
       lastSeen === null ? NO_VALUE : formatNumber(lastSeen.y),
+      String(incomingBullet !== null),
+      formatNumber(incomingBullet?.distance ?? 0),
+      formatNumber(incomingBullet?.angle ?? 0),
+      String(cover !== null),
+      formatNumber(cover?.distance ?? 0),
+      formatNumber(cover?.angle ?? 0),
+      formatNumber(robot.wallAhead),
+      formatNumber(robot.wallBehind),
+      formatNumber(robot.wallLeft),
+      formatNumber(robot.wallRight),
     ]);
     this.showVariables(variables);
   }

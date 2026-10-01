@@ -1,11 +1,15 @@
 import type { RobotStats } from '../data/robot_defaults';
 import type { RobotBrain } from './ai_context';
 import { type Bullet, stepBullet } from './bullet';
+import { findCover } from './cover';
 import { type DebugEventSink, EventReporter } from './event_reporter';
 import { circleIntersectsRect, distance, segmentRectDistance } from './math';
+import { wallDistance } from './range_finder';
 import { MatchRng } from './rng';
 import { RobotController } from './robot';
-import { ConeSensor } from './sensor';
+import { ConeSensor, measure } from './sensor';
+import type { Bearing, Cover, Surroundings } from './surroundings';
+import { findIncomingBullet } from './threats';
 import type { Arena, Vec2 } from './types';
 import { Gun } from './weapon';
 
@@ -67,6 +71,8 @@ export class Simulation {
   private readonly tickDuration: number;
   private readonly maxTicks: number;
   private readonly reporter: EventReporter | null;
+  /** Ticks by which each tick of guarding puts off the robot's next shot. */
+  private readonly guardRecoveryTicks: number;
   private nextBulletId = 0;
 
   constructor(config: SimulationConfig) {
@@ -80,6 +86,7 @@ export class Simulation {
     this.rng = new MatchRng(config.seed);
     this.tickDuration = 1 / config.tickRate;
     this.maxTicks = Math.round(config.maxMatchTime * config.tickRate);
+    this.guardRecoveryTicks = Math.round(config.stats.guardRecovery * config.tickRate);
     this.robots = config.robots.map(
       (setup, index) =>
         new RobotController({
@@ -115,12 +122,15 @@ export class Simulation {
 
     this.robots.forEach((robot, index) => {
       const action = actions[index];
+      robot.guarding = action.guard;
       robot.turn(action.turn, this.tickDuration);
       robot.move(action.move, this.tickDuration, (position) => this.isBlocked(robot, position));
     });
 
     this.robots.forEach((robot, index) => {
       robot.weapon.tick();
+      // Bracing takes the gun off target: every tick of it puts off the next shot.
+      if (actions[index].guard) robot.weapon.delay(this.guardRecoveryTicks);
       if (actions[index].fire) this.fire(robot, actions[index].sourceLines.fire);
     });
 
@@ -134,11 +144,54 @@ export class Simulation {
     const wasVisible = robot.sensorReading.enemyVisible;
     robot.sense(enemy.position);
     const visible = robot.sensorReading.enemyVisible;
-    robot.noteBlocked(
-      this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)),
-      this.hitsTerrain(robot.stepTarget('backward', this.tickDuration)),
-    );
+    robot.noteSurroundings(this.surroundingsOf(robot));
     if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
+  }
+
+  /** The terrain and the bullets as the robot finds them now. Its sensor must have been read first. */
+  private surroundingsOf(robot: RobotController): Surroundings {
+    const { position, rotation } = robot;
+    const { radius, bulletRadius } = this.stats;
+    const bearingTo = (target: Vec2): Bearing => ({ position: { ...target }, ...measure(position, rotation, target) });
+    const wallAt = (offset: number) => wallDistance(this.arena, position, rotation + offset, radius);
+
+    const bullet = findIncomingBullet(this.bullets, robot.id, position, radius + bulletRadius, this.arena);
+    const findCover = this.coverFinderOf(robot);
+    let cover: Cover | null | undefined;
+    return {
+      blocked: this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)),
+      blockedBehind: this.hitsTerrain(robot.stepTarget('backward', this.tickDuration)),
+      wallAhead: wallAt(0),
+      wallBehind: wallAt(180),
+      wallLeft: wallAt(-90),
+      wallRight: wallAt(90),
+      incomingBullet: bullet === null ? null : bearingTo(bullet.position),
+      // Worked out when first asked for: many programs never ask.
+      get cover() {
+        if (cover === undefined) cover = findCover();
+        return cover;
+      },
+    };
+  }
+
+  /**
+   * A function that finds where the robot, as it stands now, could hide from
+   * the enemy: from where that is, or was when last seen. Calling it later
+   * still gives the answer for now.
+   */
+  private coverFinderOf(robot: RobotController): () => Cover | null {
+    const position = { ...robot.position };
+    const { rotation } = robot;
+    const { lastSeen } = robot.sensorReading;
+    const threat = lastSeen === null ? null : { ...lastSeen };
+    return () => {
+      if (threat === null) return null;
+      const found = findCover(this.arena, this.stats.radius, position, threat);
+      if (found === null) return null;
+      const [next] = found.route;
+      const angle = next === undefined ? 0 : measure(position, rotation, next).angle;
+      return { ...found, angle };
+    };
   }
 
   private think(robot: RobotController) {
@@ -213,9 +266,9 @@ export class Simulation {
     const target = this.robots.find((robot) => robot.id === targetId);
     if (target === undefined) throw new Error(`Bullet hit unknown robot "${targetId}"`);
     const wasAlive = target.alive;
-    target.takeDamage(bullet.damage);
+    const damage = target.takeDamage(bullet.damage);
     if (wasAlive && !target.alive) this.tickEvents.push({ kind: 'destroyed', ...target.position });
-    this.reporter?.hit(bullet.ownerId, target.id, bullet.damage, target.hp);
+    this.reporter?.hit(bullet.ownerId, target.id, damage, target.hp, target.guarding);
   }
 
   private judge(): MatchResult | null {

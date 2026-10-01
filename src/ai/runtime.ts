@@ -8,7 +8,7 @@ type Execution = Generator<void, void, void>;
 /**
  * Runs a parsed RoboScript program the way an ordinary program runs: from the
  * top, one statement after another. An action statement (move, turn, fire,
- * wait) is what the robot does for one tick; execution then stops and picks up
+ * guard, wait) is what the robot does for one tick; execution then stops and picks up
  * from the next statement on the following tick. Everything else takes no time.
  */
 export class ScriptBrain implements RobotBrain {
@@ -83,6 +83,10 @@ export class ScriptBrain implements RobotBrain {
       case 'fire':
         action.fire = true;
         action.sourceLines.fire = statement.line;
+        break;
+      case 'guard':
+        action.guard = true;
+        action.sourceLines.guard = statement.line;
         break;
       case 'wait':
         break;

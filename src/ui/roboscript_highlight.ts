@@ -10,13 +10,19 @@ import {
 } from '../ai/script_variables';
 
 const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'and', 'or', 'not']);
-const COMMAND_WORDS = new Set(['move', 'turn', 'fire', 'wait', 'state', 'set']);
+const COMMAND_WORDS = new Set(['move', 'turn', 'fire', 'guard', 'wait', 'state', 'set']);
 
 const NUMBER = /^\d+(\.\d+)?/;
 const OPERATOR = /^(<=|>=|==|!=|[<>=+\-*/()])/;
 const WORD = /^[A-Za-z_][A-Za-z0-9_]*/;
 
 const language = StreamLanguage.define({
+  languageData: {
+    commentTokens: { line: '#' },
+    closeBrackets: { brackets: ['('] },
+    // Typing "else" moves the line back to its "if".
+    indentOnInput: /^\s*else$/,
+  },
   token(stream) {
     if (stream.eatSpace()) return null;
     if (stream.peek() === '#') {

@@ -12,6 +12,8 @@ export interface Weapon {
   readonly cooldownTicks: number;
   /** Advances the cooldown by one tick. */
   tick(): void;
+  /** Puts off the moment the weapon can fire again by the given number of ticks. */
+  delay(ticks: number): void;
   /** Returns the fired bullet, or null while cooling down or out of ammo. */
   fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng): NewBullet | null;
 }
@@ -39,6 +41,10 @@ export class Gun implements Weapon {
 
   tick(): void {
     if (this.remainingCooldown > 0) this.remainingCooldown--;
+  }
+
+  delay(ticks: number): void {
+    this.remainingCooldown += ticks;
   }
 
   fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng): NewBullet | null {

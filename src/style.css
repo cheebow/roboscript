@@ -264,6 +264,14 @@ button {
 
 .watch-sensors .field-list {
   padding-top: 4px;
+  /* Two columns, so that all the sensor values fit without scrolling. */
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--border);
+}
+
+.watch-sensors .field {
+  break-inside: avoid;
 }
 
 #watch-robot {

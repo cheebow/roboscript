@@ -2,19 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
 import type { AIAction, AIContext } from '../src/sim/ai_context';
 import { SAMPLE_AI } from '../src/data/templates/sample';
-import { compileBrain } from './helpers';
+import { QUIET_CONTEXT, compileBrain } from './helpers';
 
-const BASE_CONTEXT: AIContext = {
-  enemyVisible: false,
-  enemyDistance: 0,
-  enemyAngle: 0,
-  enemyX: 0,
-  enemyY: 0,
-  hp: 100,
-  ammo: 50,
-  blocked: false,
-  blockedBehind: false,
-};
+const BASE_CONTEXT: AIContext = QUIET_CONTEXT;
 
 /** Runs the program for one tick per given context and returns what it did on each. */
 function run(source: string, contexts: Partial<AIContext>[]): AIAction[] {
@@ -54,9 +44,9 @@ describe('runtime: one action per tick', () => {
 
   it('notes which line decided each action', () => {
     const [move, turn, fire] = runTicks('move forward\nturn enemy\nfire', 3);
-    expect(move.sourceLines).toEqual({ move: 1, turn: null, fire: null, state: null });
-    expect(turn.sourceLines).toEqual({ move: null, turn: 2, fire: null, state: null });
-    expect(fire.sourceLines).toEqual({ move: null, turn: null, fire: 3, state: null });
+    expect(move.sourceLines).toEqual({ move: 1, turn: null, fire: null, guard: null, state: null });
+    expect(turn.sourceLines).toEqual({ move: null, turn: 2, fire: null, guard: null, state: null });
+    expect(fire.sourceLines).toEqual({ move: null, turn: null, fire: 3, guard: null, state: null });
   });
 
   it('spends a tick on wait, doing nothing', () => {

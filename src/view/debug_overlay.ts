@@ -8,6 +8,11 @@ const MARK_ALPHA = 0.9;
 const TARGET_FRAME_MARGIN = 13;
 const TARGET_CORNER_LENGTH = 8;
 const LAST_SEEN_MARK_SIZE = 7;
+const COVER_MARK_SIZE = 6;
+const COVER_LINE_ALPHA = 0.45;
+/** Screen pixels: dash and gap of the line to the cover. */
+const COVER_DASH_PX = 4;
+const BULLET_RING_RADIUS = 7;
 /** Line width of the marks, in screen pixels. */
 const MARK_LINE_PX = 1.5;
 
@@ -51,6 +56,52 @@ export function drawTargetMarks(
   } else if (robot.lastSeen !== null) {
     traceCross(ctx, robot.lastSeen.x, robot.lastSeen.y, LAST_SEEN_MARK_SIZE);
   }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** Where the robot would take cover: a diamond at the place, and a dashed line along the way to it. Nothing once it is there. */
+export function drawCoverMark(ctx: CanvasRenderingContext2D, robot: RobotSnapshot, color: string, pixel: number): void {
+  const { cover } = robot;
+  if (cover === null || cover.distance === 0) return;
+  const { x, y } = cover.position;
+  ctx.strokeStyle = color;
+
+  ctx.lineWidth = pixel;
+  ctx.globalAlpha = COVER_LINE_ALPHA;
+  ctx.setLineDash([COVER_DASH_PX * pixel, COVER_DASH_PX * pixel]);
+  ctx.beginPath();
+  ctx.moveTo(robot.x, robot.y);
+  for (const point of cover.route) ctx.lineTo(point.x, point.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.lineWidth = MARK_LINE_PX * pixel;
+  ctx.globalAlpha = MARK_ALPHA;
+  ctx.beginPath();
+  ctx.moveTo(x, y - COVER_MARK_SIZE);
+  ctx.lineTo(x + COVER_MARK_SIZE, y);
+  ctx.lineTo(x, y + COVER_MARK_SIZE);
+  ctx.lineTo(x - COVER_MARK_SIZE, y);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** A ring around the bullet that is on course to hit the robot. */
+export function drawIncomingBulletMark(
+  ctx: CanvasRenderingContext2D,
+  robot: RobotSnapshot,
+  color: string,
+  pixel: number,
+): void {
+  const bullet = robot.incomingBullet;
+  if (bullet === null) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = MARK_LINE_PX * pixel;
+  ctx.globalAlpha = MARK_ALPHA;
+  ctx.beginPath();
+  ctx.arc(bullet.position.x, bullet.position.y, BULLET_RING_RADIUS, 0, Math.PI * 2);
   ctx.stroke();
   ctx.globalAlpha = 1;
 }

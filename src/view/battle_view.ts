@@ -3,7 +3,7 @@ import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
 import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
-import { drawSightLine, drawTargetMarks } from './debug_overlay';
+import { drawCoverMark, drawIncomingBulletMark, drawSightLine, drawTargetMarks } from './debug_overlay';
 import { drawEffects } from './effects_layer';
 import { DOT, ROBOT_PALETTES, WRECK_PALETTE, createRobotSprite } from './sprites';
 
@@ -29,6 +29,9 @@ const RESULT_FONT_PX = 22;
 // Sizes in arena units.
 const HP_BAR_HEIGHT = 3;
 const HP_BAR_GAP = 8;
+/** A guarding robot is ringed this far outside its edge. */
+const GUARD_RING_GAP = 4;
+const GUARD_RING_PX = 2;
 /** From the robot's edge down to its name; leaves room for the target frame in between. */
 const LABEL_GAP = 15;
 /** A bullet is drawn as a square of this size, with a dimmer one trailing behind it. */
@@ -82,6 +85,7 @@ export class BattleView {
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawSightLine(ctx, watcher, watched, watcherColor, pixel);
+      drawCoverMark(ctx, watcher, watcherColor, pixel);
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
@@ -90,6 +94,7 @@ export class BattleView {
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawTargetMarks(ctx, watcher, watched, stats, watcherColor, pixel);
+      drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
     }
     if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width);
 
@@ -155,6 +160,14 @@ export class BattleView {
     ctx.rotate((robot.rotation * Math.PI) / 180);
     ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
     ctx.restore();
+
+    if (robot.alive && robot.guarding) {
+      ctx.strokeStyle = this.colorOf(index);
+      ctx.lineWidth = GUARD_RING_PX / this.scale;
+      ctx.beginPath();
+      ctx.arc(x, y, radius + GUARD_RING_GAP, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     const barWidth = radius * 2;
     const barY = y - radius - HP_BAR_GAP;

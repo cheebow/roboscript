@@ -2,6 +2,7 @@ import type { RobotStats } from '../data/robot_defaults';
 import type { AIAction, AIContext, MoveDirection, RobotBrain, RobotState, TurnDirection } from './ai_context';
 import { clamp, headingVector, normalizeAngle } from './math';
 import { EMPTY_READING, type Sensor, type SensorReading } from './sensor';
+import { OPEN_SURROUNDINGS, type Surroundings } from './surroundings';
 import type { SpawnPoint, Vec2 } from './types';
 import type { Weapon } from './weapon';
 
@@ -28,13 +29,14 @@ export class RobotController {
   rotation: number;
   hp: number;
   state: RobotState = 'IDLE';
+  /** Braced on the current tick: hits do less damage. */
+  guarding = false;
 
   private readonly stats: RobotStats;
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
-  private blockedAhead = false;
-  private blockedBack = false;
+  private around: Surroundings = OPEN_SURROUNDINGS;
   private lastAction: AIAction | null = null;
   private readonly knownVariables = new Map<string, number>();
 
@@ -59,22 +61,26 @@ export class RobotController {
 
   /** Whether the way straight ahead was blocked on the latest tick. */
   get blocked(): boolean {
-    return this.blockedAhead;
+    return this.around.blocked;
   }
 
   /** Whether the way straight back was blocked on the latest tick. */
   get blockedBehind(): boolean {
-    return this.blockedBack;
+    return this.around.blockedBehind;
+  }
+
+  /** The terrain and the bullets around the robot as it found them on the latest tick. */
+  get surroundings(): Surroundings {
+    return this.around;
   }
 
   sense(enemyPosition: Vec2): void {
     this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
   }
 
-  /** Tells the robot which ways the simulation found blocked this tick. */
-  noteBlocked(ahead: boolean, behind: boolean): void {
-    this.blockedAhead = ahead;
-    this.blockedBack = behind;
+  /** Tells the robot what the simulation found around it this tick. */
+  noteSurroundings(surroundings: Surroundings): void {
+    this.around = surroundings;
   }
 
   /** What the brain decided on the latest tick, or null before the first. */
@@ -116,8 +122,11 @@ export class RobotController {
     if (!isBlocked(target)) this.position = target;
   }
 
-  takeDamage(amount: number): void {
-    this.hp = Math.max(0, this.hp - amount);
+  /** Takes a hit and returns the damage it did: less than `amount` while guarding. */
+  takeDamage(amount: number): number {
+    const damage = this.guarding ? Math.round(amount * this.stats.guardDamageFactor) : amount;
+    this.hp = Math.max(0, this.hp - damage);
+    return damage;
   }
 
   private turnStep(direction: TurnDirection, maxStep: number): number {
@@ -128,10 +137,14 @@ export class RobotController {
         return maxStep;
       case 'enemy':
         return this.reading.lastSeen === null ? 0 : clamp(this.reading.enemyAngle, -maxStep, maxStep);
+      case 'cover':
+        return clamp(this.around.cover?.angle ?? 0, -maxStep, maxStep);
     }
   }
 
   private buildContext(): AIContext {
+    const around = this.around;
+    const { incomingBullet } = around;
     return {
       enemyVisible: this.reading.enemyVisible,
       enemyDistance: this.reading.enemyDistance,
@@ -140,8 +153,25 @@ export class RobotController {
       enemyY: this.reading.lastSeen?.y ?? 0,
       hp: this.hp,
       ammo: this.weapon.ammo,
-      blocked: this.blockedAhead,
-      blockedBehind: this.blockedBack,
+      blocked: this.around.blocked,
+      blockedBehind: this.around.blockedBehind,
+      wallAhead: this.around.wallAhead,
+      wallBehind: this.around.wallBehind,
+      wallLeft: this.around.wallLeft,
+      wallRight: this.around.wallRight,
+      bulletIncoming: incomingBullet !== null,
+      bulletDistance: incomingBullet?.distance ?? 0,
+      bulletAngle: incomingBullet?.angle ?? 0,
+      // Read through to the surroundings, which look for cover only when asked.
+      get coverVisible() {
+        return around.cover !== null;
+      },
+      get coverDistance() {
+        return around.cover?.distance ?? 0;
+      },
+      get coverAngle() {
+        return around.cover?.angle ?? 0;
+      },
     };
   }
 }

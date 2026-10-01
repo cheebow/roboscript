@@ -58,7 +58,8 @@ export class ConeSensor implements Sensor {
   }
 }
 
-function measure(position: Vec2, rotation: number, target: Vec2): { distance: number; angle: number } {
+/** How far away a target is from a robot, and how far off its heading (deg, positive = to the right). */
+export function measure(position: Vec2, rotation: number, target: Vec2): { distance: number; angle: number } {
   const dist = distance(position, target);
   if (dist === 0) return { distance: 0, angle: 0 };
   const bearing = radToDeg(Math.atan2(target.y - position.y, target.x - position.x));

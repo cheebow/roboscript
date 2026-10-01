@@ -170,6 +170,7 @@ class Parser {
         return { kind: 'state', line: lineNumber, state: argument.text };
       }
       case 'fire':
+      case 'guard':
       case 'wait':
         expectEnd(line.tokens.slice(1), head.text);
         return { kind: head.text, line: lineNumber };

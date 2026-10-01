@@ -44,6 +44,7 @@ export class EventReporter {
   actionDecided(robotId: string, action: AIAction): void {
     if (action.move !== null) this.actionTaken(robotId, `move ${action.move}`, action.sourceLines.move);
     if (action.turn !== null) this.actionTaken(robotId, `turn ${action.turn}`, action.sourceLines.turn);
+    if (action.guard) this.actionTaken(robotId, 'guard', action.sourceLines.guard);
     this.programStatusIs(robotId, action.status);
   }
 
@@ -76,8 +77,9 @@ export class EventReporter {
     this.emit('warning', robotId, 'out of ammo', sourceLine);
   }
 
-  hit(shooterId: string, targetId: string, damage: number, remainingHp: number): void {
-    this.emit('hit', shooterId, `${targetId} damage=${damage} hp=${remainingHp}`);
+  /** `guarded`: the target was braced, so the damage is less than the shot's. */
+  hit(shooterId: string, targetId: string, damage: number, remainingHp: number, guarded: boolean): void {
+    this.emit('hit', shooterId, `${targetId} damage=${damage} hp=${remainingHp}${guarded ? ' (guarded)' : ''}`);
   }
 
   matchEnded(result: MatchResult): void {

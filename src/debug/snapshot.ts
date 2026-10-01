@@ -1,5 +1,6 @@
 import type { Assignment, RobotState } from '../sim/ai_context';
 import type { MatchResult, Simulation } from '../sim/simulation';
+import type { Bearing, Cover } from '../sim/surroundings';
 import type { Vec2 } from '../sim/types';
 import type { EffectSnapshot } from './effects';
 
@@ -15,6 +16,8 @@ export interface RobotSnapshot {
   ammo: number;
   /** Seconds until the weapon can fire again. */
   cooldown: number;
+  /** Braced on this tick. */
+  guarding: boolean;
   // What the sensor reported at the start of the tick, i.e. what the AI decided on.
   enemyVisible: boolean;
   enemyDistance: number;
@@ -22,6 +25,14 @@ export interface RobotSnapshot {
   lastSeen: Vec2 | null;
   blocked: boolean;
   blockedBehind: boolean;
+  wallAhead: number;
+  wallBehind: number;
+  wallLeft: number;
+  wallRight: number;
+  /** The nearest bullet on course to hit the robot, if any. */
+  incomingBullet: Bearing | null;
+  /** Where the robot could hide from the enemy, if anywhere. */
+  cover: Cover | null;
   /** Source lines the AI executed on this tick, in order; the last is the action it took. */
   executedLines: readonly number[];
   /** What the AI assigned to its variables on this tick, in order. */
@@ -61,6 +72,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
     time: simulation.time,
     robots: simulation.robots.map((robot) => {
       const { enemyVisible, enemyDistance, enemyAngle, lastSeen } = robot.sensorReading;
+      const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover } = robot.surroundings;
       return {
         id: robot.id,
         x: robot.position.x,
@@ -71,12 +83,19 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         state: robot.state,
         ammo: robot.weapon.ammo,
         cooldown: robot.weapon.cooldownTicks / simulation.tickRate,
+        guarding: robot.guarding,
         enemyVisible,
         enemyDistance,
         enemyAngle,
         lastSeen: lastSeen === null ? null : { ...lastSeen },
         blocked: robot.blocked,
         blockedBehind: robot.blockedBehind,
+        wallAhead,
+        wallBehind,
+        wallLeft,
+        wallRight,
+        incomingBullet: copyBearing(incomingBullet),
+        cover: cover === null ? null : { ...cover, position: { ...cover.position }, route: cover.route.map((point) => ({ ...point })) },
         executedLines: [...(robot.action?.executedLines ?? [])],
         assignments: (robot.action?.assignments ?? []).map((assignment) => ({ ...assignment })),
         variables: Object.fromEntries(robot.variables),
@@ -91,4 +110,8 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
     effects,
     result: simulation.result,
   };
+}
+
+function copyBearing(bearing: Bearing | null): Bearing | null {
+  return bearing === null ? null : { ...bearing, position: { ...bearing.position } };
 }

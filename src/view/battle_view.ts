@@ -106,7 +106,7 @@ export class BattleView {
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], debug, options.overrun),
+      this.drawRobot(robot, index, stats[index], loadouts[index], arena.height, debug, options.overrun),
     );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
@@ -184,6 +184,7 @@ export class BattleView {
     index: number,
     stats: RobotStats,
     loadout: Loadout,
+    arenaHeight: number,
     showState: boolean,
     overrun: number,
   ): void {
@@ -194,29 +195,29 @@ export class BattleView {
     this.drawPart(sprites.hull, x, y, robot.rotation);
     this.drawPart(sprites.turret, x, y, robot.gunHeading);
 
-    if (robot.alive) this.drawGuard(robot, index, radius, overrun);
+    const lineHeight = LABEL_LINE_PX / this.scale;
+    const marks = placeMarks(y, radius, showState ? 2 : 1, lineHeight, arenaHeight);
+    if (robot.alive) this.drawGuard(robot, index, radius, marks, overrun);
 
     const barWidth = radius * 2;
-    const barY = y - radius - HP_BAR_GAP;
     ctx.fillStyle = COLORS.hpBack;
-    ctx.fillRect(x - radius, barY, barWidth, HP_BAR_HEIGHT);
+    ctx.fillRect(x - radius, marks.barY, barWidth, HP_BAR_HEIGHT);
     ctx.fillStyle = robot.alive ? this.colorOf(index) : COLORS.destroyed;
-    ctx.fillRect(x - radius, barY, barWidth * (robot.hp / stats.maxHp), HP_BAR_HEIGHT);
+    ctx.fillRect(x - radius, marks.barY, barWidth * (robot.hp / stats.maxHp), HP_BAR_HEIGHT);
 
-    const labelY = y + radius + LABEL_GAP;
     ctx.font = this.font(LABEL_FONT_PX);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = COLORS.text;
-    ctx.fillText(robot.id, x, labelY);
+    ctx.fillText(robot.id, x, marks.labelsY);
     if (showState) {
       ctx.fillStyle = COLORS.mutedText;
-      ctx.fillText(robot.label, x, labelY + LABEL_LINE_PX / this.scale);
+      ctx.fillText(robot.label, x, marks.labelsY + lineHeight);
     }
   }
 
   /** A ring around a robot that guards or has just guarded, and the word for it, both fading out. */
-  private drawGuard(robot: RobotSnapshot, index: number, radius: number, overrun: number): void {
+  private drawGuard(robot: RobotSnapshot, index: number, radius: number, marks: RobotMarks, overrun: number): void {
     if (robot.guardAge === null) return;
     const age = robot.guardAge + overrun;
     if (age >= GUARD_SHOWN_TICKS) return;
@@ -233,9 +234,9 @@ export class BattleView {
 
     ctx.font = this.font(LABEL_FONT_PX);
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = marks.guardBaseline;
     ctx.fillStyle = color;
-    ctx.fillText(GUARD_LABEL, robot.x, robot.y - radius - GUARD_LABEL_GAP);
+    ctx.fillText(GUARD_LABEL, robot.x, marks.guardY);
     ctx.globalAlpha = 1;
   }
 
@@ -263,6 +264,44 @@ export class BattleView {
   private font(screenPixels: number): string {
     return `${screenPixels / this.scale}px ${FONT_FAMILY}`;
   }
+}
+
+/** Where the things shown around a robot go, as distances down the arena. */
+export interface RobotMarks {
+  /** The top of the HP bar. */
+  barY: number;
+  /** The top of the first line of labels. */
+  labelsY: number;
+  /** Where the word shown while guarding goes, and whether that is its top or its bottom. */
+  guardY: number;
+  guardBaseline: 'top' | 'bottom';
+}
+
+/**
+ * Places the HP bar above a robot, the word shown while guarding above that,
+ * and the robot's labels below it. Next to the top or the bottom edge of the
+ * arena, whatever would fall outside goes to the other side of the robot.
+ * `lineHeight` is that of a line of labels, of which there are `labelLines`.
+ */
+export function placeMarks(
+  y: number,
+  radius: number,
+  labelLines: number,
+  lineHeight: number,
+  arenaHeight: number,
+): RobotMarks {
+  const barAbove = y - radius - HP_BAR_GAP >= 0;
+  const barY = barAbove ? y - radius - HP_BAR_GAP : y + radius + HP_BAR_GAP - HP_BAR_HEIGHT;
+
+  const labelsHeight = labelLines * lineHeight;
+  const labelsBelow = y + radius + LABEL_GAP + labelsHeight <= arenaHeight;
+  const labelsY = labelsBelow ? y + radius + LABEL_GAP : y - radius - GUARD_LABEL_GAP - labelsHeight;
+
+  // Above everything else that is above the robot; with no room there, below everything below it.
+  const above = labelsBelow ? y - radius - GUARD_LABEL_GAP : labelsY;
+  if (above - lineHeight >= 0) return { barY, labelsY, guardY: above, guardBaseline: 'bottom' };
+  const below = labelsBelow ? labelsY + labelsHeight : y + radius + LABEL_GAP;
+  return { barY, labelsY, guardY: below, guardBaseline: 'top' };
 }
 
 export function formatResult(result: MatchResult): string {

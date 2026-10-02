@@ -51,7 +51,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（534件）
+npm test           # Vitest（540件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -142,7 +142,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -172,6 +172,14 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
 - ガレージは「棚」。ALPHA / BRAVO は今までどおり「作業机」として残し、名前を付けて棚に保存し、棚から机に読み込む。
 - **パーツで使える語は変えない。** 語を制限すると、動いていたプログラムがパーツを替えただけでエラーになる。ガレージや共有で受け取ったロボットのパーツを替えたときも同じことが起きるので、取りやめた。
+
+## 壁際での HP バーとラベル（2026-10-02 の修正）
+
+ロボットがアリーナの上端にいると HP バーが、下端にいると名前とラベルが、アリーナの外に出て見えなかった。`placeMarks`（`src/view/battle_view.ts`）で置き場所を決めるようにした。
+
+- ふだんは今までどおり: HP バーはロボットの上、名前とラベルは下、`GUARD` の文字は HP バーの上。
+- 上端の近く: HP バーをロボットの下（名前との間）に、`GUARD` の文字を名前とラベルの下に出す。
+- 下端の近く: 名前とラベルを HP バーの上に、`GUARD` の文字をさらにその上に出す。
 
 ## Phase 10A: ガレージ
 

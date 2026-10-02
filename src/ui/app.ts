@@ -1,3 +1,4 @@
+import type { ProgramFeatures } from '../ai/features';
 import { compileScript } from '../ai/roboscript';
 import { type ScriptError, formatError } from '../ai/script_error';
 import { ARENAS, findArena } from '../data/arenas';
@@ -46,6 +47,7 @@ const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 const NO_MARKS: readonly number[] = [];
+const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
 
 /** A line of a robot's program that the player follows through the match: where it runs is marked on the seek bar. */
 interface FollowedLine {
@@ -86,8 +88,8 @@ class App {
   private notice: string | null = null;
   /** Set while the last attempt to save failed; shown next to the toolbar message. */
   private saveProblem: string | null = null;
-  /** Per robot: whether the program of the match being shown has anything to do with cover. */
-  private coverUsers: boolean[] = [];
+  /** Per robot: what the program of the match being shown has to do with, which decides the marks drawn for it. */
+  private features: ProgramFeatures[] = [];
   /** The line whose number was last clicked while debugging. */
   private followed: FollowedLine | null = null;
   private lastFrame = performance.now();
@@ -157,14 +159,14 @@ class App {
     }
 
     const brains: RobotBrain[] = [];
-    const coverUsers: boolean[] = [];
+    const features: ProgramFeatures[] = [];
     const faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[] = [];
     for (const workspace of this.workspaces) {
       const result = compileScript(workspace.source);
       workspace.editor.showErrorLines(result.ok ? [] : result.errors.map((error) => error.line));
       if (result.ok) {
         brains.push(result.brain);
-        coverUsers.push(result.usesCover);
+        features.push(result.features);
       } else {
         faulty.push({ workspace, errors: result.errors });
       }
@@ -174,7 +176,7 @@ class App {
       return;
     }
 
-    this.coverUsers = coverUsers;
+    this.features = features;
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
@@ -337,7 +339,7 @@ class App {
     const debugging = this.mode === 'debug' && replay !== null;
     this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
       sensorOf: debugging ? this.inspector.selected : null,
-      showCover: debugging && (this.coverUsers[this.inspector.selected] ?? false),
+      marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
       overrun: replay?.overrun ?? 0,
     });
     this.inspector.update(view);

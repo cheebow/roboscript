@@ -40,7 +40,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（420件）
+npm test           # Vitest（424件）
 npm run typecheck
 npm run build
 ```
@@ -89,7 +89,7 @@ src/
 │  ├─ script_variables.ts  予約語・センサー名・方向の定義
 │  ├─ script_error.ts      ScriptError と "Line N: ..." の整形
 │  ├─ runtime.ts           ScriptBrain（途中で止まって続きから再開できるインタプリタ）
-│  ├─ features.ts          usesCover（プログラムが隠れ場所を使うか）
+│  ├─ features.ts          featuresOf（プログラムが隠れ場所・弾の検知・偏差射撃を使うか）
 │  ├─ reference.ts         語ごとの説明（入力候補とホバーで使う）、プログラムの変数の一覧
 │  ├─ completion.ts        completionsAt(source, position) → その位置に合う入力候補
 │  ├─ indentation.ts       indentFor(lines, lineIndex, unit) → その行の字下げ幅
@@ -227,7 +227,7 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 
 **1tick の順序**: 観測 → 判断 → 走行の設定 → 車体の旋回 → 走行 → 砲塔の旋回 → 射撃 → 弾の移動。
 
-**画面**: 車体と砲塔を別のスプライトで描き、砲塔が回るのが見える。INSPECTOR に GUN（砲塔の向き）と DRIVE（走行の設定）、WATCH に `aim_angle` / `lead_angle` / `gun_angle` を追加した（INSPECTOR も2列表示）。DEBUG では敵の移動先に「＋」の印が出る。
+**画面**: 車体と砲塔を別のスプライトで描き、砲塔が回るのが見える。INSPECTOR に GUN（砲塔の向き）と DRIVE（走行の設定）、WATCH に `aim_angle` / `lead_angle` / `gun_angle` を追加した（INSPECTOR も2列表示）。DEBUG では、`aim lead` か `lead_angle` を使うプログラムのロボットを選んでいると、敵の移動先に「＋」の印が出る。
 
 書き方の例（走りながら、移動先を狙って撃つ）:
 
@@ -304,7 +304,16 @@ loop
 **画面**
 
 - WATCH に新しい値の行を追加した（センサーの値は2列で表示）。
-- DEBUG の戦闘画面（INSPECTOR で選んだロボット）: 隠れ場所にひし形の印と、そこまでの経路（破線）。**経路と印は、そのロボットのプログラムが `cover_*` か `turn cover` を使っているときだけ描く**（使っていないプログラムでは意味のない線になるため。値は WATCH にいつでも出る）。当たるコースの弾を輪で囲む。
+- DEBUG の戦闘画面（INSPECTOR で選んだロボット）: 隠れ場所にひし形の印と、そこまでの経路（破線）。当たるコースの弾を輪で囲む。
+- **これらの印は、そのロボットのプログラムが関係する語を使っているときだけ描く。** 使っていないプログラムでは意味のない線になるため。値は WATCH にいつでも出る。
+
+  | 印 | 描く条件（プログラムに書かれている語） |
+  |---|---|
+  | 隠れ場所の印と経路 | `cover_visible` / `cover_distance` / `cover_angle` / `turn cover` |
+  | 当たるコースの弾の輪 | `bullet_incoming` / `bullet_distance` / `bullet_angle` |
+  | 敵の移動先の「＋」 | `aim lead` / `lead_angle` |
+
+  判定は構文解析の結果から行うので、コメントやラベルの中の文字には反応しない（`src/ai/features.ts`）。視線・ターゲット枠・最後に見た位置は、どのプログラムでも出る。
 - エディタの入力候補・ホバー説明・ハイライトにも新しい語が出る。
 
 ### 行単位のデバッガ

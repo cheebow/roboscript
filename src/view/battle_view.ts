@@ -1,3 +1,4 @@
+import type { ProgramFeatures } from '../ai/features';
 import type { RobotStats } from '../data/robot_defaults';
 import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
@@ -47,8 +48,8 @@ const RESULT_Y = 50;
 export interface RenderOptions {
   /** Index of the robot whose view of the enemy is drawn, or null to draw no debug overlay. */
   sensorOf: number | null;
-  /** Whether to draw that robot's way to cover as well: only worth it for a program that takes cover. */
-  showCover: boolean;
+  /** Which of that robot's marks to draw besides: those its program has to do with. */
+  marks: ProgramFeatures;
   /** Ticks played past the snapshot; ages its effects further. */
   overrun: number;
 }
@@ -92,7 +93,7 @@ export class BattleView {
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawSightLine(ctx, watcher, watched, watcherColor, pixel);
-      if (options.showCover) drawCoverMark(ctx, watcher, watcherColor, pixel);
+      if (options.marks.cover) drawCoverMark(ctx, watcher, watcherColor, pixel);
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
@@ -101,8 +102,8 @@ export class BattleView {
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawTargetMarks(ctx, watcher, watched, stats, watcherColor, pixel);
-      drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
-      drawLeadMark(ctx, watcher, watcherColor, pixel);
+      if (options.marks.bullets) drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
+      if (options.marks.lead) drawLeadMark(ctx, watcher, watcherColor, pixel);
     }
     if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width);
 

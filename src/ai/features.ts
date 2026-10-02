@@ -1,56 +1,88 @@
 import type { ConditionNode, Expression, Program, StatementNode } from './ast';
 
-const COVER_SENSORS: readonly string[] = ['cover_visible', 'cover_distance', 'cover_angle'];
-
-/** Whether the program has anything to do with cover: it reads a cover sensor or turns towards cover. */
-export function usesCover(program: Program): boolean {
-  return program.body.some(statementUsesCover);
+/** What a program has to do with: the things worth showing on the battle view while it is debugged. */
+export interface ProgramFeatures {
+  /** It reads a cover sensor or turns towards cover. */
+  cover: boolean;
+  /** It reads a sensor for incoming bullets. */
+  bullets: boolean;
+  /** It aims at where the enemy will be, or reads how far its gun is off that point. */
+  lead: boolean;
 }
 
-function statementUsesCover(statement: StatementNode): boolean {
+const COVER_SENSORS = ['cover_visible', 'cover_distance', 'cover_angle'];
+const BULLET_SENSORS = ['bullet_incoming', 'bullet_distance', 'bullet_angle'];
+
+export function featuresOf(program: Program): ProgramFeatures {
+  const used = new Set<string>();
+  for (const statement of program.body) noteStatement(statement, used);
+  const usesAny = (words: readonly string[]) => words.some((word) => used.has(word));
+  return {
+    cover: usesAny([...COVER_SENSORS, 'turn cover']),
+    bullets: usesAny(BULLET_SENSORS),
+    lead: usesAny(['lead_angle', 'aim lead']),
+  };
+}
+
+/** Adds the sensors the statement reads, and the ways it turns and aims (as "turn cover", "aim lead"), to `used`. */
+function noteStatement(statement: StatementNode, used: Set<string>): void {
   switch (statement.kind) {
     case 'if':
-      return (
-        conditionUsesCover(statement.condition) ||
-        statement.thenBody.some(statementUsesCover) ||
-        statement.elseBody.some(statementUsesCover)
-      );
+      noteCondition(statement.condition, used);
+      for (const inner of [...statement.thenBody, ...statement.elseBody]) noteStatement(inner, used);
+      return;
     case 'while':
-      return conditionUsesCover(statement.condition) || statement.body.some(statementUsesCover);
+      noteCondition(statement.condition, used);
+      for (const inner of statement.body) noteStatement(inner, used);
+      return;
     case 'loop':
-      return statement.body.some(statementUsesCover);
+      for (const inner of statement.body) noteStatement(inner, used);
+      return;
     case 'set':
-      return expressionUsesCover(statement.value);
+      noteExpression(statement.value, used);
+      return;
     case 'turn':
-      return statement.direction === 'cover';
+    case 'aim':
+      used.add(`${statement.kind} ${statement.direction}`);
+      return;
     default:
-      return false;
+      return;
   }
 }
 
-function conditionUsesCover(condition: ConditionNode): boolean {
+function noteCondition(condition: ConditionNode, used: Set<string>): void {
   switch (condition.kind) {
     case 'boolean_variable':
-      return COVER_SENSORS.includes(condition.name);
+      used.add(condition.name);
+      return;
     case 'comparison':
-      return expressionUsesCover(condition.left) || expressionUsesCover(condition.right);
+      noteExpression(condition.left, used);
+      noteExpression(condition.right, used);
+      return;
     case 'not':
-      return conditionUsesCover(condition.operand);
+      noteCondition(condition.operand, used);
+      return;
     case 'and':
     case 'or':
-      return conditionUsesCover(condition.left) || conditionUsesCover(condition.right);
+      noteCondition(condition.left, used);
+      noteCondition(condition.right, used);
+      return;
   }
 }
 
-function expressionUsesCover(expression: Expression): boolean {
+function noteExpression(expression: Expression, used: Set<string>): void {
   switch (expression.kind) {
     case 'sensor':
-      return COVER_SENSORS.includes(expression.name);
+      used.add(expression.name);
+      return;
     case 'negate':
-      return expressionUsesCover(expression.operand);
+      noteExpression(expression.operand, used);
+      return;
     case 'arithmetic':
-      return expressionUsesCover(expression.left) || expressionUsesCover(expression.right);
+      noteExpression(expression.left, used);
+      noteExpression(expression.right, used);
+      return;
     default:
-      return false;
+      return;
   }
 }

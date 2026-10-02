@@ -16,6 +16,7 @@
 | 7 | パーツ（選択 UI、コスト上限、保存） | 完了（2026-10-02） |
 | 8 | パーツで見た目が変わる | 完了（2026-10-02） |
 | 9 | 射程を読む語 `weapon_range`（語の制限は取りやめ） | 完了（2026-10-02） |
+| 10A | ガレージ（ロボットに名前を付けて保存） | 完了（2026-10-02） |
 
 Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
@@ -32,6 +33,7 @@ npm run dev        # 表示された URL をブラウザで開く
 
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
 - PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（パーツと性能値）を持つ。**敵（BRAVO）のコードとパーツも変えられる。**
+- PROJECT の下の **GARAGE** に、ロボット（コードとパーツ）を名前を付けて保存できる。名前を入れて SAVE ALPHA / SAVE BRAVO。一覧の `A` / `B` で ALPHA / BRAVO に読み込む（コードは Cmd / Ctrl + Z で戻せる）。`×` は2回押すと削除。
 - `config` を開くと、BODY / LEGS / GUN / SENSOR のパーツを選べる。下に、コストの合計（上限 12）と、その構成の性能値（標準との差つき）が出る。次の RUN / DEBUG から反映される。**コストが上限を超えていると、RUN / DEBUG は ERROR になって始まらない。**
 - `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
@@ -49,7 +51,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（522件）
+npm test           # Vitest（534件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -115,12 +117,14 @@ src/
 │  ├─ recorder.ts          recordMatch(config) → Recording（全スナップショット + イベント）
 │  └─ replay_manager.ts    ReplayManager（表示位置 = tick + 行、再生、速度、行単位の step、seek、行の実行時点への移動）
 ├─ project/
-│  └─ project_store.ts     main.bot と project.json（マップ、パーツ構成）の保存・読み込み
+│  ├─ project_store.ts     main.bot と project.json（マップ、パーツ構成）の保存・読み込み
+│  └─ garage.ts            ガレージ（名前を付けて保存したロボット）の保存・読み込み
 ├─ ui/                     画面。記録された Snapshot を表示する
 │  ├─ app.ts               全体の配線（試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
 │  ├─ toolbar.ts           上部バー
 │  ├─ transport.ts         再生操作（1行 / 1tick 移動、シークバー、速度、時刻）
 │  ├─ project_panel.ts     PROJECT ツリー
+│  ├─ garage_panel.ts      GARAGE（保存、読み込み、削除）
 │  ├─ code_editor.ts       CodeMirror のラッパー
 │  ├─ roboscript_highlight.ts  シンタックスハイライト
 │  ├─ roboscript_assist.ts 入力候補・ホバー説明・自動インデントをエディタにつなぐ
@@ -138,7 +142,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -154,7 +158,8 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 完了 |
 | 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 完了 |
 | 9 | 射程を読む語 `weapon_range`（当初の「パーツで使える語が変わる」は取りやめ） | 入力候補と WATCH に語が1つ増える | 完了 |
-| 10 | ガレージ（ロボットを複数保存）とアリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
+| 10A | ガレージ（ロボットに名前を付けて保存） | PROJECT の下に GARAGE | 完了 |
+| 10B | アリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
 | 11 | 共有: ロボットとリプレイの共有コード・URL、公開 | EXPORT / IMPORT | 未着手 |
 | 12 | 3台以上（バトルロイヤル） | アリーナモードで3〜4台 | 未着手 |
 | 13 | トーナメント／リーグ | 総当たりと順位表 | 未着手 |
@@ -165,7 +170,32 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - 他の人のロボットとの対戦は、**サーバーなしの共有コード・URL** で始める。相手はプログラムの中身を読める。
 - パーツから着手する。「ロボット1台」のデータの形（プログラム + パーツ構成）を先に固めると、ガレージの保存形式と共有コードを作り直さずに済むため。
 - ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
+- ガレージは「棚」。ALPHA / BRAVO は今までどおり「作業机」として残し、名前を付けて棚に保存し、棚から机に読み込む。
 - **パーツで使える語は変えない。** 語を制限すると、動いていたプログラムがパーツを替えただけでエラーになる。ガレージや共有で受け取ったロボットのパーツを替えたときも同じことが起きるので、取りやめた。
+
+## Phase 10A: ガレージ
+
+作ったロボット（コード + パーツ構成）に名前を付けて、何台でも取っておけるようにした。Phase 10B（アリーナモード）で戦わせる相手になり、Phase 11（共有）で受け取ったロボットの置き場にもなる。
+
+### 画面（PROJECT の下の GARAGE）
+
+- **保存**: 名前を入れて `SAVE ALPHA` / `SAVE BRAVO`。その時点のコードとパーツ構成が入る。同じ名前があれば置き換える。
+- **読み込み**: 一覧の `A` / `B` で、ALPHA / BRAVO のコードとパーツ構成を置き換える。コードは Cmd / Ctrl + Z で戻せる（パーツ構成は戻らない）。
+- **削除**: `×` を押すと `sure?` に変わり、もう一度押すと消える。ほかの場所を押すと取り消し。
+- 一覧の名前を押すと、名前欄にその名前が入る。
+- 名前は前後の空白を除いて 1〜16 文字。
+- 結果は上部のメッセージ欄に `[ALPHA saved to the garage as Striker]` のように出る（次の RUN / DEBUG / RESET まで）。
+
+### 保存形式（`src/project/garage.ts`）
+
+- localStorage の `roboscript/garage.json`: `{ version: 1, robots: [{ name, source, loadout }] }`。プロジェクト（`project.json`）とは別のキー。
+- 名前がロボットを区別する。一覧は名前順。
+- 読むときに検証する。読めない要素は捨て、存在しないパーツ id は標準に置き換える（`readLoadout`）。
+
+### 動作確認の結果
+
+- テストは 534件（追加 12件: 保存、置き換え、削除、開き直し、壊れたデータ、名前の検証）。
+- ブラウザで、保存、名前なしでの保存の拒否、BRAVO への読み込み（保存したコード・パーツ構成と一致）、同名での置き換え、2回押しの削除と取り消し、再読み込み後の保持、読み込んだ構成での RUN を確認した。
 
 ## Phase 9: 射程を読む語 `weapon_range`
 

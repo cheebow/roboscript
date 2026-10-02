@@ -179,6 +179,8 @@ button {
 /* Project tree */
 
 #project-tree {
+  /* As high as the tree; the garage below takes the rest of the panel. */
+  flex: none;
   padding: 6px 0;
 }
 
@@ -200,6 +202,80 @@ button {
 .tree-file:hover,
 .tree-file.selected {
   background: var(--selected);
+}
+
+/* Garage: the robots saved under a name */
+
+.garage-save {
+  display: grid;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.garage-name-input {
+  width: 100%;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+.garage-save-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.garage-save-buttons .tool-button {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 0;
+  font-size: 11px;
+}
+
+.garage-row {
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 10px;
+}
+
+.garage-row:hover {
+  background: var(--selected);
+}
+
+.garage-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.garage-action {
+  padding: 1px 5px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.garage-action:hover {
+  color: var(--text);
+}
+
+.garage-action.armed,
+.garage-action.armed:hover {
+  color: var(--error);
+}
+
+.garage-empty {
+  padding: 0 10px;
+  color: var(--muted);
 }
 
 /* Inspector, Watch, config */

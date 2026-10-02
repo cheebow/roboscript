@@ -17,6 +17,7 @@ import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
+import { Garage, MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
@@ -25,6 +26,7 @@ import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
+import { GaragePanel } from './garage_panel';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
@@ -74,6 +76,12 @@ interface FollowedLine {
 class App {
   private readonly seed = readSeed();
   private readonly store = openStore();
+  private readonly garage = openGarage();
+  private readonly garagePanel = new GaragePanel(requireElement('garage'), ROBOT_IDS, {
+    save: (name, robotIndex) => this.saveToGarage(name, robotIndex),
+    load: (name, robotIndex) => this.loadFromGarage(name, robotIndex),
+    remove: (name) => this.removeFromGarage(name),
+  });
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
@@ -110,6 +118,8 @@ class App {
   private notice: string | null = null;
   /** Set while the last attempt to save failed; shown next to the toolbar message. */
   private saveProblem: string | null = null;
+  /** What the garage last did, or why it could not; shown next to the toolbar message until the next RUN, DEBUG or RESET. */
+  private garageNote: string | null = null;
   /** Per robot: what the program of the match being shown has to do with, which decides the marks drawn for it. */
   private features: ProgramFeatures[] = [];
   /** The line whose number was last clicked while debugging. */
@@ -150,6 +160,7 @@ class App {
       this.events = [appEvent('warning', 'storage is unavailable: code will not be saved')];
     }
     this.showFile(this.shownFile);
+    this.showGarage();
     requestAnimationFrame(this.frame);
   }
 
@@ -184,6 +195,7 @@ class App {
       workspace.stale = false;
     }
     this.partsStale.fill(false);
+    this.garageNote = null;
 
     const brains: RobotBrain[] = [];
     const features: ProgramFeatures[] = [];
@@ -271,22 +283,77 @@ class App {
     this.events = [];
     this.notice = null;
     this.partsStale.fill(false);
+    this.garageNote = null;
   }
 
   /** Puts the part into the slot of the robot whose config is shown. Takes effect from the next RUN / DEBUG. */
   private pickPart(slot: Slot, partId: string): void {
     const { robotIndex } = this.shownFile;
-    const loadout = { ...this.loadouts[robotIndex], [slot]: partId };
+    this.setLoadout(robotIndex, { ...this.loadouts[robotIndex], [slot]: partId });
+  }
+
+  /** Gives the robot the parts. Takes effect from the next RUN / DEBUG. */
+  private setLoadout(robotIndex: number, loadout: Loadout): void {
     this.loadouts[robotIndex] = loadout;
     this.stats = this.loadouts.map((each) => statsOf(each));
     this.idleSnapshot = this.captureIdle();
     if (this.replay !== null) this.partsStale[robotIndex] = true;
-    this.partsView.show(ROBOT_IDS[robotIndex], AI_LABEL, loadout, paletteOf(robotIndex));
+    if (this.shownFile.robotIndex === robotIndex) {
+      this.partsView.show(ROBOT_IDS[robotIndex], AI_LABEL, loadout, paletteOf(robotIndex));
+    }
     try {
       this.store?.saveLoadout(robotIndex, loadout);
     } catch (error) {
       this.saveProblem = `could not save the parts of ${ROBOT_IDS[robotIndex]}: ${describeError(error)}`;
     }
+  }
+
+  /** Keeps the robot, its code and its parts as they are now, in the garage under the name typed. */
+  private saveToGarage(typedName: string, robotIndex: number): void {
+    const name = garageName(typedName);
+    const workspace = this.workspaces[robotIndex];
+    if (name === null) {
+      this.garageNote = `to save ${workspace.robotId}, give it a name of up to ${MAX_NAME_LENGTH} characters`;
+      return;
+    }
+    if (this.garage === null) {
+      this.garageNote = 'storage is unavailable: the garage cannot keep robots';
+      return;
+    }
+    try {
+      const replaced = this.garage.save({ name, source: workspace.source, loadout: this.loadouts[robotIndex] });
+      const instead = replaced ? ', in place of the robot kept under that name' : '';
+      this.garageNote = `${workspace.robotId} saved to the garage as ${name}${instead}`;
+    } catch (error) {
+      this.garageNote = `could not save ${name}: ${describeError(error)}`;
+    }
+    this.showGarage();
+  }
+
+  /** Puts a saved robot's code and parts in place of the robot's own. The code can be brought back by undoing in its editor. */
+  private loadFromGarage(name: string, robotIndex: number): void {
+    const saved = this.garage?.find(name);
+    if (saved === undefined) return;
+    const workspace = this.workspaces[robotIndex];
+    workspace.load(saved.source);
+    this.setLoadout(robotIndex, { ...saved.loadout });
+    this.showFile(codeFileOf(robotIndex));
+    this.garageNote = `${name} loaded into ${workspace.robotId}`;
+  }
+
+  private removeFromGarage(name: string): void {
+    if (this.garage === null) return;
+    try {
+      this.garage.remove(name);
+      this.garageNote = `${name} deleted from the garage`;
+    } catch (error) {
+      this.garageNote = `could not delete ${name}: ${describeError(error)}`;
+    }
+    this.showGarage();
+  }
+
+  private showGarage(): void {
+    this.garagePanel.show(this.garage?.list().map((robot) => robot.name) ?? []);
   }
 
   /** Takes effect from the next RUN / DEBUG; shown at once while there is no match. */
@@ -450,6 +517,7 @@ class App {
     const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
     if (refitted.length > 0) parts.push(`[${refitted.join(', ')} ${PARTS_NOTE}]`);
     if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
+    if (this.garageNote !== null) parts.push(`[${this.garageNote}]`);
     return parts.join('   ');
   }
 
@@ -503,6 +571,16 @@ function readSeed(): number {
 function openStore(): ProjectStore | null {
   try {
     return new ProjectStore(window.localStorage, DEFAULT_SOURCES);
+  } catch (error) {
+    if (!(error instanceof DOMException)) throw error;
+    return null;
+  }
+}
+
+/** null when the browser refuses access to localStorage. */
+function openGarage(): Garage | null {
+  try {
+    return new Garage(window.localStorage);
   } catch (error) {
     if (!(error instanceof DOMException)) throw error;
     return null;

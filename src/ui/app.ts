@@ -21,6 +21,7 @@ import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
+import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
@@ -94,6 +95,8 @@ class App {
   private stats: RobotStats[] = this.loadouts.map((loadout) => statsOf(loadout));
   /** Per robot: whether its parts were changed after the last RUN / DEBUG. */
   private partsStale: boolean[] = ROBOT_IDS.map(() => false);
+  /** The parts the robots carry in the match being shown. */
+  private matchLoadouts: readonly Loadout[] = [];
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
   /** The starting positions in the chosen arena, shown while there is no match. */
   private idleSnapshot = this.captureIdle();
@@ -213,6 +216,7 @@ class App {
     }
 
     this.features = features;
+    this.matchLoadouts = [...this.loadouts];
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
@@ -277,7 +281,7 @@ class App {
     this.stats = this.loadouts.map((each) => statsOf(each));
     this.idleSnapshot = this.captureIdle();
     if (this.replay !== null) this.partsStale[robotIndex] = true;
-    this.partsView.show(ROBOT_IDS[robotIndex], AI_LABEL, loadout);
+    this.partsView.show(ROBOT_IDS[robotIndex], AI_LABEL, loadout, paletteOf(robotIndex));
     try {
       this.store?.saveLoadout(robotIndex, loadout);
     } catch (error) {
@@ -386,7 +390,7 @@ class App {
     });
     requireElement('config').hidden = isCode;
     this.templateMenu.hidden = !isCode;
-    if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex]);
+    if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
     this.projectPanel.markSelected(file);
@@ -403,7 +407,8 @@ class App {
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
     const stats = replay?.recording.stats ?? this.stats;
-    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, {
+    const loadouts = replay === null ? this.loadouts : this.matchLoadouts;
+    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, loadouts, {
       sensorOf: debugging ? this.inspector.selected : null,
       marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
       overrun: replay?.overrun ?? 0,

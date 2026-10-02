@@ -236,6 +236,24 @@ button {
 
 /* config: the part in each slot of a robot, and the stats the parts add up to. */
 
+.robot-card {
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+
+.robot-card .field-list {
+  flex: 1;
+}
+
+/* A 16-dot sprite, enlarged dot for dot. */
+.robot-preview {
+  width: 64px;
+  height: 64px;
+  margin: 8px 6px 2px 0;
+  image-rendering: pixelated;
+}
+
 .parts {
   padding: 6px 10px 0;
 }

@@ -1,5 +1,6 @@
 import { COST_LIMIT, type Loadout, SLOTS, STANDARD_LOADOUT, type Slot, costOf, partIn, partsOf, statsOf } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
+import { PATTERN_SIZE, type RobotPalette, createRobotSprites } from '../view/sprites';
 import { createElement } from './dom';
 
 /** One stat as the player reads it. */
@@ -39,11 +40,13 @@ interface SlotRow {
 }
 
 /**
- * One robot's config: the part in each of its slots, for the player to
- * choose, what the parts cost together, and the stats they add up to, with
- * what differs from a robot of standard parts marked.
+ * One robot's config: what it looks like, the part in each of its slots, for
+ * the player to choose, what the parts cost together, and the stats they add
+ * up to, with what differs from a robot of standard parts marked.
  */
 export class PartsView {
+  /** The robot as it is drawn in the battle view, one pixel per dot; shown enlarged. */
+  private readonly preview: HTMLCanvasElement;
   private readonly identity: HTMLElement[];
   private readonly slotRows: SlotRow[];
   private readonly cost: HTMLElement;
@@ -51,8 +54,13 @@ export class PartsView {
 
   /** `onPick` is called with the part the player clicked; the view changes only when `show` is called. */
   constructor(container: HTMLElement, onPick: (slot: Slot, partId: string) => void) {
+    this.preview = createElement('canvas', 'robot-preview');
+    this.preview.width = PATTERN_SIZE;
+    this.preview.height = PATTERN_SIZE;
     const identity = createElement('div', 'field-list');
     this.identity = ['ID', 'AI'].map((name) => addField(identity, name));
+    const card = createElement('div', 'robot-card');
+    card.append(this.preview, identity);
 
     const parts = createElement('div', 'parts');
     this.slotRows = SLOTS.map((slot) => {
@@ -78,13 +86,14 @@ export class PartsView {
     const stats = createElement('div', 'field-list');
     this.stats = STAT_ROWS.map((row) => addField(stats, row.name));
 
-    container.replaceChildren(identity, parts, total, stats);
+    container.replaceChildren(card, parts, total, stats);
   }
 
-  /** Shows the robot with the given parts. `ai` names what drives it. */
-  show(robotId: string, ai: string, loadout: Loadout): void {
+  /** Shows the robot with the given parts, drawn in the given colours. `ai` names what drives it. */
+  show(robotId: string, ai: string, loadout: Loadout, palette: RobotPalette): void {
     this.identity[0].textContent = robotId;
     this.identity[1].textContent = ai;
+    this.drawPreview(loadout, palette);
 
     for (const { slot, options, summary } of this.slotRows) {
       for (const { partId, button } of options) {
@@ -111,6 +120,15 @@ export class PartsView {
       cell.classList.toggle('better', changed && difference > 0 === row.moreIsBetter);
       cell.classList.toggle('worse', changed && difference > 0 !== row.moreIsBetter);
     });
+  }
+
+  private drawPreview(loadout: Loadout, palette: RobotPalette): void {
+    const context = this.preview.getContext('2d');
+    if (context === null) throw new Error('Canvas 2D context is not available');
+    const { hull, turret } = createRobotSprites(palette, loadout);
+    context.clearRect(0, 0, PATTERN_SIZE, PATTERN_SIZE);
+    context.drawImage(hull, 0, 0);
+    context.drawImage(turret, 0, 0);
   }
 }
 

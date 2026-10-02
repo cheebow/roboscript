@@ -14,6 +14,7 @@
 | 5 | Polish | 完了（2026-10-01） |
 | 6 | 機体ごとの性能値、一括対戦の関数 | 完了（2026-10-02） |
 | 7 | パーツ（選択 UI、コスト上限、保存） | 完了（2026-10-02） |
+| 8 | パーツで見た目が変わる | 完了（2026-10-02） |
 
 Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
@@ -47,7 +48,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（505件）
+npm test           # Vitest（514件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -129,14 +130,14 @@ src/
 │  └─ field_list.ts / format.ts / dom.ts  共通部品
 ├─ view/
 │  ├─ battle_view.ts       Canvas描画（Snapshot を描く）
-│  ├─ sprites.ts           ドットパターンとスプライト生成
+│  ├─ sprites.ts           パーツごとのドットパターンと、構成からのスプライト生成
 │  ├─ effects_layer.ts     エフェクトの描画
 │  └─ debug_overlay.ts     視線、ターゲット枠、最後に見た位置
 ├─ main.ts
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -150,7 +151,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 |---|---|---|---|
 | 6 | 機体ごとの性能値、一括対戦の関数 | なし（土台） | 完了 |
 | 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 完了 |
-| 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 未着手 |
+| 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 完了 |
 | 9 | パーツで使える語が変わる | 積んでいない機能の語はエラーになる | 未着手 |
 | 10 | ガレージ（ロボットを複数保存）とアリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
 | 11 | 共有: ロボットとリプレイの共有コード・URL、公開 | EXPORT / IMPORT | 未着手 |
@@ -163,6 +164,44 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - 他の人のロボットとの対戦は、**サーバーなしの共有コード・URL** で始める。相手はプログラムの中身を読める。
 - パーツから着手する。「ロボット1台」のデータの形（プログラム + パーツ構成）を先に固めると、ガレージの保存形式と共有コードを作り直さずに済むため。
 - ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
+
+## Phase 8: パーツで見た目が変わる
+
+積んでいるパーツが、戦闘画面と `config` で見て分かるようにした。性能値と挙動は変えていない。
+
+### 絵（`src/view/sprites.ts`）
+
+スロットごとに 16×16 のドットパターンを持ち、重ねて描く。車体側は LEGS → BODY → SENSOR の順に1枚へ重ね、砲塔側は GUN の1枚。車体は `rotation`、砲塔は `gunHeading` で別々に回る（これまでと同じ）。
+
+| スロット | パーツ | 絵 |
+|---|---|---|
+| LEGS | Sprint | 車輪が片側3つ |
+| | Standard | これまでの履帯 |
+| | Pivot | 短くて幅の広い履帯 |
+| BODY | Light | 細くて前が尖った車体 |
+| | Standard | これまでの四角い車体 |
+| | Heavy | 履帯の内側まで覆う大きな車体。装甲板の鋲が入る |
+| GUN | Rapid | 細い砲身が2本 |
+| | Standard | これまでの砲塔と砲身 |
+| | Cannon | 大きな砲塔に、先端が太い長い砲身 |
+| SENSOR | Short | 車体後部に細い棒 |
+| | Standard | 車体後部に 2×2 の皿 |
+| | Scope | 車体前部の両角にレンズ |
+
+- パターンは上半分だけを書き、上下対称に写して作る（`mirrored`）。
+- パレットにセンサーの色（`sensor`）を足した。標準構成の絵は、これまでの絵にセンサーの皿が付いたもの。
+- 壊れたロボットは、同じ形をグレーのパレットで描く。
+
+### 画面
+
+- 戦闘画面: `BattleView.render()` が機体ごとの構成を受け取る。スプライトは「どのロボットか + 構成」ごとに、初めて要るときに作って使い回す。
+- 再生中の絵は**試合を記録したときの構成**。試合のあとでパーツを変えても変わらない。試合がないとき（開始位置の表示）は、今選んでいる構成で描くので、パーツを選ぶとすぐ変わる。
+- `config` の左上に、その構成のロボットのプレビュー（16×16 を 64px に拡大、そのロボットの色）。
+
+### 動作確認の結果
+
+- テストは 514件（追加 9件: すべてのパーツに絵がある、16×16、パレットの文字だけ、上下対称、同じスロットで絵が違う、標準構成はこれまでの絵と同じ）。
+- ブラウザで、全パーツを並べた拡大表示、`config` のプレビュー、構成の違う2台の試合、壊れたロボット、試合後にパーツを変えても戦闘画面が変わらないこと（キャンバスの内容が一致）を確認した。
 
 ## Phase 7: パーツ
 

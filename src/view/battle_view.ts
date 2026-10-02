@@ -1,4 +1,5 @@
 import type { ProgramFeatures } from '../ai/features';
+import { type Loadout, SLOTS } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
 import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
@@ -6,7 +7,7 @@ import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
 import { drawCoverMark, drawIncomingBulletMark, drawLeadMark, drawSightLine, drawTargetMarks } from './debug_overlay';
 import { drawEffects } from './effects_layer';
-import { DOT, ROBOT_PALETTES, WRECK_PALETTE, createRobotSprites } from './sprites';
+import { DOT, type RobotSprites, WRECK_PALETTE, createRobotSprites, paletteOf } from './sprites';
 
 const COLORS = {
   background: '#0f1215',
@@ -57,8 +58,8 @@ export interface RenderOptions {
 /** Draws one snapshot of a match onto a canvas, in a dot-art style. */
 export class BattleView {
   private readonly context: CanvasRenderingContext2D;
-  private readonly sprites = ROBOT_PALETTES.map(createRobotSprites);
-  private readonly wreck = createRobotSprites(WRECK_PALETTE);
+  /** The sprites painted so far, by who they are of: see spritesOf. */
+  private readonly sprites = new Map<string, RobotSprites>();
   /** Screen pixels per arena unit. */
   private scale = 1;
 
@@ -71,8 +72,14 @@ export class BattleView {
     this.context = context;
   }
 
-  /** `stats` are each robot's, in the order of the snapshot's robots. */
-  render(snapshot: Snapshot, arena: Arena, stats: readonly RobotStats[], options: RenderOptions): void {
+  /** `stats` and `loadouts` are each robot's, in the order of the snapshot's robots. */
+  render(
+    snapshot: Snapshot,
+    arena: Arena,
+    stats: readonly RobotStats[],
+    loadouts: readonly Loadout[],
+    options: RenderOptions,
+  ): void {
     if (!this.fit(arena)) return;
     const ctx = this.context;
     const pixel = 1 / this.scale;
@@ -98,7 +105,9 @@ export class BattleView {
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
-    snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats[index], debug, options.overrun));
+    snapshot.robots.forEach((robot, index) =>
+      this.drawRobot(robot, index, stats[index], loadouts[index], debug, options.overrun),
+    );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
@@ -141,7 +150,19 @@ export class BattleView {
   }
 
   private colorOf(robotIndex: number): string {
-    return ROBOT_PALETTES[robotIndex % ROBOT_PALETTES.length].body;
+    return paletteOf(robotIndex).body;
+  }
+
+  /** The sprites of the robot at the given index with the given parts, whole or wrecked. Painted the first time they are asked for. */
+  private spritesOf(robotIndex: number, loadout: Loadout, alive: boolean): RobotSprites {
+    const palette = alive ? paletteOf(robotIndex) : WRECK_PALETTE;
+    const key = [alive ? robotIndex : 'wreck', ...SLOTS.map((slot) => loadout[slot])].join('/');
+    let sprites = this.sprites.get(key);
+    if (sprites === undefined) {
+      sprites = createRobotSprites(palette, loadout);
+      this.sprites.set(key, sprites);
+    }
+    return sprites;
   }
 
   private drawBullet(bullet: BulletSnapshot): void {
@@ -158,11 +179,18 @@ export class BattleView {
     ctx.fillRect(bullet.x - half, bullet.y - half, BULLET_SIZE, BULLET_SIZE);
   }
 
-  private drawRobot(robot: RobotSnapshot, index: number, stats: RobotStats, showState: boolean, overrun: number): void {
+  private drawRobot(
+    robot: RobotSnapshot,
+    index: number,
+    stats: RobotStats,
+    loadout: Loadout,
+    showState: boolean,
+    overrun: number,
+  ): void {
     const ctx = this.context;
     const { x, y } = robot;
     const { radius } = stats;
-    const sprites = robot.alive ? this.sprites[index % this.sprites.length] : this.wreck;
+    const sprites = this.spritesOf(index, loadout, robot.alive);
     this.drawPart(sprites.hull, x, y, robot.rotation);
     this.drawPart(sprites.turret, x, y, robot.gunHeading);
 

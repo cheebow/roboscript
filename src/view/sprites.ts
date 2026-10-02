@@ -1,3 +1,5 @@
+import type { Loadout, Slot } from '../data/parts';
+
 /** One dot of a sprite covers this many arena units. */
 export const DOT = 2;
 
@@ -9,16 +11,36 @@ export interface RobotPalette {
   hatch: string;
   tread: string;
   treadLight: string;
+  sensor: string;
 }
 
 const TREAD = '#2b3238';
 const TREAD_LIGHT = '#48525b';
 const GUN = '#b9c2c9';
+const SENSOR = '#e8f4ff';
 
 /** One palette per robot, in spawn order: the player first. */
 export const ROBOT_PALETTES: readonly RobotPalette[] = [
-  { body: '#6fb7a8', shade: '#4d8a7d', light: '#9fd6c9', gun: GUN, hatch: '#1c2a28', tread: TREAD, treadLight: TREAD_LIGHT },
-  { body: '#d49a6a', shade: '#a8744a', light: '#ecc19c', gun: GUN, hatch: '#2e2118', tread: TREAD, treadLight: TREAD_LIGHT },
+  {
+    body: '#6fb7a8',
+    shade: '#4d8a7d',
+    light: '#9fd6c9',
+    gun: GUN,
+    hatch: '#1c2a28',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#d49a6a',
+    shade: '#a8744a',
+    light: '#ecc19c',
+    gun: GUN,
+    hatch: '#2e2118',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
 ];
 
 export const WRECK_PALETTE: RobotPalette = {
@@ -29,10 +51,16 @@ export const WRECK_PALETTE: RobotPalette = {
   hatch: '#22272b',
   tread: '#262b30',
   treadLight: '#30363c',
+  sensor: '#5a626a',
 };
 
+/** The palette of the robot at the given spawn index. */
+export function paletteOf(robotIndex: number): RobotPalette {
+  return ROBOT_PALETTES[robotIndex % ROBOT_PALETTES.length];
+}
+
 /** Which palette colour each character of a pattern stands for; '.' is transparent. */
-const PATTERN_COLORS: Record<string, keyof RobotPalette> = {
+export const PATTERN_COLORS: Record<string, keyof RobotPalette> = {
   b: 'body',
   d: 'shade',
   l: 'light',
@@ -40,47 +68,118 @@ const PATTERN_COLORS: Record<string, keyof RobotPalette> = {
   c: 'hatch',
   t: 'tread',
   T: 'treadLight',
+  s: 'sensor',
 };
 
-/** The hull of a robot seen from above, facing right: two treads and the body. */
-const HULL_PATTERN = [
-  '................',
-  '.tttttttttttt...',
-  '.TtTtTtTtTtTt...',
-  '.tttttttttttt...',
-  '..dbbbbbbbbd....',
-  '..bbbbbbbbbbl...',
-  '..bbbbbbbbbbl...',
-  '..bbbbbbbbbbl...',
-  '..bbbbbbbbbbl...',
-  '..bbbbbbbbbbl...',
-  '..bbbbbbbbbbl...',
-  '..dbbbbbbbbd....',
-  '.tttttttttttt...',
-  '.TtTtTtTtTtTt...',
-  '.tttttttttttt...',
-  '................',
-];
+/** Rows of dots, seen from above with the robot facing right. */
+export type Pattern = readonly string[];
 
-/** The turret, pointing right: the ring with its hatch, and the gun barrel. It turns about the middle of the pattern. */
-const TURRET_PATTERN = [
-  '................',
-  '................',
-  '................',
-  '................',
-  '................',
-  '................',
-  '......dddd......',
-  '......dccdggggg.',
-  '......dccdggggg.',
-  '......dddd......',
-  '................',
-  '................',
-  '................',
-  '................',
-  '................',
-  '................',
-];
+/** Patterns are this many dots wide and high: the robot's diameter. */
+export const PATTERN_SIZE = 16;
+
+const NONE = '................';
+
+/** A part looks the same on either side of the robot, so only its upper half is written out. */
+function mirrored(upperHalf: readonly string[]): Pattern {
+  return [...upperHalf, ...[...upperHalf].reverse()];
+}
+
+/**
+ * What each part looks like, by slot and part id. The legs, the body and the
+ * sensor lie on the hull, one over the other in that order; the gun is the
+ * turret, which turns about the middle of its pattern.
+ */
+export const PART_PATTERNS: Record<Slot, Record<string, Pattern>> = {
+  legs: {
+    // Three wheels a side.
+    sprint: mirrored([NONE, '.ttt..ttt..ttt..', '.tTt..tTt..tTt..', '.ttt..ttt..ttt..', NONE, NONE, NONE, NONE]),
+    standard: mirrored([NONE, '.tttttttttttt...', '.TtTtTtTtTtTt...', '.tttttttttttt...', NONE, NONE, NONE, NONE]),
+    // Short, wide tracks.
+    pivot: mirrored([
+      '...tttttttt.....',
+      '...TtTtTtTt.....',
+      '...tTtTtTtT.....',
+      '...tttttttt.....',
+      NONE,
+      NONE,
+      NONE,
+      NONE,
+    ]),
+  },
+  body: {
+    // Slim, with a pointed nose.
+    light: mirrored([
+      NONE,
+      NONE,
+      NONE,
+      NONE,
+      '....dbbbbd......',
+      '....bbbbbbbl....',
+      '....bbbbbbbbl...',
+      '....bbbbbbbbbl..',
+    ]),
+    standard: mirrored([
+      NONE,
+      NONE,
+      NONE,
+      NONE,
+      '..dbbbbbbbbd....',
+      '..bbbbbbbbbbl...',
+      '..bbbbbbbbbbl...',
+      '..bbbbbbbbbbl...',
+    ]),
+    // Armour plates that reach out over the legs.
+    heavy: mirrored([
+      NONE,
+      NONE,
+      NONE,
+      '.dddddddddddd...',
+      '.dbbbbbbbbbbdl..',
+      '.bbbbbbbbbbbbl..',
+      '.bbdbbbbbbdbbl..',
+      '.bbbbbbbbbbbbl..',
+    ]),
+  },
+  gun: {
+    // Two thin barrels.
+    rapid: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, '......ddddgggg..', '......dccd......']),
+    standard: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, '......dddd......', '......dccdggggg.']),
+    // A big turret and a long barrel with a muzzle brake.
+    cannon: mirrored([NONE, NONE, NONE, NONE, NONE, '.....dddddd.....', '.....dccccd...gg', '.....dccccdggggg']),
+  },
+  sensor: {
+    // A stub of an aerial at the back.
+    short: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, NONE, '...s............']),
+    // A dish at the back.
+    standard: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, NONE, '...ss...........']),
+    // A lens on each front corner.
+    scope: mirrored([NONE, NONE, NONE, NONE, NONE, '...........s....', NONE, NONE]),
+  },
+};
+
+/** The patterns laid one over the other, the last on top. */
+export function overlay(patterns: readonly Pattern[]): Pattern {
+  return Array.from({ length: PATTERN_SIZE }, (_, y) =>
+    Array.from({ length: PATTERN_SIZE }, (_, x) => {
+      const dots = patterns.map((pattern) => pattern[y][x]).filter((dot) => dot !== '.');
+      return dots.at(-1) ?? '.';
+    }).join(''),
+  );
+}
+
+function patternOf(loadout: Loadout, slot: Slot): Pattern {
+  const pattern = PART_PATTERNS[slot][loadout[slot]];
+  if (pattern === undefined) throw new Error(`No picture of the ${slot} part "${loadout[slot]}"`);
+  return pattern;
+}
+
+/** What a robot with the given parts is drawn from: its hull, and the turret on it. */
+export function patternsOf(loadout: Loadout): { hull: Pattern; turret: Pattern } {
+  return {
+    hull: overlay([patternOf(loadout, 'legs'), patternOf(loadout, 'body'), patternOf(loadout, 'sensor')]),
+    turret: patternOf(loadout, 'gun'),
+  };
+}
 
 /** The two parts a robot is drawn from, each turned its own way. */
 export interface RobotSprites {
@@ -88,12 +187,13 @@ export interface RobotSprites {
   turret: HTMLCanvasElement;
 }
 
-/** Paints the parts of a robot, one canvas pixel per dot. Draw them scaled by DOT, without smoothing. */
-export function createRobotSprites(palette: RobotPalette): RobotSprites {
-  return { hull: paint(HULL_PATTERN, palette), turret: paint(TURRET_PATTERN, palette) };
+/** Paints a robot with the given parts, one canvas pixel per dot. Draw the sprites scaled by DOT, without smoothing. */
+export function createRobotSprites(palette: RobotPalette, loadout: Loadout): RobotSprites {
+  const { hull, turret } = patternsOf(loadout);
+  return { hull: paint(hull, palette), turret: paint(turret, palette) };
 }
 
-function paint(pattern: readonly string[], palette: RobotPalette): HTMLCanvasElement {
+function paint(pattern: Pattern, palette: RobotPalette): HTMLCanvasElement {
   const sprite = document.createElement('canvas');
   sprite.width = pattern[0].length;
   sprite.height = pattern.length;

@@ -207,7 +207,7 @@ describe('strategies against the enemies', () => {
   });
 
   it('the sample AI beats DumbBot once it fires from further away', () => {
-    const improved = APPROACH.replace('enemy_distance < 250', 'enemy_distance < 350');
+    const improved = APPROACH.replace('attack(250)', 'attack(350)');
     expect(improved).not.toBe(APPROACH);
     expect(winners(improved, 'dumb_bot')).toEqual(['ALPHA']);
     expect(winners(improved, 'aggressive_bot')).toEqual(['ALPHA']);

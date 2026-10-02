@@ -24,13 +24,13 @@ npm run dev        # 表示された URL をブラウザで開く
 
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
 - PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（ロボット情報）を持つ。**敵（BRAVO）のコードも編集できる。**
-- `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** で、そのエディタにテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をロードできる（Cmd / Ctrl + Z で取り消せる）。初期状態は ALPHA が Sample、BRAVO が DumbBot。
+- `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
 - **DEBUG** で同じ試合を DEBUG モードで再生する（次に実行する行のハイライト、全種類のログ、行の実行時点への移動、戦闘画面に視線・ターゲット枠・最後に見た位置・ラベル）。視線などは INSPECTOR で選んでいるロボットのもの。
 - **PAUSE / PLAY** で停止 / 再開、**RESET** で初期配置に戻る。
-- BATTLE VIEW の下の操作列: PLAY / PAUSE、`◀1` と `1▶`（DEBUG では**1行**、RUN では 1tick ずつ戻る / 進む）、シークバー、再生速度（0.25x〜4x）。
+- BATTLE VIEW の下の操作列: PLAY / PAUSE、`◀1` と `1▶`（DEBUG では**1行**、RUN では 1tick ずつ戻る / 進む）、`◀◆` と `◆▶`（マークした行が実行される時点を前後に移動）、シークバー、再生速度（0.25x〜4x）。
 - DEBUG LOG の行をクリックすると、その時点に戻り、該当するコード行へ移動する。
-- DEBUG 中に CODE EDITOR の行番号（またはその左の余白）をクリックすると、**その行が次に実行される直前へ移動する**。もう一度クリックでその次へ、Shift+クリックで1つ前へ。その行が実行された時点は、シークバーに目印で出る。
+- DEBUG 中に CODE EDITOR の行番号（またはその左の余白）をクリックすると、その行に **マーク（◆）** が付き、**その行が次に実行される直前へ移動する**。実行された時点はシークバーに目印で出る。`◆▶` / `◀◆` で次 / 前の実行時点へ。**マークのある行をもう一度クリックすると外れる。**
 - WATCH には、プログラムが `set` した変数と、センサーの値が出る。
 - CODE EDITOR は入力を助ける: 入力候補（Enter / Tab で確定、`Ctrl+Space` で呼び出し）、語にカーソルを載せると説明、自動インデント、エラーの赤い波線、`Cmd / Ctrl + /` でコメント切り替え。
 - 構文エラーがあると、該当行が赤くなり、DEBUG LOG に ERROR が出て、試合は始まらない。
@@ -40,7 +40,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（471件）
+npm test           # Vitest（472件）
 npm run typecheck
 npm run build
 ```
@@ -369,7 +369,8 @@ loop
 | 実行済みの行（薄い緑） | 今の tick の中で、すでに通った行 |
 | `1▶` | **1行**進む。`if` や `set` の行では時間は進まず、行動の行を実行するとロボットが 1tick 動く |
 | `◀1` | 1行戻る |
-| 行番号をクリック | **その行が次に実行される直前へ移動する**（一時停止）。もう一度クリックでその次へ、最後まで行くと最初に戻る。Shift+クリックで1つ前へ。クリックした行には ◆ が付く |
+| 行番号をクリック | その行にマーク（◆）を付け、**その行が次に実行される直前へ移動する**（一時停止）。別の行をクリックするとマークが移る。**マークのある行をもう一度クリックすると外れる** |
+| `◆▶` / `◀◆` | マークした行が次 / 前に実行される時点へ移動する。最後まで行くと最初に戻る。マークがないとき、その行が一度も実行されないときは押せない |
 | シークバーの目印 | ◆ の行が実行された時点すべてに、細い線が出る。「いつ撃ったか」「この分岐に何回入ったか」が一目で分かる |
 | WATCH | 上にプログラムの変数（`set` したもの）、下にセンサーの値。行を進めると変数も変わる |
 | ログクリック | そのイベントを起こした行を「現在の行」にした位置（実行の直前）へ移動する。行のないイベント（HIT など）はその tick へ |
@@ -404,39 +405,53 @@ loop
 
 ```text
 # "drive" keeps the hull going. Each turn, aim or fire takes one tick.
+
+# Goes round whatever is in the way.
+def avoid()
+    label SEARCH
+    turn left
+
+# Shoots from within the given distance, and drives up to the enemy from further away.
+def attack(distance)
+    turn enemy
+
+    if enemy_distance < distance
+        label ATTACK
+        drive stop
+        fire
+    else
+        label TRACK
+        drive forward
+
+def search()
+    label SEARCH
+    drive forward
+    wait
+
 loop
     if blocked
-        label SEARCH
-        turn left
+        avoid()
     else
         if enemy_visible
-            turn enemy
-
-            if enemy_distance < 250
-                label ATTACK
-                drive stop
-                fire
-            else
-                label TRACK
-                drive forward
+            attack(250)
         else
-            label SEARCH
-            drive forward
-            wait
+            search()
 ```
 
+- **関数の使い方の見本を兼ねる。** することを3つの関数（`avoid` / `attack` / `search`）に分け、最後のループはどれを呼ぶかを選ぶだけにしている。`attack` は引数（撃ち始める距離）を取る。動きは関数にする前と同じ（全テンプレート × 9マップの対戦結果が一致することを確認した）。
 - 正面がふさがっていたら左へ旋回する（走行は前進のままなので、向きが空けば走り出す）。
 - 敵が見えていれば車体を敵へ向け、遠ければ走って近づき、距離 250 未満なら止まって撃つ。
+- **最初の学び**は、最後のループの `attack(250)` を `attack(350)` に変えること（DumbBot に勝てるようになる）。
 - **砲塔は使わない**（正面のまま、車体ごと敵へ向く）。プレイヤーが `aim` を使い始める余地を残している。
 - 敵が見えなければ、前進して探す。
 - **ALPHA は左へ、BRAVO は右へ回り込む。** 向かい合っているので、両者が障害物の同じ側へ回り込んで出会う。
-- すでに保存されているコード（ブラウザの localStorage）は書き換わらない。`move` を使った古いコードはエラーになり、`drive` を案内する。LOAD TEMPLATE の Sample で新しいサンプルにできる。
+- すでに保存されているコード（ブラウザの localStorage）は書き換わらない。`move` や `state` を使った古いコードはエラーになり、`drive` / `label` を案内する。LOAD TEMPLATE の Sample で新しいサンプルにできる。
 
 ### テンプレートと、2体のコード（`src/data/templates/`）
 
 | テンプレート | 内容 |
 |---|---|
-| Sample | 車体を敵へ向けて近づき、距離250未満なら止まって撃つ |
+| Sample | 車体を敵へ向けて近づき、距離250未満なら止まって撃つ。`avoid` / `attack(distance)` / `search` の3つの関数と、それを呼び分けるループで書いてある |
 | DumbBot | Sample と同じで、距離300未満で撃つ |
 | AggressiveBot | 止まらずに敵へ走り、射程（400）内なら撃つ |
 | CowardBot | 距離300未満なら後退しながら撃つ。後ろがふさがったら（`blocked_behind`）止まって撃つ。距離400未満なら止まって撃ち、それより遠ければ近づく |
@@ -496,16 +511,16 @@ loop
 
 | 時刻 | 出来事 | ALPHA が実行する行 |
 |---|---|---|
-| 0.033 | 敵は見えない。前進を始める（`SEARCH`、`drive forward`） | 2, 3, 6, 7, 17, 18, 19, **20** |
-| 1.667 | 中央のブロックに当たる（`blocked`）。ALPHA は左へ、BRAVO は右へ、約90°旋回する | 2, 3, 4, **5** |
-| 約2.2 | 向きが空いて、ブロックに沿って走り出す（どちらも画面の下側へ） | 2, 3, 6, 7, 17, 18, 19, **20** |
-| 2.733 | ブロックの角を抜けて互いが見える。車体を敵へ向ける | 2, 3, 6, 7, **8** |
-| 2.767 | 走って近づく（`TRACK`）。毎tick、車体を敵へ向け直す | 10, 14, 15, 16, 2, 3, 6, 7, **8** |
+| 0.033 | 敵は見えない。前進を始める（`search`: `SEARCH`、`drive forward`） | 25, 26, 28, 29, 31, 32, 21, 22, **23** |
+| 1.667 | 中央のブロックに当たる（`blocked`）。`avoid` で ALPHA は左へ、BRAVO は右へ、約90°旋回する | 25, 26, 27, 5, **6** |
+| 約2.2 | 向きが空いて、ブロックに沿って走り出す（どちらも画面の下側へ） | 25, 26, 28, 29, 31, 32, 21, 22, **23** |
+| 2.733 | ブロックの角を抜けて互いが見える。`attack(250)` で車体を敵へ向ける | 25, 26, 28, 29, 30, **10** |
+| 2.767 | 走って近づく（`TRACK`）。毎tick、車体を敵へ向け直す | 12, 16, 17, 18, 25, 26, 28, 29, 30, **10** |
 | 3.567 | BRAVO が距離300未満で止まり、撃ち始める | |
-| 4.067 | ALPHA が距離250未満で止まり、撃ち始める（`ATTACK`）。5発撃つ | 10, 11, 12, **13** |
+| 4.067 | ALPHA が距離250未満で止まり、撃ち始める（`ATTACK`）。5発撃つ | 12, 13, 14, **15** |
 | 7.267 | ALPHA が破壊され、BRAVO の勝ち（BRAVO HP 20） | |
 
-太字はその tick の行動の行。`drive` の行（12、16、19）は時間を使わない。
+太字はその tick の行動の行。ループ（25〜32行）が関数を呼び、関数の中の行動（6、10、15、23行）で tick が終わる。`drive` の行（14、18、22）は時間を使わない。
 
 ### 対戦結果（seed 1〜5）
 
@@ -570,7 +585,7 @@ loop
 - **「動かずに撃つ」は負けなしでなくなった。** 横走り型は Cross 以外の8マップで、動かず撃つ型に5回とも勝つ（テストで固定）。今の位置を狙う弾は、横に走る相手の後ろを通るため。
 - **横走りには「先読み」が効く。** Open Field では、`aim lead` で撃つ動かず先読み型が横走り型に勝つ。遠距離維持型も勝つ。障害物の多い Center Block では、横走り型は DumbBot と GuardBot に負ける（往復できる幅が狭く、折り返しのたびに当てられる）。
 - **どの戦い方にも負ける相手がいる。** 横走り型がいちばん勝ちが多いが、上のとおり負ける相手がある。防御型は横走り型に負け、動かず撃つ型は横走り型と GuardBot に負ける。
-- **最初の学びはそのまま成り立つ。** 既定のマップで、サンプルAIは DumbBot に負け、射撃距離を 250 → 350 にすると勝つ。
+- **最初の学びはそのまま成り立つ。** 既定のマップで、サンプルAIは DumbBot に負け、射撃距離を 250 → 350 にすると勝つ（`attack(250)` → `attack(350)`）。
 - **`guard` は「入れれば得だが、それだけでは勝てない」強さになった。** 当たる tick だけ構える防御型は、Center Block で StrafeBot 以外の敵5種に勝つが、Open Field と Long Wall では CowardBot に負ける。1〜2tick 早く構える「早すぎる防御型」は回数を無駄にし、Center Block でも CowardBot に負ける。GuardBot は、射撃距離を 350 にしただけのサンプルにも Center Block と Open Field で負ける。
 - **隠れるだけでは勝てない。** CoverBot は Center Block でどの相手にも勝てない。逃げ込む間に撃たれ、出てきたあとも不利なまま。
 - テンプレート同士の全組み合わせに時間切れはない。プレイヤー側の戦い方では、動かない者同士（互いに近づかない）と、Open Field の遠距離維持型 対 CoverBot などが時間切れの引き分けになる。

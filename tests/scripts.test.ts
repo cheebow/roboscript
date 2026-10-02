@@ -46,7 +46,7 @@ describe('sample AI against DumbBot', () => {
   });
 
   it('wins after raising the fire distance', () => {
-    const improved = SAMPLE_AI.replace('enemy_distance < 250', 'enemy_distance < 350');
+    const improved = SAMPLE_AI.replace('attack(250)', 'attack(350)');
     expect(improved).not.toBe(SAMPLE_AI);
     for (const seed of SEEDS) {
       expect(playAgainstDumbBot(improved, seed).result?.winnerId).toBe('ALPHA');

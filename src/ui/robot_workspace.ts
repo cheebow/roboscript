@@ -9,8 +9,8 @@ export interface WorkspaceCallbacks {
   edited(workspace: RobotWorkspace): void;
   /** Called with a description when saving fails, and with null once it works again. */
   saveProblem(problem: string | null): void;
-  /** Called when the number or the margin of a line is clicked; `shift` when Shift was held. */
-  lineClicked(workspace: RobotWorkspace, line: number, shift: boolean): void;
+  /** Called when the number or the margin of a line is clicked. */
+  lineClicked(workspace: RobotWorkspace, line: number): void;
 }
 
 /**
@@ -33,7 +33,7 @@ export class RobotWorkspace {
       container,
       source,
       () => this.handleEdit(),
-      (line, shift) => this.callbacks.lineClicked(this, line, shift),
+      (line) => this.callbacks.lineClicked(this, line),
     );
   }
 

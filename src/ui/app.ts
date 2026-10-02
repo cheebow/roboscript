@@ -20,6 +20,7 @@ import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
+import { ActionMenu } from './action_menu';
 import { renderConfig } from './config_view';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
@@ -72,7 +73,7 @@ class App {
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
-  private readonly templatePicker = requireElement<HTMLSelectElement>('load-template');
+  private readonly templateMenu: ActionMenu;
   /** The arena the next match is fought in. */
   private arena = findArena(this.store?.loadInfo().arena ?? null);
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
@@ -110,13 +111,20 @@ class App {
       playPause: () => this.togglePlay(),
       step: () => this.step(),
       stepBack: () => this.stepBack(),
+      nextRun: () => this.goToRun('next'),
+      previousRun: () => this.goToRun('previous'),
       seek: (tick) => this.replay?.seek(tick),
       setSpeed: (speed) => this.setSpeed(speed),
     });
+    this.templateMenu = new ActionMenu(
+      requireElement('template-menu'),
+      requireElement<HTMLButtonElement>('load-template'),
+      TEMPLATES.map(({ id, name }) => ({ id, label: name })),
+      (id) => this.loadTemplate(id),
+    );
     this.projectPanel = new ProjectPanel(requireElement('project-tree'), ROBOT_IDS, (file) => this.showFile(file));
     this.workspaces = ROBOT_IDS.map((robotId, robotIndex) => this.createWorkspace(robotId, robotIndex));
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
-    this.setUpTemplatePicker();
     if (this.store === null) {
       this.events = [appEvent('warning', 'storage is unavailable: code will not be saved')];
     }
@@ -132,22 +140,16 @@ class App {
       saveProblem: (problem) => {
         this.saveProblem = problem;
       },
-      lineClicked: (workspace, line, shift) => this.followLine(workspace, line, shift),
+      lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
     });
   }
 
   /** Loading a template replaces the code of the robot whose file is shown, written for that robot's side. */
-  private setUpTemplatePicker(): void {
-    const picker = this.templatePicker;
-    picker.append(...TEMPLATES.map((template) => new Option(template.name, template.id)));
-    picker.addEventListener('change', () => {
-      const template = findTemplate(picker.value);
-      // Back to the caption, so the same template can be picked again.
-      picker.selectedIndex = 0;
-      if (template === undefined) return;
-      const { robotIndex } = this.shownFile;
-      this.workspaces[robotIndex].load(templateSource(template, robotIndex));
-    });
+  private loadTemplate(id: string): void {
+    const template = findTemplate(id);
+    if (template === undefined) return;
+    const { robotIndex } = this.shownFile;
+    this.workspaces[robotIndex].load(templateSource(template, robotIndex));
   }
 
   /** Records a match with the code in the editors and plays it back, unless some code has errors. */
@@ -272,18 +274,34 @@ class App {
   }
 
   /**
-   * Goes to the next time the robot runs the clicked line (with Shift, the
-   * time before), and marks every time it runs on the seek bar. Only while
-   * debugging, and only as long as the code is the code that was run.
+   * Marks the clicked line: goes to the next time the robot runs it, and
+   * marks every time it runs on the seek bar. Clicking the marked line again
+   * takes the mark off. Only while debugging, and only as long as the code is
+   * the code that was run.
    */
-  private followLine(workspace: RobotWorkspace, line: number, backwards: boolean): void {
+  private toggleFollowedLine(workspace: RobotWorkspace, line: number): void {
     const { replay } = this;
     if (replay === null || this.mode !== 'debug' || workspace.stale) return;
     const robotIndex = this.workspaces.indexOf(workspace);
-    if (backwards) replay.seekToPreviousRun(workspace.robotId, line);
-    else replay.seekToNextRun(workspace.robotId, line);
+    const marked = this.followedNow();
+    if (marked !== null && marked.robotIndex === robotIndex && marked.line === line) {
+      this.followed = null;
+      return;
+    }
+    replay.seekToNextRun(workspace.robotId, line);
     const marks = replay.runsOf(workspace.robotId, line).map((run) => run.tick);
     this.followed = { robotIndex, line, replay, marks };
+  }
+
+  /** Goes to the next or the previous time the marked line runs, and shows its program. */
+  private goToRun(which: 'next' | 'previous'): void {
+    const followed = this.followedNow();
+    if (followed === null) return;
+    const robotId = ROBOT_IDS[followed.robotIndex];
+    if (which === 'next') followed.replay.seekToNextRun(robotId, followed.line);
+    else followed.replay.seekToPreviousRun(robotId, followed.line);
+    this.showFile(codeFileOf(followed.robotIndex));
+    this.workspaces[followed.robotIndex].editor.scrollToLine(followed.line);
   }
 
   /** The followed line, if it belongs to the match being shown and its code has not changed since. */
@@ -320,7 +338,7 @@ class App {
       requireElement(elementId).hidden = !(isCode && robotIndex === file.robotIndex);
     });
     requireElement('config').hidden = isCode;
-    this.templatePicker.hidden = !isCode;
+    this.templateMenu.hidden = !isCode;
     if (!isCode) renderConfig(requireElement('config'), robotId, AI_LABEL, ROBOT_DEFAULTS);
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;

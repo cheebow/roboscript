@@ -118,43 +118,58 @@ describe('parser: statements', () => {
     expect(parseOk('set count = 3')).toEqual([{ kind: 'set', line: 1, name: 'count', value: number(3) }]);
   });
 
-  it('parses the sample AI: a loop around nested ifs, below a comment', () => {
-    const body = parseOk(SAMPLE_AI);
-    expect(body.map((statement) => statement.kind)).toEqual(['loop']);
+  it('parses the sample AI: three functions and a loop that chooses between them', () => {
+    const { program, errors } = parse(SAMPLE_AI);
+    expect(errors).toEqual([]);
+    if (program === null) throw new Error('Expected the sample to parse');
 
-    const loop = body[0] as LoopNode;
-    expect(loop.line).toBe(2);
-    const blocked = loop.body[0] as IfNode;
-    expect(blocked).toMatchObject({ line: 3, condition: { kind: 'boolean_variable', name: 'blocked' }, elseLine: 6 });
-    expect(blocked.thenBody).toEqual([
-      { kind: 'label', line: 4, label: 'SEARCH' },
-      { kind: 'turn', line: 5, direction: 'left' },
-    ]);
-
-    const inSight = blocked.elseBody[0] as IfNode;
-    expect(inSight).toMatchObject({ line: 7, condition: VISIBLE, elseLine: 17 });
-    expect(inSight.thenBody.map((statement) => statement.kind)).toEqual(['turn', 'if']);
-    expect(inSight.elseBody).toEqual([
-      { kind: 'label', line: 18, label: 'SEARCH' },
-      { kind: 'drive', line: 19, setting: 'forward' },
-      { kind: 'wait', line: 20 },
-    ]);
-
-    expect(inSight.thenBody[1]).toEqual({
-      kind: 'if',
-      line: 10,
-      condition: comparison('enemy_distance', '<', 250),
-      thenBody: [
-        { kind: 'label', line: 11, label: 'ATTACK' },
-        { kind: 'drive', line: 12, setting: 'stop' },
-        { kind: 'fire', line: 13 },
-      ],
-      elseLine: 14,
-      elseBody: [
-        { kind: 'label', line: 15, label: 'TRACK' },
-        { kind: 'drive', line: 16, setting: 'forward' },
+    expect([...program.functions.keys()]).toEqual(['avoid', 'attack', 'search']);
+    expect(program.functions.get('avoid')).toEqual({
+      name: 'avoid',
+      line: 4,
+      params: [],
+      body: [
+        { kind: 'label', line: 5, label: 'SEARCH' },
+        { kind: 'turn', line: 6, direction: 'left' },
       ],
     });
+    const attack = program.functions.get('attack');
+    expect(attack).toMatchObject({ line: 9, params: ['distance'] });
+    expect(attack?.body).toEqual([
+      { kind: 'turn', line: 10, direction: 'enemy' },
+      {
+        kind: 'if',
+        line: 12,
+        condition: {
+          kind: 'comparison',
+          operator: '<',
+          left: { kind: 'sensor', name: 'enemy_distance' },
+          right: { kind: 'variable', name: 'attack.distance' },
+        },
+        thenBody: [
+          { kind: 'label', line: 13, label: 'ATTACK' },
+          { kind: 'drive', line: 14, setting: 'stop' },
+          { kind: 'fire', line: 15 },
+        ],
+        elseLine: 16,
+        elseBody: [
+          { kind: 'label', line: 17, label: 'TRACK' },
+          { kind: 'drive', line: 18, setting: 'forward' },
+        ],
+      },
+    ]);
+
+    expect(program.body.map((statement) => statement.kind)).toEqual(['loop']);
+    const loop = program.body[0] as LoopNode;
+    expect(loop.line).toBe(25);
+    const blocked = loop.body[0] as IfNode;
+    expect(blocked).toMatchObject({ line: 26, condition: { kind: 'boolean_variable', name: 'blocked' }, elseLine: 28 });
+    expect(blocked.thenBody).toEqual([{ kind: 'call', line: 27, name: 'avoid', args: [] }]);
+
+    const inSight = blocked.elseBody[0] as IfNode;
+    expect(inSight).toMatchObject({ line: 29, condition: VISIBLE, elseLine: 31 });
+    expect(inSight.thenBody).toEqual([{ kind: 'call', line: 30, name: 'attack', args: [number(250)] }]);
+    expect(inSight.elseBody).toEqual([{ kind: 'call', line: 32, name: 'search', args: [] }]);
   });
 
   it('nests loops, whiles and ifs, and returns to the outer block after them', () => {

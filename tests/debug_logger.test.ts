@@ -67,9 +67,9 @@ describe('debug events of a match', () => {
 
   it('reports a change of label with the line that set it', () => {
     expect(select(events, { type: 'ai', robotId: 'ALPHA' })).toMatchObject([
-      { tick: 1, message: 'label IDLE -> SEARCH', sourceLine: 18 },
-      { message: 'label SEARCH -> TRACK', sourceLine: 15 },
-      { message: 'label TRACK -> ATTACK', sourceLine: 11 },
+      { tick: 1, message: 'label IDLE -> SEARCH', sourceLine: 21 },
+      { message: 'label SEARCH -> TRACK', sourceLine: 17 },
+      { message: 'label TRACK -> ATTACK', sourceLine: 13 },
     ]);
   });
 
@@ -80,18 +80,18 @@ describe('debug events of a match', () => {
     // Forward to the centre block, a quarter turn left, along the block, then
     // turning to the enemy, closing in on it and stopping to shoot.
     expect(actions.map(({ message, sourceLine }) => ({ message, sourceLine }))).toEqual([
-      { message: 'drive forward', sourceLine: 19 },
-      { message: 'turn left', sourceLine: 5 },
-      { message: 'turn enemy', sourceLine: 8 },
-      { message: 'drive forward', sourceLine: 16 },
-      { message: 'drive stop', sourceLine: 12 },
+      { message: 'drive forward', sourceLine: 22 },
+      { message: 'turn left', sourceLine: 6 },
+      { message: 'turn enemy', sourceLine: 10 },
+      { message: 'drive forward', sourceLine: 18 },
+      { message: 'drive stop', sourceLine: 14 },
     ]);
   });
 
   it('reports every shot with the line that fired it', () => {
     const shots = select(events, { type: 'action', robotId: 'ALPHA', message: 'fire' });
     expect(shots).toHaveLength(ROBOT_DEFAULTS.maxAmmo - alpha.weapon.ammo);
-    expect(shots.every((event) => event.sourceLine === 13)).toBe(true);
+    expect(shots.every((event) => event.sourceLine === 15)).toBe(true);
   });
 
   it('reports every hit with the damage and remaining HP', () => {

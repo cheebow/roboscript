@@ -152,17 +152,16 @@ export class CodeEditor {
 
   /**
    * `onChange` is called with the new text after every edit; `onLineClick`
-   * with the 1-based line whose number or margin was clicked, and whether
-   * Shift was held.
+   * with the 1-based line whose number or margin was clicked.
    */
   constructor(
     parent: HTMLElement,
     source: string,
     onChange: (source: string) => void,
-    onLineClick: (line: number, shift: boolean) => void,
+    onLineClick: (line: number) => void,
   ) {
-    const passOnClick = (view: EditorView, line: BlockInfo, event: Event): boolean => {
-      onLineClick(view.state.doc.lineAt(line.from).number, event instanceof MouseEvent && event.shiftKey);
+    const passOnClick = (view: EditorView, line: BlockInfo): boolean => {
+      onLineClick(view.state.doc.lineAt(line.from).number);
       return true;
     };
     this.view = new EditorView({
@@ -211,9 +210,13 @@ export class CodeEditor {
     return this.view.state.doc.toString();
   }
 
-  /** Replaces the whole text. The change can be undone like any edit. */
+  /**
+   * Replaces the whole text. The change can be undone like any edit: the
+   * editor takes the focus, so that the undo key works right away.
+   */
   setSource(source: string): void {
     this.view.dispatch({ changes: { from: 0, to: this.view.state.doc.length, insert: source } });
+    this.view.focus();
   }
 
   /**
@@ -306,6 +309,13 @@ export class CodeEditor {
     if (key === (this.shown.get(highlight) ?? '')) return;
     this.shown.set(highlight, key);
     this.view.dispatch({ effects: highlight.set.of(lines) });
+  }
+
+  /** Scrolls the given 1-based line into view, leaving the selection alone. */
+  scrollToLine(lineNumber: number): void {
+    const { doc } = this.view.state;
+    if (lineNumber < 1 || lineNumber > doc.lines) return;
+    this.view.dispatch({ effects: EditorView.scrollIntoView(doc.line(lineNumber).from, { y: 'nearest' }) });
   }
 
   /** Scrolls to the given 1-based line and selects it. */

@@ -215,29 +215,30 @@ describe('runtime: conditions', () => {
 });
 
 describe('runtime: the sample AI', () => {
+  // Lines of the sample: the loop (25-32) calls avoid (4-6), attack (9-18) and search (20-23).
+  const SEARCH_ROUND = [25, 26, 28, 29, 31, 32, 21, 22, 23];
+  const SIGHTED_ROUND = [25, 26, 28, 29, 30, 10];
+
   it('drives on while the enemy is hidden, round the loop once a tick', () => {
     const actions = runTicks(SAMPLE_AI, 2);
     expect(actions.map(describe1)).toEqual(['nothing', 'nothing']);
-    expect(actions.map((action) => action.executedLines)).toEqual([
-      [2, 3, 6, 7, 17, 18, 19, 20],
-      [2, 3, 6, 7, 17, 18, 19, 20],
-    ]);
+    expect(actions.map((action) => action.executedLines)).toEqual([SEARCH_ROUND, SEARCH_ROUND]);
     expect(actions[0]).toMatchObject({ drive: 'forward', label: 'SEARCH' });
   });
 
   it('turns away while the way ahead is blocked', () => {
     const [action] = runTicks(SAMPLE_AI, 1, { blocked: true });
-    expect(action).toMatchObject({ turn: 'left', label: 'SEARCH', executedLines: [2, 3, 4, 5] });
+    expect(action).toMatchObject({ turn: 'left', label: 'SEARCH', executedLines: [25, 26, 27, 5, 6] });
   });
 
   it('keeps its hull on a distant enemy while it drives up to it', () => {
     const far = runTicks(SAMPLE_AI, 3, { enemyVisible: true, enemyDistance: 400 });
     expect(far.map(describe1)).toEqual(['turn enemy', 'turn enemy', 'turn enemy']);
-    // Setting the drive takes no time, so the round goes on to the next turn.
+    // Setting the drive takes no time, so the function ends and the loop goes on to the next turn.
     expect(far.map((action) => action.executedLines)).toEqual([
-      [2, 3, 6, 7, 8],
-      [10, 14, 15, 16, 2, 3, 6, 7, 8],
-      [10, 14, 15, 16, 2, 3, 6, 7, 8],
+      SIGHTED_ROUND,
+      [12, 16, 17, 18, ...SIGHTED_ROUND],
+      [12, 16, 17, 18, ...SIGHTED_ROUND],
     ]);
     expect(far[0].drive).toBeNull();
     expect(far[1]).toMatchObject({ drive: 'forward', label: 'TRACK' });
@@ -246,7 +247,12 @@ describe('runtime: the sample AI', () => {
   it('stops and takes two ticks per round on a close enemy: one to turn, one to fire', () => {
     const near = runTicks(SAMPLE_AI, 3, { enemyVisible: true, enemyDistance: 100 });
     expect(near.map(describe1)).toEqual(['turn enemy', 'fire', 'turn enemy']);
-    expect(near[1]).toMatchObject({ drive: 'stop', label: 'ATTACK', executedLines: [10, 11, 12, 13] });
+    expect(near[1]).toMatchObject({ drive: 'stop', label: 'ATTACK', executedLines: [12, 13, 14, 15] });
+  });
+
+  it('passes the distance to fire from to its attack', () => {
+    const [action] = runTicks(SAMPLE_AI, 1, { enemyVisible: true, enemyDistance: 100 });
+    expect(action.assignments).toEqual([{ afterLines: 5, name: 'attack.distance', value: 250 }]);
   });
 
   it('runs the same way every time', () => {

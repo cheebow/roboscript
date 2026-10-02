@@ -234,7 +234,16 @@ button {
   cursor: pointer;
 }
 
-#load-template {
+/* A button that opens a list of things to do (see ActionMenu). */
+.menu {
+  position: relative;
+}
+
+.menu[hidden] {
+  display: none;
+}
+
+.menu-button {
   padding: 0;
   border: 0;
   background: none;
@@ -244,12 +253,49 @@ button {
   cursor: pointer;
 }
 
-#load-template:hover {
+.menu-button::after {
+  content: ' ▾';
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded='true'] {
   color: var(--text);
 }
 
-#load-template[hidden] {
+.menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.menu-list[hidden] {
   display: none;
+}
+
+.menu-item {
+  padding: 2px 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--selection);
 }
 
 /* The program's own variables sit above the sensor values, set apart by a rule,

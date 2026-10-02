@@ -13,9 +13,11 @@ const { tickRate, maxFrameTime } = MATCH_DEFAULTS;
 const TICK = 1 / tickRate;
 // Lines of the sample AI (ALPHA's program).
 /** `fire`: the action taken, on alternate ticks, once the enemy is close enough. */
-const FIRE_LINE = 13;
-/** What the sample runs on a tick with the enemy hidden and the way clear: it sets the drive (no time) and ends in `wait`. */
-const SEARCH_LINES = [2, 3, 6, 7, 17, 18, 19, 20];
+const FIRE_LINE = 15;
+/** What the sample runs on a tick with the enemy hidden and the way clear: round the loop, into `search`, ending in `wait`. */
+const SEARCH_LINES = [25, 26, 28, 29, 31, 32, 21, 22, 23];
+/** Round the loop into `attack`, as far as its `turn enemy`. */
+const SIGHTED_LINES = [25, 26, 28, 29, 30, 10];
 /** `fire` in DumbBot (BRAVO's program). */
 const BRAVO_FIRE_LINE = 12;
 
@@ -95,11 +97,11 @@ describe('recordMatch', () => {
     expect(linesAt(1)).toEqual(SEARCH_LINES);
     expect(linesAt(2)).toEqual(SEARCH_LINES);
     const blockedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].blocked);
-    expect(linesAt(blockedAt)).toEqual([2, 3, 4, 5]);
+    expect(linesAt(blockedAt)).toEqual([25, 26, 27, 5, 6]);
     // With a distant enemy in sight, every tick ends on the turn towards it; setting the drive takes no time.
     const sightedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
-    expect(linesAt(sightedAt)).toEqual([2, 3, 6, 7, 8]);
-    expect(linesAt(sightedAt + 1)).toEqual([10, 14, 15, 16, 2, 3, 6, 7, 8]);
+    expect(linesAt(sightedAt)).toEqual(SIGHTED_LINES);
+    expect(linesAt(sightedAt + 1)).toEqual([12, 16, 17, 18, ...SIGHTED_LINES]);
   });
 
   it('records what the AI assigned to its variables, and their values after each tick', () => {
@@ -425,7 +427,7 @@ describe('ReplayManager: the runs of a line', () => {
     const { snapshots } = replay.recording;
     const shots = replay.runsOf('ALPHA', FIRE_LINE);
 
-    // The sample fires on its fifth line of the tick (10, 11, 12, then 13); it tries more often than the gun allows.
+    // The sample fires on the fourth line of its tick (12, 13, 14, then 15); it tries more often than the gun allows.
     expect(shots.length).toBeGreaterThan(ROBOT_DEFAULTS.maxAmmo - snapshots.at(-1)!.robots[0].ammo);
     for (const { tick, index } of shots) {
       expect(snapshots[tick + 1].robots[0].executedLines[index]).toBe(FIRE_LINE);
@@ -468,7 +470,7 @@ describe('ReplayManager: going to where a line runs', () => {
     expect(replay.playing).toBe(false);
     expect(replay.tick).toBe(first.tick);
     expect(replay.currentLine('ALPHA')).toBe(FIRE_LINE);
-    expect(replay.linesSoFar('ALPHA')).toEqual([10, 11, 12]);
+    expect(replay.linesSoFar('ALPHA')).toEqual([12, 13, 14]);
     // Nothing has been fired yet; one step fires.
     expect(replay.snapshot.robots[0].ammo).toBe(ROBOT_DEFAULTS.maxAmmo);
     replay.stepLine();

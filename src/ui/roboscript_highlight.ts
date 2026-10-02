@@ -11,18 +11,23 @@ import {
 
 const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'def', 'return', 'and', 'or', 'not']);
 const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'set']);
+/** The commands that are followed by a direction. */
+const DIRECTED_WORDS = new Set(['drive', 'turn', 'aim']);
 
 const NUMBER = /^\d+(\.\d+)?/;
 const OPERATOR = /^(<=|>=|==|!=|[<>=+\-*/()])/;
 const WORD = /^[A-Za-z_][A-Za-z0-9_]*/;
 
-/** What the tokenizer remembers along a line: whether the next word is the name given by `label`. */
+/** What the tokenizer remembers along a line. */
 interface LineState {
+  /** The next word is the name given by `label`. */
   naming: boolean;
+  /** The next word is the direction of a `drive`, `turn` or `aim`. */
+  directing: boolean;
 }
 
 const language = StreamLanguage.define<LineState>({
-  startState: () => ({ naming: false }),
+  startState: () => ({ naming: false, directing: false }),
   languageData: {
     commentTokens: { line: '#' },
     closeBrackets: { brackets: ['('] },
@@ -30,7 +35,10 @@ const language = StreamLanguage.define<LineState>({
     indentOnInput: /^\s*else$/,
   },
   token(stream, state) {
-    if (stream.sol()) state.naming = false;
+    if (stream.sol()) {
+      state.naming = false;
+      state.directing = false;
+    }
     if (stream.eatSpace()) return null;
     if (stream.peek() === '#') {
       stream.skipToEnd();
@@ -45,8 +53,11 @@ const language = StreamLanguage.define<LineState>({
         state.naming = false;
         return 'atom';
       }
+      // A direction may also be a sensor on its own, as "hit" is: after its command it is the direction.
+      const directed = state.directing && isDirection(word);
       state.naming = word === 'label';
-      return classifyWord(word);
+      state.directing = DIRECTED_WORDS.has(word);
+      return directed ? 'atom' : classifyWord(word);
     }
     stream.next();
     return 'invalid';
@@ -57,7 +68,7 @@ function classifyWord(word: string): string | null {
   if (CONTROL_WORDS.has(word)) return 'keyword';
   if (COMMAND_WORDS.has(word)) return 'typeName';
   if (isBooleanVariable(word) || isNumberVariable(word)) return 'variableName';
-  if (isDriveSetting(word) || isTurnDirection(word) || isAimDirection(word)) return 'atom';
+  if (isDirection(word)) return 'atom';
   // Any other word is a variable of the program's own.
   return 'name';
 }
@@ -77,4 +88,8 @@ const style = HighlightStyle.define([
 /** Syntax highlighting for RoboScript. */
 export function roboscriptHighlight(): Extension {
   return [language, syntaxHighlighting(style)];
+}
+
+function isDirection(word: string): boolean {
+  return isDriveSetting(word) || isTurnDirection(word) || isAimDirection(word);
 }

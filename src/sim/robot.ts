@@ -256,6 +256,8 @@ export class RobotController {
         return this.reading.lastSeen === null ? 0 : clamp(this.reading.enemyAngle, -maxStep, maxStep);
       case 'cover':
         return clamp(this.around.cover?.angle ?? 0, -maxStep, maxStep);
+      case 'hit':
+        return clamp(this.hitSensed.hitAngle, -maxStep, maxStep);
     }
   }
 

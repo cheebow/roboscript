@@ -79,7 +79,7 @@ describe('completionsAt: arguments', () => {
     expect(offered('drive b|')).toEqual(['backward']);
     expect(offered('aim |')).toEqual(['left', 'right', 'enemy', 'lead', 'ahead']);
     expect(offered('aim l|')).toEqual(['left', 'lead']);
-    expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover']);
+    expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover', 'hit']);
     expect(offered('turn left |', true)).toBeNull();
   });
 

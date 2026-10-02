@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { completionsAt } from '../src/ai/completion';
+import { parse } from '../src/ai/parser';
+import { describeAt } from '../src/ai/reference';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import type { RobotStats } from '../src/data/robot_defaults';
 import { type AIContext, type RobotBrain, createIdleAction } from '../src/sim/ai_context';
@@ -216,5 +219,69 @@ describe('touching_enemy', () => {
     const simulation = createSimulation([driving(), driving()]);
     runTicks(simulation, 2 * tickRate);
     expect(simulation.robots.map((robot) => robot.blocked)).toEqual([false, false]);
+  });
+});
+
+describe('turn hit', () => {
+  /** ALPHA faces up the field, with BRAVO, which shoots at it once, on its right. */
+  function shotFromTheRight(program: string) {
+    const brains: [RobotBrain, RobotBrain] = [compileBrain(program), new FixedBrain({ fire: true })];
+    const arena = { ...DUEL_ARENA, spawns: [{ ...DUEL_ARENA.spawns[0], rotation: -90 }, DUEL_ARENA.spawns[1]] };
+    const simulation = createSimulation(brains, {
+      arena,
+      robots: [
+        { id: 'ALPHA', brain: brains[0], stats: NO_SPREAD_STATS },
+        { id: 'BRAVO', brain: brains[1], stats: { ...NO_SPREAD_STATS, maxAmmo: 1 } },
+      ],
+    });
+    return { simulation, robot: simulation.robots[0] };
+  }
+
+  it('is a statement of the language', () => {
+    expect(parse('loop\n    turn hit')).toMatchObject({
+      errors: [],
+      program: { body: [{ kind: 'loop', body: [{ kind: 'turn', line: 2, direction: 'hit' }] }] },
+    });
+    expect(parse('aim hit').errors).toMatchObject([{ line: 1, message: 'Unknown direction "hit"' }]);
+  });
+
+  it('does nothing until the robot has been hit', () => {
+    const { simulation, robot } = shotFromTheRight('loop\n    turn hit');
+    const before = robot.rotation;
+    runTicks(simulation, 5);
+    expect(robot.hp).toBe(maxHp);
+    expect(robot.rotation).toBe(before);
+  });
+
+  it('turns the hull to where the bullet came from, and stops there', () => {
+    const { simulation, robot } = shotFromTheRight('loop\n    turn hit');
+    runUntilHit(simulation);
+    simulation.step();
+    // A quarter turn to the right, at the speed the hull turns: 6 deg a tick.
+    expect(robot.rotation).toBeCloseTo(-90 + NO_SPREAD_STATS.rotateSpeed / tickRate);
+    runTicks(simulation, tickRate);
+    expect(robot.rotation).toBeCloseTo(0);
+    expect(robot.hitReading.hitAngle).toBeCloseTo(0);
+    expect(robot.sensorReading.enemyAngle).toBeCloseTo(0);
+  });
+
+  it('still knows the way after the program has looked at hit', () => {
+    const program = ['loop', '    if hit', '        label HIT', '    turn hit'].join('\n');
+    const { simulation, robot } = shotFromTheRight(program);
+    runUntilHit(simulation);
+    runTicks(simulation, tickRate);
+    expect(robot.label).toBe('HIT');
+    expect(robot.rotation).toBeCloseTo(0);
+  });
+
+  it('is offered and explained as a direction after turn, and as a sensor elsewhere', () => {
+    const after = (source: string) => completionsAt(source, source.length, true)?.options.find((option) => option.word === 'hit');
+    expect(after('turn ')).toMatchObject({ kind: 'direction' });
+    expect(after('if ')).toMatchObject({ kind: 'sensor' });
+    expect(completionsAt('aim ', 4, true)?.options.map((option) => option.word)).not.toContain('hit');
+
+    const turning = 'loop\n    if hit\n        turn hit';
+    expect(describeAt(turning, turning.indexOf('if hit') + 4)).toMatchObject({ word: 'hit', kind: 'sensor' });
+    expect(describeAt(turning, turning.indexOf('turn hit') + 6)).toMatchObject({ word: 'hit', kind: 'direction' });
   });
 });

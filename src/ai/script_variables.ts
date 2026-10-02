@@ -42,7 +42,7 @@ export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;
 export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 
 export const DRIVE_SETTINGS: readonly string[] = ['forward', 'backward', 'stop'] satisfies DriveSetting[];
-export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover'] satisfies TurnDirection[];
+export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover', 'hit'] satisfies TurnDirection[];
 export const AIM_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'lead', 'ahead'] satisfies AimDirection[];
 
 /** Words with a meaning of their own, which a program may not use as a variable name. */

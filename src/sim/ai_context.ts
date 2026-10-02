@@ -5,8 +5,8 @@ export const INITIAL_LABEL = 'IDLE';
 export type DriveDirection = 'forward' | 'backward';
 /** What the hull is set to do until told otherwise. */
 export type DriveSetting = DriveDirection | 'stop';
-/** Which way the hull turns. */
-export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover';
+/** Which way the hull turns: `cover` is towards the hiding place, `hit` towards where the bullet that last hit the robot came from. */
+export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover' | 'hit';
 /** Which way the turret turns: `lead` is where the enemy will be when a bullet gets there, `ahead` the front of the hull. */
 export type AimDirection = 'left' | 'right' | 'enemy' | 'lead' | 'ahead';
 

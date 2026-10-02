@@ -54,7 +54,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（590件）
+npm test           # Vitest（595件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -473,7 +473,7 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 
 | 種類 | 文 | かかる時間 |
 |---|---|---|
-| 行動 | 車体の旋回 `turn left` / `right` / `enemy` / `cover`、砲塔の旋回 `aim left` / `right` / `enemy` / `lead` / `ahead`、`fire` / `guard` / `wait` | **1tick** |
+| 行動 | 車体の旋回 `turn left` / `right` / `enemy` / `cover` / `hit`、砲塔の旋回 `aim left` / `right` / `enemy` / `lead` / `ahead`、`fire` / `guard` / `wait` | **1tick** |
 | 走行 | `drive forward` / `drive backward` / `drive stop`（止めるまで走り続ける） | なし |
 | 制御 | `if 条件` / `else` / `loop`（ずっと繰り返す）/ `while 条件`（条件が真の間繰り返す） | なし |
 | 関数 | `def 名前(引数, …)` で定義、`名前(値, …)` で呼ぶ、`return` / `return 式` で抜ける（下記） | 呼び出し自体はなし |
@@ -508,7 +508,7 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 | `wall_ahead` / `wall_behind` / `wall_left` / `wall_right` | その方向の壁・障害物までの距離（下記） |
 | `aim_angle` / `lead_angle` / `gun_angle` | 砲塔から敵まで、砲塔から敵の移動先までの角度と、車体の上での砲塔の向き（下記） |
 | `weapon_range` | 自分の銃の射程。積んでいる GUN で決まる（標準は 400） |
-| `hit` / `hit_angle` | 撃たれたか（読むまで真）、最後に当たった弾が来た方向（下記） |
+| `hit` / `hit_angle` | 撃たれたか（読むまで真）、最後に当たった弾が来た方向。`turn hit` でその方向へ旋回する（下記） |
 | `touching_enemy` | 相手ロボットと接している（下記） |
 
 実装: `ScriptBrain`（`src/ai/runtime.ts`）は JavaScript のジェネレータで書いたインタプリタで、行動の文で `yield` して tick を終え、次の `decide()` で続きから再開する。実行位置と変数はロボットごとに持つ。エンジン側（`RobotBrain` / `AIContext` / `AIAction`、`Simulation`）の形は変えていない。同じ seed・同じコードなら同じ結果になる。
@@ -529,6 +529,20 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 - 最後に当たった弾が飛んできた方向。度で、0 が車体の正面、右が正（`enemy_angle` と同じ基準）。
 - フィールド上の方角として覚えておき、読むたびに今の車体の向きから測り直す。車体をその方向へ回せば 0 に近づく。
 - `hit` を読んでも消えない。次に撃たれるまで同じ方角を指す。一度も撃たれていなければ 0。
+
+**`turn hit`（行動、1tick）**
+
+- 最後に当たった弾が来た方向へ車体を旋回する（`turn enemy` や `turn cover` と同じ動き方。1tick に回れる分だけ回り、向き終えたら止まる）。
+- 一度も撃たれていなければ何もしない（その tick は使う）。
+- `hit` を読んだあとでも方向は覚えているので、`if hit` で気づいてから `turn hit` で向き直れる。
+- `hit` は、条件に書けばセンサー、`turn` の後ろに書けば方向。エディタの色、入力候補、ホバーの説明も、書いた場所に合わせて出る。`aim hit` はない。
+
+```text
+loop
+    if hit
+        label HIT
+    turn hit
+```
 
 **`touching_enemy`（真偽）**
 
@@ -552,7 +566,7 @@ loop
 
 実装: 被弾は `RobotController.noteHit()`（`src/sim/robot.ts`）が「まだ読まれていない被弾」と弾の来た方角を覚える。`AIContext.hit` は読むと印が付く形で渡し、その tick の判断が終わったら、読まれていた場合だけ下ろす。接触は `Simulation` が毎 tick のはじめに判定する。WATCH に3つとも出る。
 
-確認: テスト 590件（追加 17件）。標準構成の 882試合は、これまでと完全に一致（読むだけの語を足しても挙動は変わらない）。ブラウザで、上のプログラムが被弾を数え、接したところで `BUMPED` に切り替わること、入力候補に3語が出ることを確認した。
+確認: テスト 595件（`hit` / `hit_angle` / `touching_enemy` で 17件、`turn hit` で 5件を追加）。標準構成の 882試合は、これまでと完全に一致（読むだけの語を足しても挙動は変わらない）。ブラウザで、上のプログラムが被弾を数え、接したところで `BUMPED` に切り替わること、入力候補に3語が出ることを確認した。
 
 ### 走りながら撃つ: 走行、砲塔、偏差射撃
 

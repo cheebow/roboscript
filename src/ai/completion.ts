@@ -2,6 +2,7 @@ import { type Token, lex } from './lexer';
 import {
   type ProgramVariable,
   type WordReference,
+  describeDirection,
   describeFunction,
   describeLabel,
   describeParameter,
@@ -48,6 +49,8 @@ interface Expectation {
   functions?: boolean;
   /** Offer the labels the program uses on other lines. */
   labels?: boolean;
+  /** The words are directions: they are described as what they mean after "turn" or "aim". */
+  directions?: boolean;
   /** Offer the list as soon as the cursor gets here, rather than once a letter is typed. */
   eager: boolean;
 }
@@ -80,7 +83,7 @@ export function completionsAt(source: string, position: number, explicit = false
   const functions = expectation.functions ? programFunctions(withoutLine(source, lineStart)) : [];
   const suggestions: Suggestion[] = [
     ...expectation.words
-      .map((word) => describeWord(word))
+      .map((word) => (expectation.directions ? describeDirection(word) : describeWord(word)))
       .filter((reference) => reference !== undefined)
       .map((reference) => ({ ...reference, insert: TAKES_MORE.has(reference.word) ? `${reference.word} ` : reference.word })),
     ...(expectation.variables && owner !== null ? owner.params.map((param) => plain(describeParameter(param, owner))) : []),
@@ -130,9 +133,9 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
     case 'drive':
       return argument ? { words: DRIVE_SETTINGS, variables: false, eager: true } : null;
     case 'aim':
-      return argument ? { words: AIM_DIRECTIONS, variables: false, eager: true } : null;
+      return argument ? { words: AIM_DIRECTIONS, variables: false, directions: true, eager: true } : null;
     case 'turn':
-      return argument ? { words: TURN_DIRECTIONS, variables: false, eager: true } : null;
+      return argument ? { words: TURN_DIRECTIONS, variables: false, directions: true, eager: true } : null;
     case 'label':
       // Any word will do; the ones already in use are the likely ones.
       return argument ? { words: [], variables: false, labels: true, eager: true } : null;

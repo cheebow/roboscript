@@ -255,7 +255,7 @@ const LANGUAGE: readonly WordReference[] = [
     word: 'hit',
     kind: 'sensor',
     hint: 'a bullet has hit the robot',
-    summary: 'True once an enemy bullet has hit the robot, and until the program has looked: however many ticks it takes to get to a line that reads it, it is still true there, and false again from the next tick. See hit_angle for where the bullet came from.',
+    summary: 'True once an enemy bullet has hit the robot, and until the program has looked: however many ticks it takes to get to a line that reads it, it is still true there, and false again from the next tick. See hit_angle for where the bullet came from; "turn hit" turns the hull that way.',
   },
   {
     word: 'hit_angle',
@@ -273,9 +273,29 @@ const LANGUAGE: readonly WordReference[] = [
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));
 
+/** Words that, as the direction of a turn, mean something of their own. */
+const AS_DIRECTION = new Map<string, WordReference>([
+  [
+    'hit',
+    {
+      word: 'hit',
+      kind: 'direction',
+      hint: 'towards where the last hit came from',
+      summary: 'Towards where the bullet that last hit the robot came from (see hit_angle). Does nothing before the first hit.',
+    },
+  ],
+]);
+/** What comes before a direction on its line. */
+const BEFORE_DIRECTION = /\b(?:turn|aim)\s+$/;
+
 /** What a word of the language means; undefined for anything else, such as a program's own variables. */
 export function describeWord(word: string): WordReference | undefined {
   return BY_WORD.get(word);
+}
+
+/** What a word means as the direction of a turn or of the aim. */
+export function describeDirection(word: string): WordReference | undefined {
+  return AS_DIRECTION.get(word) ?? describeWord(word);
 }
 
 /** A variable of the program's own, with the 1-based line that first sets it. */
@@ -393,7 +413,8 @@ export function describeAt(source: string, position: number): Description | null
   if (from === to) return null;
 
   const word = code.slice(from, to);
-  const reference = describeWord(word) ?? describeOwn(source, position, word);
+  const known = BEFORE_DIRECTION.test(code.slice(0, from)) ? describeDirection(word) : describeWord(word);
+  const reference = known ?? describeOwn(source, position, word);
   if (reference === undefined) return null;
   return { ...reference, from: lineStart + from, to: lineStart + to };
 }

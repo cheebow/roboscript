@@ -15,7 +15,7 @@ set searching = 0  # ticks since it last saw the enemy
 loop
     if hp < 60 and hidden == 0 and cover_visible
         set hidden = 1
-        state EVADE
+        label EVADE
 
         # After hiding, go round obstacles the other way, to come at the enemy head-on.
         set other_way = 1
@@ -48,7 +48,7 @@ loop
                 set other_way = 1 - other_way
 
         if blocked
-            state SEARCH
+            label SEARCH
             if other_way == 1
                 turn ${otherSide(avoid)}
             else
@@ -58,14 +58,14 @@ loop
                 turn enemy
 
                 if enemy_distance < 350
-                    state ATTACK
+                    label ATTACK
                     drive stop
                     fire
                 else
-                    state TRACK
+                    label TRACK
                     drive forward
             else
-                state SEARCH
+                label SEARCH
                 drive forward
                 wait
 `;

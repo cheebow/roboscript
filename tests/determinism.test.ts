@@ -8,7 +8,7 @@ import { compileBrain, createSimulation, enemySource } from './helpers';
 
 function snapshot(simulation: Simulation): string {
   return JSON.stringify({
-    robots: simulation.robots.map(({ position, rotation, hp, state }) => ({ position, rotation, hp, state })),
+    robots: simulation.robots.map(({ position, rotation, hp, label }) => ({ position, rotation, hp, label })),
     bullets: simulation.bullets,
   });
 }

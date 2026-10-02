@@ -27,11 +27,11 @@ loop
 
         if crossing == 0
             # Too far to shoot: close in.
-            state TRACK
+            label TRACK
             drive forward
             turn enemy
         else
-            state ATTACK
+            label ATTACK
             if forward == 1
                 drive forward
             else
@@ -63,7 +63,7 @@ loop
                 drive backward
             aim lead
         else
-            state SEARCH
+            label SEARCH
             drive forward
 
             if blocked

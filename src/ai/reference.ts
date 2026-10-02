@@ -1,10 +1,9 @@
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
-import { ROBOT_STATES } from '../sim/ai_context';
 import { isReservedWord } from './script_variables';
 
 /** What part a word plays in the language. */
-export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'state' | 'variable';
+export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'variable' | 'label';
 
 /** What a word of RoboScript means, as told to the player while writing. */
 export interface WordReference {
@@ -58,10 +57,10 @@ const LANGUAGE: readonly WordReference[] = [
     summary: `Gives a variable a number: set name = value. A variable reads as 0 until it is set. ${NO_TIME}`,
   },
   {
-    word: 'state',
+    word: 'label',
     kind: 'command',
-    hint: 'label what the robot is doing',
-    summary: `Labels what the robot is doing (${ROBOT_STATES.join(', ')}), shown under the robot and in the log. ${NO_TIME}`,
+    hint: 'name what the robot is doing',
+    summary: `Names what the robot is doing, with any word: label HIDING. The name is shown under the robot, and logged when it changes. It changes nothing else. ${NO_TIME}`,
   },
   {
     word: 'drive',
@@ -234,11 +233,6 @@ const LANGUAGE: readonly WordReference[] = [
     hint: 'the turret on the hull',
     summary: `Angle of the gun on the hull, ${ANGLE}.`,
   },
-  { word: 'IDLE', kind: 'state', hint: 'doing nothing', summary: 'State label: doing nothing. Every robot starts in it.' },
-  { word: 'SEARCH', kind: 'state', hint: 'looking for the enemy', summary: 'State label: looking for the enemy.' },
-  { word: 'TRACK', kind: 'state', hint: 'closing in', summary: 'State label: following the enemy.' },
-  { word: 'ATTACK', kind: 'state', hint: 'shooting', summary: 'State label: attacking the enemy.' },
-  { word: 'EVADE', kind: 'state', hint: 'getting away', summary: 'State label: getting away from the enemy.' },
 ];
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));
@@ -255,6 +249,7 @@ export interface ProgramVariable {
 }
 
 const SET_STATEMENT = /^\s*set\s+([A-Za-z_][A-Za-z0-9_]*)/;
+const LABEL_STATEMENT = /^\s*label\s+([A-Za-z_][A-Za-z0-9_]*)/;
 
 /** The variables a program sets, in the order they first appear. */
 export function programVariables(source: string): ProgramVariable[] {
@@ -264,6 +259,20 @@ export function programVariables(source: string): ProgramVariable[] {
     if (name !== undefined && !isReservedWord(name) && !variables.has(name)) variables.set(name, { name, line: index + 1 });
   });
   return [...variables.values()];
+}
+
+/** The names a program gives with `label`, each once, in the order they first appear. */
+export function programLabels(source: string): string[] {
+  const labels = new Set<string>();
+  for (const text of source.split(/\r?\n/)) {
+    const label = LABEL_STATEMENT.exec(withoutComment(text))?.[1];
+    if (label !== undefined) labels.add(label);
+  }
+  return [...labels];
+}
+
+export function describeLabel(label: string): WordReference {
+  return { word: label, kind: 'label', hint: 'label', summary: 'A label this program uses elsewhere.' };
 }
 
 export function describeVariable(variable: ProgramVariable): WordReference {

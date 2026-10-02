@@ -36,7 +36,7 @@ describe('sample AI against DumbBot', () => {
   it('finds the enemy and fights to a finish', () => {
     const simulation = playAgainstDumbBot(SAMPLE_AI, 1);
     expect(simulation.result?.reason).toBe('destroyed');
-    expect(simulation.robots.every((robot) => robot.state === 'ATTACK')).toBe(true);
+    expect(simulation.robots.every((robot) => robot.label === 'ATTACK')).toBe(true);
   });
 
   it('loses as shipped', () => {

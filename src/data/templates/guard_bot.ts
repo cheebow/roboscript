@@ -14,7 +14,7 @@ loop
         guard
     else
         if blocked
-            state SEARCH
+            label SEARCH
             turn ${avoid}
         else
             if enemy_visible
@@ -25,14 +25,14 @@ loop
                     guard
                 else
                     if enemy_distance < 300
-                        state ATTACK
+                        label ATTACK
                         drive stop
                         fire
                     else
-                        state TRACK
+                        label TRACK
                         drive forward
             else
-                state SEARCH
+                label SEARCH
                 drive forward
                 wait
 `;

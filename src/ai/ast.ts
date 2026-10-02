@@ -1,4 +1,4 @@
-import type { AimDirection, DriveSetting, RobotState, TurnDirection } from '../sim/ai_context';
+import type { AimDirection, DriveSetting, TurnDirection } from '../sim/ai_context';
 import type { BooleanVariableName, NumberVariableName } from './script_variables';
 
 export type ComparisonOperator = '<' | '>' | '<=' | '>=' | '==' | '!=';
@@ -60,10 +60,11 @@ export type ActionNode =
   | { kind: 'guard'; line: number }
   | { kind: 'wait'; line: number };
 
-export interface StateNode {
-  kind: 'state';
+/** Names what the robot is doing, for show: under the robot, and in the log when it changes. Takes no time. */
+export interface LabelNode {
+  kind: 'label';
   line: number;
-  state: RobotState;
+  label: string;
 }
 
 /** Sets how the hull drives from now on. Takes no time: the driving goes on alongside the actions. */
@@ -73,7 +74,7 @@ export interface DriveNode {
   setting: DriveSetting;
 }
 
-export type StatementNode = IfNode | LoopNode | WhileNode | SetNode | ActionNode | StateNode | DriveNode;
+export type StatementNode = IfNode | LoopNode | WhileNode | SetNode | ActionNode | LabelNode | DriveNode;
 
 export interface Program {
   body: StatementNode[];

@@ -8,7 +8,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'state', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
@@ -33,7 +33,7 @@ describe('completionsAt: statements', () => {
   it('offers the statements that start with what is typed at the start of a line', () => {
     expect(offered('w|')).toEqual(['while', 'wait']);
     expect(offered('g|')).toEqual(['guard']);
-    expect(offered('loop\n    s|')).toEqual(['set', 'state']);
+    expect(offered('loop\n    l|')).toEqual(['loop', 'label']);
     expect(offered('dr|')).toEqual(['drive']);
     expect(offered('mo|')).toBeNull();
   });
@@ -72,15 +72,19 @@ describe('completionsAt: arguments', () => {
     expect(offered('turn left |', true)).toBeNull();
   });
 
-  it('offers the states after state, whatever the case typed', () => {
-    expect(offered('state |')).toEqual(['IDLE', 'SEARCH', 'TRACK', 'ATTACK', 'EVADE']);
-    expect(offered('state a|')).toEqual(['ATTACK']);
+  it('offers the labels the program uses elsewhere after label, whatever the case typed', () => {
+    const program = 'loop\n    label HUNTING\n    wait\n    label hiding\n    label HUNTING\n    ';
+    expect(offered(`${program}label |`)).toEqual(['HUNTING', 'hiding']);
+    expect(offered(`${program}label hu|`)).toEqual(['HUNTING']);
+    // Any word will do as a label, so there is nothing to offer in a program without one.
+    expect(offered('label |')).toBeNull();
+    expect(offered('label ATT|')).toBeNull();
   });
 
   it('marks the words that need something after them', () => {
     const options = completionsAt('', 0, true)?.options ?? [];
     const needingMore = options.filter((option) => option.addSpace).map((option) => option.word);
-    expect(needingMore).toEqual(['if', 'while', 'set', 'state', 'drive', 'turn', 'aim']);
+    expect(needingMore).toEqual(['if', 'while', 'set', 'label', 'drive', 'turn', 'aim']);
   });
 
   it('carries a hint and a summary for each word', () => {

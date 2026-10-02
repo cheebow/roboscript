@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeAt, describeWord, programVariables } from '../src/ai/reference';
+import { describeAt, describeWord, programLabels, programVariables } from '../src/ai/reference';
 import {
   AIM_DIRECTIONS,
   BOOLEAN_VARIABLES,
@@ -8,7 +8,6 @@ import {
   NUMBER_VARIABLES,
   TURN_DIRECTIONS,
 } from '../src/ai/script_variables';
-import { ROBOT_STATES } from '../src/sim/ai_context';
 
 describe('describeWord', () => {
   it('describes every word of the language', () => {
@@ -16,7 +15,6 @@ describe('describeWord', () => {
       ...KEYWORDS,
       ...Object.keys(BOOLEAN_VARIABLES),
       ...Object.keys(NUMBER_VARIABLES),
-      ...ROBOT_STATES,
       ...DRIVE_SETTINGS,
       ...TURN_DIRECTIONS,
       ...AIM_DIRECTIONS,
@@ -33,6 +31,9 @@ describe('describeWord', () => {
   it('knows nothing about other words', () => {
     expect(describeWord('count')).toBeUndefined();
     expect(describeWord('idle')).toBeUndefined();
+    // Labels are the player's own words now, not words of the language.
+    expect(describeWord('ATTACK')).toBeUndefined();
+    expect(describeWord('state')).toBeUndefined();
   });
 });
 
@@ -47,6 +48,17 @@ describe('programVariables', () => {
 
   it('leaves out comments and names that are not allowed', () => {
     expect(programVariables('# set a = 1\nset hp = 1\nset loop = 2\nreset = 3')).toEqual([]);
+  });
+});
+
+describe('programLabels', () => {
+  it('lists the names a program gives with label, each once, in the order they first appear', () => {
+    const source = 'label SEARCH\nloop\n    label hiding  # label LATER\n    label SEARCH\n    wait';
+    expect(programLabels(source)).toEqual(['SEARCH', 'hiding']);
+  });
+
+  it('is empty for a program without labels', () => {
+    expect(programLabels('loop\n    wait')).toEqual([]);
   });
 });
 

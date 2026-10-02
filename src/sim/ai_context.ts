@@ -1,5 +1,5 @@
-export const ROBOT_STATES = ['IDLE', 'SEARCH', 'TRACK', 'ATTACK', 'EVADE'] as const;
-export type RobotState = (typeof ROBOT_STATES)[number];
+/** The label every robot carries until its program gives it one. */
+export const INITIAL_LABEL = 'IDLE';
 
 /** Robots drive like tanks: along their heading only, never sideways. */
 export type DriveDirection = 'forward' | 'backward';
@@ -68,8 +68,8 @@ export interface AIAction {
   fire: boolean;
   /** Brace for this tick: hits do less damage. */
   guard: boolean;
-  /** null keeps the current state. */
-  state: RobotState | null;
+  /** A name for what the robot is doing, to show and to log. It changes nothing else; null keeps the current one. */
+  label: string | null;
   /** Source lines the AI executed on this tick, in order. */
   executedLines: number[];
   /** The source line that decided each part of the action, where known. */
@@ -99,7 +99,7 @@ export interface ActionSourceLines {
   aim: number | null;
   fire: number | null;
   guard: number | null;
-  state: number | null;
+  label: number | null;
 }
 
 export interface RobotBrain {
@@ -113,9 +113,9 @@ export function createIdleAction(): AIAction {
     aim: null,
     fire: false,
     guard: false,
-    state: null,
+    label: null,
     executedLines: [],
-    sourceLines: { drive: null, turn: null, aim: null, fire: null, guard: null, state: null },
+    sourceLines: { drive: null, turn: null, aim: null, fire: null, guard: null, label: null },
     assignments: [],
     status: 'running',
   };

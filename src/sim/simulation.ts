@@ -211,10 +211,10 @@ export class Simulation {
   }
 
   private think(robot: RobotController) {
-    const previousState = robot.state;
+    const previousLabel = robot.label;
     const action = robot.think();
-    if (robot.state !== previousState) {
-      this.reporter?.stateChanged(robot.id, previousState, robot.state, action.sourceLines.state);
+    if (robot.label !== previousLabel) {
+      this.reporter?.labelChanged(robot.id, previousLabel, robot.label, action.sourceLines.label);
     }
     this.reporter?.actionDecided(robot.id, action);
     return action;

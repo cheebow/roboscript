@@ -15,7 +15,6 @@ import {
   isDriveSetting,
   isNumberVariable,
   isReservedWord,
-  isRobotState,
   isTurnDirection,
 } from './script_variables';
 
@@ -173,12 +172,15 @@ class Parser {
         expectEnd(rest, `turn ${argument.text}`);
         return { kind: 'turn', line: lineNumber, direction: argument.text };
       }
-      case 'state': {
-        if (argument === undefined) throw new LineError('Expected state name after "state"');
-        if (!isRobotState(argument.text)) throw new LineError(`Unknown state "${argument.text}"`);
-        expectEnd(rest, `state ${argument.text}`);
-        return { kind: 'state', line: lineNumber, state: argument.text };
+      case 'label': {
+        if (argument === undefined) throw new LineError('Expected a name after "label"');
+        if (argument.type !== 'word') throw new LineError(`A label is a single word, such as HIDING: "${argument.text}" is not`);
+        expectEnd(rest, `label ${argument.text}`);
+        return { kind: 'label', line: lineNumber, label: argument.text };
       }
+      case 'state':
+        // The command of earlier versions, which only knew five names.
+        throw new LineError(`"state" is now "label": use "label ${argument?.text ?? 'NAME'}" (any name will do)`);
       case 'fire':
       case 'guard':
       case 'wait':

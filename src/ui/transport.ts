@@ -4,8 +4,6 @@ import { formatTimestamp } from './format';
 export interface TransportHandlers {
   /** Toggles between playing and paused. */
   playPause(): void;
-  /** Plays without stopping at breakpoints. */
-  playOn(): void;
   step(): void;
   stepBack(): void;
   seek(tick: number): void;
@@ -18,8 +16,8 @@ export interface TransportState {
   lastTick: number;
   tickRate: number;
   playing: boolean;
-  /** Whether there are breakpoints to play past: only when debugging. */
-  canPlayOn: boolean;
+  /** Ticks to mark on the seek bar: the moments the followed line runs. The same array for as long as they stay the same. */
+  marks: readonly number[];
   /** Whether there is anything left to step forward / back to. */
   canStep: boolean;
   canStepBack: boolean;
@@ -28,20 +26,25 @@ export interface TransportState {
 const SELECTED_CLASS = 'selected';
 const PAUSE_LABEL = 'PAUSE';
 const PLAY_LABEL = 'PLAY';
+/** Half the width of the seek bar's thumb, in CSS pixels: the thumb's middle stops this far short of either end. */
+const SEEK_THUMB_HALF_PX = 4.5;
+const MARK_WIDTH_PX = 1;
+const MARK_COLOR_VARIABLE = '--syntax-value';
 
-/** The replay controls under the battle view: play / pause, play past breakpoints, single steps (a line or a tick), seek bar, speed, clock. */
+/** The replay controls under the battle view: play / pause, single steps (a line or a tick), seek bar with marks, speed, clock. */
 export class Transport {
   private readonly playButton = requireElement<HTMLButtonElement>('transport-play');
-  private readonly playOnButton = requireElement<HTMLButtonElement>('play-on');
   private readonly stepBackButton = requireElement<HTMLButtonElement>('step-back');
   private readonly stepButton = requireElement<HTMLButtonElement>('step');
   private readonly seekBar = requireElement<HTMLInputElement>('seek');
+  private readonly marksCanvas = requireElement<HTMLCanvasElement>('seek-marks');
+  /** What the marks were last drawn for, to skip frames on which nothing changed. */
+  private drawnMarks: { marks: readonly number[]; lastTick: number; width: number } | null = null;
   private readonly clock = requireElement('clock');
   private readonly speedButtons = new Map<number, HTMLButtonElement>();
 
   constructor(speeds: readonly number[], handlers: TransportHandlers) {
     this.playButton.addEventListener('click', handlers.playPause);
-    this.playOnButton.addEventListener('click', handlers.playOn);
     this.stepBackButton.addEventListener('click', handlers.stepBack);
     this.stepButton.addEventListener('click', handlers.step);
     this.seekBar.addEventListener('input', () => handlers.seek(this.seekBar.valueAsNumber));
@@ -63,17 +66,41 @@ export class Transport {
     const playLabel = state?.playing ? PAUSE_LABEL : PLAY_LABEL;
     if (this.playButton.textContent !== playLabel) this.playButton.textContent = playLabel;
     this.playButton.disabled = state === null;
-    this.playOnButton.disabled = state === null || !state.canPlayOn;
     this.stepBackButton.disabled = state === null || !state.canStepBack;
     this.stepButton.disabled = state === null || !state.canStep;
     this.seekBar.disabled = state === null;
     if (this.seekBar.max !== String(lastTick)) this.seekBar.max = String(lastTick);
     if (this.seekBar.valueAsNumber !== tick) this.seekBar.value = String(tick);
 
+    this.drawMarks(state?.marks ?? [], lastTick);
+
     const clock =
       state === null ? '' : `${formatTimestamp(tick / state.tickRate)} / ${formatTimestamp(lastTick / state.tickRate)}`;
     if (this.clock.textContent !== clock) this.clock.textContent = clock;
 
     for (const [value, button] of this.speedButtons) button.classList.toggle(SELECTED_CLASS, value === speed);
+  }
+
+  /** Draws a thin line on the seek bar at every marked tick, lined up with where the thumb would be. */
+  private drawMarks(marks: readonly number[], lastTick: number): void {
+    const canvas = this.marksCanvas;
+    const width = canvas.clientWidth;
+    const drawn = this.drawnMarks;
+    if (drawn !== null && drawn.marks === marks && drawn.lastTick === lastTick && drawn.width === width) return;
+    this.drawnMarks = { marks, lastTick, width };
+
+    const density = window.devicePixelRatio;
+    canvas.width = Math.round(width * density);
+    canvas.height = Math.round(canvas.clientHeight * density);
+    const context = canvas.getContext('2d');
+    if (context === null || marks.length === 0 || lastTick === 0) return;
+
+    context.scale(density, density);
+    context.fillStyle = getComputedStyle(canvas).getPropertyValue(MARK_COLOR_VARIABLE);
+    const travel = width - SEEK_THUMB_HALF_PX * 2;
+    for (const tick of marks) {
+      const x = SEEK_THUMB_HALF_PX + (tick / lastTick) * travel;
+      context.fillRect(Math.round(x - MARK_WIDTH_PX / 2), 0, MARK_WIDTH_PX, canvas.clientHeight);
+    }
   }
 }

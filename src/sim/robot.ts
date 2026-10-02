@@ -6,9 +6,9 @@ import type {
   DriveDirection,
   DriveSetting,
   RobotBrain,
-  RobotState,
   TurnDirection,
 } from './ai_context';
+import { INITIAL_LABEL } from './ai_context';
 import { leadPoint } from './aiming';
 import { clamp, headingVector, normalizeAngle } from './math';
 import { EMPTY_READING, type Sensor, type SensorReading, measure } from './sensor';
@@ -42,7 +42,8 @@ export class RobotController {
   /** What the hull keeps doing until the brain sets something else. */
   driving: DriveSetting = 'stop';
   hp: number;
-  state: RobotState = 'IDLE';
+  /** What the brain last called what it is doing. For show only. */
+  label: string = INITIAL_LABEL;
   /** Braced on the current tick: hits do less damage. */
   guarding = false;
   /** The tick on which the robot last guarded; null until it has. */
@@ -154,7 +155,7 @@ export class RobotController {
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
     const action = this.brain.decide(this.buildContext());
-    if (action.state !== null) this.state = action.state;
+    if (action.label !== null) this.label = action.label;
     this.lastAction = action;
     for (const { name, value } of action.assignments) this.knownVariables.set(name, value);
     return action;

@@ -179,7 +179,7 @@ export class BattleView {
     ctx.fillText(robot.id, x, labelY);
     if (showState) {
       ctx.fillStyle = COLORS.mutedText;
-      ctx.fillText(robot.state, x, labelY + LABEL_LINE_PX / this.scale);
+      ctx.fillText(robot.label, x, labelY + LABEL_LINE_PX / this.scale);
     }
   }
 

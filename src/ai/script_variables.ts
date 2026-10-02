@@ -2,8 +2,6 @@ import {
   type AIContext,
   type AimDirection,
   type DriveSetting,
-  ROBOT_STATES,
-  type RobotState,
   type TurnDirection,
 } from '../sim/ai_context';
 
@@ -42,7 +40,6 @@ export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 export const DRIVE_SETTINGS: readonly string[] = ['forward', 'backward', 'stop'] satisfies DriveSetting[];
 export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover'] satisfies TurnDirection[];
 export const AIM_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'lead', 'ahead'] satisfies AimDirection[];
-const STATES: readonly string[] = ROBOT_STATES;
 
 /** Words with a meaning of their own, which a program may not use as a variable name. */
 export const KEYWORDS: readonly string[] = [
@@ -57,7 +54,7 @@ export const KEYWORDS: readonly string[] = [
   'fire',
   'guard',
   'wait',
-  'state',
+  'label',
   'and',
   'or',
   'not',
@@ -88,6 +85,3 @@ export function isTurnDirection(name: string): name is TurnDirection {
   return TURN_DIRECTIONS.includes(name);
 }
 
-export function isRobotState(name: string): name is RobotState {
-  return STATES.includes(name);
-}

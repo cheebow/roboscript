@@ -1,4 +1,4 @@
-import type { Assignment, DriveSetting, RobotState } from '../sim/ai_context';
+import type { Assignment, DriveSetting } from '../sim/ai_context';
 import type { MatchResult, Simulation } from '../sim/simulation';
 import type { Bearing, Cover } from '../sim/surroundings';
 import type { Vec2 } from '../sim/types';
@@ -16,7 +16,8 @@ export interface RobotSnapshot {
   driving: DriveSetting;
   hp: number;
   alive: boolean;
-  state: RobotState;
+  /** What the robot's program calls what it is doing. */
+  label: string;
   ammo: number;
   /** Ticks of guarding the robot has left. */
   guards: number;
@@ -95,7 +96,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         driving: robot.driving,
         hp: robot.hp,
         alive: robot.alive,
-        state: robot.state,
+        label: robot.label,
         ammo: robot.weapon.ammo,
         guards: robot.guardsLeft,
         cooldown: robot.weapon.cooldownTicks / simulation.tickRate,

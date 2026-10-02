@@ -65,11 +65,11 @@ describe('debug events of a match', () => {
     expect(detections[0].tick).toBeGreaterThan(1);
   });
 
-  it('reports state changes with the line that set the state', () => {
+  it('reports a change of label with the line that set it', () => {
     expect(select(events, { type: 'ai', robotId: 'ALPHA' })).toMatchObject([
-      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 18 },
-      { message: 'state SEARCH -> TRACK', sourceLine: 15 },
-      { message: 'state TRACK -> ATTACK', sourceLine: 11 },
+      { tick: 1, message: 'label IDLE -> SEARCH', sourceLine: 18 },
+      { message: 'label SEARCH -> TRACK', sourceLine: 15 },
+      { message: 'label TRACK -> ATTACK', sourceLine: 11 },
     ]);
   });
 

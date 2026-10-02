@@ -11,22 +11,22 @@ export function cowardBot(avoid: Side): string {
 
         if enemy_distance < 300
             if blocked_behind
-                state ATTACK
+                label ATTACK
                 drive stop
             else
-                state EVADE
+                label EVADE
                 drive backward
             fire
         else
             if enemy_distance < 400
-                state ATTACK
+                label ATTACK
                 drive stop
                 fire
             else
-                state TRACK
+                label TRACK
                 drive forward
     else
-        state SEARCH
+        label SEARCH
         drive forward
 
         if blocked

@@ -59,49 +59,32 @@ const executedLines = lineHighlight('cm-executed-line');
 /** The line the program runs next. */
 const currentLine = lineHighlight('cm-current-line');
 
-class BreakpointMarker extends GutterMarker {
+class FollowedLineMarker extends GutterMarker {
   toDOM(): Node {
-    return document.createTextNode('●');
+    return document.createTextNode('◆');
   }
 }
 
-const breakpointMarker = new BreakpointMarker();
-/** Toggles the breakpoint on the line starting at the given document position. */
-const toggleBreakpoint = StateEffect.define<number>();
+const followedLineMarker = new FollowedLineMarker();
+/** Marks the given 1-based line as the one being followed through the match, or none. */
+const followLine = StateEffect.define<number | null>();
 
-const breakpoints = StateField.define<RangeSet<GutterMarker>>({
+const followedLine = StateField.define<RangeSet<GutterMarker>>({
   create: () => RangeSet.empty,
   update(markers, transaction) {
     let next = markers.map(transaction.changes);
-    if (transaction.docChanged) {
-      // An edit can leave a marker in the middle of a line (e.g. when two
-      // lines are joined); move every marker back to the start of its line.
-      const { doc } = transaction.state;
-      const starts = new Set<number>();
-      next.between(0, doc.length, (from) => {
-        starts.add(doc.lineAt(from).from);
-      });
-      next = RangeSet.of([...starts].sort((a, b) => a - b).map((start) => breakpointMarker.range(start)));
-    }
     for (const effect of transaction.effects) {
-      if (!effect.is(toggleBreakpoint)) continue;
-      const lineStart = effect.value;
-      let exists = false;
-      next.between(lineStart, lineStart, () => {
-        exists = true;
-      });
-      next = exists
-        ? next.update({ filter: (from) => from !== lineStart })
-        : next.update({ add: [breakpointMarker.range(lineStart)] });
+      if (!effect.is(followLine)) continue;
+      const { doc } = transaction.state;
+      const line = effect.value;
+      next =
+        line === null || line < 1 || line > doc.lines
+          ? RangeSet.empty
+          : RangeSet.of([followedLineMarker.range(doc.line(line).from)]);
     }
     return next;
   },
 });
-
-function toggleBreakpointOnLine(view: EditorView, line: BlockInfo): boolean {
-  view.dispatch({ effects: toggleBreakpoint.of(line.from) });
-  return true;
-}
 
 const theme = EditorView.theme(
   {
@@ -119,10 +102,10 @@ const theme = EditorView.theme(
       border: 'none',
       borderRight: '1px solid var(--border)',
     },
-    // Line numbers and the margin can be clicked to toggle breakpoints.
+    // Line numbers and the margin can be clicked to go to where the line runs.
     '.cm-gutterElement': { cursor: 'pointer' },
-    '.cm-breakpoint-gutter': { width: '14px' },
-    '.cm-breakpoint-gutter .cm-gutterElement': { color: 'var(--error)', textAlign: 'center' },
+    '.cm-followed-gutter': { width: '14px' },
+    '.cm-followed-gutter .cm-gutterElement': { color: 'var(--syntax-value)', textAlign: 'center' },
     '.cm-executed-line': { backgroundColor: 'var(--executed-line)' },
     '.cm-current-line': { backgroundColor: 'var(--current-line)' },
     '.cm-error-line': { backgroundColor: 'var(--error-line)' },
@@ -156,29 +139,44 @@ const theme = EditorView.theme(
 /**
  * The RoboScript editor: line numbers, undo/redo, highlighting, help while
  * writing (suggestions, explanations, indentation, errors underlined shortly
- * after typing), breakpoints (click the margin or a line number), and marks
- * for faulty lines, the lines already run and the line to run next.
+ * after typing), and marks for faulty lines, the lines already run, the line
+ * to run next and the line being followed. Clicks on the margin or a line
+ * number are passed on.
  */
 export class CodeEditor {
   private readonly view: EditorView;
   private checkTimer: number | null = null;
+  private followed: number | null = null;
   /** What each per-frame highlight currently shows, to skip updates that change nothing. */
   private readonly shown = new Map<LineHighlight, string>();
 
-  /** `onChange` is called with the new text after every edit. */
-  constructor(parent: HTMLElement, source: string, onChange: (source: string) => void) {
+  /**
+   * `onChange` is called with the new text after every edit; `onLineClick`
+   * with the 1-based line whose number or margin was clicked, and whether
+   * Shift was held.
+   */
+  constructor(
+    parent: HTMLElement,
+    source: string,
+    onChange: (source: string) => void,
+    onLineClick: (line: number, shift: boolean) => void,
+  ) {
+    const passOnClick = (view: EditorView, line: BlockInfo, event: Event): boolean => {
+      onLineClick(view.state.doc.lineAt(line.from).number, event instanceof MouseEvent && event.shiftKey);
+      return true;
+    };
     this.view = new EditorView({
       parent,
       state: EditorState.create({
         doc: source,
         extensions: [
-          breakpoints,
+          followedLine,
           gutter({
-            class: 'cm-breakpoint-gutter',
-            markers: (view) => view.state.field(breakpoints),
-            domEventHandlers: { mousedown: toggleBreakpointOnLine },
+            class: 'cm-followed-gutter',
+            markers: (view) => view.state.field(followedLine),
+            domEventHandlers: { mousedown: passOnClick },
           }),
-          lineNumbers({ domEventHandlers: { mousedown: toggleBreakpointOnLine } }),
+          lineNumbers({ domEventHandlers: { mousedown: passOnClick } }),
           history(),
           drawSelection(),
           indentUnit.of(INDENT),
@@ -296,9 +294,11 @@ export class CodeEditor {
     this.showLines(currentLine, line === null ? [] : [line]);
   }
 
-  /** The 1-based lines that currently have a breakpoint. */
-  breakpointLines(): number[] {
-    return this.linesOf(this.view.state.field(breakpoints));
+  /** Marks the 1-based line being followed through the match, or none. Cheap to call every frame. */
+  showFollowedLine(line: number | null): void {
+    if (line === this.followed) return;
+    this.followed = line;
+    this.view.dispatch({ effects: followLine.of(line) });
   }
 
   private showLines(highlight: LineHighlight, lines: readonly number[]): void {

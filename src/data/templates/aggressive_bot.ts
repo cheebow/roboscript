@@ -4,19 +4,19 @@ import type { Side } from './side';
 export function aggressiveBot(avoid: Side): string {
   return `loop
     if blocked
-        state SEARCH
+        label SEARCH
         turn ${avoid}
     else
         drive forward
 
         if enemy_visible
-            state ATTACK
+            label ATTACK
             turn enemy
 
             if enemy_distance < 400
                 fire
         else
-            state SEARCH
+            label SEARCH
             wait
 `;
 }

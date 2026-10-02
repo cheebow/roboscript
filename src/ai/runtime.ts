@@ -69,9 +69,9 @@ export class ScriptBrain implements RobotBrain {
         action.assignments.push({ afterLines: action.executedLines.length, name: statement.name, value });
         return;
       }
-      case 'state':
-        action.state = statement.state;
-        action.sourceLines.state = statement.line;
+      case 'label':
+        action.label = statement.label;
+        action.sourceLines.label = statement.line;
         return;
       case 'drive':
         // A setting, not an action: the hull keeps driving while the program goes on.

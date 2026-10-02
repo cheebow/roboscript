@@ -1,17 +1,10 @@
 import type { Recording } from './recorder';
 import type { RobotSnapshot, Snapshot } from './snapshot';
 
-/** Lines of one robot's program where playback should stop. */
-export interface BreakpointSource {
-  robotId: string;
-  /** Read each time playback moves on, so breakpoints can change while playing. */
-  lines(): readonly number[];
-}
-
-/** A line of a robot's program. */
-export interface ProgramLine {
-  robotId: string;
-  line: number;
+/** A moment at which a robot runs a line: after `tick` ticks, with `index` lines of the coming tick already run. */
+export interface LineRun {
+  tick: number;
+  index: number;
 }
 
 export interface ReplayOptions {
@@ -19,8 +12,6 @@ export interface ReplayOptions {
   maxFrameTime: number;
   /** Playback speed multiplier to start with. */
   speed: number;
-  /** One entry per robot whose breakpoints should stop playback; none plays straight through. */
-  breakpoints: readonly BreakpointSource[];
   /** Ticks to keep playing past the end, so the effects of the last tick can finish. */
   tailTicks: number;
   /** The robot whose program is stepped through line by line to begin with. */
@@ -48,11 +39,8 @@ export class ReplayManager {
   /** Playback time not yet turned into ticks, in ticks. */
   private pending = 0;
   private tail = 0;
-  /** Per robot: lines of the coming tick already checked for breakpoints, so each stops playback once. */
-  private readonly checked = new Map<string, number>();
-  private stoppedAt: ProgramLine | null = null;
-  /** Whether the playback under way passes breakpoints without stopping. */
-  private passingBreakpoints = false;
+  /** The runs of each line looked up so far, by robot and line. */
+  private readonly runs = new Map<string, readonly LineRun[]>();
 
   constructor(
     readonly recording: Recording,
@@ -94,11 +82,6 @@ export class ReplayManager {
     return this.tail;
   }
 
-  /** The breakpoint playback is stopped at, or null if it is not stopped at one. */
-  get breakpoint(): ProgramLine | null {
-    return this.stoppedAt;
-  }
-
   /** Whether the focused program has a line (or the recording a tick) left to step to. */
   get canStep(): boolean {
     return !this.atEnd;
@@ -113,7 +96,6 @@ export class ReplayManager {
     if (robotId === this.focusId) return;
     this.focusId = robotId;
     this.linesRun = 0;
-    this.stoppedAt = null;
   }
 
   /** The line the robot runs next, or null when its program has nothing left to run. */
@@ -155,44 +137,25 @@ export class ReplayManager {
   restart(): void {
     this.moveTo(0);
     this.isPlaying = true;
-    this.passingBreakpoints = false;
   }
 
   /** Resumes playback from the shown moment; from the end, it starts over. */
   play(): void {
-    if (this.atEnd) {
-      this.restart();
-      return;
-    }
-    // Whatever playback is stopped at has had its turn; do not stop there again.
-    this.checked.set(this.focusId, Math.max(this.checked.get(this.focusId) ?? 0, this.linesRun + 1));
-    this.stoppedAt = null;
-    this.isPlaying = true;
-  }
-
-  /**
-   * Like play(), but does not stop at breakpoints: playback runs on until it
-   * is paused or reaches the end. Breakpoints count again from the next play().
-   */
-  playOn(): void {
-    this.play();
-    this.passingBreakpoints = true;
+    if (this.atEnd) this.restart();
+    else this.isPlaying = true;
   }
 
   pause(): void {
     this.isPlaying = false;
     this.pending = 0;
-    this.passingBreakpoints = false;
   }
 
   /** Pauses and runs one line of the focused program. Running its action line takes the match one tick on. */
   stepLine(): void {
     this.pause();
-    this.stoppedAt = null;
     if (this.atEnd) return;
     if (this.linesRun + 1 < this.comingLines(this.focusId).length) {
       this.linesRun++;
-      this.checked.set(this.focusId, Math.max(this.checked.get(this.focusId) ?? 0, this.linesRun));
     } else {
       this.moveTo(this.cursor + 1);
     }
@@ -201,7 +164,6 @@ export class ReplayManager {
   /** Pauses and takes back one line of the focused program. */
   stepLineBack(): void {
     this.pause();
-    this.stoppedAt = null;
     if (this.linesRun > 0) {
       this.linesRun--;
     } else if (this.cursor > 0) {
@@ -242,7 +204,63 @@ export class ReplayManager {
     this.linesRun = index;
   }
 
-  /** Consumes real time while playing. Stops after the end or, unless passing them, just before a breakpoint line runs. */
+  /** Every moment at which the robot runs the given line, in order. */
+  runsOf(robotId: string, line: number): readonly LineRun[] {
+    const key = `${robotId} ${line}`;
+    let found = this.runs.get(key);
+    if (found === undefined) {
+      const runs: LineRun[] = [];
+      for (let tick = 0; tick < this.lastTick; tick++) {
+        this.robotAt(tick + 1, robotId).executedLines.forEach((executed, index) => {
+          if (executed === line) runs.push({ tick, index });
+        });
+      }
+      found = runs;
+      this.runs.set(key, found);
+    }
+    return found;
+  }
+
+  /**
+   * Which run of the line the robot is at right now, counting from 0, or null
+   * when it is not just about to run it.
+   */
+  runAt(robotId: string, line: number): number | null {
+    const index = this.linesRunBy(robotId);
+    const position = this.runsOf(robotId, line).findIndex((run) => run.tick === this.cursor && run.index === index);
+    return position < 0 ? null : position;
+  }
+
+  /**
+   * Pauses just before the next time the robot runs the given line, with that
+   * robot in focus; after the last time, it starts again from the first.
+   * Returns false, and stays put, when the line never runs.
+   */
+  seekToNextRun(robotId: string, line: number): boolean {
+    const runs = this.runsOf(robotId, line);
+    const index = this.linesRunBy(robotId);
+    const next = runs.find((run) => run.tick > this.cursor || (run.tick === this.cursor && run.index > index));
+    return this.seekToRun(robotId, next ?? runs[0]);
+  }
+
+  /** Like seekToNextRun, but to the time before; before the first time, it goes to the last. */
+  seekToPreviousRun(robotId: string, line: number): boolean {
+    const runs = this.runsOf(robotId, line);
+    const index = this.linesRunBy(robotId);
+    const earlier = runs.filter((run) => run.tick < this.cursor || (run.tick === this.cursor && run.index < index));
+    return this.seekToRun(robotId, earlier.at(-1) ?? runs.at(-1));
+  }
+
+  private seekToRun(robotId: string, run: LineRun | undefined): boolean {
+    if (run === undefined) return false;
+    this.pause();
+    this.moveTo(run.tick);
+    this.focusId = robotId;
+    this.linesRun = run.index;
+    return true;
+  }
+
+  /** Consumes real time while playing, up to the end of the recording and its tail. */
   advance(elapsedSeconds: number): void {
     if (!this.isPlaying) return;
     const elapsed = Math.min(elapsedSeconds, this.options.maxFrameTime);
@@ -252,43 +270,17 @@ export class ReplayManager {
       if (this.atEnd) {
         this.tail++;
         if (this.tail >= this.options.tailTicks) this.pause();
-      } else if (this.passingBreakpoints || !this.stopAtBreakpoint()) {
+      } else {
         this.moveTo(this.cursor + 1);
         if (this.atEnd && this.options.tailTicks === 0) this.pause();
       }
     }
   }
 
-  /**
-   * Looks through the lines of the coming tick that have not been checked yet.
-   * At the first one with a breakpoint, stops there with its robot in focus.
-   */
-  private stopAtBreakpoint(): boolean {
-    for (const { robotId, lines } of this.options.breakpoints) {
-      const breakpoints = lines();
-      const coming = this.comingLines(robotId);
-      const from = this.checked.get(robotId) ?? 0;
-      this.checked.set(robotId, coming.length);
-      if (breakpoints.length === 0) continue;
-
-      const index = coming.findIndex((line, position) => position >= from && breakpoints.includes(line));
-      if (index < 0) continue;
-      this.checked.set(robotId, index + 1);
-      this.focusId = robotId;
-      this.linesRun = index;
-      this.stoppedAt = { robotId, line: coming[index] };
-      this.pause();
-      return true;
-    }
-    return false;
-  }
-
   private moveTo(tick: number): void {
     this.cursor = tick;
     this.linesRun = 0;
     this.tail = 0;
-    this.checked.clear();
-    this.stoppedAt = null;
     this.furthest = Math.max(this.furthest, tick);
   }
 

@@ -1,10 +1,11 @@
-import { ROBOT_STATES } from '../sim/ai_context';
 import { type Token, lex } from './lexer';
 import {
   type ProgramVariable,
   type WordReference,
+  describeLabel,
   describeVariable,
   describeWord,
+  programLabels,
   programVariables,
   withoutComment,
 } from './reference';
@@ -22,11 +23,11 @@ export interface Suggestions {
   options: Suggestion[];
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'state', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
 const BOOLEAN_SENSORS = Object.keys(BOOLEAN_VARIABLES);
 const NUMBER_SENSORS = Object.keys(NUMBER_VARIABLES);
 /** Words that are always followed by something on the same line. */
-const TAKES_MORE = new Set(['if', 'while', 'set', 'state', 'drive', 'turn', 'aim', 'and', 'or', 'not']);
+const TAKES_MORE = new Set(['if', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'and', 'or', 'not']);
 
 const WORD_BEING_TYPED = /[A-Za-z_][A-Za-z0-9_]*$/;
 const COMPARISONS = new Set(['<', '>', '<=', '>=', '==', '!=']);
@@ -36,6 +37,8 @@ interface Expectation {
   words: readonly string[];
   /** Offer the program's own variables as well. */
   variables: boolean;
+  /** Offer the labels the program uses on other lines. */
+  labels?: boolean;
   /** Offer the list as soon as the cursor gets here, rather than once a letter is typed. */
   eager: boolean;
 }
@@ -67,6 +70,7 @@ export function completionsAt(source: string, position: number, explicit = false
   const references = [
     ...expectation.words.map((word) => describeWord(word)).filter((reference) => reference !== undefined),
     ...(expectation.variables ? variablesFor(source, lineStart, tokens).map(describeVariable) : []),
+    ...(expectation.labels ? programLabels(withoutLine(source, lineStart)).map(describeLabel) : []),
   ];
   const prefix = typed.toLowerCase();
   const options = references
@@ -83,8 +87,13 @@ function variablesFor(source: string, lineStart: number, tokens: readonly Token[
   const naming = tokens.length === 1 && tokens[0].text === 'set';
   if (!naming) return programVariables(source);
   // In "set na|", the name being typed is not yet a variable to suggest: leave this line out.
+  return programVariables(withoutLine(source, lineStart));
+}
+
+/** The source with the line that starts at `lineStart` emptied. */
+function withoutLine(source: string, lineStart: number): string {
   const lineEnd = source.indexOf('\n', lineStart);
-  return programVariables(source.slice(0, lineStart) + (lineEnd < 0 ? '' : source.slice(lineEnd)));
+  return source.slice(0, lineStart) + (lineEnd < 0 ? '' : source.slice(lineEnd));
 }
 
 /** What fits after the given tokens of a line. */
@@ -101,8 +110,9 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
       return argument ? { words: AIM_DIRECTIONS, variables: false, eager: true } : null;
     case 'turn':
       return argument ? { words: TURN_DIRECTIONS, variables: false, eager: true } : null;
-    case 'state':
-      return argument ? { words: ROBOT_STATES, variables: false, eager: true } : null;
+    case 'label':
+      // Any word will do; the ones already in use are the likely ones.
+      return argument ? { words: [], variables: false, labels: true, eager: true } : null;
     case 'set':
       // The name, then "=", then the value.
       if (argument) return { words: [], variables: true, eager: false };

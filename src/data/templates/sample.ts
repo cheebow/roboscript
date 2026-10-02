@@ -10,21 +10,21 @@ export function sampleAi(avoid: Side): string {
   return `# "drive" keeps the hull going. Each turn, aim or fire takes one tick.
 loop
     if blocked
-        state SEARCH
+        label SEARCH
         turn ${avoid}
     else
         if enemy_visible
             turn enemy
 
             if enemy_distance < 250
-                state ATTACK
+                label ATTACK
                 drive stop
                 fire
             else
-                state TRACK
+                label TRACK
                 drive forward
         else
-            state SEARCH
+            label SEARCH
             drive forward
             wait
 `;

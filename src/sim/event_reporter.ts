@@ -1,5 +1,5 @@
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
-import type { AIAction, ProgramStatus, RobotState } from './ai_context';
+import type { AIAction, ProgramStatus } from './ai_context';
 import type { MatchResult } from './simulation';
 
 export interface DebugEventSink {
@@ -38,8 +38,8 @@ export class EventReporter {
     this.emit('sensor', robotId, `${visible ? 'enemy detected' : 'enemy lost'}: ${enemyId}`);
   }
 
-  stateChanged(robotId: string, from: RobotState, to: RobotState, sourceLine: number | null): void {
-    this.emit('ai', robotId, `state ${from} -> ${to}`, sourceLine);
+  labelChanged(robotId: string, from: string, to: string, sourceLine: number | null): void {
+    this.emit('ai', robotId, `label ${from} -> ${to}`, sourceLine);
   }
 
   actionDecided(robotId: string, action: AIAction): void {

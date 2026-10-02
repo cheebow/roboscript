@@ -133,13 +133,13 @@ describe('CowardBot', () => {
   it('turns to a close enemy, then shoots while it backs away', () => {
     const [turn, fire, next] = ticks(3, closeEnemy);
     expect(turn).toMatchObject({ turn: 'enemy', drive: null });
-    expect(fire).toMatchObject({ fire: true, drive: 'backward', state: 'EVADE' });
+    expect(fire).toMatchObject({ fire: true, drive: 'backward', label: 'EVADE' });
     expect(next).toMatchObject({ turn: 'enemy', fire: false });
   });
 
   it('stands and fights when it cannot back away any further', () => {
     const [, fire] = ticks(2, { ...closeEnemy, blockedBehind: true });
-    expect(fire).toMatchObject({ fire: true, drive: 'stop', state: 'ATTACK' });
+    expect(fire).toMatchObject({ fire: true, drive: 'stop', label: 'ATTACK' });
   });
 });
 
@@ -175,7 +175,7 @@ describe('CoverBot', () => {
     runToEnd(simulation);
 
     const messages = logger.events.filter((event) => event.robotId === 'ALPHA').map((event) => event.message);
-    const evading = messages.indexOf('state ATTACK -> EVADE');
+    const evading = messages.indexOf('label ATTACK -> EVADE');
     expect(evading).toBeGreaterThan(-1);
     expect(messages.indexOf('turn cover', evading)).toBeGreaterThan(evading);
   });

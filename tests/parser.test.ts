@@ -42,7 +42,7 @@ const comparison = (name: string, operator: string, value: number) => ({
 
 describe('parser: statements', () => {
   it('parses every command', () => {
-    const source = ['turn left', 'turn right', 'turn enemy', 'turn cover', 'fire', 'guard', 'wait', 'state EVADE'].join('\n');
+    const source = ['turn left', 'turn right', 'turn enemy', 'turn cover', 'fire', 'guard', 'wait', 'label EVADE'].join('\n');
     expect(parseOk(source)).toEqual([
       { kind: 'turn', line: 1, direction: 'left' },
       { kind: 'turn', line: 2, direction: 'right' },
@@ -51,7 +51,7 @@ describe('parser: statements', () => {
       { kind: 'fire', line: 5 },
       { kind: 'guard', line: 6 },
       { kind: 'wait', line: 7 },
-      { kind: 'state', line: 8, state: 'EVADE' },
+      { kind: 'label', line: 8, label: 'EVADE' },
     ]);
   });
 
@@ -127,7 +127,7 @@ describe('parser: statements', () => {
     const blocked = loop.body[0] as IfNode;
     expect(blocked).toMatchObject({ line: 3, condition: { kind: 'boolean_variable', name: 'blocked' }, elseLine: 6 });
     expect(blocked.thenBody).toEqual([
-      { kind: 'state', line: 4, state: 'SEARCH' },
+      { kind: 'label', line: 4, label: 'SEARCH' },
       { kind: 'turn', line: 5, direction: 'left' },
     ]);
 
@@ -135,7 +135,7 @@ describe('parser: statements', () => {
     expect(inSight).toMatchObject({ line: 7, condition: VISIBLE, elseLine: 17 });
     expect(inSight.thenBody.map((statement) => statement.kind)).toEqual(['turn', 'if']);
     expect(inSight.elseBody).toEqual([
-      { kind: 'state', line: 18, state: 'SEARCH' },
+      { kind: 'label', line: 18, label: 'SEARCH' },
       { kind: 'drive', line: 19, setting: 'forward' },
       { kind: 'wait', line: 20 },
     ]);
@@ -145,13 +145,13 @@ describe('parser: statements', () => {
       line: 10,
       condition: comparison('enemy_distance', '<', 250),
       thenBody: [
-        { kind: 'state', line: 11, state: 'ATTACK' },
+        { kind: 'label', line: 11, label: 'ATTACK' },
         { kind: 'drive', line: 12, setting: 'stop' },
         { kind: 'fire', line: 13 },
       ],
       elseLine: 14,
       elseBody: [
-        { kind: 'state', line: 15, state: 'TRACK' },
+        { kind: 'label', line: 15, label: 'TRACK' },
         { kind: 'drive', line: 16, setting: 'forward' },
       ],
     });
@@ -299,8 +299,9 @@ describe('parser: errors', () => {
     expect(errorsOf('turn lead')).toEqual(['Line 1: Unknown direction "lead"']);
     expect(errorsOf('aim')).toEqual(['Line 1: Expected direction after "aim"']);
     expect(errorsOf('aim cover')).toEqual(['Line 1: Unknown direction "cover"']);
-    expect(errorsOf('state')).toEqual(['Line 1: Expected state name after "state"']);
-    expect(errorsOf('state attack')).toEqual(['Line 1: Unknown state "attack"']);
+    expect(errorsOf('label')).toEqual(['Line 1: Expected a name after "label"']);
+    expect(errorsOf('label 3')).toEqual(['Line 1: A label is a single word, such as HIDING: "3" is not']);
+    expect(errorsOf('label LOW HP')).toEqual(['Line 1: Unexpected "HP" after "label LOW"']);
     expect(errorsOf('fire now')).toEqual(['Line 1: Unexpected "now" after "fire"']);
     expect(errorsOf('loop forever\n    fire')).toEqual(['Line 1: Unexpected "forever" after "loop"']);
   });
@@ -330,6 +331,22 @@ describe('parser: errors', () => {
     expect(errorsOf(`if < 3${block}`)).toEqual(['Line 1: Expected condition']);
     expect(errorsOf(`if enemy_visible hp${block}`)).toEqual(['Line 1: Unexpected "hp"']);
     expect(errorsOf(`if (hp > 3${block}`)).toEqual(['Line 1: Expected ")"']);
+  });
+
+  it('takes any word as a label, also one that means something elsewhere in the language', () => {
+    expect(parseOk('label HIDING\nlabel wait_for_ammo\nlabel fire\nlabel x2')).toEqual([
+      { kind: 'label', line: 1, label: 'HIDING' },
+      { kind: 'label', line: 2, label: 'wait_for_ammo' },
+      { kind: 'label', line: 3, label: 'fire' },
+      { kind: 'label', line: 4, label: 'x2' },
+    ]);
+  });
+
+  it('points a program that still says "state" to "label"', () => {
+    expect(errorsOf('state ATTACK')).toEqual([
+      'Line 1: "state" is now "label": use "label ATTACK" (any name will do)',
+    ]);
+    expect(errorsOf('state')).toEqual(['Line 1: "state" is now "label": use "label NAME" (any name will do)']);
   });
 
   it('points a program that still says "move" to "drive"', () => {

@@ -4,21 +4,21 @@ import type { Side } from './side';
 export function dumbBot(avoid: Side): string {
   return `loop
     if blocked
-        state SEARCH
+        label SEARCH
         turn ${avoid}
     else
         if enemy_visible
             turn enemy
 
             if enemy_distance < 300
-                state ATTACK
+                label ATTACK
                 drive stop
                 fire
             else
-                state TRACK
+                label TRACK
                 drive forward
         else
-            state SEARCH
+            label SEARCH
             drive forward
             wait
 `;

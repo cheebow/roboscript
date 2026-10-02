@@ -13,7 +13,7 @@ import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../data/templates';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
-import { type ProgramLine, ReplayManager } from '../debug/replay_manager';
+import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
@@ -29,7 +29,7 @@ import { Toolbar } from './toolbar';
 import { Transport } from './transport';
 import { WatchPanel } from './watch_panel';
 
-/** RUN just plays the match; DEBUG also shows the programs running line by line, the full log, and stops at breakpoints. */
+/** RUN just plays the match; DEBUG also shows the programs running line by line and the full log, and lets a line be followed through the match. */
 type Mode = 'run' | 'debug';
 
 const MS_PER_SECOND = 1000;
@@ -45,6 +45,17 @@ const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template, robotIndex) => template
 const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
+const NO_MARKS: readonly number[] = [];
+
+/** A line of a robot's program that the player follows through the match: where it runs is marked on the seek bar. */
+interface FollowedLine {
+  robotIndex: number;
+  line: number;
+  /** The recording the marks were worked out for. */
+  replay: ReplayManager;
+  /** The ticks at which the line runs. */
+  marks: readonly number[];
+}
 
 /** Wires the panels to a recorded match: records matches, runs the frame loop, keeps the robots' code. */
 class App {
@@ -75,6 +86,8 @@ class App {
   private notice: string | null = null;
   /** Set while the last attempt to save failed; shown next to the toolbar message. */
   private saveProblem: string | null = null;
+  /** The line whose number was last clicked while debugging. */
+  private followed: FollowedLine | null = null;
   private lastFrame = performance.now();
 
   constructor() {
@@ -91,7 +104,6 @@ class App {
     this.toolbar.setProjectName(this.store?.loadInfo().name ?? ROBOT_IDS[PLAYER_INDEX]);
     this.transport = new Transport(PLAYBACK_SPEEDS, {
       playPause: () => this.togglePlay(),
-      playOn: () => this.replay?.playOn(),
       step: () => this.step(),
       stepBack: () => this.stepBack(),
       seek: (tick) => this.replay?.seek(tick),
@@ -116,6 +128,7 @@ class App {
       saveProblem: (problem) => {
         this.saveProblem = problem;
       },
+      lineClicked: (workspace, line, shift) => this.followLine(workspace, line, shift),
     });
   }
 
@@ -159,13 +172,21 @@ class App {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
       tailTicks: REPLAY_TAIL_TICKS,
       speed: this.speed,
-      breakpoints: mode === 'debug' ? this.workspaces.map((workspace) => breakpointSourceOf(workspace)) : [],
       focus: ROBOT_IDS[this.shownFile.robotIndex],
     });
     this.events =
       mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
     this.replay.restart();
+    this.refollow(this.replay);
+  }
+
+  /** Keeps following the same line in a new match, so that a change to the code can be compared with the run before. */
+  private refollow(replay: ReplayManager): void {
+    if (this.followed === null) return;
+    const { robotIndex, line } = this.followed;
+    const marks = replay.runsOf(ROBOT_IDS[robotIndex], line).map((run) => run.tick);
+    this.followed = { robotIndex, line, replay, marks };
   }
 
   private showErrors(faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[]): void {
@@ -240,11 +261,26 @@ class App {
     workspace.editor.revealLine(event.sourceLine);
   }
 
-  /** Shows the code of the robot whose breakpoint playback has just stopped at. */
-  private openBreakpointFile(breakpoint: ProgramLine | null): void {
-    if (breakpoint === null) return;
-    const robotIndex = ROBOT_IDS.findIndex((id) => id === breakpoint.robotId);
-    if (robotIndex >= 0) this.showFile(codeFileOf(robotIndex));
+  /**
+   * Goes to the next time the robot runs the clicked line (with Shift, the
+   * time before), and marks every time it runs on the seek bar. Only while
+   * debugging, and only as long as the code is the code that was run.
+   */
+  private followLine(workspace: RobotWorkspace, line: number, backwards: boolean): void {
+    const { replay } = this;
+    if (replay === null || this.mode !== 'debug' || workspace.stale) return;
+    const robotIndex = this.workspaces.indexOf(workspace);
+    if (backwards) replay.seekToPreviousRun(workspace.robotId, line);
+    else replay.seekToNextRun(workspace.robotId, line);
+    const marks = replay.runsOf(workspace.robotId, line).map((run) => run.tick);
+    this.followed = { robotIndex, line, replay, marks };
+  }
+
+  /** The followed line, if it belongs to the match being shown and its code has not changed since. */
+  private followedNow(): FollowedLine | null {
+    const { followed } = this;
+    if (followed === null || followed.replay !== this.replay || this.mode !== 'debug') return null;
+    return this.workspaces[followed.robotIndex].stale ? null : followed;
   }
 
   private codeEdited(workspace: RobotWorkspace): void {
@@ -285,10 +321,9 @@ class App {
 
   private frame = (now: number): void => {
     const { replay } = this;
-    const wasPlaying = replay?.playing ?? false;
     replay?.advance((now - this.lastFrame) / MS_PER_SECOND);
     this.lastFrame = now;
-    if (wasPlaying && replay !== null) this.openBreakpointFile(replay.breakpoint);
+    const followed = this.followedNow();
 
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
@@ -299,12 +334,13 @@ class App {
     this.inspector.update(view);
     const watched = view.robots[this.inspector.selected];
     this.watch.update(watched, replay?.variablesOf(watched.id) ?? {});
-    for (const workspace of this.workspaces) {
+    this.workspaces.forEach((workspace, robotIndex) => {
       const showLines = debugging && !workspace.stale;
       const current = showLines ? replay.currentLine(workspace.robotId) : null;
       workspace.editor.showExecutedLines(showLines ? replay.linesSoFar(workspace.robotId) : []);
       workspace.editor.showCurrentLine(current);
-    }
+      workspace.editor.showFollowedLine(followed?.robotIndex === robotIndex ? followed.line : null);
+    });
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
     this.toolbar.setMessage(this.message());
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
@@ -316,7 +352,7 @@ class App {
             lastTick: replay.lastTick,
             tickRate: replay.recording.tickRate,
             playing: replay.playing,
-            canPlayOn: debugging,
+            marks: followed?.marks ?? NO_MARKS,
             canStep: replay.canStep,
             canStepBack: debugging ? replay.canStepBack : replay.tick > 0,
           },
@@ -335,29 +371,30 @@ class App {
 
   private replayStatus(): string {
     if (this.replay === null) return READY_MESSAGE;
-    return `${this.mode.toUpperCase()}   ${playbackStatus(this.replay)}`;
+    const parts = [this.mode.toUpperCase(), playbackStatus(this.replay)];
+    const followed = this.followedNow();
+    if (followed !== null) parts.push(this.describeFollowed(followed));
+    return parts.join('   ');
+  }
+
+  /** Which of its runs the followed line is at, e.g. "ALPHA line 13: run 2 of 5". */
+  private describeFollowed({ robotIndex, line, replay, marks }: FollowedLine): string {
+    const robotId = ROBOT_IDS[robotIndex];
+    const name = `${robotId} line ${line}`;
+    if (marks.length === 0) return `${name} never runs in this match`;
+    const run = replay.runAt(robotId, line);
+    return run === null ? `${name}: runs ${marks.length} times` : `${name}: run ${run + 1} of ${marks.length}`;
   }
 }
 
 function playbackStatus(replay: ReplayManager): string {
   const { result } = replay.snapshot;
   if (result !== null) return `${formatResult(result)} (${result.reason})`;
-  if (replay.playing) return 'PLAYING';
-  const { breakpoint } = replay;
-  if (breakpoint === null) return 'PAUSED';
-  return `BREAKPOINT   ${breakpoint.robotId} line ${breakpoint.line}. PLAY: to the next breakpoint, ▶▶: play on, 1▶: step.`;
+  return replay.playing ? 'PLAYING' : 'PAUSED';
 }
 
 function codeFileOf(robotIndex: number): ProjectFile {
   return { robotIndex, file: 'main.bot' };
-}
-
-/** A robot's breakpoints only count while its editor still shows the code that was run. */
-function breakpointSourceOf(workspace: RobotWorkspace) {
-  return {
-    robotId: workspace.robotId,
-    lines: () => (workspace.stale ? [] : workspace.editor.breakpointLines()),
-  };
 }
 
 /** An event raised by the IDE itself rather than by a match. */

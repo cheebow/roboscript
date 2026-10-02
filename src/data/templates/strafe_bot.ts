@@ -76,9 +76,9 @@ loop
 
     if enemy_visible
         set lost = 0
-        if enemy_distance < 340
+        if enemy_distance < weapon_range - 60
             set crossing = 1
-        if enemy_distance > 390
+        if enemy_distance > weapon_range - 10
             set crossing = 0
 
         if crossing == 0

@@ -53,6 +53,8 @@ export interface AIContext {
   readonly leadAngle: number;
   /** Angle of the gun on the hull (deg, 0 = straight ahead, positive = to the right). */
   readonly gunAngle: number;
+  /** How far the robot's own gun shoots. */
+  readonly weaponRange: number;
 }
 
 /**

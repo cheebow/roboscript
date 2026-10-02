@@ -2,11 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
 import { ARENAS, DEFAULT_ARENA } from '../src/data/arenas';
 import { OPEN_FIELD } from '../src/data/arenas/open_field';
+import { STANDARD_LOADOUT, partsOf, statsOf } from '../src/data/parts';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../src/data/templates';
 import { DebugLogger } from '../src/debug/debug_logger';
+import type { RobotBrain } from '../src/sim/ai_context';
+import { distance } from '../src/sim/math';
 import type { Arena } from '../src/sim/types';
-import { QUIET_CONTEXT, compileBrain, createSimulation, enemySource, mirrorTurns, runToEnd } from './helpers';
+import {
+  DUEL_ARENA,
+  FixedBrain,
+  QUIET_CONTEXT,
+  compileBrain,
+  createSimulation,
+  enemySource,
+  mirrorTurns,
+  runToEnd,
+} from './helpers';
 import {
   APPROACH,
   DODGE,
@@ -285,4 +297,47 @@ describe('standing still against driving', () => {
     expect(winners(STRAFE, 'dumb_bot')).toEqual(['BRAVO']);
     expect(winners(STRAFE, 'guard_bot')).toEqual(['BRAVO']);
   });
+});
+
+describe('templates that shoot from as far as their gun reaches', () => {
+  /** Far enough apart that every gun is out of range at the start. */
+  const FAR_APART: Arena = {
+    ...DUEL_ARENA,
+    spawns: [
+      { x: 100, y: 300, rotation: 0 },
+      { x: 900, y: 300, rotation: 180 },
+    ],
+  };
+  /** How far a robot can get in the tick between reading the distance and the shot leaving its gun. */
+  const ONE_STEP = 10;
+
+  /** The distance to a waiting enemy at which the template, with the given gun, fires its first shot. */
+  function firstShotDistance(templateId: string, gun: string): number {
+    const stats = statsOf({ ...STANDARD_LOADOUT, gun });
+    const brains: [RobotBrain, RobotBrain] = [
+      compileBrain(findTemplate(templateId)?.build('left') ?? ''),
+      new FixedBrain(),
+    ];
+    const simulation = createSimulation(brains, {
+      arena: FAR_APART,
+      robots: [
+        { id: 'ALPHA', brain: brains[0], stats },
+        { id: 'BRAVO', brain: brains[1], stats: ROBOT_DEFAULTS },
+      ],
+    });
+    const [alpha, bravo] = simulation.robots;
+    while (alpha.weapon.ammo === stats.maxAmmo && simulation.result === null) simulation.step();
+    return distance(alpha.position, bravo.position);
+  }
+
+  for (const templateId of ['aggressive_bot', 'coward_bot']) {
+    for (const gun of partsOf('gun')) {
+      it(`${templateId} with the ${gun.name} gun opens fire just inside its range`, () => {
+        const { weaponRange } = statsOf({ ...STANDARD_LOADOUT, gun: gun.id });
+        const opened = firstShotDistance(templateId, gun.id);
+        expect(opened).toBeLessThanOrEqual(weaponRange);
+        expect(opened).toBeGreaterThan(weaponRange - 2 * ONE_STEP);
+      });
+    }
+  }
 });

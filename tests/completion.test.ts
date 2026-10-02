@@ -26,6 +26,7 @@ const NUMBERS = [
   'aim_angle',
   'lead_angle',
   'gun_angle',
+  'weapon_range',
 ];
 const SENSORS = ['enemy_visible', 'blocked', 'blocked_behind', 'bullet_incoming', 'cover_visible', ...NUMBERS];
 

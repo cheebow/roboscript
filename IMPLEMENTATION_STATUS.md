@@ -15,6 +15,7 @@
 | 6 | 機体ごとの性能値、一括対戦の関数 | 完了（2026-10-02） |
 | 7 | パーツ（選択 UI、コスト上限、保存） | 完了（2026-10-02） |
 | 8 | パーツで見た目が変わる | 完了（2026-10-02） |
+| 9 | 射程を読む語 `weapon_range`（語の制限は取りやめ） | 完了（2026-10-02） |
 
 Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
@@ -48,7 +49,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（514件）
+npm test           # Vitest（522件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -152,7 +153,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | 6 | 機体ごとの性能値、一括対戦の関数 | なし（土台） | 完了 |
 | 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 完了 |
 | 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 完了 |
-| 9 | パーツで使える語が変わる | 積んでいない機能の語はエラーになる | 未着手 |
+| 9 | 射程を読む語 `weapon_range`（当初の「パーツで使える語が変わる」は取りやめ） | 入力候補と WATCH に語が1つ増える | 完了 |
 | 10 | ガレージ（ロボットを複数保存）とアリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
 | 11 | 共有: ロボットとリプレイの共有コード・URL、公開 | EXPORT / IMPORT | 未着手 |
 | 12 | 3台以上（バトルロイヤル） | アリーナモードで3〜4台 | 未着手 |
@@ -164,6 +165,32 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - 他の人のロボットとの対戦は、**サーバーなしの共有コード・URL** で始める。相手はプログラムの中身を読める。
 - パーツから着手する。「ロボット1台」のデータの形（プログラム + パーツ構成）を先に固めると、ガレージの保存形式と共有コードを作り直さずに済むため。
 - ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
+- **パーツで使える語は変えない。** 語を制限すると、動いていたプログラムがパーツを替えただけでエラーになる。ガレージや共有で受け取ったロボットのパーツを替えたときも同じことが起きるので、取りやめた。
+
+## Phase 9: 射程を読む語 `weapon_range`
+
+当初の予定は「パーツで使える語が変わる」だったが、取りやめた（理由は「MVP 後のロードマップ」）。代わりに、パーツを替えてもプログラムがそのまま合うように、自分の銃の射程を読める語を足した。
+
+### 実装した内容
+
+- **`weapon_range`**: 数値のセンサー。自分の銃の射程を返す（Rapid 340、Standard 400、Cannon 520）。入力候補、ホバーの説明、WATCH に出る。
+- **テンプレートの数字を置き換えた。** 標準の銃（射程 400）では式の値が同じなので、標準構成の挙動は変わらない。
+
+| テンプレート | 前 | 後 |
+|---|---|---|
+| AggressiveBot | `enemy_distance < 400` | `enemy_distance < weapon_range` |
+| CowardBot | `enemy_distance < 400` | `enemy_distance < weapon_range` |
+| CoverBot | `enemy_distance < 350` | `enemy_distance < weapon_range - 50` |
+| StrafeBot | `enemy_distance < 340` / `> 390` | `< weapon_range - 60` / `> weapon_range - 10` |
+
+Sample（`attack(250)`）、DumbBot（300）、GuardBot（300）は、射程より手前で撃つ作戦の数字なので変えていない。
+
+### 動作確認の結果
+
+- テストは 522件（追加 8件: `weapon_range` が自分の銃の射程を返す、AggressiveBot と CowardBot がどの銃でも射程のすぐ内側で撃ち始める）。
+- 標準構成の 882試合が、Phase 6 以前と完全に一致した。
+- `npm run balance` を測り直した。上限いっぱいの構成は 31〜71%（置き換え前は 31〜70%）で、パーツの値は変えていない。
+- ブラウザで、Rapid を積んだ AggressiveBot が射程 340 に対して距離 339.0 で撃ち始めること（標準の銃では 400 に対して 397.9）、WATCH に `weapon_range` が出ること、エディタの入力候補と説明に出ることを確認した。
 
 ## Phase 8: パーツで見た目が変わる
 
@@ -240,7 +267,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 
 ### バランス（`npm run balance`）
 
-各構成のロボットを、**同じテンプレートを積んだ標準構成のロボット**と戦わせた勝率（引き分けは半分）。テンプレート7種 × 9マップ × seed 1〜2 × 両側 = 1構成あたり 252試合。射程の違う銃では、テンプレートの撃ち始める距離を銃の射程に比例させている。
+各構成のロボットを、**同じテンプレートを積んだ標準構成のロボット**と戦わせた勝率（引き分けは半分）。テンプレート7種 × 9マップ × seed 1〜2 × 両側 = 1構成あたり 252試合。射程の違う銃では、テンプレートの撃ち始める距離の数字を銃の射程に比例させている（`weapon_range` で書いたテンプレートは自分で合う）。**下の数字は Phase 9（テンプレートを `weapon_range` に置き換えた後）の測り直し。** 置き換え前との差は 3 ポイント以内。
 
 1パーツだけ入れ替えた場合（コスト上限は無視）:
 
@@ -250,35 +277,34 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | BODY Heavy | 4 | 94% |
 | LEGS Sprint | 3 | 42% |
 | LEGS Pivot | 3 | 61% |
-| GUN Rapid | 3 | 38% |
-| GUN Cannon | 4 | 75% |
+| GUN Rapid | 3 | 41% |
+| GUN Cannon | 4 | 72% |
 | SENSOR Short | 2 | 18% |
 | SENSOR Scope | 2 | 22% |
 
-コストを上限いっぱい（12）まで使った構成は **31〜70%**。主なもの:
+コストを上限いっぱい（12）まで使った構成は **31〜71%**。主なもの:
 
 | 構成（BODY / LEGS / GUN / SENSOR） | 勝率 |
 |---|---|
-| Heavy / Pivot / Rapid / Short | 70%（最高） |
+| Heavy / Pivot / Rapid / Short | 71%（最高） |
 | Heavy / Standard / Rapid / Short | 68% |
 | Standard / Pivot / Standard / Standard | 61% |
-| Light / Standard / Cannon / Standard | 50% |
+| Light / Standard / Cannon / Standard | 49% |
 | Heavy / Standard / Standard / Short | 44% |
 | Heavy / Standard / Standard / Scope | 41% |
-| Standard / Standard / Rapid / Standard | 38% |
+| Standard / Standard / Rapid / Standard | 41% |
 | Standard / Standard / Cannon / Short | 31%（最低） |
 
 分かったこと:
 
 - **同じプログラムどうしの撃ち合いでは、HP の差がほぼそのまま勝敗になる。** 速さの差は、今のテンプレートではほとんど効かない（効くのは横に走って避ける StrafeBot だけ）。このため BODY は「コストで釣り合わせる」作りにした。
-- 目標は「どの構成も 35〜65%」だったが、上限いっぱいの構成で 31〜70% にとどまった。数値を少し動かすだけで勝率が 7 ポイントほど動く（Pivot の旋回 260 → 240 で 61% → 68%）ので、この測り方でこれ以上詰めても意味がないと判断した。
+- 目標は「どの構成も 35〜65%」だったが、上限いっぱいの構成で 31〜71% にとどまった。数値を少し動かすだけで勝率が 7 ポイントほど動く（Pivot の旋回 260 → 240 で 61% → 68%）ので、この測り方でこれ以上詰めても意味がないと判断した。
 - コストを余らせた構成（Light だけ入れて何も強くしない、など）は 1〜30%。Light で浮いたコストの使い道は Cannon しかない。
 - テンプレートによる差が大きい（Heavy / Standard / Rapid / Short は GuardBot で 100%、CowardBot で 19%）。プログラムとの相性が勝敗を分ける。
 
 ### 残した課題
 
 - バランスは「同じテンプレートどうし」でしか測っていない。パーツに合わせて書いたプログラムどうしでは変わりうる。
-- テンプレートの撃ち始める距離は標準の銃（射程 400）前提の数字。射程を読む語（`weapon_range` など）は Phase 9 で足す。
 - 説明文（`bullet_distance`）の「1tick に約 13」は標準の銃の値。
 
 ### 動作確認の結果
@@ -372,6 +398,7 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 | `cover_visible` / `cover_distance` / `cover_angle` | 敵から隠れられる場所へ行けるか、そこまでの道のりと、次に向かう方向（下記） |
 | `wall_ahead` / `wall_behind` / `wall_left` / `wall_right` | その方向の壁・障害物までの距離（下記） |
 | `aim_angle` / `lead_angle` / `gun_angle` | 砲塔から敵まで、砲塔から敵の移動先までの角度と、車体の上での砲塔の向き（下記） |
+| `weapon_range` | 自分の銃の射程。積んでいる GUN で決まる（標準は 400） |
 
 実装: `ScriptBrain`（`src/ai/runtime.ts`）は JavaScript のジェネレータで書いたインタプリタで、行動の文で `yield` して tick を終え、次の `decide()` で続きから再開する。実行位置と変数はロボットごとに持つ。エンジン側（`RobotBrain` / `AIContext` / `AIAction`、`Simulation`）の形は変えていない。同じ seed・同じコードなら同じ結果になる。
 

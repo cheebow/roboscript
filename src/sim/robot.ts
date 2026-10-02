@@ -270,6 +270,7 @@ export class RobotController {
       aimAngle: this.sensed.aimAngle,
       leadAngle: this.sensed.leadAngle,
       gunAngle: this.sensed.gunAngle,
+      weaponRange: this.stats.weaponRange,
     };
   }
 }

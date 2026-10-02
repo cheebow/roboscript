@@ -57,7 +57,7 @@ loop
             if enemy_visible
                 turn enemy
 
-                if enemy_distance < 350
+                if enemy_distance < weapon_range - 50
                     label ATTACK
                     drive stop
                     fire

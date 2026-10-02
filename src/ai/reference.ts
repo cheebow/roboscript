@@ -245,6 +245,12 @@ const LANGUAGE: readonly WordReference[] = [
     hint: 'the turret on the hull',
     summary: `Angle of the gun on the hull, ${ANGLE}.`,
   },
+  {
+    word: 'weapon_range',
+    kind: 'sensor',
+    hint: 'how far the gun shoots',
+    summary: `How far this robot's own gun shoots: ${ROBOT_DEFAULTS.weaponRange} with a standard gun. A bullet fired at an enemy further away than this falls short.`,
+  },
 ];
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));

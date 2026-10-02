@@ -18,7 +18,7 @@ export function cowardBot(avoid: Side): string {
                 drive backward
             fire
         else
-            if enemy_distance < 400
+            if enemy_distance < weapon_range
                 label ATTACK
                 drive stop
                 fire

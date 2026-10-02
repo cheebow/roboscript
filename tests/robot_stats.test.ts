@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { RobotStats } from '../src/data/robot_defaults';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
-import type { RobotBrain } from '../src/sim/ai_context';
+import { type RobotBrain, createIdleAction } from '../src/sim/ai_context';
 import { distance } from '../src/sim/math';
-import { FixedBrain, NO_SPREAD_STATS, createSimulation, runTicks } from './helpers';
+import { FixedBrain, NO_SPREAD_STATS, compileBrain, createSimulation, runTicks } from './helpers';
 
 const { tickRate } = MATCH_DEFAULTS;
 const { maxHp, maxAmmo, moveSpeed } = NO_SPREAD_STATS;
@@ -54,6 +54,26 @@ describe('robots with stats of their own', () => {
     const simulation = duel(firing(), { weaponRange: 100 }, {});
     runTicks(simulation, ONE_VOLLEY_TICKS);
     expect(simulation.robots.map((robot) => robot.hp)).toEqual([maxHp - NO_SPREAD_STATS.shotDamage, maxHp]);
+  });
+
+  it('are told how far their own gun shoots', () => {
+    const told: number[] = [];
+    const listening = (): RobotBrain => ({
+      decide: (context) => {
+        told.push(context.weaponRange);
+        return createIdleAction();
+      },
+    });
+    duel([listening(), listening()], { weaponRange: 250 }, {}).step();
+    expect(told).toEqual([250, NO_SPREAD_STATS.weaponRange]);
+  });
+
+  it('can hold their fire until the enemy is within weapon_range', () => {
+    // The robots stand 200 apart: within reach of the usual gun, out of reach of a gun that shoots 150.
+    const patient = (): RobotBrain => compileBrain('loop\n    if enemy_distance < weapon_range\n        fire\n    else\n        wait');
+    const simulation = duel([patient(), patient()], { weaponRange: 150 }, {});
+    runTicks(simulation, 5);
+    expect(simulation.robots.map((robot) => robot.weapon.ammo)).toEqual([maxAmmo, maxAmmo - 1]);
   });
 
   it('see as far as their own sensor reaches', () => {

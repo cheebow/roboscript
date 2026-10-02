@@ -13,7 +13,7 @@ export function aggressiveBot(avoid: Side): string {
             label ATTACK
             turn enemy
 
-            if enemy_distance < 400
+            if enemy_distance < weapon_range
                 fire
         else
             label SEARCH

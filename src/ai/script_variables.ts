@@ -32,6 +32,7 @@ export const NUMBER_VARIABLES = {
   aim_angle: (context: AIContext) => context.aimAngle,
   lead_angle: (context: AIContext) => context.leadAngle,
   gun_angle: (context: AIContext) => context.gunAngle,
+  weapon_range: (context: AIContext) => context.weaponRange,
 };
 
 export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;

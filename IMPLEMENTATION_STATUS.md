@@ -1,5 +1,7 @@
 # IMPLEMENTATION STATUS
 
+アプリ名は **RoboScript**（ゲーム内の言語と同じ名前。2026-10-02 に `robograming` から変更）。
+
 上位仕様は `SPEC.md`（Codex向け実装指示書 v0.1）。
 技術構成だけ指示書から変更し、Godot / GDScript ではなく **Web（TypeScript + Vite + Canvas 2D + CodeMirror 6）** で実装している。
 
@@ -40,7 +42,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（472件）
+npm test           # Vitest（473件）
 npm run typecheck
 npm run build
 ```
@@ -461,7 +463,7 @@ loop
 
 - **ロード先に合わせて、障害物を回り込む側を変える。** 各テンプレートは「回り込む側」を受け取ってソースを作る（`build('left' | 'right')`）。ALPHA にロードすると `turn left`、BRAVO にロードすると `turn right` になる。2体が同じ側へ回ると障害物の反対側に分かれて出会えないため。StrafeBot が敵に横を向けるための旋回のように、敵の位置で決まる旋回は入れ替えない。
 - テンプレート同士の全組み合わせ（7 × 7）は、3つのマップすべてで時間切れにならず決着する（テストで固定）。
-- **保存先**: ALPHA は `robograming/projects/alpha/main.bot`、BRAVO は `robograming/projects/alpha/bravo.bot`。
+- **保存先**: ALPHA は `roboscript/projects/alpha/main.bot`、BRAVO は `roboscript/projects/alpha/bravo.bot`。アプリ名を変える前の `robograming/projects/alpha/...` に保存されたものは、新しい保存先にまだ何もないときに読み込まれる（次の保存からは新しい保存先に入る）。
 - **RUN / DEBUG は両方のコードを解析する。** どちらかにエラーがあれば試合を始めず、ログにロボット名付きで出し、該当するエディタの行を赤くして、そのファイルを開く。
 - **編集後の扱いはロボットごと。** 編集したほうのエディタだけ、次の RUN / DEBUG まで行の表示と、行の実行時点への移動を止める。
 - **ログクリック**は、その行のロボットのコードを開いて該当行へ移動する。
@@ -743,7 +745,7 @@ RUN / DEBUG → recordMatch() が全tickを計算 → Recording（スナップ�
 - **WATCH**: ALPHA の `enemy_visible` / `enemy_distance` / `enemy_angle` / `hp` / `ammo` / `state` / `last_seen_x` / `last_seen_y`
 - **DEBUG LOG**: イベントを `[06.833] BRAVO HIT  ALPHA damage=20 hp=0` の形式で表示。末尾を見ている間は新しい行に追従する
 - **BATTLE VIEW**: 枠に合わせて 5:3 のまま拡大縮小。画面の解像度に合わせて描画するので、高解像度の画面でも文字と線がぼやけない
-- **保存**: localStorage に `robograming/projects/alpha/project.json` と `.../main.bot` として自動保存
+- **保存**: localStorage に `roboscript/projects/alpha/project.json`（当時は `robograming/...`）と `.../main.bot` として自動保存
 
 ### ログに記録するイベント
 

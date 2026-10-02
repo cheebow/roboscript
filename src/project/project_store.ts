@@ -14,7 +14,9 @@ export interface ProjectInfo {
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
 
 // Keys mirror the project layout in SPEC §43: projects/alpha/{project.json, main.bot}.
-const PROJECT_DIRECTORY = 'robograming/projects/alpha';
+const PROJECT_DIRECTORY = 'roboscript/projects/alpha';
+// Where the project was kept under the app's earlier name. It is read when nothing is saved under the present one.
+const EARLIER_DIRECTORY = 'robograming/projects/alpha';
 export const PROJECT_INFO_KEY = `${PROJECT_DIRECTORY}/project.json`;
 export const MAIN_BOT_KEY = `${PROJECT_DIRECTORY}/main.bot`;
 export const BRAVO_BOT_KEY = `${PROJECT_DIRECTORY}/bravo.bot`;
@@ -31,7 +33,7 @@ export class ProjectStore {
 
   /** The saved program of the robot at the given spawn index, or its default if nothing was saved yet. */
   loadSource(robotIndex: number): string {
-    return this.storage.getItem(sourceKey(robotIndex)) ?? this.defaultSources[robotIndex];
+    return this.read(sourceKey(robotIndex)) ?? this.defaultSources[robotIndex];
   }
 
   saveSource(robotIndex: number, source: string): void {
@@ -46,7 +48,7 @@ export class ProjectStore {
 
   /** The saved project.json, or the default project if it is missing or unreadable. */
   loadInfo(): ProjectInfo {
-    const text = this.storage.getItem(PROJECT_INFO_KEY);
+    const text = this.read(PROJECT_INFO_KEY);
     if (text === null) return DEFAULT_PROJECT;
     try {
       const value: unknown = JSON.parse(text);
@@ -60,12 +62,21 @@ export class ProjectStore {
   private saveInfo(changes: Partial<ProjectInfo>): void {
     this.storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...this.loadInfo(), ...changes }));
   }
+
+  /** What is saved under the key, or else what was saved in its place under the app's earlier name. */
+  private read(key: string): string | null {
+    return this.storage.getItem(key) ?? this.storage.getItem(earlierKey(key));
+  }
 }
 
 function sourceKey(robotIndex: number): string {
   const key = SOURCE_KEYS[robotIndex];
   if (key === undefined) throw new Error(`No program is kept for robot ${robotIndex}`);
   return key;
+}
+
+function earlierKey(key: string): string {
+  return EARLIER_DIRECTORY + key.slice(PROJECT_DIRECTORY.length);
 }
 
 function isProjectInfo(value: unknown): value is ProjectInfo {

@@ -100,6 +100,22 @@ describe('ProjectStore', () => {
     expect(store.loadInfo().name).toBe('ALPHA');
   });
 
+  it('carries over a project saved under the earlier name of the app', () => {
+    const { storage, store } = createStore();
+    storage.setItem('robograming/projects/alpha/main.bot', 'fire\n');
+    storage.setItem('robograming/projects/alpha/project.json', JSON.stringify({ ...DEFAULT_PROJECT, arena: 'pillars' }));
+    expect(store.loadSource(PLAYER)).toBe('fire\n');
+    expect(store.loadSource(ENEMY)).toBe(DEFAULT_ENEMY_SOURCE);
+    expect(store.loadInfo().arena).toBe('pillars');
+
+    // From then on the project is kept under the present name, and that is what counts.
+    store.saveSource(PLAYER, 'wait\n');
+    expect(storage.items.get(MAIN_BOT_KEY)).toBe('wait\n');
+    expect(JSON.parse(storage.items.get(PROJECT_INFO_KEY) ?? '').arena).toBe('pillars');
+    expect(store.loadSource(PLAYER)).toBe('wait\n');
+    expect(storage.items.get('robograming/projects/alpha/main.bot')).toBe('fire\n');
+  });
+
   it('lets storage failures reach the caller', () => {
     const failing: KeyValueStorage = {
       getItem: () => null,

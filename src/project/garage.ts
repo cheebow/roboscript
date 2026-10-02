@@ -1,5 +1,4 @@
 import { type Loadout, readLoadout } from '../data/parts';
-import { type StartSide, readStartSide } from '../sim/mirror';
 import type { KeyValueStorage } from './project_store';
 
 /** A robot kept under a name: its program and its parts. */
@@ -7,8 +6,6 @@ export interface SavedRobot {
   name: string;
   source: string;
   loadout: Loadout;
-  /** The side of the arena its program was written for. Sent in from the other side, it is run in a mirror. */
-  side: StartSide;
 }
 
 export const GARAGE_KEY = 'roboscript/garage.json';
@@ -55,7 +52,7 @@ export class Garage {
     if (garageName(robot.name) !== robot.name) throw new Error(`"${robot.name}" is not a name a robot can be kept under`);
     const others = this.list().filter((other) => other.name !== robot.name);
     const replaced = others.length < this.list().length;
-    this.write([...others, { ...robot, loadout: { ...robot.loadout } }]);
+    this.write([...others, { name: robot.name, source: robot.source, loadout: { ...robot.loadout } }]);
     return replaced;
   }
 
@@ -74,8 +71,7 @@ export class Garage {
 function readRobot(value: unknown): SavedRobot | null {
   if (!isRecord(value) || typeof value.name !== 'string' || typeof value.source !== 'string') return null;
   if (garageName(value.name) !== value.name) return null;
-  // Robots saved before sides were kept were written for the first one.
-  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout), side: readStartSide(value.side) };
+  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

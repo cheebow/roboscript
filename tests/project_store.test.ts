@@ -127,33 +127,6 @@ describe('ProjectStore', () => {
     expect(store.loadLoadout(ENEMY)).toEqual(STANDARD_LOADOUT);
   });
 
-  it('takes each robot\'s program to be written for its own side until told otherwise', () => {
-    const { store } = createStore();
-    expect(store.loadSide(PLAYER)).toBe(0);
-    expect(store.loadSide(ENEMY)).toBe(1);
-  });
-
-  it('remembers the side a robot\'s program was written for, also across other saves', () => {
-    const { store } = createStore();
-    store.saveSide(ENEMY, 0);
-    store.saveArena('open_field');
-    store.saveLoadout(PLAYER, STANDARD_LOADOUT);
-    expect(store.loadSide(ENEMY)).toBe(0);
-    expect(store.loadSide(PLAYER)).toBe(0);
-
-    store.saveSide(PLAYER, 1);
-    store.saveSide(ENEMY, 1);
-    expect(store.loadSide(PLAYER)).toBe(1);
-    expect(store.loadSide(ENEMY)).toBe(1);
-  });
-
-  it('goes back to the robot\'s own side when the saved side makes no sense', () => {
-    const { storage, store } = createStore();
-    storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...DEFAULT_PROJECT, sides: ['left', 7] }));
-    expect(store.loadSide(PLAYER)).toBe(0);
-    expect(store.loadSide(ENEMY)).toBe(1);
-  });
-
   it('still reads a project saved when the enemy was picked from a list', () => {
     const { storage, store } = createStore();
     storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ name: 'ALPHA', version: 1, enemy: 'coward_bot' }));

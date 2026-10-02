@@ -5,7 +5,6 @@ import {
   fightNames,
   garageEntrants,
   inOrder,
-  isMirrored,
   playArenaSeries,
   prepareFight,
 } from '../arena/match';
@@ -69,8 +68,6 @@ interface SlotView {
   select: HTMLSelectElement;
   parts: HTMLElement;
   cost: HTMLElement;
-  /** Shown when the robot is run in a mirror in this slot. */
-  mirrored: HTMLElement;
   /** HP and ammo in the match being shown. */
   status: HTMLElement;
 }
@@ -188,7 +185,6 @@ export class ArenaMode {
       select,
       parts: createElement('div', 'lineup-parts'),
       cost: createElement('span', 'lineup-cost'),
-      mirrored: createMirrorNote(),
       status: createElement('span', 'lineup-status'),
     };
   }
@@ -198,7 +194,7 @@ export class ArenaMode {
     const choice = createElement('div', 'lineup-choice');
     choice.append(createElement('span', 'field-name', `${index + 1}`), slot.select);
     const figures = createElement('div', 'lineup-figures');
-    figures.append(slot.cost, slot.mirrored, slot.status);
+    figures.append(slot.cost, slot.status);
     details.append(choice, slot.parts, figures);
     const element = createElement('div', 'lineup-slot');
     element.append(slot.preview, details);
@@ -232,9 +228,6 @@ export class ArenaMode {
     const cost = costOf(loadout);
     slot.cost.textContent = `COST ${cost} / ${COST_LIMIT}`;
     slot.cost.classList.toggle('over-limit', cost > COST_LIMIT);
-    // Written for the other side: it fights from here in a mirror.
-    const mirrored = isMirrored(this.entrantIn(index), index);
-    slot.mirrored.hidden = !mirrored;
   }
 
   /** Stops showing the match, as the line-up is no longer the one that fought it. Its result still goes on the list. */
@@ -356,13 +349,6 @@ export class ArenaMode {
 /** The entrant that starts first in the match with the given number: they take turns. */
 function sideOf(match: number): 0 | 1 {
   return match % 2 === 0 ? 0 : 1;
-}
-
-function createMirrorNote(): HTMLElement {
-  const note = createElement('span', 'lineup-mirrored', 'mirrored');
-  note.title = 'Written for the other side of the arena: it fights from here with left and right swapped';
-  note.hidden = true;
-  return note;
 }
 
 function randomSeed(): number {

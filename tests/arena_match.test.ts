@@ -6,7 +6,6 @@ import {
   fightNames,
   garageEntrants,
   inOrder,
-  isMirrored,
   playArenaSeries,
   prepareFight,
 } from '../src/arena/match';
@@ -14,8 +13,6 @@ import { scatterSpawns } from '../src/arena/spawns';
 import { DEFAULT_ARENA } from '../src/data/arenas';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf, statsOf } from '../src/data/parts';
 import { TEMPLATES, templateSource } from '../src/data/templates';
-import { normalizeAngle } from '../src/sim/math';
-import type { StartSide } from '../src/sim/mirror';
 import { Simulation } from '../src/sim/simulation';
 import type { Arena } from '../src/sim/types';
 import { DUEL_ARENA, runToEnd } from './helpers';
@@ -24,8 +21,8 @@ import { DUEL_ARENA, runToEnd } from './helpers';
 const SHOOT = 'loop\n    turn enemy\n    fire';
 const SIT = 'loop\n    wait';
 
-function saved(name: string, source: string, loadout = STANDARD_LOADOUT, side: StartSide = 0): Entrant {
-  return garageEntrants([{ name, source, loadout, side }])[0];
+function saved(name: string, source: string, loadout = STANDARD_LOADOUT): Entrant {
+  return garageEntrants([{ name, source, loadout }])[0];
 }
 
 function builtIn(templateId: string): Entrant {
@@ -50,7 +47,6 @@ describe('builtInEntrants', () => {
     expect(new Set(entrants.map((entrant) => entrant.id)).size).toBe(entrants.length);
     for (const entrant of entrants) {
       expect(entrant.origin).toBe('built-in');
-      expect(entrant.side).toBeNull();
       expect(entrant.loadout).toEqual(STANDARD_LOADOUT);
     }
   });
@@ -67,14 +63,14 @@ describe('builtInEntrants', () => {
 describe('garageEntrants', () => {
   it('offers the saved robots, with the program and the parts they were saved with', () => {
     const loadout = { ...STANDARD_LOADOUT, body: 'heavy', sensor: 'short' };
-    const [entrant] = garageEntrants([{ name: 'Tank', source: SHOOT, loadout, side: 1 }]);
-    expect(entrant).toMatchObject({ id: 'garage:Tank', name: 'Tank', origin: 'garage', loadout, side: 1 });
+    const [entrant] = garageEntrants([{ name: 'Tank', source: SHOOT, loadout }]);
+    expect(entrant).toMatchObject({ id: 'garage:Tank', name: 'Tank', origin: 'garage', loadout });
     expect(entrant.sourceFor(0)).toBe(SHOOT);
     expect(entrant.sourceFor(1)).toBe(SHOOT);
   });
 
   it('tells a saved robot from a built-in one of the same name', () => {
-    const mine = saved('DumbBot', SIT);
+    const [mine] = garageEntrants([{ name: 'DumbBot', source: SIT, loadout: STANDARD_LOADOUT }]);
     expect(mine.id).not.toBe(builtIn('dumb_bot').id);
   });
 });
@@ -125,39 +121,6 @@ describe('prepareFight', () => {
   it('makes the same match again from the same seed, with fresh brains', () => {
     const entrants: [Entrant, Entrant] = [builtIn('sample'), builtIn('dumb_bot')];
     expect(outcomeOf(entrants, 3, DEFAULT_ARENA)).toEqual(outcomeOf(entrants, 3, DEFAULT_ARENA));
-  });
-
-  it('runs a robot in a mirror when it starts on the other side than it was written for', () => {
-    // Turns left for ever: its rotation goes down as written, up in a mirror.
-    const spinner = (side: StartSide) => saved('Spinner', 'loop\n    turn left', STANDARD_LOADOUT, side);
-    const turnOf = (entrants: [Entrant, Entrant], spawnIndex: number) => {
-      const prepared = prepareFight(entrants, DUEL_ARENA, 1);
-      if (!prepared.ok) throw new Error('refused');
-      const simulation = new Simulation(prepared.fight.config);
-      const before = simulation.robots[spawnIndex].rotation;
-      simulation.step();
-      return Math.sign(normalizeAngle(simulation.robots[spawnIndex].rotation - before));
-    };
-    const still = saved('Tank', SIT);
-    expect(turnOf([spinner(0), still], 0)).toBe(-1);
-    expect(turnOf([still, spinner(0)], 1)).toBe(1);
-    expect(turnOf([spinner(1), still], 0)).toBe(1);
-    expect(turnOf([still, spinner(1)], 1)).toBe(-1);
-  });
-
-  it('tells which entrants run in a mirror', () => {
-    expect(isMirrored(saved('A', SIT, STANDARD_LOADOUT, 0), 0)).toBe(false);
-    expect(isMirrored(saved('A', SIT, STANDARD_LOADOUT, 0), 1)).toBe(true);
-    expect(isMirrored(saved('B', SIT, STANDARD_LOADOUT, 1), 0)).toBe(true);
-    expect(isMirrored(builtIn('sample'), 0)).toBe(false);
-    expect(isMirrored(builtIn('sample'), 1)).toBe(false);
-  });
-
-  it('lets two robots written for the same side meet where something stands in the middle', () => {
-    const template = TEMPLATES.find((candidate) => candidate.id === 'dumb_bot');
-    const source = template?.build('left') ?? '';
-    const entrants: [Entrant, Entrant] = [saved('One', source), saved('Two', source)];
-    for (const seed of [1, 2, 3]) expect(outcomeOf(entrants, seed, DEFAULT_ARENA).result?.reason).not.toBe('timeout');
   });
 
   it('lets a robot fight itself', () => {

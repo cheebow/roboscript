@@ -1,5 +1,4 @@
 import { type Loadout, readLoadout } from '../data/parts';
-import { type StartSide, readStartSide } from '../sim/mirror';
 
 /** The part of the Web Storage API the store needs. */
 export interface KeyValueStorage {
@@ -14,8 +13,6 @@ export interface ProjectInfo {
   arena?: string;
   /** The parts of each robot, in spawn order; absent until the player changes a part. */
   loadouts?: unknown[];
-  /** The side each robot's program was written for, in spawn order; absent until one is loaded from the other side. */
-  sides?: unknown[];
 }
 
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
@@ -64,18 +61,6 @@ export class ProjectStore {
     this.saveInfo({ loadouts });
   }
 
-  /** The side the program of the robot at the given spawn index was written for: its own, unless another was saved. */
-  loadSide(robotIndex: number): StartSide {
-    const saved = this.loadInfo().sides?.[robotIndex];
-    return readStartSide(saved === 0 || saved === 1 ? saved : robotIndex);
-  }
-
-  saveSide(robotIndex: number, side: StartSide): void {
-    const sides = [...(this.loadInfo().sides ?? [])];
-    sides[robotIndex] = side;
-    this.saveInfo({ sides });
-  }
-
   /** The saved project.json, or the default project if it is missing or unreadable. */
   loadInfo(): ProjectInfo {
     const text = this.read(PROJECT_INFO_KEY);
@@ -114,6 +99,5 @@ function isProjectInfo(value: unknown): value is ProjectInfo {
   const candidate = value as Record<string, unknown>;
   if (candidate.arena !== undefined && typeof candidate.arena !== 'string') return false;
   if (candidate.loadouts !== undefined && !Array.isArray(candidate.loadouts)) return false;
-  if (candidate.sides !== undefined && !Array.isArray(candidate.sides)) return false;
   return typeof candidate.name === 'string' && typeof candidate.version === 'number';
 }

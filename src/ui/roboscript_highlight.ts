@@ -9,7 +9,7 @@ import {
   isTurnDirection,
 } from '../ai/script_variables';
 
-const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'and', 'or', 'not']);
+const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'def', 'return', 'and', 'or', 'not']);
 const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'set']);
 
 const NUMBER = /^\d+(\.\d+)?/;

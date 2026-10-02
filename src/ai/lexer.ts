@@ -1,7 +1,7 @@
 import type { ScriptError } from './script_error';
 
-/** Punctuation the language knows: comparisons, arithmetic, grouping and assignment. */
-export const SYMBOLS = ['<=', '>=', '==', '!=', '<', '>', '+', '-', '*', '/', '(', ')', '='] as const;
+/** Punctuation the language knows: comparisons, arithmetic, grouping, assignment and the comma between values. */
+export const SYMBOLS = ['<=', '>=', '==', '!=', '<', '>', '+', '-', '*', '/', '(', ')', '=', ','] as const;
 export type SymbolText = (typeof SYMBOLS)[number];
 
 export type Token =
@@ -25,7 +25,7 @@ export interface LexResult {
 
 const COMMENT_START = '#';
 const LEADING_WHITESPACE = /^[ \t]*/;
-const TOKEN = /\s+|(\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)|(<=|>=|==|!=|[<>+\-*/()=])/y;
+const TOKEN = /\s+|(\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)|(<=|>=|==|!=|[<>+\-*/()=,])/y;
 
 export function lex(source: string): LexResult {
   const lines: LexedLine[] = [];

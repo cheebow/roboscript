@@ -33,19 +33,25 @@ function toCompletion(suggestion: Suggestion, index: number): Completion {
     detail: suggestion.hint,
     info: suggestion.summary,
     boost: -index,
-    apply: suggestion.addSpace ? applyWithSpace : undefined,
+    apply: suggestion.insert === suggestion.word ? undefined : insertAndGoOn(suggestion.insert),
   };
 }
 
-/** Inserts the word and a space, and goes straight on to suggesting what follows it. */
-function applyWithSpace(view: EditorView, completion: Completion, from: number, to: number): void {
-  // Reuse a space that is already there rather than adding a second one.
-  const end = view.state.sliceDoc(to, to + 1) === ' ' ? to + 1 : to;
-  view.dispatch({
-    ...insertCompletionText(view.state, `${completion.label} `, from, end),
-    annotations: pickedCompletion.of(completion),
-  });
-  startCompletion(view);
+/**
+ * Puts in a word together with what must follow it (a space, or the
+ * parenthesis of a call), and goes straight on to suggesting what comes next.
+ */
+function insertAndGoOn(text: string) {
+  return (view: EditorView, completion: Completion, from: number, to: number): void => {
+    // Reuse a space or parenthesis that is already there rather than adding a second one.
+    const last = text[text.length - 1];
+    const end = text.endsWith(')') || view.state.sliceDoc(to, to + 1) !== last ? to : to + 1;
+    view.dispatch({
+      ...insertCompletionText(view.state, text, from, end),
+      annotations: pickedCompletion.of(completion),
+    });
+    startCompletion(view);
+  };
 }
 
 const explainOnHover = hoverTooltip((view, position) => {

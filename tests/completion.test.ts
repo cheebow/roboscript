@@ -8,7 +8,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
@@ -83,8 +83,16 @@ describe('completionsAt: arguments', () => {
 
   it('marks the words that need something after them', () => {
     const options = completionsAt('', 0, true)?.options ?? [];
-    const needingMore = options.filter((option) => option.addSpace).map((option) => option.word);
-    expect(needingMore).toEqual(['if', 'while', 'set', 'label', 'drive', 'turn', 'aim']);
+    const needingMore = options.filter((option) => option.insert === `${option.word} `).map((option) => option.word);
+    expect(needingMore).toEqual(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'aim']);
+    expect(options.filter((option) => option.insert === option.word).map((option) => option.word)).toEqual([
+      'else',
+      'loop',
+      'return',
+      'fire',
+      'guard',
+      'wait',
+    ]);
   });
 
   it('carries a hint and a summary for each word', () => {
@@ -156,5 +164,53 @@ describe('completionsAt: where nothing fits', () => {
     expect(offered('if hp ; b|')).toBeNull();
     expect(offered('if hp < 12a|')).toBeNull();
     expect(offered('250 |', true)).toBeNull();
+  });
+});
+
+describe('completionsAt: functions', () => {
+  const program = 'def approach(limit)\n    drive forward\ndef abs(v)\n    return v\ndef stop()\n    drive stop\n';
+  const inserts = (textWithCursor: string, explicit = false) => {
+    const position = textWithCursor.indexOf('|');
+    const options = completionsAt(textWithCursor.replace('|', ''), position, explicit)?.options ?? [];
+    return options.map((option) => option.insert);
+  };
+
+  it('offers the functions of the program at the start of a line, with their parenthesis', () => {
+    expect(offered(`${program}loop\n    a|`)).toEqual(['aim', 'approach', 'abs']);
+    expect(inserts(`${program}loop\n    ap|`)).toEqual(['approach(']);
+    // A function that takes nothing is closed at once.
+    expect(inserts(`${program}loop\n    st|`)).toEqual(['stop()']);
+  });
+
+  it('offers them in conditions and values, with what they take as the hint', () => {
+    expect(offered(`${program}loop\n    if ab|`)).toEqual(['abs']);
+    expect(offered(`${program}loop\n    set n = 1 + ap|`)).toEqual(['approach']);
+    const position = `${program}loop\n    if ab`.length;
+    expect(completionsAt(`${program}loop\n    if ab`, position)?.options[0]).toMatchObject({
+      word: 'abs',
+      kind: 'function',
+      hint: 'abs(v)',
+    });
+  });
+
+  it('offers values between the parentheses of a call, after each comma too', () => {
+    expect(offered(`${program}loop\n    approach(|`, true)).toEqual([...NUMBERS, 'approach', 'abs', 'stop']);
+    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle']);
+    expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp']);
+  });
+
+  it('offers the parameters of a function inside it, and nowhere else', () => {
+    expect(offered('def approach(limit)\n    if enemy_distance > li|')).toEqual(['limit']);
+    expect(offered('def approach(limit)\n    wait\nloop\n    if enemy_distance > li|')).toBeNull();
+  });
+
+  it('offers values after return', () => {
+    expect(offered('def f(first)\n    return fi|')).toEqual(['first']);
+    expect(offered('def f(first)\n    return |')).toBeNull();
+  });
+
+  it('offers nothing while a function is being named', () => {
+    expect(offered('def a|')).toBeNull();
+    expect(offered('def f(a|', true)).toBeNull();
   });
 });

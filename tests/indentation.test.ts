@@ -20,6 +20,11 @@ describe('indentFor', () => {
     expect(indentOfLast('if blocked\n    fire\nelse\n')).toBe(4);
   });
 
+  it('goes one step deeper after the first line of a function', () => {
+    expect(indentOfLast('def approach(limit)\n')).toBe(4);
+    expect(indentOfLast('def approach(limit)\n    drive forward\n')).toBe(4);
+  });
+
   it('stays level after any other line', () => {
     expect(indentOfLast('loop\n    fire\n')).toBe(4);
     expect(indentOfLast('set n = 0\n')).toBe(0);

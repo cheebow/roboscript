@@ -12,7 +12,9 @@ export type Expression =
   /** A variable the program itself assigns with `set`. */
   | { kind: 'variable'; name: string }
   | { kind: 'negate'; operand: Expression }
-  | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression };
+  | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression }
+  /** A call of one of the program's functions for the value it returns. */
+  | { kind: 'call'; name: string; args: Expression[] };
 
 export type ConditionNode =
   | { kind: 'boolean_variable'; name: BooleanVariableName }
@@ -74,8 +76,48 @@ export interface DriveNode {
   setting: DriveSetting;
 }
 
-export type StatementNode = IfNode | LoopNode | WhileNode | SetNode | ActionNode | LabelNode | DriveNode;
+/** A call of one of the program's functions on a line of its own; what it returns is dropped. */
+export interface CallNode {
+  kind: 'call';
+  line: number;
+  name: string;
+  args: Expression[];
+}
+
+/** Ends the function it is in, with the value it returns (0 when none is given). */
+export interface ReturnNode {
+  kind: 'return';
+  line: number;
+  value: Expression | null;
+}
+
+export type StatementNode =
+  | IfNode
+  | LoopNode
+  | WhileNode
+  | SetNode
+  | ActionNode
+  | LabelNode
+  | DriveNode
+  | CallNode
+  | ReturnNode;
+
+/** A named piece of program, run when it is called. */
+export interface FunctionNode {
+  name: string;
+  /** Line of its `def`. */
+  line: number;
+  /** The variables its arguments go into: local to the function, and stored under `parameterVariable(...)`. */
+  params: string[];
+  body: StatementNode[];
+}
+
+/** The name under which a function's parameter is kept among the program's variables, e.g. `approach.limit`. */
+export function parameterVariable(functionName: string, param: string): string {
+  return `${functionName}.${param}`;
+}
 
 export interface Program {
   body: StatementNode[];
+  functions: ReadonlyMap<string, FunctionNode>;
 }

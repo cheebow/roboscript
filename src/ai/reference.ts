@@ -3,7 +3,7 @@ import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { isReservedWord } from './script_variables';
 
 /** What part a word plays in the language. */
-export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'variable' | 'label';
+export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'variable' | 'label' | 'function';
 
 /** What a word of RoboScript means, as told to the player while writing. */
 export interface WordReference {
@@ -46,6 +46,18 @@ const LANGUAGE: readonly WordReference[] = [
     kind: 'control',
     hint: 'repeat while a condition holds',
     summary: 'Repeats the indented lines below for as long as the condition holds.',
+  },
+  {
+    word: 'def',
+    kind: 'control',
+    hint: 'define a function',
+    summary: 'Defines a function, as in def approach(limit), with its lines indented below. They run when it is called: approach(350).',
+  },
+  {
+    word: 'return',
+    kind: 'control',
+    hint: 'leave the function',
+    summary: 'Ends the function it is in. With a value, as in return limit + 1, that is what the call gives back; without one, the call gives 0.',
   },
   { word: 'and', kind: 'control', hint: 'both conditions', summary: 'Holds when the conditions on both sides hold.' },
   { word: 'or', kind: 'control', hint: 'either condition', summary: 'Holds when at least one of the two conditions holds.' },
@@ -250,6 +262,7 @@ export interface ProgramVariable {
 
 const SET_STATEMENT = /^\s*set\s+([A-Za-z_][A-Za-z0-9_]*)/;
 const LABEL_STATEMENT = /^\s*label\s+([A-Za-z_][A-Za-z0-9_]*)/;
+const DEFINITION = /^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/;
 
 /** The variables a program sets, in the order they first appear. */
 export function programVariables(source: string): ProgramVariable[] {
@@ -273,6 +286,56 @@ export function programLabels(source: string): string[] {
 
 export function describeLabel(label: string): WordReference {
   return { word: label, kind: 'label', hint: 'label', summary: 'A label this program uses elsewhere.' };
+}
+
+/** A function of the program's own, with the 1-based line of its `def`. */
+export interface ProgramFunction {
+  name: string;
+  params: string[];
+  line: number;
+}
+
+/** The functions a program defines, in the order they appear. Only well-formed `def` lines at the left edge count. */
+export function programFunctions(source: string): ProgramFunction[] {
+  const functions = new Map<string, ProgramFunction>();
+  source.split(/\r?\n/).forEach((text, index) => {
+    const match = DEFINITION.exec(withoutComment(text));
+    if (match === null || functions.has(match[1])) return;
+    const params = match[2].split(',').map((param) => param.trim()).filter((param) => param !== '');
+    functions.set(match[1], { name: match[1], params, line: index + 1 });
+  });
+  return [...functions.values()];
+}
+
+/** The function whose body the position is in, if any: the nearest line above that starts at the left edge is its `def`. */
+export function enclosingFunction(source: string, position: number): ProgramFunction | null {
+  const lines = source.slice(0, position).split(/\r?\n/);
+  // The line of the position itself counts if it is indented: it is then inside a block.
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const code = withoutComment(lines[index]);
+    if (code.trim() === '' || /^\s/.test(code)) continue;
+    const name = DEFINITION.exec(code)?.[1];
+    return programFunctions(source).find((candidate) => candidate.name === name && candidate.line === index + 1) ?? null;
+  }
+  return null;
+}
+
+/** How a function is written when it is called without its values: `approach(limit)`. */
+export function signatureOf({ name, params }: ProgramFunction): string {
+  return `${name}(${params.join(', ')})`;
+}
+
+export function describeFunction(definition: ProgramFunction): WordReference {
+  return {
+    word: definition.name,
+    kind: 'function',
+    hint: signatureOf(definition),
+    summary: `Function ${signatureOf(definition)} of this program, defined on line ${definition.line}.`,
+  };
+}
+
+export function describeParameter(name: string, owner: ProgramFunction): WordReference {
+  return { word: name, kind: 'variable', hint: 'parameter', summary: `A value passed to ${signatureOf(owner)}.` };
 }
 
 export function describeVariable(variable: ProgramVariable): WordReference {
@@ -306,10 +369,20 @@ export function describeAt(source: string, position: number): Description | null
   if (from === to) return null;
 
   const word = code.slice(from, to);
-  const variable = programVariables(source).find((candidate) => candidate.name === word);
-  const reference = describeWord(word) ?? (variable === undefined ? undefined : describeVariable(variable));
+  const reference = describeWord(word) ?? describeOwn(source, position, word);
   if (reference === undefined) return null;
   return { ...reference, from: lineStart + from, to: lineStart + to };
+}
+
+/** What a word of the player's own stands for at the given position: a function, a parameter or a variable. */
+function describeOwn(source: string, position: number, word: string): WordReference | undefined {
+  const definition = programFunctions(source).find((candidate) => candidate.name === word);
+  if (definition !== undefined) return describeFunction(definition);
+  // Inside a function, its parameters come before the variables of the same name.
+  const owner = enclosingFunction(source, position);
+  if (owner?.params.includes(word)) return describeParameter(word, owner);
+  const variable = programVariables(source).find((candidate) => candidate.name === word);
+  return variable === undefined ? undefined : describeVariable(variable);
 }
 
 /** The line up to its comment, if it has one. */

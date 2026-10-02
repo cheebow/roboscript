@@ -1,9 +1,21 @@
 import { type AIAction, type AIContext, type RobotBrain, createIdleAction } from '../sim/ai_context';
-import type { ArithmeticOperator, ComparisonOperator, ConditionNode, Expression, Program, StatementNode } from './ast';
+import {
+  type ArithmeticOperator,
+  type ComparisonOperator,
+  type ConditionNode,
+  type Expression,
+  type FunctionNode,
+  type Program,
+  type StatementNode,
+  parameterVariable,
+} from './ast';
 import { BOOLEAN_VARIABLES, NUMBER_VARIABLES } from './script_variables';
 
+/** How a stretch of program ended: by a `return`, with its value, or (null) by running to its end. */
+type Completion = { value: number } | null;
+
 /** Execution that hands control back whenever a tick is over. */
-type Execution = Generator<void, void, void>;
+type Execution = Generator<void, Completion, void>;
 
 /**
  * Runs a parsed RoboScript program the way an ordinary program runs: from the
@@ -22,7 +34,7 @@ export class ScriptBrain implements RobotBrain {
 
   /** `lineBudget` bounds the lines run in one tick, so a loop without an action cannot hang the match. */
   constructor(
-    program: Program,
+    private readonly program: Program,
     private readonly lineBudget: number,
   ) {
     this.execution = this.runBlock(program.body);
@@ -36,8 +48,13 @@ export class ScriptBrain implements RobotBrain {
     return this.action;
   }
 
+  /** Runs the statements one after another; stops early, with its value, at a `return`. */
   private *runBlock(body: StatementNode[]): Execution {
-    for (const statement of body) yield* this.runStatement(statement);
+    for (const statement of body) {
+      const completion = yield* this.runStatement(statement);
+      if (completion !== null) return completion;
+    }
+    return null;
   }
 
   private *runStatement(statement: StatementNode): Execution {
@@ -45,39 +62,29 @@ export class ScriptBrain implements RobotBrain {
     const { action } = this;
     switch (statement.kind) {
       case 'if':
-        if (this.holds(statement.condition)) {
-          yield* this.runBlock(statement.thenBody);
-        } else if (statement.elseLine !== null) {
-          yield* this.enter(statement.elseLine);
-          yield* this.runBlock(statement.elseBody);
-        }
-        return;
+        if (this.holds(statement.condition)) return yield* this.runBlock(statement.thenBody);
+        if (statement.elseLine === null) return null;
+        yield* this.enter(statement.elseLine);
+        return yield* this.runBlock(statement.elseBody);
       case 'loop':
         for (;;) {
-          yield* this.runBlock(statement.body);
+          const completion = yield* this.runBlock(statement.body);
+          if (completion !== null) return completion;
           yield* this.enter(statement.line);
         }
       case 'while':
         while (this.holds(statement.condition)) {
-          yield* this.runBlock(statement.body);
+          const completion = yield* this.runBlock(statement.body);
+          if (completion !== null) return completion;
           yield* this.enter(statement.line);
         }
-        return;
-      case 'set': {
-        const value = this.valueOf(statement.value);
-        this.variables.set(statement.name, value);
-        action.assignments.push({ afterLines: action.executedLines.length, name: statement.name, value });
-        return;
+        return null;
+      case 'call': {
+        const body = this.prepareCall(statement.name, statement.args);
+        // What the function returns is of no use to a call on a line of its own.
+        yield* this.runBlock(body);
+        return null;
       }
-      case 'label':
-        action.label = statement.label;
-        action.sourceLines.label = statement.line;
-        return;
-      case 'drive':
-        // A setting, not an action: the hull keeps driving while the program goes on.
-        action.drive = statement.setting;
-        action.sourceLines.drive = statement.line;
-        return;
       case 'turn':
         action.turn = statement.direction;
         action.sourceLines.turn = statement.line;
@@ -96,21 +103,100 @@ export class ScriptBrain implements RobotBrain {
         break;
       case 'wait':
         break;
+      default:
+        return this.runInstantly(statement);
     }
     // An action was chosen: the tick is over.
     yield;
+    return null;
+  }
+
+  /** The statements that take no time and have no block: they work the same wherever they are run from. */
+  private runInstantly(statement: StatementNode): Completion {
+    const { action } = this;
+    switch (statement.kind) {
+      case 'set':
+        this.assign(statement.name, this.valueOf(statement.value));
+        return null;
+      case 'label':
+        action.label = statement.label;
+        action.sourceLines.label = statement.line;
+        return null;
+      case 'drive':
+        // A setting, not an action: the hull keeps driving while the program goes on.
+        action.drive = statement.setting;
+        action.sourceLines.drive = statement.line;
+        return null;
+      case 'return':
+        return { value: statement.value === null ? 0 : this.valueOf(statement.value) };
+      default:
+        throw new Error(`"${statement.kind}" on line ${statement.line} cannot be run without taking time`);
+    }
   }
 
   /**
    * Notes that the line is being executed. When the tick's line budget is
    * used up, the tick ends here without an action and the line runs next tick.
    */
-  private *enter(line: number): Execution {
+  private *enter(line: number): Generator<void, void, void> {
     if (this.action.executedLines.length >= this.lineBudget) {
       this.action.status = 'stalled';
       yield;
     }
     this.action.executedLines.push(line);
+  }
+
+  /** Works out the values passed to a function and puts them in its parameters. Returns the body to run. */
+  private prepareCall(name: string, args: Expression[]): StatementNode[] {
+    const definition = this.functionNamed(name);
+    // All the values first: one of them may be a call that uses the same parameters.
+    const values = args.map((argument) => this.valueOf(argument));
+    definition.params.forEach((param, index) => this.assign(parameterVariable(name, param), values[index]));
+    return definition.body;
+  }
+
+  private functionNamed(name: string): FunctionNode {
+    const definition = this.program.functions.get(name);
+    if (definition === undefined) throw new Error(`No function "${name}"`);
+    return definition;
+  }
+
+  private assign(name: string, value: number): void {
+    this.variables.set(name, value);
+    this.action.assignments.push({ afterLines: this.action.executedLines.length, name, value });
+  }
+
+  /**
+   * Runs a function in the middle of a condition or a value, and gives what
+   * it returns. Such a function has no actions and no loops (the parser sees
+   * to that), so it runs through without a break.
+   */
+  private call(name: string, args: Expression[]): number {
+    return this.runWithoutBreak(this.prepareCall(name, args))?.value ?? 0;
+  }
+
+  private runWithoutBreak(body: StatementNode[]): Completion {
+    for (const statement of body) {
+      this.action.executedLines.push(statement.line);
+      const completion = this.runStatementWithoutBreak(statement);
+      if (completion !== null) return completion;
+    }
+    return null;
+  }
+
+  private runStatementWithoutBreak(statement: StatementNode): Completion {
+    switch (statement.kind) {
+      case 'if':
+        if (this.holds(statement.condition)) return this.runWithoutBreak(statement.thenBody);
+        if (statement.elseLine === null) return null;
+        this.action.executedLines.push(statement.elseLine);
+        return this.runWithoutBreak(statement.elseBody);
+      case 'call':
+        this.runWithoutBreak(this.prepareCall(statement.name, statement.args));
+        return null;
+      default:
+        return this.runInstantly(statement);
+    }
   }
 
   private holds(condition: ConditionNode): boolean {
@@ -141,6 +227,8 @@ export class ScriptBrain implements RobotBrain {
         return -this.valueOf(expression.operand);
       case 'arithmetic':
         return calculate(expression.operator, this.valueOf(expression.left), this.valueOf(expression.right));
+      case 'call':
+        return this.call(expression.name, expression.args);
     }
   }
 }

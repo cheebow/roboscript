@@ -1,12 +1,15 @@
-import type {
-  ArithmeticOperator,
-  ComparisonOperator,
-  ConditionNode,
-  Expression,
-  IfNode,
-  Program,
-  StatementNode,
+import {
+  type ArithmeticOperator,
+  type ComparisonOperator,
+  type ConditionNode,
+  type Expression,
+  type FunctionNode,
+  type IfNode,
+  type Program,
+  type StatementNode,
+  parameterVariable,
 } from './ast';
+import { checkFunctions } from './functions';
 import { type LexedLine, type Token, lex } from './lexer';
 import type { ScriptError } from './script_error';
 import {
@@ -31,9 +34,10 @@ export function parse(source: string): ParseResult {
   if (lexed.errors.length > 0) return { program: null, errors: lexed.errors };
 
   const parser = new Parser(lexed.lines);
-  const body = parser.parseBlock(0);
-  const errors = firstErrorPerLine(parser.errors);
-  return { program: errors.length === 0 ? { body } : null, errors };
+  const program: Program = { body: parser.parseBlock(0), functions: parser.functions };
+  // How the functions call each other is only worth checking once every line is right by itself.
+  const errors = firstErrorPerLine(parser.errors.length > 0 ? parser.errors : checkFunctions(program));
+  return { program: errors.length === 0 ? program : null, errors };
 }
 
 function firstErrorPerLine(errors: ScriptError[]): ScriptError[] {
@@ -49,17 +53,49 @@ class LineError extends Error {}
 
 const COMPARISONS: readonly string[] = ['<', '>', '<=', '>=', '==', '!='] satisfies ComparisonOperator[];
 
+/** The first line of a function: its name and the names of its parameters. */
+interface Header {
+  name: string;
+  params: string[];
+}
+
+/** What the names on a line can refer to. */
+interface Scope {
+  /** Every name the program assigns with `set`; only these may be read. */
+  variables: ReadonlySet<string>;
+  /** Every function the program defines, by name, with the line of its `def`. */
+  functions: ReadonlyMap<string, Header & { line: number }>;
+  /** The function the line belongs to, if any: its parameters come before the variables. */
+  owner: Header | null;
+}
+
 class Parser {
   readonly errors: ScriptError[] = [];
-  /** Every name the program assigns with `set`; only these may be read. */
-  private readonly variables: ReadonlySet<string>;
+  readonly functions = new Map<string, FunctionNode>();
+  private readonly variables = new Set<string>();
+  private readonly signatures = new Map<string, Header & { line: number }>();
+  /** The function whose body is being parsed. */
+  private owner: Header | null = null;
   private index = 0;
   private previousIndent = 0;
 
+  /** Looks through all the lines first for what they define, so that a name can be used above the line that defines it. */
   constructor(private readonly lines: LexedLine[]) {
-    this.variables = new Set(
-      lines.filter((line) => isWord(line.tokens[0], 'set') && line.tokens[1]?.type === 'word').map((line) => line.tokens[1].text),
-    );
+    let params: readonly string[] = [];
+    for (const line of lines) {
+      if (line.indent === 0) {
+        const header = isWord(line.tokens[0], 'def') ? headerOrNull(line.tokens) : null;
+        if (header !== null && !this.signatures.has(header.name)) this.signatures.set(header.name, { ...header, line: line.line });
+        params = header?.params ?? [];
+      }
+      // Assigning to a parameter does not make a variable of the program.
+      const [first, name] = line.tokens;
+      if (isWord(first, 'set') && name?.type === 'word' && !params.includes(name.text)) this.variables.add(name.text);
+    }
+  }
+
+  private get scope(): Scope {
+    return { variables: this.variables, functions: this.signatures, owner: this.owner };
   }
 
   /** Parses consecutive lines at exactly `indent`, stopping at the first shallower line. */
@@ -88,6 +124,10 @@ class Parser {
     if (isWord(head, 'if')) return this.parseIf(line);
     if (isWord(head, 'while')) return this.parseWhile(line);
     if (isWord(head, 'loop')) return this.parseLoop(line);
+    if (isWord(head, 'def')) {
+      this.parseDefinition(line);
+      return null;
+    }
     if (isWord(head, 'else')) {
       this.report(line, 'Unexpected else');
       this.parseChildBlock(line);
@@ -127,9 +167,35 @@ class Parser {
     return { kind: 'loop', line: line.line, body };
   }
 
+  /** A function: its `def` line and the block below it. It is kept apart from the statements, to be run when called. */
+  private parseDefinition(line: LexedLine): void {
+    if (line.indent > 0) {
+      this.report(line, 'Functions can only be defined at the top level');
+      // Parsed only to report errors inside it and to move past it.
+      this.parseChildBlock(line);
+      return;
+    }
+
+    const header = this.attempt(line, () => this.checkedHeader(line));
+    this.owner = header ?? { name: '', params: [] };
+    const body = this.parseChildBlock(line);
+    this.owner = null;
+    if (header !== null) this.functions.set(header.name, { ...header, line: line.line, body });
+  }
+
+  private checkedHeader(line: LexedLine): Header {
+    const header = parseHeader(line.tokens);
+    const first = this.signatures.get(header.name);
+    if (first !== undefined && first.line !== line.line) {
+      throw new LineError(`"${header.name}" is already defined on line ${first.line}`);
+    }
+    if (this.variables.has(header.name)) throw new LineError(`"${header.name}" is already a variable`);
+    return header;
+  }
+
   /** The condition that follows the first word of an `if` or `while` line. */
   private conditionOf(line: LexedLine): ConditionNode {
-    return new ExpressionParser(line.tokens.slice(1), this.variables).parseWholeCondition();
+    return new ExpressionParser(line.tokens.slice(1), this.scope).parseWholeCondition();
   }
 
   /** Parses the indented block that must follow an `if`, `else`, `loop` or `while` line. */
@@ -188,22 +254,46 @@ class Parser {
         return { kind: head.text, line: lineNumber };
       case 'set':
         return this.parseSet(line);
+      case 'return': {
+        if (this.owner === null) throw new LineError('"return" only works inside a function');
+        const value = line.tokens.slice(1);
+        return {
+          kind: 'return',
+          line: lineNumber,
+          value: value.length === 0 ? null : new ExpressionParser(value, this.scope).parseWholeExpression(),
+        };
+      }
       default:
-        throw new LineError(`Unknown command "${head.text}"`);
+        return this.parseCall(line);
     }
+  }
+
+  /** A line that calls a function, such as `approach(350)`. */
+  private parseCall(line: LexedLine): StatementNode {
+    const [head, next] = line.tokens;
+    if (head.type !== 'word') throw new LineError(`Unexpected "${head.text}"`);
+    if (!isSymbol(next, '(')) {
+      if (this.signatures.has(head.text)) throw new LineError(`Expected "(" after "${head.text}"`);
+      throw new LineError(`Unknown command "${head.text}"`);
+    }
+    const call = new ExpressionParser(line.tokens, this.scope).parseWholeExpression();
+    // Something like `approach(350) + 1`: a calculation whose result goes nowhere.
+    if (call.kind !== 'call') throw new LineError('Only a call can stand on a line of its own');
+    return { kind: 'call', line: line.line, name: call.name, args: call.args };
   }
 
   private parseSet(line: LexedLine): StatementNode {
     const [, name, equals, ...value] = line.tokens;
     if (name === undefined || name.type !== 'word') throw new LineError('Expected variable name after "set"');
     if (isReservedWord(name.text)) throw new LineError(`"${name.text}" cannot be used as a variable name`);
+    if (this.signatures.has(name.text)) throw new LineError(`"${name.text}" is a function`);
     if (equals === undefined || equals.text !== '=') throw new LineError(`Expected "=" after "${name.text}"`);
     if (value.length === 0) throw new LineError('Expected value after "="');
     return {
       kind: 'set',
       line: line.line,
-      name: name.text,
-      value: new ExpressionParser(value, this.variables).parseWholeExpression(),
+      name: variableIn(this.scope, name.text),
+      value: new ExpressionParser(value, this.scope).parseWholeExpression(),
     };
   }
 
@@ -225,6 +315,54 @@ class Parser {
   private report(line: LexedLine, message: string): void {
     this.errors.push({ line: line.line, message });
   }
+}
+
+/** The name under which a variable is kept: a parameter of the function in scope is kept apart from the program's variables. */
+function variableIn(scope: Scope, name: string): string {
+  const { owner } = scope;
+  return owner?.params.includes(name) ? parameterVariable(owner.name, name) : name;
+}
+
+/** Reads a `def` line: `def name(first, second)`. */
+function parseHeader(tokens: Token[]): Header {
+  const [, name, open, ...rest] = tokens;
+  if (name === undefined || name.type !== 'word') throw new LineError('Expected a name after "def"');
+  if (isReservedWord(name.text)) throw new LineError(`"${name.text}" cannot be used as a function name`);
+  if (!isSymbol(open, '(')) throw new LineError(`Expected "(" after "${name.text}"`);
+
+  const params: string[] = [];
+  let position = 0;
+  while (!isSymbol(rest[position], ')')) {
+    const param = rest[position];
+    if (param === undefined) throw new LineError('Expected ")"');
+    if (param.type !== 'word') throw new LineError(`Unexpected "${param.text}"`);
+    if (isReservedWord(param.text)) throw new LineError(`"${param.text}" cannot be used as a parameter name`);
+    if (params.includes(param.text)) throw new LineError(`"${param.text}" is listed twice`);
+    params.push(param.text);
+    position++;
+
+    const separator = rest[position];
+    if (isSymbol(separator, ',')) position++;
+    else if (!isSymbol(separator, ')')) throw new LineError(separator === undefined ? 'Expected ")"' : `Unexpected "${separator.text}"`);
+  }
+  const after = rest[position + 1];
+  if (after !== undefined) throw new LineError(`Unexpected "${after.text}"`);
+  return { name: name.text, params };
+}
+
+function headerOrNull(tokens: Token[]): Header | null {
+  try {
+    return parseHeader(tokens);
+  } catch (error) {
+    if (!(error instanceof LineError)) throw error;
+    return null;
+  }
+}
+
+/** "no values", "1 value", "2 values". */
+function countOfValues(count: number): string {
+  if (count === 0) return 'no values';
+  return count === 1 ? '1 value' : `${count} values`;
 }
 
 function isWord(token: Token | undefined, text: string): boolean {
@@ -249,14 +387,14 @@ function expectEnd(rest: Token[], command: string): void {
  *
  * Conditions, loosest first: or, and, not, then a comparison, a true/false
  * variable or a condition in parentheses. Arithmetic, loosest first: + -, then
- * * /, then a leading minus, then a number, a variable or parentheses.
+ * * /, then a leading minus, then a number, a variable, a call or parentheses.
  */
 class ExpressionParser {
   private position = 0;
 
   constructor(
     private readonly tokens: Token[],
-    private readonly variables: ReadonlySet<string>,
+    private readonly scope: Scope,
   ) {}
 
   parseWholeCondition(): ConditionNode {
@@ -390,10 +528,37 @@ class ExpressionParser {
       return inner;
     }
     if (token.type !== 'word') throw new LineError(`Unexpected "${token.text}"`);
+    if (isSymbol(this.peek(), '(')) return this.parseCall(token.text);
     if (isNumberVariable(token.text)) return { kind: 'sensor', name: token.text };
     if (isBooleanVariable(token.text)) throw new LineError(`${token.text} is not a number`);
-    if (this.variables.has(token.text)) return { kind: 'variable', name: token.text };
+
+    const { variables, functions, owner } = this.scope;
+    if (owner?.params.includes(token.text) || variables.has(token.text)) {
+      return { kind: 'variable', name: variableIn(this.scope, token.text) };
+    }
+    if (functions.has(token.text)) throw new LineError(`Expected "(" after "${token.text}"`);
     throw new LineError(`Unknown variable "${token.text}"`);
+  }
+
+  /** The values in parentheses after the name of a function, which has just been read. */
+  private parseCall(name: string): Expression {
+    const signature = this.scope.functions.get(name);
+    if (signature === undefined) throw new LineError(`Unknown function "${name}"`);
+    this.position++;
+
+    const args: Expression[] = [];
+    while (!isSymbol(this.peek(), ')')) {
+      if (this.peek() === undefined) throw new LineError('Expected ")"');
+      args.push(this.parseSum());
+      if (isSymbol(this.peek(), ',')) this.position++;
+      else if (!isSymbol(this.peek(), ')')) throw new LineError('Expected ")"');
+    }
+    this.position++;
+
+    if (args.length !== signature.params.length) {
+      throw new LineError(`"${name}" takes ${countOfValues(signature.params.length)}, not ${args.length}`);
+    }
+    return { kind: 'call', name, args };
   }
 }
 

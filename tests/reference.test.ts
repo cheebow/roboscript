@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { describeAt, describeWord, programLabels, programVariables } from '../src/ai/reference';
+import {
+  describeAt,
+  describeWord,
+  enclosingFunction,
+  programFunctions,
+  programLabels,
+  programVariables,
+} from '../src/ai/reference';
 import {
   AIM_DIRECTIONS,
   BOOLEAN_VARIABLES,
@@ -59,6 +66,39 @@ describe('programLabels', () => {
 
   it('is empty for a program without labels', () => {
     expect(programLabels('loop\n    wait')).toEqual([]);
+  });
+});
+
+describe('programFunctions', () => {
+  const source = 'def approach(limit, slack)\n    wait\n\ndef stop()  # def later()\n    drive stop\nloop\n    def inner()\n    stop()';
+
+  it('lists the functions a program defines, with what they take and where', () => {
+    expect(programFunctions(source)).toEqual([
+      { name: 'approach', params: ['limit', 'slack'], line: 1 },
+      { name: 'stop', params: [], line: 4 },
+    ]);
+  });
+
+  it('tells which function a position is inside of', () => {
+    expect(enclosingFunction(source, source.indexOf('wait'))?.name).toBe('approach');
+    expect(enclosingFunction(source, source.indexOf('drive stop'))?.name).toBe('stop');
+    expect(enclosingFunction(source, source.indexOf('stop()', source.indexOf('loop')))).toBeNull();
+    expect(enclosingFunction(source, 0)).toBeNull();
+  });
+});
+
+describe('describeAt: functions', () => {
+  const source = 'set limit = 9\ndef approach(limit)\n    if enemy_distance > limit\n        drive forward\nloop\n    approach(limit)\n    wait';
+
+  it('describes a function by what it takes and where it is defined', () => {
+    const description = describeAt(source, source.lastIndexOf('approach') + 2);
+    expect(description).toMatchObject({ word: 'approach', kind: 'function' });
+    expect(description?.summary).toBe('Function approach(limit) of this program, defined on line 2.');
+  });
+
+  it('describes a name as a parameter inside its function, and as a variable outside', () => {
+    expect(describeAt(source, source.indexOf('> limit') + 3)?.summary).toBe('A value passed to approach(limit).');
+    expect(describeAt(source, source.lastIndexOf('limit') + 1)?.summary).toContain('first set on line 1');
   });
 });
 

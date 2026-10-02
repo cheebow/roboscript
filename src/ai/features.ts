@@ -15,7 +15,8 @@ const BULLET_SENSORS = ['bullet_incoming', 'bullet_distance', 'bullet_angle'];
 
 export function featuresOf(program: Program): ProgramFeatures {
   const used = new Set<string>();
-  for (const statement of program.body) noteStatement(statement, used);
+  const bodies = [program.body, ...[...program.functions.values()].map((definition) => definition.body)];
+  for (const statement of bodies.flat()) noteStatement(statement, used);
   const usesAny = (words: readonly string[]) => words.some((word) => used.has(word));
   return {
     cover: usesAny([...COVER_SENSORS, 'turn cover']),
@@ -40,6 +41,12 @@ function noteStatement(statement: StatementNode, used: Set<string>): void {
       return;
     case 'set':
       noteExpression(statement.value, used);
+      return;
+    case 'call':
+      for (const argument of statement.args) noteExpression(argument, used);
+      return;
+    case 'return':
+      if (statement.value !== null) noteExpression(statement.value, used);
       return;
     case 'turn':
     case 'aim':
@@ -81,6 +88,9 @@ function noteExpression(expression: Expression, used: Set<string>): void {
     case 'arithmetic':
       noteExpression(expression.left, used);
       noteExpression(expression.right, used);
+      return;
+    case 'call':
+      for (const argument of expression.args) noteExpression(argument, used);
       return;
     default:
       return;

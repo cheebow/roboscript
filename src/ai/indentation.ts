@@ -1,7 +1,7 @@
 import { withoutComment } from './reference';
 
 /** Statements whose following lines are indented one step further. */
-const BLOCK_OPENERS = new Set(['if', 'else', 'loop', 'while']);
+const BLOCK_OPENERS = new Set(['if', 'else', 'loop', 'while', 'def']);
 
 interface CodeLine {
   indent: number;

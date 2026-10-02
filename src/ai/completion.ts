@@ -2,9 +2,13 @@ import { type Token, lex } from './lexer';
 import {
   type ProgramVariable,
   type WordReference,
+  describeFunction,
   describeLabel,
+  describeParameter,
   describeVariable,
   describeWord,
+  enclosingFunction,
+  programFunctions,
   programLabels,
   programVariables,
   withoutComment,
@@ -13,8 +17,11 @@ import { AIM_DIRECTIONS, BOOLEAN_VARIABLES, DRIVE_SETTINGS, NUMBER_VARIABLES, TU
 
 /** One word offered to the player. */
 export interface Suggestion extends WordReference {
-  /** Whether something has to follow the word on the same line, so a space is worth adding after it. */
-  addSpace: boolean;
+  /**
+   * What to put in for the word: the word itself, followed by a space when
+   * something has to follow it on the same line, or by a parenthesis for a function.
+   */
+  insert: string;
 }
 
 export interface Suggestions {
@@ -23,11 +30,11 @@ export interface Suggestions {
   options: Suggestion[];
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
 const BOOLEAN_SENSORS = Object.keys(BOOLEAN_VARIABLES);
 const NUMBER_SENSORS = Object.keys(NUMBER_VARIABLES);
 /** Words that are always followed by something on the same line. */
-const TAKES_MORE = new Set(['if', 'while', 'set', 'label', 'drive', 'turn', 'aim', 'and', 'or', 'not']);
+const TAKES_MORE = new Set(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'aim', 'and', 'or', 'not']);
 
 const WORD_BEING_TYPED = /[A-Za-z_][A-Za-z0-9_]*$/;
 const COMPARISONS = new Set(['<', '>', '<=', '>=', '==', '!=']);
@@ -35,8 +42,10 @@ const COMPARISONS = new Set(['<', '>', '<=', '>=', '==', '!=']);
 /** What can come at the cursor, and whether to offer it before the player has typed any of it. */
 interface Expectation {
   words: readonly string[];
-  /** Offer the program's own variables as well. */
+  /** Offer the program's own variables as well, and the parameters of the function the line is in. */
   variables: boolean;
+  /** Offer the program's own functions as well. */
+  functions?: boolean;
   /** Offer the labels the program uses on other lines. */
   labels?: boolean;
   /** Offer the list as soon as the cursor gets here, rather than once a letter is typed. */
@@ -67,19 +76,33 @@ export function completionsAt(source: string, position: number, explicit = false
   if (expectation === null) return null;
   if (typed === '' && !expectation.eager && !explicit) return null;
 
-  const references = [
-    ...expectation.words.map((word) => describeWord(word)).filter((reference) => reference !== undefined),
-    ...(expectation.variables ? variablesFor(source, lineStart, tokens).map(describeVariable) : []),
-    ...(expectation.labels ? programLabels(withoutLine(source, lineStart)).map(describeLabel) : []),
+  const owner = enclosingFunction(source, position);
+  const functions = expectation.functions ? programFunctions(withoutLine(source, lineStart)) : [];
+  const suggestions: Suggestion[] = [
+    ...expectation.words
+      .map((word) => describeWord(word))
+      .filter((reference) => reference !== undefined)
+      .map((reference) => ({ ...reference, insert: TAKES_MORE.has(reference.word) ? `${reference.word} ` : reference.word })),
+    ...(expectation.variables && owner !== null ? owner.params.map((param) => plain(describeParameter(param, owner))) : []),
+    ...(expectation.variables ? variablesFor(source, lineStart, tokens).map((variable) => plain(describeVariable(variable))) : []),
+    // A function is put in up to its opening parenthesis, and closed at once when it takes nothing.
+    ...functions.map((definition) => ({
+      ...describeFunction(definition),
+      insert: definition.params.length === 0 ? `${definition.name}()` : `${definition.name}(`,
+    })),
+    ...(expectation.labels ? programLabels(withoutLine(source, lineStart)).map((label) => plain(describeLabel(label))) : []),
   ];
   const prefix = typed.toLowerCase();
-  const options = references
-    .filter((reference) => reference.word.toLowerCase().startsWith(prefix))
-    .map((reference) => ({ ...reference, addSpace: TAKES_MORE.has(reference.word) }));
+  const options = suggestions.filter((suggestion) => suggestion.word.toLowerCase().startsWith(prefix));
 
   // Nothing to add to a word that is already complete; a list would only get in the way of Enter.
   if (options.length === 0 || options.some((option) => option.word === typed)) return null;
   return { from: position - typed.length, options };
+}
+
+/** A suggestion that is put in just as it is. */
+function plain(reference: WordReference): Suggestion {
+  return { ...reference, insert: reference.word };
 }
 
 /** The program's variables to offer on the line starting at `lineStart`, whose tokens before the cursor are given. */
@@ -99,7 +122,7 @@ function withoutLine(source: string, lineStart: number): string {
 /** What fits after the given tokens of a line. */
 function expectationAfter(tokens: readonly Token[]): Expectation | null {
   const [first] = tokens;
-  if (first === undefined) return { words: STATEMENTS, variables: false, eager: false };
+  if (first === undefined) return { words: STATEMENTS, variables: false, functions: true, eager: false };
   if (first.type !== 'word') return null;
   const argument = tokens.length === 1;
 
@@ -120,10 +143,18 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
     case 'if':
     case 'while':
       return valueAfter(tokens, true);
-    default:
+    case 'return':
+      return argument ? VALUE : valueAfter(tokens, false);
+    case 'def':
       return null;
+    default:
+      // The values of a call on a line of its own, as in "approach(".
+      return tokens[1]?.text === '(' ? valueAfter(tokens, false) : null;
   }
 }
+
+/** A number is expected: a sensor that gives one, a variable or a function. Not offered until a letter is typed. */
+const VALUE: Expectation = { words: NUMBER_SENSORS, variables: true, functions: true, eager: false };
 
 /** What fits next in a condition (`if`, `while`) or, when not `inCondition`, in the value of a `set`. */
 function valueAfter(tokens: readonly Token[], inCondition: boolean): Expectation | null {
@@ -131,11 +162,11 @@ function valueAfter(tokens: readonly Token[], inCondition: boolean): Expectation
   const afterValue = last.type === 'number' || last.text === ')' || (last.type === 'word' && isOperand(last.text));
   if (afterValue) return inCondition ? { words: ['and', 'or'], variables: false, eager: false } : null;
 
-  const numbersOnly = !inCondition || COMPARISONS.has(last.text) || ['+', '-', '*', '/'].includes(last.text);
-  if (numbersOnly) return { words: NUMBER_SENSORS, variables: true, eager: false };
+  const numbersOnly = !inCondition || COMPARISONS.has(last.text) || ['+', '-', '*', '/', ','].includes(last.text);
+  if (numbersOnly) return VALUE;
   // The start of a condition: after "if", "while", "and", "or", "not" or "(".
   const eager = last.type === 'word';
-  return { words: [...BOOLEAN_SENSORS, ...NUMBER_SENSORS, 'not'], variables: true, eager };
+  return { words: [...BOOLEAN_SENSORS, ...NUMBER_SENSORS, 'not'], variables: true, functions: true, eager };
 }
 
 /** Whether the word stands for a value: anything but the words that join or open conditions. */

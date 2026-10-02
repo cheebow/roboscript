@@ -7,9 +7,10 @@ type Execution = Generator<void, void, void>;
 
 /**
  * Runs a parsed RoboScript program the way an ordinary program runs: from the
- * top, one statement after another. An action statement (move, turn, fire,
- * guard, wait) is what the robot does for one tick; execution then stops and picks up
- * from the next statement on the following tick. Everything else takes no time.
+ * top, one statement after another. An action statement (turn, aim, fire,
+ * guard, wait) is what the robot does for one tick; execution then stops and
+ * picks up from the next statement on the following tick. Everything else,
+ * including setting how the hull drives, takes no time.
  */
 export class ScriptBrain implements RobotBrain {
   private readonly variables = new Map<string, number>();
@@ -72,13 +73,18 @@ export class ScriptBrain implements RobotBrain {
         action.state = statement.state;
         action.sourceLines.state = statement.line;
         return;
-      case 'move':
-        action.move = statement.direction;
-        action.sourceLines.move = statement.line;
-        break;
+      case 'drive':
+        // A setting, not an action: the hull keeps driving while the program goes on.
+        action.drive = statement.setting;
+        action.sourceLines.drive = statement.line;
+        return;
       case 'turn':
         action.turn = statement.direction;
         action.sourceLines.turn = statement.line;
+        break;
+      case 'aim':
+        action.aim = statement.direction;
+        action.sourceLines.aim = statement.line;
         break;
       case 'fire':
         action.fire = true;

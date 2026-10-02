@@ -5,7 +5,14 @@ import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { SAMPLE_AI } from '../src/data/templates/sample';
 import { EffectTracker } from '../src/debug/effects';
 import { recordMatch } from '../src/debug/recorder';
-import { compileBrain, createSimulation, enemySource, FixedBrain, NO_SPREAD_STATS } from './helpers';
+import {
+  compileBrain,
+  createSimulation,
+  enemySource,
+  FixedBrain,
+  NO_SPREAD_STATS,
+  TIRELESS_GUARD_STATS,
+} from './helpers';
 
 describe('Simulation.tickEvents', () => {
   it('reports a shot at the muzzle on the tick it is fired', () => {
@@ -57,9 +64,32 @@ describe('Simulation.tickEvents', () => {
   });
 });
 
+describe('a hit on a guarding robot', () => {
+  /** The events of the tick on which the first robot is first hit. */
+  function eventsOfFirstHit(program: string) {
+    const simulation = createSimulation([compileBrain(program), new FixedBrain({ fire: true })], {
+      stats: TIRELESS_GUARD_STATS,
+    });
+    const [target] = simulation.robots;
+    while (target.hp === NO_SPREAD_STATS.maxHp) simulation.step();
+    return { events: simulation.tickEvents, target };
+  }
+
+  it('is reported at the robot, besides the impact of the bullet', () => {
+    const { events, target } = eventsOfFirstHit('loop\n    guard');
+    expect(events.map((event) => event.kind).sort()).toEqual(['deflected', 'impact']);
+    expect(events.find((event) => event.kind === 'deflected')).toMatchObject({ x: target.position.x, y: target.position.y });
+  });
+
+  it('is not reported for a robot that takes the hit unguarded', () => {
+    const { events } = eventsOfFirstHit('loop\n    wait');
+    expect(events.map((event) => event.kind)).toEqual(['impact']);
+  });
+});
+
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, destroyed: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 

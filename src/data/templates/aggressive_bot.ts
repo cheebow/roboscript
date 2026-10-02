@@ -1,10 +1,13 @@
-/** Never stops closing in on the enemy, and shoots whenever it is within weapon range (SPEC §30). */
-export const AGGRESSIVE_BOT = `loop
+import type { Side } from './side';
+
+/** Never stops: keeps driving at the enemy and fires as soon as it is in weapon range (SPEC §30). */
+export function aggressiveBot(avoid: Side): string {
+  return `loop
     if blocked
         state SEARCH
-        turn left
+        turn ${avoid}
     else
-        move forward
+        drive forward
 
         if enemy_visible
             state ATTACK
@@ -14,4 +17,6 @@ export const AGGRESSIVE_BOT = `loop
                 fire
         else
             state SEARCH
+            wait
 `;
+}

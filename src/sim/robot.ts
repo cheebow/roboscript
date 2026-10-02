@@ -1,13 +1,23 @@
 import type { RobotStats } from '../data/robot_defaults';
-import type { AIAction, AIContext, MoveDirection, RobotBrain, RobotState, TurnDirection } from './ai_context';
+import type {
+  AIAction,
+  AIContext,
+  AimDirection,
+  DriveDirection,
+  DriveSetting,
+  RobotBrain,
+  RobotState,
+  TurnDirection,
+} from './ai_context';
+import { leadPoint } from './aiming';
 import { clamp, headingVector, normalizeAngle } from './math';
-import { EMPTY_READING, type Sensor, type SensorReading } from './sensor';
+import { EMPTY_READING, type Sensor, type SensorReading, measure } from './sensor';
 import { OPEN_SURROUNDINGS, type Surroundings } from './surroundings';
 import type { SpawnPoint, Vec2 } from './types';
 import type { Weapon } from './weapon';
 
-/** Heading offset in deg for each move direction, relative to the robot's rotation. */
-const MOVE_HEADING_OFFSETS: Record<MoveDirection, number> = {
+/** Heading offset in deg for each direction of driving, relative to the robot's rotation. */
+const DRIVE_HEADING_OFFSETS: Record<DriveDirection, number> = {
   forward: 0,
   backward: 180,
 };
@@ -25,18 +35,29 @@ export class RobotController {
   readonly id: string;
   readonly weapon: Weapon;
   position: Vec2;
-  /** deg */
+  /** deg, where the hull faces. */
   rotation: number;
+  /** deg, where the gun points relative to the hull: 0 = straight ahead, positive = to the right. */
+  gunRotation = 0;
+  /** What the hull keeps doing until the brain sets something else. */
+  driving: DriveSetting = 'stop';
   hp: number;
   state: RobotState = 'IDLE';
   /** Braced on the current tick: hits do less damage. */
   guarding = false;
+  /** The tick on which the robot last guarded; null until it has. */
+  guardedAt: number | null = null;
+  /** How many more ticks the robot can guard in this match. */
+  guardsLeft: number;
 
   private readonly stats: RobotStats;
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
   private around: Surroundings = OPEN_SURROUNDINGS;
+  /** Where to shoot to hit the enemy if it keeps moving as it does; null until it has been seen. */
+  private leadTarget: Vec2 | null = null;
+  private sensed: GunReading = NO_GUN_READING;
   private lastAction: AIAction | null = null;
   private readonly knownVariables = new Map<string, number>();
 
@@ -46,6 +67,7 @@ export class RobotController {
     this.position = { x: options.spawn.x, y: options.spawn.y };
     this.rotation = normalizeAngle(options.spawn.rotation);
     this.hp = options.stats.maxHp;
+    this.guardsLeft = options.stats.maxGuards;
     this.stats = options.stats;
     this.brain = options.brain;
     this.sensor = options.sensor;
@@ -74,8 +96,44 @@ export class RobotController {
     return this.around;
   }
 
-  sense(enemyPosition: Vec2): void {
+  /** deg, where the gun points on the field. */
+  get gunHeading(): number {
+    return normalizeAngle(this.rotation + this.gunRotation);
+  }
+
+  /** How the gun stood to the enemy when the robot last looked. */
+  get gunReading(): GunReading {
+    return this.sensed;
+  }
+
+  sense(enemyPosition: Vec2, tickDuration: number): void {
     this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
+    const { lastSeen, enemyVisible, enemyVelocity } = this.reading;
+    if (lastSeen === null) {
+      this.sensed = { ...NO_GUN_READING, gunAngle: this.gunRotation };
+      return;
+    }
+
+    // An enemy out of sight is taken to be where it was last seen.
+    this.leadTarget = enemyVisible ? this.leadOn(lastSeen, enemyVelocity, tickDuration) : lastSeen;
+    this.sensed = {
+      aimAngle: this.gunAngleTo(lastSeen),
+      leadAngle: this.gunAngleTo(this.leadTarget),
+      gunAngle: this.gunRotation,
+      lead: { ...this.leadTarget },
+    };
+  }
+
+  /** Where to shoot at an enemy seen at `position` that moves by `velocity` per tick. */
+  private leadOn(position: Vec2, velocity: Vec2, tickDuration: number): Vec2 {
+    const { shotSpeed, radius, bulletRadius } = this.stats;
+    // The enemy moves once more before a shot decided now leaves the gun.
+    const atFiring = { x: position.x + velocity.x, y: position.y + velocity.y };
+    return leadPoint(this.position, atFiring, velocity, shotSpeed * tickDuration, radius + bulletRadius);
+  }
+
+  private gunAngleTo(target: Vec2): number {
+    return measure(this.position, this.gunHeading, target).angle;
   }
 
   /** Tells the robot what the simulation found around it this tick. */
@@ -108,18 +166,53 @@ export class RobotController {
     this.rotation = normalizeAngle(this.rotation + this.turnStep(direction, maxStep));
   }
 
-  /** Where one tick of movement in the given direction would take the robot if nothing were in the way. */
-  stepTarget(direction: MoveDirection, tickDuration: number): Vec2 {
-    const heading = headingVector(this.rotation + MOVE_HEADING_OFFSETS[direction]);
+  /** Where one tick of driving in the given direction would take the robot if nothing were in the way. */
+  stepTarget(direction: DriveDirection, tickDuration: number): Vec2 {
+    const heading = headingVector(this.rotation + DRIVE_HEADING_OFFSETS[direction]);
     const step = this.stats.moveSpeed * tickDuration;
     return { x: this.position.x + heading.x * step, y: this.position.y + heading.y * step };
   }
 
-  /** Moves one tick's worth along the heading, or stays put if anything is in the way. */
-  move(direction: MoveDirection | null, tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
-    if (direction === null) return;
-    const target = this.stepTarget(direction, tickDuration);
+  /** Changes how the hull drives from now on; null leaves it as it is. */
+  setDrive(setting: DriveSetting | null): void {
+    if (setting !== null) this.driving = setting;
+  }
+
+  /** Drives one tick's worth as set, or stays put if anything is in the way. */
+  drive(tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
+    if (this.driving === 'stop') return;
+    const target = this.stepTarget(this.driving, tickDuration);
     if (!isBlocked(target)) this.position = target;
+  }
+
+  /** Turns the turret on the hull. Aiming at the enemy goes by where the robot is now, after driving. */
+  aim(direction: AimDirection | null, tickDuration: number): void {
+    if (direction === null) return;
+    const maxStep = this.stats.turretSpeed * tickDuration;
+    this.gunRotation = normalizeAngle(this.gunRotation + this.aimStep(direction, maxStep));
+  }
+
+  private aimStep(direction: AimDirection, maxStep: number): number {
+    switch (direction) {
+      case 'left':
+        return -maxStep;
+      case 'right':
+        return maxStep;
+      case 'ahead':
+        return clamp(-this.gunRotation, -maxStep, maxStep);
+      case 'enemy':
+        return this.reading.lastSeen === null ? 0 : clamp(this.gunAngleTo(this.reading.lastSeen), -maxStep, maxStep);
+      case 'lead':
+        return this.leadTarget === null ? 0 : clamp(this.gunAngleTo(this.leadTarget), -maxStep, maxStep);
+    }
+  }
+
+  /** Uses up one of the robot's guards for the given tick. False, and nothing happens, when it has none left. */
+  brace(tick: number): boolean {
+    if (this.guardsLeft <= 0) return false;
+    this.guardsLeft--;
+    this.guardedAt = tick;
+    return true;
   }
 
   /** Takes a hit and returns the damage it did: less than `amount` while guarding. */
@@ -153,6 +246,7 @@ export class RobotController {
       enemyY: this.reading.lastSeen?.y ?? 0,
       hp: this.hp,
       ammo: this.weapon.ammo,
+      guards: this.guardsLeft,
       blocked: this.around.blocked,
       blockedBehind: this.around.blockedBehind,
       wallAhead: this.around.wallAhead,
@@ -172,6 +266,23 @@ export class RobotController {
       get coverAngle() {
         return around.cover?.angle ?? 0;
       },
+      aimAngle: this.sensed.aimAngle,
+      leadAngle: this.sensed.leadAngle,
+      gunAngle: this.sensed.gunAngle,
     };
   }
 }
+
+/** How the gun stands to the enemy, as found when the robot looked around. */
+export interface GunReading {
+  /** deg from the gun to the enemy, or to where it was last seen. 0 if never seen. */
+  aimAngle: number;
+  /** deg from the gun to the point to shoot at to hit a moving enemy. 0 if never seen. */
+  leadAngle: number;
+  /** deg, the gun on the hull. */
+  gunAngle: number;
+  /** The point to shoot at to hit a moving enemy; null until the enemy has been seen. */
+  lead: Vec2 | null;
+}
+
+const NO_GUN_READING: GunReading = { aimAngle: 0, leadAngle: 0, gunAngle: 0, lead: null };

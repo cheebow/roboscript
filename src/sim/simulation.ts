@@ -33,9 +33,21 @@ export interface SimulationConfig {
 /** Keeps a robot that exactly touches an obstacle from counting as hidden behind it. */
 const LINE_OF_SIGHT_TOLERANCE = 1e-6;
 
-export type MatchEndReason = 'destroyed' | 'timeout';
+/**
+ * `out of ammo`: nobody can shoot any more and no bullet is in the air, so
+ * nothing can change the outcome; like a timeout, it goes by the HP left.
+ */
+export type MatchEndReason = 'destroyed' | 'timeout' | 'out of ammo';
 
-export type TickEventKind = 'shot' | 'impact' | 'destroyed';
+/**
+ * Robots no further apart than this many robot radii see each other past a
+ * corner that only a robot's width would catch on. Without it, two robots
+ * that bump into each other around a corner would neither see nor fight.
+ */
+const CLOSE_RANGE_RADII = 3;
+
+/** `deflected`: a bullet hit a robot that was guarding. */
+export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
@@ -122,15 +134,19 @@ export class Simulation {
 
     this.robots.forEach((robot, index) => {
       const action = actions[index];
-      robot.guarding = action.guard;
+      robot.guarding = action.guard && robot.brace(this.tick);
+      if (action.guard && !robot.guarding) this.reporter?.outOfGuards(robot.id, action.sourceLines.guard);
+      robot.setDrive(action.drive);
       robot.turn(action.turn, this.tickDuration);
-      robot.move(action.move, this.tickDuration, (position) => this.isBlocked(robot, position));
+      robot.drive(this.tickDuration, (position) => this.isBlocked(robot, position));
     });
+    // Turrets turn once every robot is where it will be when the shots are fired.
+    this.robots.forEach((robot, index) => robot.aim(actions[index].aim, this.tickDuration));
 
     this.robots.forEach((robot, index) => {
       robot.weapon.tick();
       // Bracing takes the gun off target: every tick of it puts off the next shot.
-      if (actions[index].guard) robot.weapon.delay(this.guardRecoveryTicks);
+      if (robot.guarding) robot.weapon.delay(this.guardRecoveryTicks);
       if (actions[index].fire) this.fire(robot, actions[index].sourceLines.fire);
     });
 
@@ -142,7 +158,7 @@ export class Simulation {
   private sense(robot: RobotController): void {
     const enemy = this.enemyOf(robot);
     const wasVisible = robot.sensorReading.enemyVisible;
-    robot.sense(enemy.position);
+    robot.sense(enemy.position, this.tickDuration);
     const visible = robot.sensorReading.enemyVisible;
     robot.noteSurroundings(this.surroundingsOf(robot));
     if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
@@ -205,7 +221,7 @@ export class Simulation {
   }
 
   private fire(robot: RobotController, sourceLine: number | null): void {
-    const bullet = robot.weapon.fire(robot.id, robot.position, robot.rotation, this.rng);
+    const bullet = robot.weapon.fire(robot.id, robot.position, robot.gunHeading, this.rng);
     if (bullet !== null) {
       this.bullets.push({ ...bullet, id: this.nextBulletId++ });
       this.tickEvents.push({ kind: 'shot', ...bullet.position });
@@ -219,9 +235,12 @@ export class Simulation {
    * Whether a robot at one point can see a robot at the other: no obstacle
    * comes within a robot's radius of the straight line between them. Seeing
    * the enemy therefore also means it can be driven at, and shot at, directly.
+   * At close range, room for a bullet is enough.
    */
   private hasLineOfSight(from: Vec2, to: Vec2): boolean {
-    const clearance = this.stats.radius - LINE_OF_SIGHT_TOLERANCE;
+    const { radius, bulletRadius } = this.stats;
+    const close = distance(from, to) <= radius * CLOSE_RANGE_RADII;
+    const clearance = (close ? bulletRadius : radius) - LINE_OF_SIGHT_TOLERANCE;
     return this.arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
   }
 
@@ -267,6 +286,7 @@ export class Simulation {
     if (target === undefined) throw new Error(`Bullet hit unknown robot "${targetId}"`);
     const wasAlive = target.alive;
     const damage = target.takeDamage(bullet.damage);
+    if (target.guarding) this.tickEvents.push({ kind: 'deflected', ...target.position });
     if (wasAlive && !target.alive) this.tickEvents.push({ kind: 'destroyed', ...target.position });
     this.reporter?.hit(bullet.ownerId, target.id, damage, target.hp, target.guarding);
   }
@@ -276,10 +296,13 @@ export class Simulation {
     if (survivors.length < this.robots.length) {
       return { winnerId: survivors.length === 1 ? survivors[0].id : null, reason: 'destroyed' };
     }
-    if (this.tick < this.maxTicks) return null;
+    const spent = this.bullets.length === 0 && this.robots.every((robot) => robot.weapon.ammo === 0);
+    if (!spent && this.tick < this.maxTicks) return null;
 
+    // Nothing more will happen, or time is up: whoever has more HP left wins.
+    const reason = spent ? 'out of ammo' : 'timeout';
     const [first, second] = this.robots;
-    if (first.hp === second.hp) return { winnerId: null, reason: 'timeout' };
-    return { winnerId: first.hp > second.hp ? first.id : second.id, reason: 'timeout' };
+    if (first.hp === second.hp) return { winnerId: null, reason };
+    return { winnerId: first.hp > second.hp ? first.id : second.id, reason };
   }
 }

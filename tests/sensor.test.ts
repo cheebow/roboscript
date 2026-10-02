@@ -71,7 +71,25 @@ describe('ConeSensor', () => {
 
   it('reports nothing before the enemy was ever seen', () => {
     const reading = createSensor().scan(ORIGIN, FACING_RIGHT, pointAt(100, 180));
-    expect(reading).toEqual({ enemyVisible: false, enemyDistance: 0, enemyAngle: 0, lastSeen: null });
+    expect(reading).toEqual({
+      enemyVisible: false,
+      enemyDistance: 0,
+      enemyAngle: 0,
+      lastSeen: null,
+      enemyVelocity: { x: 0, y: 0 },
+    });
+  });
+
+  it('measures how far the enemy moved since the tick before, while it stays in sight', () => {
+    const sensor = createSensor();
+    expect(sensor.scan(ORIGIN, FACING_RIGHT, pointAt(100, 0)).enemyVelocity).toEqual({ x: 0, y: 0 });
+    const moved = sensor.scan(ORIGIN, FACING_RIGHT, { x: pointAt(100, 0).x + 3, y: pointAt(100, 0).y - 2 });
+    expect(moved.enemyVelocity.x).toBeCloseTo(3);
+    expect(moved.enemyVelocity.y).toBeCloseTo(-2);
+
+    // Out of sight and back: there is no tick before to compare with.
+    sensor.scan(ORIGIN, FACING_RIGHT, pointAt(sensorRange + 200, 0));
+    expect(sensor.scan(ORIGIN, FACING_RIGHT, pointAt(100, 0)).enemyVelocity).toEqual({ x: 0, y: 0 });
   });
 
   it('keeps the last seen position after losing sight', () => {

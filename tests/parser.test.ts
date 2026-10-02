@@ -42,17 +42,32 @@ const comparison = (name: string, operator: string, value: number) => ({
 
 describe('parser: statements', () => {
   it('parses every command', () => {
-    const source = ['move forward', 'move backward', 'turn left', 'turn right', 'turn enemy', 'fire', 'wait', 'state EVADE'].join('\n');
+    const source = ['turn left', 'turn right', 'turn enemy', 'turn cover', 'fire', 'guard', 'wait', 'state EVADE'].join('\n');
     expect(parseOk(source)).toEqual([
-      { kind: 'move', line: 1, direction: 'forward' },
-      { kind: 'move', line: 2, direction: 'backward' },
-      { kind: 'turn', line: 3, direction: 'left' },
-      { kind: 'turn', line: 4, direction: 'right' },
-      { kind: 'turn', line: 5, direction: 'enemy' },
-      { kind: 'fire', line: 6 },
+      { kind: 'turn', line: 1, direction: 'left' },
+      { kind: 'turn', line: 2, direction: 'right' },
+      { kind: 'turn', line: 3, direction: 'enemy' },
+      { kind: 'turn', line: 4, direction: 'cover' },
+      { kind: 'fire', line: 5 },
+      { kind: 'guard', line: 6 },
       { kind: 'wait', line: 7 },
       { kind: 'state', line: 8, state: 'EVADE' },
     ]);
+  });
+
+  it('parses the settings of the drive', () => {
+    expect(parseOk('drive forward\ndrive backward\ndrive stop')).toEqual([
+      { kind: 'drive', line: 1, setting: 'forward' },
+      { kind: 'drive', line: 2, setting: 'backward' },
+      { kind: 'drive', line: 3, setting: 'stop' },
+    ]);
+  });
+
+  it('parses the directions of the turret', () => {
+    const directions = ['left', 'right', 'enemy', 'lead', 'ahead'];
+    expect(parseOk(directions.map((direction) => `aim ${direction}`).join('\n'))).toEqual(
+      directions.map((direction, index) => ({ kind: 'aim', line: index + 1, direction })),
+    );
   });
 
   it('parses a plain if', () => {
@@ -117,11 +132,12 @@ describe('parser: statements', () => {
     ]);
 
     const inSight = blocked.elseBody[0] as IfNode;
-    expect(inSight).toMatchObject({ line: 7, condition: VISIBLE, elseLine: 16 });
+    expect(inSight).toMatchObject({ line: 7, condition: VISIBLE, elseLine: 17 });
     expect(inSight.thenBody.map((statement) => statement.kind)).toEqual(['turn', 'if']);
     expect(inSight.elseBody).toEqual([
-      { kind: 'state', line: 17, state: 'SEARCH' },
-      { kind: 'move', line: 18, direction: 'forward' },
+      { kind: 'state', line: 18, state: 'SEARCH' },
+      { kind: 'drive', line: 19, setting: 'forward' },
+      { kind: 'wait', line: 20 },
     ]);
 
     expect(inSight.thenBody[1]).toEqual({
@@ -130,12 +146,13 @@ describe('parser: statements', () => {
       condition: comparison('enemy_distance', '<', 250),
       thenBody: [
         { kind: 'state', line: 11, state: 'ATTACK' },
-        { kind: 'fire', line: 12 },
+        { kind: 'drive', line: 12, setting: 'stop' },
+        { kind: 'fire', line: 13 },
       ],
-      elseLine: 13,
+      elseLine: 14,
       elseBody: [
-        { kind: 'state', line: 14, state: 'TRACK' },
-        { kind: 'move', line: 15, direction: 'forward' },
+        { kind: 'state', line: 15, state: 'TRACK' },
+        { kind: 'drive', line: 16, setting: 'forward' },
       ],
     });
   });
@@ -273,11 +290,15 @@ describe('parser: errors', () => {
   });
 
   it('reports bad command arguments', () => {
-    expect(errorsOf('move')).toEqual(['Line 1: Expected direction after "move"']);
-    expect(errorsOf('move up')).toEqual(['Line 1: Unknown direction "up"']);
-    expect(errorsOf('move enemy')).toEqual(['Line 1: Unknown direction "enemy"']);
-    expect(errorsOf('move left')).toEqual(['Line 1: Robots cannot move sideways: use "turn left" and "move forward"']);
+    expect(errorsOf('drive')).toEqual(['Line 1: Expected "forward", "backward" or "stop" after "drive"']);
+    expect(errorsOf('drive up')).toEqual(['Line 1: Unknown direction "up"']);
+    expect(errorsOf('drive enemy')).toEqual(['Line 1: Unknown direction "enemy"']);
+    expect(errorsOf('drive left')).toEqual(['Line 1: Robots cannot drive sideways: use "turn left" and "drive forward"']);
+    expect(errorsOf('drive forward fast')).toEqual(['Line 1: Unexpected "fast" after "drive forward"']);
     expect(errorsOf('turn around')).toEqual(['Line 1: Unknown direction "around"']);
+    expect(errorsOf('turn lead')).toEqual(['Line 1: Unknown direction "lead"']);
+    expect(errorsOf('aim')).toEqual(['Line 1: Expected direction after "aim"']);
+    expect(errorsOf('aim cover')).toEqual(['Line 1: Unknown direction "cover"']);
     expect(errorsOf('state')).toEqual(['Line 1: Expected state name after "state"']);
     expect(errorsOf('state attack')).toEqual(['Line 1: Unknown state "attack"']);
     expect(errorsOf('fire now')).toEqual(['Line 1: Unexpected "now" after "fire"']);
@@ -311,8 +332,14 @@ describe('parser: errors', () => {
     expect(errorsOf(`if (hp > 3${block}`)).toEqual(['Line 1: Expected ")"']);
   });
 
+  it('points a program that still says "move" to "drive"', () => {
+    const hint = 'Line 1: "move" is now "drive": use "drive forward" (the robot keeps driving until "drive stop")';
+    expect(errorsOf('move forward')).toEqual([hint]);
+    expect(errorsOf('move')).toEqual([hint]);
+  });
+
   it('reports every faulty line, in order', () => {
-    const source = 'shoot\nloop\n    move up\n    set hp = 2\n    jump';
+    const source = 'shoot\nloop\n    drive up\n    set hp = 2\n    jump';
     expect(errorsOf(source)).toEqual([
       'Line 1: Unknown command "shoot"',
       'Line 3: Unknown direction "up"',

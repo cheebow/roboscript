@@ -15,11 +15,11 @@ const TICK = 1 / tickRate;
 /** `loop`: passed once per round. */
 const LOOP_LINE = 2;
 /** `fire`: the action taken, on alternate ticks, once the enemy is close enough. */
-const FIRE_LINE = 12;
-/** What the sample runs on a tick with the enemy hidden and the way clear, ending in `move forward`. */
-const SEARCH_LINES = [2, 3, 6, 7, 16, 17, 18];
+const FIRE_LINE = 13;
+/** What the sample runs on a tick with the enemy hidden and the way clear: it sets the drive (no time) and ends in `wait`. */
+const SEARCH_LINES = [2, 3, 6, 7, 17, 18, 19, 20];
 /** `fire` in DumbBot (BRAVO's program). */
-const BRAVO_FIRE_LINE = 11;
+const BRAVO_FIRE_LINE = 12;
 
 /** The real game setup: the sample AI against DumbBot. */
 function matchConfig(seed = 1): SimulationConfig {
@@ -101,10 +101,10 @@ describe('recordMatch', () => {
     expect(linesAt(2)).toEqual(SEARCH_LINES);
     const blockedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].blocked);
     expect(linesAt(blockedAt)).toEqual([2, 3, 4, 5]);
-    // With the enemy in sight, one round of the loop takes two ticks: turn, then act.
+    // With a distant enemy in sight, every tick ends on the turn towards it; setting the drive takes no time.
     const sightedAt = snapshots.findIndex((snapshot) => snapshot.robots[0].enemyVisible);
     expect(linesAt(sightedAt)).toEqual([2, 3, 6, 7, 8]);
-    expect(linesAt(sightedAt + 1)).toEqual([10, 13, 14, 15]);
+    expect(linesAt(sightedAt + 1)).toEqual([10, 14, 15, 16, 2, 3, 6, 7, 8]);
   });
 
   it('records what the AI assigned to its variables, and their values after each tick', () => {
@@ -393,7 +393,7 @@ describe('ReplayManager: stepping by line', () => {
   });
 
   it('keeps stepping tick by tick through a program that has finished', () => {
-    const replay = replayOf('move forward');
+    const replay = replayOf('fire');
     replay.stepLine();
     expect(replay.tick).toBe(1);
     expect(replay.currentLine('ALPHA')).toBeNull();
@@ -432,7 +432,7 @@ describe('ReplayManager: breakpoints', () => {
     expect(replay.atEnd).toBe(false);
     expect(replay.breakpoint).toEqual({ robotId: 'ALPHA', line: FIRE_LINE });
     expect(replay.currentLine('ALPHA')).toBe(FIRE_LINE);
-    expect(replay.linesSoFar('ALPHA')).toEqual([10, 11]);
+    expect(replay.linesSoFar('ALPHA')).toEqual([10, 11, 12]);
     // Nothing has been fired yet.
     expect(replay.snapshot.robots[0].ammo).toBe(ROBOT_DEFAULTS.maxAmmo);
   });

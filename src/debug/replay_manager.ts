@@ -311,6 +311,7 @@ export class ReplayManager {
 function withSensorsOf(robot: RobotSnapshot, sensing: RobotSnapshot): RobotSnapshot {
   const { enemyVisible, enemyDistance, enemyAngle, lastSeen, blocked, blockedBehind } = sensing;
   const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover } = sensing;
+  const { aimAngle, leadAngle, gunAngle, lead } = sensing;
   return {
     ...robot,
     enemyVisible,
@@ -325,5 +326,9 @@ function withSensorsOf(robot: RobotSnapshot, sensing: RobotSnapshot): RobotSnaps
     wallRight,
     incomingBullet,
     cover,
+    aimAngle,
+    leadAngle,
+    gunAngle,
+    lead,
   };
 }

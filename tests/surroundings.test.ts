@@ -134,6 +134,27 @@ describe('enemy_visible', () => {
     expect(visible([besideCorner, inTheOpen], [block])).toBe(true);
   });
 
+  it('is true for robots close together around a corner, as long as a bullet has room to pass', () => {
+    // Regression: two robots that bumped into each other around a corner neither saw nor fought each other.
+    const block: Rect = { x: 300, y: 300, width: 100, height: 100 };
+    // On a line that passes the corner of the block about 4 units away: room for a bullet, not for a robot.
+    const beside: SpawnPoint = { x: 284, y: 310, rotation: 0 };
+    const above: SpawnPoint = { x: 310, y: 284, rotation: 180 };
+    expect(visible([beside, above], [block])).toBe(true);
+
+    // The same line from further apart: hidden, as a robot could not drive along it.
+    const farBeside: SpawnPoint = { x: 234, y: 360, rotation: 0 };
+    const farAbove: SpawnPoint = { x: 360, y: 234, rotation: 180 };
+    expect(visible([farBeside, farAbove], [block])).toBe(false);
+  });
+
+  it('is false for robots close together with the corner right between them', () => {
+    const block: Rect = { x: 300, y: 300, width: 100, height: 100 };
+    const beside: SpawnPoint = { x: 284, y: 318, rotation: 0 };
+    const above: SpawnPoint = { x: 318, y: 284, rotation: 180 };
+    expect(visible([beside, above], [block])).toBe(false);
+  });
+
   it('is false for both robots when an obstacle is between them', () => {
     const arena: Arena = { width: 1000, height: 600, obstacles: [wallDownTo(400)], spawns: [watcher, enemy] };
     const simulation = createSimulation([new FixedBrain(), new FixedBrain()], { arena });

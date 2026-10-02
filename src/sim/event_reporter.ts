@@ -8,9 +8,9 @@ export interface DebugEventSink {
 
 /**
  * Describes what happens in a Simulation as debug events. A robot usually
- * repeats the same few actions tick after tick, so a move or turn is reported
- * only when it comes into use: when that action, from that source line, has
- * not been taken for about a second.
+ * repeats the same few actions tick after tick, so driving, turning and aiming are
+ * each reported only when they come into use: when that action, from that
+ * source line, has not been taken for about a second.
  */
 export class EventReporter {
   private tick = 0;
@@ -18,6 +18,7 @@ export class EventReporter {
   private readonly lastTaken = new Map<string, number>();
   private readonly lastStatus = new Map<string, ProgramStatus>();
   private readonly warnedOutOfAmmo = new Set<string>();
+  private readonly warnedOutOfGuards = new Set<string>();
 
   constructor(
     private readonly sink: DebugEventSink,
@@ -42,8 +43,9 @@ export class EventReporter {
   }
 
   actionDecided(robotId: string, action: AIAction): void {
-    if (action.move !== null) this.actionTaken(robotId, `move ${action.move}`, action.sourceLines.move);
+    if (action.drive !== null) this.actionTaken(robotId, `drive ${action.drive}`, action.sourceLines.drive);
     if (action.turn !== null) this.actionTaken(robotId, `turn ${action.turn}`, action.sourceLines.turn);
+    if (action.aim !== null) this.actionTaken(robotId, `aim ${action.aim}`, action.sourceLines.aim);
     if (action.guard) this.actionTaken(robotId, 'guard', action.sourceLines.guard);
     this.programStatusIs(robotId, action.status);
   }
@@ -62,7 +64,7 @@ export class EventReporter {
     if (status === 'finished') {
       this.emit('warning', robotId, 'program finished: the robot stops (use loop to keep it going)');
     } else if (status === 'stalled') {
-      this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs move, turn, fire or wait)');
+      this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs turn, aim, fire, guard or wait)');
     }
   }
 
@@ -75,6 +77,13 @@ export class EventReporter {
     if (this.warnedOutOfAmmo.has(robotId)) return;
     this.warnedOutOfAmmo.add(robotId);
     this.emit('warning', robotId, 'out of ammo', sourceLine);
+  }
+
+  /** Reported once per robot, the first time it tries to guard with no guards left. */
+  outOfGuards(robotId: string, sourceLine: number | null): void {
+    if (this.warnedOutOfGuards.has(robotId)) return;
+    this.warnedOutOfGuards.add(robotId);
+    this.emit('warning', robotId, 'out of guards', sourceLine);
   }
 
   /** `guarded`: the target was braced, so the damage is less than the shot's. */

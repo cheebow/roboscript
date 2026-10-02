@@ -13,8 +13,18 @@ function sorted(rects: Rect[]): Rect[] {
 }
 
 describe('arena list', () => {
-  it('offers three arenas, each with a unique id, the centre block first', () => {
-    expect(ARENAS.map((arena) => arena.name)).toEqual(['Center Block', 'Open Field', 'Long Wall']);
+  it('offers nine arenas, each with a unique id, the centre block first', () => {
+    expect(ARENAS.map((arena) => arena.name)).toEqual([
+      'Center Block',
+      'Open Field',
+      'Long Wall',
+      'Bare Ground',
+      'Pillars',
+      'Corridor',
+      'Bunkers',
+      'Cross',
+      'Zigzag',
+    ]);
     expect(new Set(ARENAS.map((arena) => arena.id)).size).toBe(ARENAS.length);
     expect(DEFAULT_ARENA).toBe(ARENAS[0].arena);
   });
@@ -27,9 +37,7 @@ describe('arena list', () => {
 });
 
 describe.each(ARENAS)('arena $name', ({ arena }) => {
-  it('has between 4 and 6 obstacles, all inside the field', () => {
-    expect(arena.obstacles.length).toBeGreaterThanOrEqual(4);
-    expect(arena.obstacles.length).toBeLessThanOrEqual(6);
+  it('has every obstacle inside the field', () => {
     for (const { x, y, width, height } of arena.obstacles) {
       expect(x).toBeGreaterThanOrEqual(0);
       expect(y).toBeGreaterThanOrEqual(0);
@@ -57,6 +65,14 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
     }
   });
 
+  it('lets the robots see each other at the start, or keeps them apart with an obstacle', () => {
+    // Either way, both are in the same situation.
+    const simulation = createSimulation([compileBrain('loop\n    wait'), compileBrain('loop\n    wait')], { arena });
+    simulation.step();
+    const [player, enemy] = simulation.robots;
+    expect(player.sensorReading.enemyVisible).toBe(enemy.sensorReading.enemyVisible);
+  });
+
   it('lets every pair of templates fight to a finish, without running out the clock', () => {
     for (const player of TEMPLATES) {
       for (const enemy of TEMPLATES) {
@@ -66,7 +82,8 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
             { arena, stats: ROBOT_DEFAULTS, seed },
           );
           runToEnd(simulation);
-          expect(simulation.result?.reason, `${player.name} vs ${enemy.name}, seed ${seed}`).toBe('destroyed');
+          // Two that dodge everything may use up their ammo; that ends the match as well.
+          expect(simulation.result?.reason, `${player.name} vs ${enemy.name}, seed ${seed}`).not.toBe('timeout');
         }
       }
     }

@@ -8,12 +8,13 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'state', 'move', 'turn', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'set', 'state', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
   'hp',
   'ammo',
+  'guards',
   'bullet_distance',
   'bullet_angle',
   'cover_distance',
@@ -22,6 +23,9 @@ const NUMBERS = [
   'wall_behind',
   'wall_left',
   'wall_right',
+  'aim_angle',
+  'lead_angle',
+  'gun_angle',
 ];
 const SENSORS = ['enemy_visible', 'blocked', 'blocked_behind', 'bullet_incoming', 'cover_visible', ...NUMBERS];
 
@@ -30,7 +34,8 @@ describe('completionsAt: statements', () => {
     expect(offered('w|')).toEqual(['while', 'wait']);
     expect(offered('g|')).toEqual(['guard']);
     expect(offered('loop\n    s|')).toEqual(['set', 'state']);
-    expect(offered('mo|')).toEqual(['move']);
+    expect(offered('dr|')).toEqual(['drive']);
+    expect(offered('mo|')).toBeNull();
   });
 
   it('offers nothing on an empty line until asked', () => {
@@ -40,7 +45,7 @@ describe('completionsAt: statements', () => {
 
   it('replaces the word being typed', () => {
     expect(completionsAt('loop\n    tu', 11)).toMatchObject({ from: 9 });
-    expect(completionsAt('move ', 5)).toMatchObject({ from: 5 });
+    expect(completionsAt('drive ', 6)).toMatchObject({ from: 6 });
   });
 
   it('offers nothing once the word is complete, so that Enter starts a new line', () => {
@@ -58,9 +63,11 @@ describe('completionsAt: statements', () => {
 });
 
 describe('completionsAt: arguments', () => {
-  it('offers the directions right after move and turn', () => {
-    expect(offered('move |')).toEqual(['forward', 'backward']);
-    expect(offered('move b|')).toEqual(['backward']);
+  it('offers the directions right after drive, turn and aim', () => {
+    expect(offered('drive |')).toEqual(['forward', 'backward', 'stop']);
+    expect(offered('drive b|')).toEqual(['backward']);
+    expect(offered('aim |')).toEqual(['left', 'right', 'enemy', 'lead', 'ahead']);
+    expect(offered('aim l|')).toEqual(['left', 'lead']);
     expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover']);
     expect(offered('turn left |', true)).toBeNull();
   });
@@ -73,7 +80,7 @@ describe('completionsAt: arguments', () => {
   it('marks the words that need something after them', () => {
     const options = completionsAt('', 0, true)?.options ?? [];
     const needingMore = options.filter((option) => option.addSpace).map((option) => option.word);
-    expect(needingMore).toEqual(['if', 'while', 'set', 'state', 'move', 'turn']);
+    expect(needingMore).toEqual(['if', 'while', 'set', 'state', 'drive', 'turn', 'aim']);
   });
 
   it('carries a hint and a summary for each word', () => {
@@ -101,8 +108,8 @@ describe('completionsAt: conditions', () => {
   it('offers numbers only after a comparison or arithmetic, once a letter is typed', () => {
     expect(offered('if enemy_distance < |')).toBeNull();
     expect(offered('if enemy_distance < |', true)).toEqual(NUMBERS);
-    expect(offered('set limit = 1\nif enemy_distance < l|')).toEqual(['limit']);
-    expect(offered('if hp + a|')).toEqual(['ammo']);
+    expect(offered('set limit = 1\nif enemy_distance < li|')).toEqual(['limit']);
+    expect(offered('if hp + am|')).toEqual(['ammo']);
   });
 
   it('offers "and" and "or" after a value', () => {
@@ -129,7 +136,7 @@ describe('completionsAt: set', () => {
   });
 
   it('offers number sensors and variables in the value', () => {
-    expect(offered('set left = a|')).toEqual(['ammo']);
+    expect(offered('set left = am|')).toEqual(['ammo']);
     expect(offered('set n = 0\nset m = n + |', true)).toEqual([...NUMBERS, 'n', 'm']);
     expect(offered('set left = ammo |', true)).toBeNull();
   });

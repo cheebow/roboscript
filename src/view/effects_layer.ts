@@ -5,6 +5,7 @@ const FLASH = '#f2e9c4';
 const SPARK = '#e6c98a';
 const FIRE = '#e0a868';
 const SMOKE = '#6f6a66';
+const SHIELD = '#bfe3f2';
 
 const DIAGONALS = [
   [1, 1],
@@ -31,6 +32,11 @@ const BURST_FLASH_PHASE = 0.3;
 const BURST_FIRE_PHASE = 0.65;
 const BURST_FLASH_SIZE = 20;
 
+// A bullet stopped by a guard: one ring of dots that widens around the robot.
+const DEFLECT_START_RADIUS = 20;
+const DEFLECT_GROWTH = 14;
+const DEFLECT_DOTS = 16;
+
 /**
  * Draws the effects of a snapshot as coarse dots. `overrun` is how many ticks
  * playback has run past the snapshot, which ages its effects further.
@@ -53,6 +59,9 @@ export function drawEffects(
         break;
       case 'impact':
         drawImpact(ctx, effect, age, progress);
+        break;
+      case 'deflected':
+        drawDeflection(ctx, effect, progress);
         break;
       case 'destroyed':
         drawBurst(ctx, effect, progress);
@@ -80,6 +89,12 @@ function drawImpact(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, age: 
   if (age === 0) dot(ctx, effect.x, effect.y);
   const reach = (age + 1) * DOT;
   for (const [dx, dy] of DIAGONALS) dot(ctx, effect.x + dx * reach, effect.y + dy * reach);
+}
+
+function drawDeflection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {
+  ctx.fillStyle = SHIELD;
+  ctx.globalAlpha = 1 - progress;
+  drawRing(ctx, effect, DEFLECT_START_RADIUS + DEFLECT_GROWTH * progress, DEFLECT_DOTS, 0);
 }
 
 function drawBurst(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {

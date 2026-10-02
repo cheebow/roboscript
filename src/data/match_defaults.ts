@@ -20,6 +20,7 @@ export const DEFAULT_PLAYBACK_SPEED = 1;
 export const EFFECT_LIFETIMES = {
   shot: 2,
   impact: 4,
+  deflected: 8,
   destroyed: 15,
 } as const;
 /** Playback runs this many ticks past the end, so the effects of the last tick can finish. */

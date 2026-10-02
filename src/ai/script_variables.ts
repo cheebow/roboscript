@@ -1,4 +1,11 @@
-import { type AIContext, type MoveDirection, ROBOT_STATES, type RobotState, type TurnDirection } from '../sim/ai_context';
+import {
+  type AIContext,
+  type AimDirection,
+  type DriveSetting,
+  ROBOT_STATES,
+  type RobotState,
+  type TurnDirection,
+} from '../sim/ai_context';
 
 // The names a RoboScript program may use, and how each maps onto the AIContext.
 
@@ -15,6 +22,7 @@ export const NUMBER_VARIABLES = {
   enemy_angle: (context: AIContext) => context.enemyAngle,
   hp: (context: AIContext) => context.hp,
   ammo: (context: AIContext) => context.ammo,
+  guards: (context: AIContext) => context.guards,
   bullet_distance: (context: AIContext) => context.bulletDistance,
   bullet_angle: (context: AIContext) => context.bulletAngle,
   cover_distance: (context: AIContext) => context.coverDistance,
@@ -23,13 +31,17 @@ export const NUMBER_VARIABLES = {
   wall_behind: (context: AIContext) => context.wallBehind,
   wall_left: (context: AIContext) => context.wallLeft,
   wall_right: (context: AIContext) => context.wallRight,
+  aim_angle: (context: AIContext) => context.aimAngle,
+  lead_angle: (context: AIContext) => context.leadAngle,
+  gun_angle: (context: AIContext) => context.gunAngle,
 };
 
 export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;
 export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 
-const MOVE_DIRECTIONS: readonly string[] = ['forward', 'backward'] satisfies MoveDirection[];
-const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover'] satisfies TurnDirection[];
+export const DRIVE_SETTINGS: readonly string[] = ['forward', 'backward', 'stop'] satisfies DriveSetting[];
+export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover'] satisfies TurnDirection[];
+export const AIM_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'lead', 'ahead'] satisfies AimDirection[];
 const STATES: readonly string[] = ROBOT_STATES;
 
 /** Words with a meaning of their own, which a program may not use as a variable name. */
@@ -39,8 +51,9 @@ export const KEYWORDS: readonly string[] = [
   'loop',
   'while',
   'set',
-  'move',
+  'drive',
   'turn',
+  'aim',
   'fire',
   'guard',
   'wait',
@@ -63,8 +76,12 @@ export function isNumberVariable(name: string): name is NumberVariableName {
   return Object.hasOwn(NUMBER_VARIABLES, name);
 }
 
-export function isMoveDirection(name: string): name is MoveDirection {
-  return MOVE_DIRECTIONS.includes(name);
+export function isDriveSetting(name: string): name is DriveSetting {
+  return DRIVE_SETTINGS.includes(name);
+}
+
+export function isAimDirection(name: string): name is AimDirection {
+  return AIM_DIRECTIONS.includes(name);
 }
 
 export function isTurnDirection(name: string): name is TurnDirection {

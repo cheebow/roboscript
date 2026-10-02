@@ -2,8 +2,13 @@ export const ROBOT_STATES = ['IDLE', 'SEARCH', 'TRACK', 'ATTACK', 'EVADE'] as co
 export type RobotState = (typeof ROBOT_STATES)[number];
 
 /** Robots drive like tanks: along their heading only, never sideways. */
-export type MoveDirection = 'forward' | 'backward';
+export type DriveDirection = 'forward' | 'backward';
+/** What the hull is set to do until told otherwise. */
+export type DriveSetting = DriveDirection | 'stop';
+/** Which way the hull turns. */
 export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover';
+/** Which way the turret turns: `lead` is where the enemy will be when a bullet gets there, `ahead` the front of the hull. */
+export type AimDirection = 'left' | 'right' | 'enemy' | 'lead' | 'ahead';
 
 /**
  * Everything an AI is allowed to know on one tick. The AI never touches the
@@ -21,6 +26,8 @@ export interface AIContext {
   readonly enemyY: number;
   readonly hp: number;
   readonly ammo: number;
+  /** How many more ticks the robot can guard in this match. */
+  readonly guards: number;
   /** An obstacle or a wall is directly ahead, so the robot cannot move forward. The other robot does not count. */
   readonly blocked: boolean;
   /** An obstacle or a wall is directly behind, so the robot cannot move backward. The other robot does not count. */
@@ -40,12 +47,24 @@ export interface AIContext {
   /** Distance and relative angle to that place. 0 if there is none, or if the robot is already hidden. */
   readonly coverDistance: number;
   readonly coverAngle: number;
+  /** Angle from the gun to the enemy, or to where it was last seen (deg, positive = to the right). 0 if never seen. */
+  readonly aimAngle: number;
+  /** Angle from the gun to where the enemy will be when a bullet fired now gets there. 0 if never seen. */
+  readonly leadAngle: number;
+  /** Angle of the gun on the hull (deg, 0 = straight ahead, positive = to the right). */
+  readonly gunAngle: number;
 }
 
-/** What the AI wants the robot to do on this tick. A RoboScript program chooses one thing: move, turn, fire, guard or nothing. */
+/**
+ * What the AI wants the robot to do on this tick. A RoboScript program
+ * chooses one thing (turn the hull, turn the turret, fire, guard or nothing),
+ * and may change how the hull drives besides.
+ */
 export interface AIAction {
-  move: MoveDirection | null;
+  /** null keeps driving as before. */
+  drive: DriveSetting | null;
   turn: TurnDirection | null;
+  aim: AimDirection | null;
   fire: boolean;
   /** Brace for this tick: hits do less damage. */
   guard: boolean;
@@ -75,8 +94,9 @@ export interface Assignment {
 export type ProgramStatus = 'running' | 'finished' | 'stalled';
 
 export interface ActionSourceLines {
-  move: number | null;
+  drive: number | null;
   turn: number | null;
+  aim: number | null;
   fire: number | null;
   guard: number | null;
   state: number | null;
@@ -88,13 +108,14 @@ export interface RobotBrain {
 
 export function createIdleAction(): AIAction {
   return {
-    move: null,
+    drive: null,
     turn: null,
+    aim: null,
     fire: false,
     guard: false,
     state: null,
     executedLines: [],
-    sourceLines: { move: null, turn: null, fire: null, guard: null, state: null },
+    sourceLines: { drive: null, turn: null, aim: null, fire: null, guard: null, state: null },
     assignments: [],
     status: 'running',
   };

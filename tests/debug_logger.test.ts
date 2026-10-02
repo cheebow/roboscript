@@ -67,29 +67,31 @@ describe('debug events of a match', () => {
 
   it('reports state changes with the line that set the state', () => {
     expect(select(events, { type: 'ai', robotId: 'ALPHA' })).toMatchObject([
-      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 17 },
-      { message: 'state SEARCH -> TRACK', sourceLine: 14 },
+      { tick: 1, message: 'state IDLE -> SEARCH', sourceLine: 18 },
+      { message: 'state SEARCH -> TRACK', sourceLine: 15 },
       { message: 'state TRACK -> ATTACK', sourceLine: 11 },
     ]);
   });
 
-  it('reports a move or turn when it comes into use, not on every tick', () => {
+  it('reports driving, turning and aiming when they come into use, not on every tick', () => {
     const actions = select(events, { type: 'action', robotId: 'ALPHA' }).filter(
       (event) => event.message !== 'fire',
     );
-    // Forward to the centre block, a quarter turn left, along the block, then turning to and closing in on the enemy.
+    // Forward to the centre block, a quarter turn left, along the block, then
+    // turning to the enemy, closing in on it and stopping to shoot.
     expect(actions.map(({ message, sourceLine }) => ({ message, sourceLine }))).toEqual([
-      { message: 'move forward', sourceLine: 18 },
+      { message: 'drive forward', sourceLine: 19 },
       { message: 'turn left', sourceLine: 5 },
       { message: 'turn enemy', sourceLine: 8 },
-      { message: 'move forward', sourceLine: 15 },
+      { message: 'drive forward', sourceLine: 16 },
+      { message: 'drive stop', sourceLine: 12 },
     ]);
   });
 
   it('reports every shot with the line that fired it', () => {
     const shots = select(events, { type: 'action', robotId: 'ALPHA', message: 'fire' });
     expect(shots).toHaveLength(ROBOT_DEFAULTS.maxAmmo - alpha.weapon.ammo);
-    expect(shots.every((event) => event.sourceLine === 12)).toBe(true);
+    expect(shots.every((event) => event.sourceLine === 13)).toBe(true);
   });
 
   it('reports every hit with the damage and remaining HP', () => {
@@ -134,18 +136,18 @@ describe('other debug events', () => {
 
   it('reports an action again once it has been out of use for a second', () => {
     const { tickRate } = MATCH_DEFAULTS;
-    const program = `loop\n    move forward\n    set n = 0\n    while n < ${tickRate + 5}\n        wait\n        set n = n + 1`;
+    const program = `loop\n    aim left\n    set n = 0\n    while n < ${tickRate + 5}\n        wait\n        set n = n + 1`;
     const logger = new DebugLogger();
     const simulation = createSimulation([compileBrain(program), new FixedBrain()], { maxMatchTime: 4, logger });
     runToEnd(simulation);
-    const moves = select(logger.events, { type: 'action', message: 'move forward' });
-    expect(moves.length).toBeGreaterThan(1);
-    expect(moves[1].tick - moves[0].tick).toBe(tickRate + 6);
+    const aims = select(logger.events, { type: 'action', message: 'aim left' });
+    expect(aims.length).toBeGreaterThan(1);
+    expect(aims[1].tick - aims[0].tick).toBe(tickRate + 6);
   });
 
   it('warns when a program runs off its end', () => {
     const logger = new DebugLogger();
-    const simulation = createSimulation([compileBrain('move forward\nfire'), new FixedBrain()], { maxMatchTime: 1, logger });
+    const simulation = createSimulation([compileBrain('aim left\nfire'), new FixedBrain()], { maxMatchTime: 1, logger });
     runToEnd(simulation);
     const warnings = select(logger.events, { type: 'warning' });
     expect(warnings).toMatchObject([{ robotId: 'ALPHA', tick: 3 }]);

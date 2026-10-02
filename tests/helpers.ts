@@ -10,6 +10,9 @@ import type { Arena } from '../src/sim/types';
 /** Shots fly perfectly straight, so hit timing in tests is exact. */
 export const NO_SPREAD_STATS: RobotStats = { ...ROBOT_DEFAULTS, shotSpread: 0 };
 
+/** The same, with guards to spare, for robots that guard on every tick. */
+export const TIRELESS_GUARD_STATS: RobotStats = { ...NO_SPREAD_STATS, maxGuards: 10_000 };
+
 /** No obstacles; the robots face each other 200 units apart. */
 export const DUEL_ARENA: Arena = {
   width: 1000,
@@ -30,6 +33,7 @@ export const QUIET_CONTEXT: AIContext = {
   enemyY: 0,
   hp: ROBOT_DEFAULTS.maxHp,
   ammo: ROBOT_DEFAULTS.maxAmmo,
+  guards: ROBOT_DEFAULTS.maxGuards,
   blocked: false,
   blockedBehind: false,
   wallAhead: 0,
@@ -42,7 +46,17 @@ export const QUIET_CONTEXT: AIContext = {
   coverVisible: false,
   coverDistance: 0,
   coverAngle: 0,
+  aimAngle: 0,
+  leadAngle: 0,
+  gunAngle: 0,
 };
+
+const TURN = /\bturn (left|right)\b/g;
+
+/** The program with every `turn left` and `turn right` swapped: a program for the player made to go round obstacles like the enemy. */
+export function mirrorTurns(source: string): string {
+  return source.replace(TURN, (_, side: string) => `turn ${side === 'left' ? 'right' : 'left'}`);
+}
 
 /** Repeats the same action every tick. */
 export class FixedBrain implements RobotBrain {

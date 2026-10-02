@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { describeAt, describeWord, programVariables } from '../src/ai/reference';
-import { BOOLEAN_VARIABLES, KEYWORDS, NUMBER_VARIABLES } from '../src/ai/script_variables';
+import {
+  AIM_DIRECTIONS,
+  BOOLEAN_VARIABLES,
+  DRIVE_SETTINGS,
+  KEYWORDS,
+  NUMBER_VARIABLES,
+  TURN_DIRECTIONS,
+} from '../src/ai/script_variables';
 import { ROBOT_STATES } from '../src/sim/ai_context';
 
 describe('describeWord', () => {
@@ -10,7 +17,9 @@ describe('describeWord', () => {
       ...Object.keys(BOOLEAN_VARIABLES),
       ...Object.keys(NUMBER_VARIABLES),
       ...ROBOT_STATES,
-      ...['forward', 'backward', 'left', 'right', 'enemy', 'cover'],
+      ...DRIVE_SETTINGS,
+      ...TURN_DIRECTIONS,
+      ...AIM_DIRECTIONS,
     ];
     for (const word of words) {
       const reference = describeWord(word);

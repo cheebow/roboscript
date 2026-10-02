@@ -71,6 +71,6 @@ describe('lexer', () => {
   });
 
   it('rejects characters outside the language', () => {
-    expect(lex('fire\nmove forward;').errors).toEqual([{ line: 2, message: 'Unexpected character ";"' }]);
+    expect(lex('fire\ndrive forward;').errors).toEqual([{ line: 2, message: 'Unexpected character ";"' }]);
   });
 });

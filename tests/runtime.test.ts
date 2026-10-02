@@ -19,8 +19,9 @@ function runTicks(source: string, ticks: number, context: Partial<AIContext> = {
 
 /** A short name for what the robot does on a tick. */
 function describe1(action: AIAction): string {
-  if (action.move !== null) return `move ${action.move}`;
   if (action.turn !== null) return `turn ${action.turn}`;
+  if (action.aim !== null) return `aim ${action.aim}`;
+  if (action.guard) return 'guard';
   return action.fire ? 'fire' : 'nothing';
 }
 
@@ -37,39 +38,40 @@ function valueOf(expression: string, context: Partial<AIContext> = {}): number {
 
 describe('runtime: one action per tick', () => {
   it('does one action per tick and picks up where it left off', () => {
-    const actions = runTicks('move forward\nturn left\nfire\nmove backward', 4);
-    expect(actions.map(describe1)).toEqual(['move forward', 'turn left', 'fire', 'move backward']);
+    const actions = runTicks('aim left\nturn left\nfire\nguard', 4);
+    expect(actions.map(describe1)).toEqual(['aim left', 'turn left', 'fire', 'guard']);
     expect(actions.map((action) => action.executedLines)).toEqual([[1], [2], [3], [4]]);
   });
 
   it('notes which line decided each action', () => {
-    const [move, turn, fire] = runTicks('move forward\nturn enemy\nfire', 3);
-    expect(move.sourceLines).toEqual({ move: 1, turn: null, fire: null, guard: null, state: null });
-    expect(turn.sourceLines).toEqual({ move: null, turn: 2, fire: null, guard: null, state: null });
-    expect(fire.sourceLines).toEqual({ move: null, turn: null, fire: 3, guard: null, state: null });
+    const none = { drive: null, turn: null, aim: null, fire: null, guard: null, state: null };
+    const [aim, turn, fire] = runTicks('aim lead\nturn enemy\nfire', 3);
+    expect(aim.sourceLines).toEqual({ ...none, aim: 1 });
+    expect(turn.sourceLines).toEqual({ ...none, turn: 2 });
+    expect(fire.sourceLines).toEqual({ ...none, fire: 3 });
   });
 
   it('spends a tick on wait, doing nothing', () => {
     const [waiting, firing] = runTicks('wait\nfire', 2);
-    expect(waiting).toMatchObject({ move: null, turn: null, fire: false, executedLines: [1] });
+    expect(waiting).toMatchObject({ drive: null, turn: null, aim: null, fire: false, executedLines: [1] });
     expect(firing.fire).toBe(true);
   });
 
-  it('spends no time on if, set and state', () => {
-    const [action] = runTicks('state TRACK\nset n = 1\nif n == 1\n    move forward', 1);
-    expect(action).toMatchObject({ move: 'forward', state: 'TRACK', executedLines: [1, 2, 3, 4] });
-    expect(action.sourceLines).toMatchObject({ move: 4, state: 1 });
+  it('spends no time on if, set, state and drive', () => {
+    const [action] = runTicks('state TRACK\nset n = 1\ndrive forward\nif n == 1\n    fire', 1);
+    expect(action).toMatchObject({ drive: 'forward', fire: true, state: 'TRACK', executedLines: [1, 2, 3, 4, 5] });
+    expect(action.sourceLines).toMatchObject({ drive: 3, fire: 5, state: 1 });
   });
 
   it('carries a state set earlier in the same tick, and leaves it alone on later ticks', () => {
-    const [first, second] = runTicks('state EVADE\nmove backward\nfire', 2);
+    const [first, second] = runTicks('state EVADE\naim left\nfire', 2);
     expect(first.state).toBe('EVADE');
     expect(second.state).toBeNull();
   });
 
   it('stops for good when the program runs off its end', () => {
-    const actions = runTicks('fire\nmove forward', 4);
-    expect(actions.map(describe1)).toEqual(['fire', 'move forward', 'nothing', 'nothing']);
+    const actions = runTicks('fire\naim left', 4);
+    expect(actions.map(describe1)).toEqual(['fire', 'aim left', 'nothing', 'nothing']);
     expect(actions.map((action) => action.status)).toEqual(['running', 'running', 'finished', 'finished']);
     expect(actions[3].executedLines).toEqual([]);
   });
@@ -79,17 +81,38 @@ describe('runtime: one action per tick', () => {
   });
 });
 
+describe('runtime: driving', () => {
+  it('sets how the hull drives without ending the tick; the last setting of a tick counts', () => {
+    const [first, second] = runTicks('drive forward\ndrive backward\nwait\ndrive stop\nfire', 2);
+    expect(first).toMatchObject({ drive: 'backward', fire: false, executedLines: [1, 2, 3] });
+    expect(first.sourceLines.drive).toBe(2);
+    expect(second).toMatchObject({ drive: 'stop', fire: true, executedLines: [4, 5] });
+  });
+
+  it('leaves the driving as it is on a tick that does not set it', () => {
+    const [first, second] = runTicks('drive forward\nwait\nfire', 2);
+    expect(first.drive).toBe('forward');
+    expect(second.drive).toBeNull();
+  });
+
+  it('is not an action: a loop that only drives never ends its tick by itself', () => {
+    const result = compileScript('loop\n    drive forward', 10);
+    if (!result.ok) throw new Error('Expected the program to compile');
+    expect(result.brain.decide(BASE_CONTEXT)).toMatchObject({ status: 'stalled', drive: 'forward' });
+  });
+});
+
 describe('runtime: loops', () => {
   it('repeats a loop forever, passing its first line again on every round', () => {
-    const actions = runTicks('loop\n    move forward\n    turn left', 5);
-    expect(actions.map(describe1)).toEqual(['move forward', 'turn left', 'move forward', 'turn left', 'move forward']);
+    const actions = runTicks('loop\n    aim left\n    turn left', 5);
+    expect(actions.map(describe1)).toEqual(['aim left', 'turn left', 'aim left', 'turn left', 'aim left']);
     expect(actions.map((action) => action.executedLines)).toEqual([[1, 2], [3], [1, 2], [3], [1, 2]]);
     expect(actions.every((action) => action.status === 'running')).toBe(true);
   });
 
   it('repeats a while as long as its condition holds, then goes on', () => {
-    const actions = runTicks('set n = 0\nwhile n < 2\n    move forward\n    set n = n + 1\nfire', 4);
-    expect(actions.map(describe1)).toEqual(['move forward', 'move forward', 'fire', 'nothing']);
+    const actions = runTicks('set n = 0\nwhile n < 2\n    aim left\n    set n = n + 1\nfire', 4);
+    expect(actions.map(describe1)).toEqual(['aim left', 'aim left', 'fire', 'nothing']);
     expect(actions.map((action) => action.executedLines)).toEqual([[1, 2, 3], [4, 2, 3], [4, 2, 5], []]);
   });
 
@@ -112,7 +135,7 @@ describe('runtime: loops', () => {
     const first = brain.brain.decide(BASE_CONTEXT);
     const second = brain.brain.decide(BASE_CONTEXT);
 
-    expect(first).toMatchObject({ status: 'stalled', move: null, turn: null, fire: false });
+    expect(first).toMatchObject({ status: 'stalled', drive: null, turn: null, aim: null, fire: false });
     expect(first.executedLines).toHaveLength(10);
     expect(second.status).toBe('stalled');
     // The count goes on from where the first tick stopped.
@@ -192,14 +215,14 @@ describe('runtime: conditions', () => {
 });
 
 describe('runtime: the sample AI', () => {
-  it('drives on while the enemy is hidden, one step per tick, round the loop each time', () => {
+  it('drives on while the enemy is hidden, round the loop once a tick', () => {
     const actions = runTicks(SAMPLE_AI, 2);
-    expect(actions.map(describe1)).toEqual(['move forward', 'move forward']);
+    expect(actions.map(describe1)).toEqual(['nothing', 'nothing']);
     expect(actions.map((action) => action.executedLines)).toEqual([
-      [2, 3, 6, 7, 16, 17, 18],
-      [2, 3, 6, 7, 16, 17, 18],
+      [2, 3, 6, 7, 17, 18, 19, 20],
+      [2, 3, 6, 7, 17, 18, 19, 20],
     ]);
-    expect(actions[0].state).toBe('SEARCH');
+    expect(actions[0]).toMatchObject({ drive: 'forward', state: 'SEARCH' });
   });
 
   it('turns away while the way ahead is blocked', () => {
@@ -207,15 +230,23 @@ describe('runtime: the sample AI', () => {
     expect(action).toMatchObject({ turn: 'left', state: 'SEARCH', executedLines: [2, 3, 4, 5] });
   });
 
-  it('takes two ticks per round with the enemy in sight: one to turn, one to act', () => {
+  it('keeps its hull on a distant enemy while it drives up to it', () => {
     const far = runTicks(SAMPLE_AI, 3, { enemyVisible: true, enemyDistance: 400 });
-    expect(far.map(describe1)).toEqual(['turn enemy', 'move forward', 'turn enemy']);
-    expect(far.map((action) => action.executedLines)).toEqual([[2, 3, 6, 7, 8], [10, 13, 14, 15], [2, 3, 6, 7, 8]]);
-    expect(far[1].state).toBe('TRACK');
+    expect(far.map(describe1)).toEqual(['turn enemy', 'turn enemy', 'turn enemy']);
+    // Setting the drive takes no time, so the round goes on to the next turn.
+    expect(far.map((action) => action.executedLines)).toEqual([
+      [2, 3, 6, 7, 8],
+      [10, 14, 15, 16, 2, 3, 6, 7, 8],
+      [10, 14, 15, 16, 2, 3, 6, 7, 8],
+    ]);
+    expect(far[0].drive).toBeNull();
+    expect(far[1]).toMatchObject({ drive: 'forward', state: 'TRACK' });
+  });
 
-    const near = runTicks(SAMPLE_AI, 2, { enemyVisible: true, enemyDistance: 100 });
-    expect(near.map(describe1)).toEqual(['turn enemy', 'fire']);
-    expect(near[1]).toMatchObject({ state: 'ATTACK', executedLines: [10, 11, 12] });
+  it('stops and takes two ticks per round on a close enemy: one to turn, one to fire', () => {
+    const near = runTicks(SAMPLE_AI, 3, { enemyVisible: true, enemyDistance: 100 });
+    expect(near.map(describe1)).toEqual(['turn enemy', 'fire', 'turn enemy']);
+    expect(near[1]).toMatchObject({ drive: 'stop', state: 'ATTACK', executedLines: [10, 11, 12, 13] });
   });
 
   it('runs the same way every time', () => {

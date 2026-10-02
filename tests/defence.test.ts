@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '../src/ai/parser';
 import { OPEN_FIELD } from '../src/data/arenas/open_field';
 import { DebugLogger } from '../src/debug/debug_logger';
+import { captureSnapshot } from '../src/debug/snapshot';
 import type { AIContext, RobotBrain } from '../src/sim/ai_context';
 import { createIdleAction } from '../src/sim/ai_context';
 import type { Bullet } from '../src/sim/bullet';
@@ -17,13 +18,14 @@ import {
   FixedBrain,
   NO_SPREAD_STATS,
   QUIET_CONTEXT,
+  TIRELESS_GUARD_STATS,
   compileBrain,
   createSimulation,
   runTicks,
 } from './helpers';
 import { SIDESTEP } from './strategies';
 
-const { radius, bulletRadius, shotDamage, shotSpeed, weaponRange, guardDamageFactor } = NO_SPREAD_STATS;
+const { radius, bulletRadius, shotDamage, shotSpeed, weaponRange, guardDamageFactor, maxGuards } = NO_SPREAD_STATS;
 const HIT_RADIUS = radius + bulletRadius;
 const BULLET_STEP = shotSpeed / MATCH_DEFAULTS.tickRate;
 
@@ -278,10 +280,13 @@ describe('cover sensors', () => {
   const HIDE = `loop
     if cover_distance > 0
         if cover_angle > 2 or cover_angle < -2
+            drive stop
             turn cover
         else
-            move forward
+            drive forward
+            wait
     else
+        drive stop
         wait
 `;
 
@@ -311,8 +316,10 @@ describe('cover sensors', () => {
     expect(normalizeAngle(bearing - alpha.rotation)).toBeCloseTo(probe.contexts[0].coverAngle);
   });
 
-  it('take a robot that follows them out of the sight of the enemy, on every map', () => {
-    for (const { name, arena } of ARENAS) {
+  it('take a robot that follows them out of the sight of the enemy, on every map with cover', () => {
+    // Bare Ground has nothing to hide behind; in Zigzag a wall stands between the two places used here.
+    const withCover = ARENAS.filter(({ id }) => id !== 'bare_ground' && id !== 'zigzag');
+    for (const { name, arena } of withCover) {
       // The enemy stands in plain view of the robot, which then goes into hiding.
       const inView: Arena = { ...arena, spawns: [{ x: 640, y: 520, rotation: 180 }, { x: 360, y: 520, rotation: 0 }] };
       const simulation = createSimulation([compileBrain(HIDE), new FixedBrain()], { arena: inView, maxMatchTime: 30 });
@@ -330,8 +337,8 @@ describe('cover sensors', () => {
 
 describe('guard', () => {
   /** HP of a robot running the given program after the enemy's first shot has hit it. */
-  function hpAfterFirstHit(program: string): number {
-    const simulation = createSimulation([compileBrain(program), new FixedBrain({ fire: true })]);
+  function hpAfterFirstHit(program: string, stats = TIRELESS_GUARD_STATS): number {
+    const simulation = createSimulation([compileBrain(program), new FixedBrain({ fire: true })], { stats });
     const [alpha] = simulation.robots;
     while (alpha.hp === NO_SPREAD_STATS.maxHp) simulation.step();
     return alpha.hp;
@@ -350,6 +357,42 @@ describe('guard', () => {
     expect(hpAfterFirstHit('guard\nguard\nguard\nloop\n    wait')).toBe(full);
     const timed = `loop\n    if bullet_incoming and bullet_distance < ${HIT_RADIUS + BULLET_STEP}\n        guard\n    else\n        wait`;
     expect(hpAfterFirstHit(timed)).toBe(guarded);
+  });
+
+  it('can be used for a few ticks per match only; after that it does nothing', () => {
+    expect(maxGuards).toBe(4);
+    // Guarding all the time, the guards are gone long before the first bullet arrives.
+    expect(hpAfterFirstHit('loop\n    guard', NO_SPREAD_STATS)).toBe(full);
+
+    const logger = new DebugLogger();
+    const simulation = createSimulation([compileBrain('loop\n    guard'), new FixedBrain()], { logger, maxMatchTime: 1 });
+    const left: number[] = [];
+    for (let tick = 0; tick < maxGuards + 2; tick++) {
+      simulation.step();
+      left.push(simulation.robots[0].guardsLeft);
+    }
+    expect(left).toEqual([3, 2, 1, 0, 0, 0]);
+    expect(simulation.robots[0].guarding).toBe(false);
+    // Said once, on the first guard that came to nothing.
+    const warnings = logger.events.filter((event) => event.type === 'warning');
+    expect(warnings).toMatchObject([{ robotId: 'ALPHA', message: 'out of guards', tick: maxGuards + 1, sourceLine: 2 }]);
+  });
+
+  it('tells the program how many guards are left', () => {
+    const program = 'loop\n    if guards > 2\n        guard\n    else\n        wait';
+    const simulation = createSimulation([compileBrain(program), new FixedBrain()], { maxMatchTime: 1 });
+    runTicks(simulation, 10);
+    expect(simulation.robots[0].guardsLeft).toBe(2);
+    expect(captureSnapshot(simulation).robots[0].guards).toBe(2);
+  });
+
+  it('does not put off the next shot when there is no guard left to use', () => {
+    const logger = new DebugLogger();
+    const program = `${'guard\n'.repeat(maxGuards)}fire\nguard\nguard\nloop\n    fire`;
+    const simulation = createSimulation([compileBrain(program), new FixedBrain()], { logger, maxMatchTime: 5 });
+    runTicks(simulation, 5 * MATCH_DEFAULTS.tickRate - 1);
+    const shots = logger.events.filter((event) => event.robotId === 'ALPHA' && event.message === 'fire');
+    expect(shots[1].tick - shots[0].tick).toBe(Math.round(NO_SPREAD_STATS.shotCooldown * MATCH_DEFAULTS.tickRate));
   });
 
   it('puts off the next shot by the recovery time for every tick spent guarding', () => {
@@ -371,12 +414,13 @@ describe('guard', () => {
     expect(secondShotAt(['guard', 'guard'])).toBe(unhindered + recoveryTicks * 2);
   });
 
-  it('is an action of its own: the robot does not move, turn or fire meanwhile', () => {
+  it('is an action of its own: the robot does not turn, aim or fire meanwhile', () => {
     const brain = compileBrain('guard\nfire');
     expect(brain.decide(QUIET_CONTEXT)).toMatchObject({
       guard: true,
-      move: null,
+      drive: null,
       turn: null,
+      aim: null,
       fire: false,
       executedLines: [1],
       sourceLines: { guard: 1 },
@@ -384,9 +428,23 @@ describe('guard', () => {
     expect(brain.decide(QUIET_CONTEXT)).toMatchObject({ guard: false, fire: true });
   });
 
+  it('is recorded with the ticks since the robot last guarded, so that it can be shown fading out', () => {
+    const simulation = createSimulation([compileBrain('wait\nguard\nguard\nloop\n    wait'), new FixedBrain()]);
+    const ages: (number | null)[] = [];
+    for (let tick = 0; tick < 6; tick++) {
+      simulation.step();
+      ages.push(captureSnapshot(simulation).robots[0].guardAge);
+    }
+    expect(ages).toEqual([null, 0, 0, 1, 2, 3]);
+    expect(captureSnapshot(simulation).robots[1].guardAge).toBeNull();
+  });
+
   it('is logged as an action, and marks the hits it softened', () => {
     const logger = new DebugLogger();
-    const simulation = createSimulation([compileBrain('loop\n    guard'), new FixedBrain({ fire: true })], { logger });
+    const simulation = createSimulation([compileBrain('loop\n    guard'), new FixedBrain({ fire: true })], {
+      logger,
+      stats: TIRELESS_GUARD_STATS,
+    });
     while (simulation.robots[0].hp === NO_SPREAD_STATS.maxHp) simulation.step();
 
     const messages = logger.events.map((event) => `${event.robotId} ${event.type} ${event.message}`);

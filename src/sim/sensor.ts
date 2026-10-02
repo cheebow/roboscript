@@ -8,6 +8,8 @@ export interface SensorReading {
   /** Relative to the robot's heading, deg, positive = to the right. 0 if never seen. */
   enemyAngle: number;
   lastSeen: Vec2 | null;
+  /** How far the enemy moved since the previous tick; zero unless it was visible on both. */
+  enemyVelocity: Vec2;
 }
 
 export const EMPTY_READING: SensorReading = {
@@ -15,6 +17,7 @@ export const EMPTY_READING: SensorReading = {
   enemyDistance: 0,
   enemyAngle: 0,
   lastSeen: null,
+  enemyVelocity: { x: 0, y: 0 },
 };
 
 export interface Sensor {
@@ -32,6 +35,8 @@ const UNOBSTRUCTED: LineOfSight = () => true;
  */
 export class ConeSensor implements Sensor {
   private lastSeen: Vec2 | null = null;
+  /** Where the enemy was on the previous scan, if it was visible then. */
+  private previous: Vec2 | null = null;
 
   constructor(
     private readonly range: number,
@@ -45,6 +50,11 @@ export class ConeSensor implements Sensor {
       toEnemy.distance <= this.range &&
       Math.abs(toEnemy.angle) <= this.angle / 2 &&
       this.hasLineOfSight(position, enemyPosition);
+    const enemyVelocity =
+      visible && this.previous !== null
+        ? { x: enemyPosition.x - this.previous.x, y: enemyPosition.y - this.previous.y }
+        : { x: 0, y: 0 };
+    this.previous = visible ? { ...enemyPosition } : null;
     if (visible) this.lastSeen = { ...enemyPosition };
     if (this.lastSeen === null) return EMPTY_READING;
 
@@ -54,6 +64,7 @@ export class ConeSensor implements Sensor {
       enemyDistance: toTarget.distance,
       enemyAngle: toTarget.angle,
       lastSeen: { ...this.lastSeen },
+      enemyVelocity,
     };
   }
 }

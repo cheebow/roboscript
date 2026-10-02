@@ -1,23 +1,33 @@
+import type { Side } from './side';
+
 /**
- * The program a new player starts with, and the first of the templates: look
- * for the enemy, drive up to it, and shoot from close by.
+ * The player's starting program: drives up to the enemy and shoots from close
+ * by. It leaves the turret where it is, pointing straight ahead, and turns the
+ * whole hull at the enemy; and it has to get closer than DumbBot before it
+ * fires, which is why it loses to it as shipped.
  */
-export const SAMPLE_AI = `# Each move, turn or fire takes one tick.
+export function sampleAi(avoid: Side): string {
+  return `# "drive" keeps the hull going. Each turn, aim or fire takes one tick.
 loop
     if blocked
         state SEARCH
-        turn left
+        turn ${avoid}
     else
         if enemy_visible
             turn enemy
 
             if enemy_distance < 250
                 state ATTACK
+                drive stop
                 fire
             else
                 state TRACK
-                move forward
+                drive forward
         else
             state SEARCH
-            move forward
+            drive forward
+            wait
 `;
+}
+
+export const SAMPLE_AI = sampleAi('left');

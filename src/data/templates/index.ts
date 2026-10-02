@@ -1,9 +1,11 @@
-import { AGGRESSIVE_BOT } from './aggressive_bot';
-import { COVER_BOT } from './cover_bot';
-import { COWARD_BOT } from './coward_bot';
-import { DUMB_BOT } from './dumb_bot';
-import { GUARD_BOT } from './guard_bot';
-import { SAMPLE_AI } from './sample';
+import { aggressiveBot } from './aggressive_bot';
+import { coverBot } from './cover_bot';
+import { cowardBot } from './coward_bot';
+import { dumbBot } from './dumb_bot';
+import { guardBot } from './guard_bot';
+import { sampleAi } from './sample';
+import type { Side } from './side';
+import { strafeBot } from './strafe_bot';
 
 /** A ready-made RoboScript program that can be loaded into either robot's editor. */
 export interface Template {
@@ -11,17 +13,18 @@ export interface Template {
   id: string;
   /** Name shown to the player. */
   name: string;
-  /** RoboScript source as written for the player's robot: it turns left around obstacles. */
-  source: string;
+  /** The RoboScript source for a robot that gets around obstacles on the given side. */
+  build(avoid: Side): string;
 }
 
 export const TEMPLATES: readonly Template[] = [
-  { id: 'sample', name: 'Sample', source: SAMPLE_AI },
-  { id: 'dumb_bot', name: 'DumbBot', source: DUMB_BOT },
-  { id: 'aggressive_bot', name: 'AggressiveBot', source: AGGRESSIVE_BOT },
-  { id: 'coward_bot', name: 'CowardBot', source: COWARD_BOT },
-  { id: 'guard_bot', name: 'GuardBot', source: GUARD_BOT },
-  { id: 'cover_bot', name: 'CoverBot', source: COVER_BOT },
+  { id: 'sample', name: 'Sample', build: sampleAi },
+  { id: 'dumb_bot', name: 'DumbBot', build: dumbBot },
+  { id: 'aggressive_bot', name: 'AggressiveBot', build: aggressiveBot },
+  { id: 'coward_bot', name: 'CowardBot', build: cowardBot },
+  { id: 'guard_bot', name: 'GuardBot', build: guardBot },
+  { id: 'cover_bot', name: 'CoverBot', build: coverBot },
+  { id: 'strafe_bot', name: 'StrafeBot', build: strafeBot },
 ];
 
 /** What each robot's editor holds until the player writes or loads something else, in spawn order. */
@@ -31,19 +34,12 @@ export function findTemplate(id: string): Template | undefined {
   return TEMPLATES.find((template) => template.id === id);
 }
 
-const TURN = /\bturn (left|right)\b/g;
-
-/** Swaps `turn left` and `turn right` throughout a program. */
-export function mirrorTurns(source: string): string {
-  return source.replace(TURN, (_, side: string) => `turn ${side === 'left' ? 'right' : 'left'}`);
-}
-
 /**
  * The template's source for the robot at the given spawn index. The robots
  * start facing each other, so two that turn the same way around an obstacle
- * end up on opposite sides of it and never meet; the second robot therefore
- * gets the mirrored program.
+ * end up on opposite sides of it and never meet; the first robot therefore
+ * goes round on the left and the second on the right.
  */
 export function templateSource(template: Template, robotIndex: number): string {
-  return robotIndex % 2 === 0 ? template.source : mirrorTurns(template.source);
+  return template.build(robotIndex % 2 === 0 ? 'left' : 'right');
 }

@@ -9,10 +9,13 @@ const FIELD_NAMES = [
   'X',
   'Y',
   'ROTATION',
+  'GUN',
+  'DRIVE',
   'STATE',
   'TARGET',
   'TARGET_DISTANCE',
   'AMMO',
+  'GUARDS',
   'COOLDOWN',
 ] as const;
 
@@ -48,10 +51,13 @@ export class Inspector {
       formatNumber(robot.x),
       formatNumber(robot.y),
       formatNumber(robot.rotation),
+      formatNumber(robot.gunHeading),
+      robot.driving.toUpperCase(),
       robot.state,
       robot.enemyVisible && enemy !== undefined ? enemy.id : NO_VALUE,
       robot.enemyVisible ? formatNumber(robot.enemyDistance) : NO_VALUE,
       String(robot.ammo),
+      String(robot.guards),
       formatSeconds(robot.cooldown),
     ]);
   }

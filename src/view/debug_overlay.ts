@@ -13,6 +13,7 @@ const COVER_LINE_ALPHA = 0.45;
 /** Screen pixels: dash and gap of the line to the cover. */
 const COVER_DASH_PX = 4;
 const BULLET_RING_RADIUS = 7;
+const LEAD_MARK_SIZE = 5;
 /** Line width of the marks, in screen pixels. */
 const MARK_LINE_PX = 1.5;
 
@@ -102,6 +103,23 @@ export function drawIncomingBulletMark(
   ctx.globalAlpha = MARK_ALPHA;
   ctx.beginPath();
   ctx.arc(bullet.position.x, bullet.position.y, BULLET_RING_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** A plus where the robot would shoot to hit the enemy as it moves; drawn only while that is not the enemy itself. */
+export function drawLeadMark(ctx: CanvasRenderingContext2D, robot: RobotSnapshot, color: string, pixel: number): void {
+  const { lead, lastSeen } = robot;
+  if (lead === null || lastSeen === null) return;
+  if (Math.hypot(lead.x - lastSeen.x, lead.y - lastSeen.y) < LEAD_MARK_SIZE) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = MARK_LINE_PX * pixel;
+  ctx.globalAlpha = MARK_ALPHA;
+  ctx.beginPath();
+  ctx.moveTo(lead.x - LEAD_MARK_SIZE, lead.y);
+  ctx.lineTo(lead.x + LEAD_MARK_SIZE, lead.y);
+  ctx.moveTo(lead.x, lead.y - LEAD_MARK_SIZE);
+  ctx.lineTo(lead.x, lead.y + LEAD_MARK_SIZE);
   ctx.stroke();
   ctx.globalAlpha = 1;
 }

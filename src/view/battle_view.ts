@@ -3,9 +3,9 @@ import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
 import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
-import { drawCoverMark, drawIncomingBulletMark, drawSightLine, drawTargetMarks } from './debug_overlay';
+import { drawCoverMark, drawIncomingBulletMark, drawLeadMark, drawSightLine, drawTargetMarks } from './debug_overlay';
 import { drawEffects } from './effects_layer';
-import { DOT, ROBOT_PALETTES, WRECK_PALETTE, createRobotSprite } from './sprites';
+import { DOT, ROBOT_PALETTES, WRECK_PALETTE, createRobotSprites } from './sprites';
 
 const COLORS = {
   background: '#0f1215',
@@ -32,6 +32,11 @@ const HP_BAR_GAP = 8;
 /** A guarding robot is ringed this far outside its edge. */
 const GUARD_RING_GAP = 4;
 const GUARD_RING_PX = 2;
+/** A single tick of guarding would be gone before it is seen: the ring and the label fade out over this many ticks. */
+const GUARD_SHOWN_TICKS = 15;
+const GUARD_LABEL = 'GUARD';
+/** From the robot's edge up to the label, above the HP bar. */
+const GUARD_LABEL_GAP = 13;
 /** From the robot's edge down to its name; leaves room for the target frame in between. */
 const LABEL_GAP = 15;
 /** A bullet is drawn as a square of this size, with a dimmer one trailing behind it. */
@@ -49,8 +54,8 @@ export interface RenderOptions {
 /** Draws one snapshot of a match onto a canvas, in a dot-art style. */
 export class BattleView {
   private readonly context: CanvasRenderingContext2D;
-  private readonly sprites = ROBOT_PALETTES.map(createRobotSprite);
-  private readonly wreck = createRobotSprite(WRECK_PALETTE);
+  private readonly sprites = ROBOT_PALETTES.map(createRobotSprites);
+  private readonly wreck = createRobotSprites(WRECK_PALETTE);
   /** Screen pixels per arena unit. */
   private scale = 1;
 
@@ -89,12 +94,13 @@ export class BattleView {
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
-    snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats, debug));
+    snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats, debug, options.overrun));
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawTargetMarks(ctx, watcher, watched, stats, watcherColor, pixel);
       drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
+      drawLeadMark(ctx, watcher, watcherColor, pixel);
     }
     if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width);
 
@@ -148,26 +154,15 @@ export class BattleView {
     ctx.fillRect(bullet.x - half, bullet.y - half, BULLET_SIZE, BULLET_SIZE);
   }
 
-  private drawRobot(robot: RobotSnapshot, index: number, stats: RobotStats, showState: boolean): void {
+  private drawRobot(robot: RobotSnapshot, index: number, stats: RobotStats, showState: boolean, overrun: number): void {
     const ctx = this.context;
     const { x, y } = robot;
     const { radius } = stats;
-    const sprite = robot.alive ? this.sprites[index % this.sprites.length] : this.wreck;
-    const size = sprite.width * DOT;
+    const sprites = robot.alive ? this.sprites[index % this.sprites.length] : this.wreck;
+    this.drawPart(sprites.hull, x, y, robot.rotation);
+    this.drawPart(sprites.turret, x, y, robot.gunHeading);
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((robot.rotation * Math.PI) / 180);
-    ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
-    ctx.restore();
-
-    if (robot.alive && robot.guarding) {
-      ctx.strokeStyle = this.colorOf(index);
-      ctx.lineWidth = GUARD_RING_PX / this.scale;
-      ctx.beginPath();
-      ctx.arc(x, y, radius + GUARD_RING_GAP, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    if (robot.alive) this.drawGuard(robot, index, radius, overrun);
 
     const barWidth = radius * 2;
     const barY = y - radius - HP_BAR_GAP;
@@ -186,6 +181,41 @@ export class BattleView {
       ctx.fillStyle = COLORS.mutedText;
       ctx.fillText(robot.state, x, labelY + LABEL_LINE_PX / this.scale);
     }
+  }
+
+  /** A ring around a robot that guards or has just guarded, and the word for it, both fading out. */
+  private drawGuard(robot: RobotSnapshot, index: number, radius: number, overrun: number): void {
+    if (robot.guardAge === null) return;
+    const age = robot.guardAge + overrun;
+    if (age >= GUARD_SHOWN_TICKS) return;
+    const ctx = this.context;
+    const color = this.colorOf(index);
+
+    ctx.globalAlpha = 1 - age / GUARD_SHOWN_TICKS;
+    ctx.strokeStyle = color;
+    // Bold on the very ticks it is guarding.
+    ctx.lineWidth = (robot.guardAge === 0 ? GUARD_RING_PX * 2 : GUARD_RING_PX) / this.scale;
+    ctx.beginPath();
+    ctx.arc(robot.x, robot.y, radius + GUARD_RING_GAP, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = this.font(LABEL_FONT_PX);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = color;
+    ctx.fillText(GUARD_LABEL, robot.x, robot.y - radius - GUARD_LABEL_GAP);
+    ctx.globalAlpha = 1;
+  }
+
+  /** Draws a sprite centred on a point and turned to the given heading (deg). */
+  private drawPart(sprite: HTMLCanvasElement, x: number, y: number, heading: number): void {
+    const ctx = this.context;
+    const size = sprite.width * DOT;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((heading * Math.PI) / 180);
+    ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+    ctx.restore();
   }
 
   private drawResult(result: MatchResult, width: number): void {

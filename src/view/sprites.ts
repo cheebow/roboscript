@@ -42,18 +42,18 @@ const PATTERN_COLORS: Record<string, keyof RobotPalette> = {
   T: 'treadLight',
 };
 
-/** A robot seen from above, facing right: two treads, the hull, a hatch and the gun barrel. */
-const ROBOT_PATTERN = [
+/** The hull of a robot seen from above, facing right: two treads and the body. */
+const HULL_PATTERN = [
   '................',
   '.tttttttttttt...',
   '.TtTtTtTtTtTt...',
   '.tttttttttttt...',
   '..dbbbbbbbbd....',
   '..bbbbbbbbbbl...',
-  '..bbbddddbbbl...',
-  '..bbbdccdgggggg.',
-  '..bbbdccdgggggg.',
-  '..bbbddddbbbl...',
+  '..bbbbbbbbbbl...',
+  '..bbbbbbbbbbl...',
+  '..bbbbbbbbbbl...',
+  '..bbbbbbbbbbl...',
   '..bbbbbbbbbbl...',
   '..dbbbbbbbbd....',
   '.tttttttttttt...',
@@ -62,15 +62,45 @@ const ROBOT_PATTERN = [
   '................',
 ];
 
-/** Paints the robot pattern, one canvas pixel per dot. Draw it scaled by DOT, without smoothing. */
-export function createRobotSprite(palette: RobotPalette): HTMLCanvasElement {
+/** The turret, pointing right: the ring with its hatch, and the gun barrel. It turns about the middle of the pattern. */
+const TURRET_PATTERN = [
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '......dddd......',
+  '......dccdggggg.',
+  '......dccdggggg.',
+  '......dddd......',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+/** The two parts a robot is drawn from, each turned its own way. */
+export interface RobotSprites {
+  hull: HTMLCanvasElement;
+  turret: HTMLCanvasElement;
+}
+
+/** Paints the parts of a robot, one canvas pixel per dot. Draw them scaled by DOT, without smoothing. */
+export function createRobotSprites(palette: RobotPalette): RobotSprites {
+  return { hull: paint(HULL_PATTERN, palette), turret: paint(TURRET_PATTERN, palette) };
+}
+
+function paint(pattern: readonly string[], palette: RobotPalette): HTMLCanvasElement {
   const sprite = document.createElement('canvas');
-  sprite.width = ROBOT_PATTERN[0].length;
-  sprite.height = ROBOT_PATTERN.length;
+  sprite.width = pattern[0].length;
+  sprite.height = pattern.length;
   const context = sprite.getContext('2d');
   if (context === null) throw new Error('Canvas 2D context is not available');
 
-  ROBOT_PATTERN.forEach((row, y) => {
+  pattern.forEach((row, y) => {
     [...row].forEach((character, x) => {
       const color = PATTERN_COLORS[character];
       if (color === undefined) return;

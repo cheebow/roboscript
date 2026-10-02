@@ -270,8 +270,16 @@ button {
   column-rule: 1px solid var(--border);
 }
 
-.watch-sensors .field {
+.watch-sensors .field,
+#inspector-fields .field {
   break-inside: avoid;
+}
+
+/* Two columns as well: the robot's state has more rows than fit under one another. */
+#inspector-fields .field-list {
+  column-count: 2;
+  column-gap: 0;
+  column-rule: 1px solid var(--border);
 }
 
 #watch-robot {

@@ -5,6 +5,8 @@ export interface RobotStats {
   moveSpeed: number;
   /** deg/sec */
   rotateSpeed: number;
+  /** deg/sec, how fast the turret turns on the hull. */
+  turretSpeed: number;
   sensorRange: number;
   /** deg, full width of the cone */
   sensorAngle: number;
@@ -21,6 +23,8 @@ export interface RobotStats {
   bulletRadius: number;
   /** Share of a hit's damage that a guarding robot takes. */
   guardDamageFactor: number;
+  /** How many ticks of guarding a robot has for a whole match. */
+  maxGuards: number;
   /** sec, how much later the weapon can fire again for each tick spent guarding. */
   guardRecovery: number;
 }
@@ -29,6 +33,7 @@ export const ROBOT_DEFAULTS: RobotStats = {
   maxHp: 100,
   moveSpeed: 100,
   rotateSpeed: 180,
+  turretSpeed: 270,
   // SPEC §9 says 300, but that is shorter than the spawn distance, so robots
   // that search by turning on the spot would never find each other.
   sensorRange: 1200,
@@ -45,5 +50,6 @@ export const ROBOT_DEFAULTS: RobotStats = {
   radius: 16,
   bulletRadius: 3,
   guardDamageFactor: 0.5,
+  maxGuards: 4,
   guardRecovery: 0.3,
 };

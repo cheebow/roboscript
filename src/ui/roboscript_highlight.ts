@@ -2,15 +2,16 @@ import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/
 import type { Extension } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import {
+  isAimDirection,
   isBooleanVariable,
-  isMoveDirection,
+  isDriveSetting,
   isNumberVariable,
   isRobotState,
   isTurnDirection,
 } from '../ai/script_variables';
 
 const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'and', 'or', 'not']);
-const COMMAND_WORDS = new Set(['move', 'turn', 'fire', 'guard', 'wait', 'state', 'set']);
+const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'state', 'set']);
 
 const NUMBER = /^\d+(\.\d+)?/;
 const OPERATOR = /^(<=|>=|==|!=|[<>=+\-*/()])/;
@@ -41,7 +42,7 @@ function classifyWord(word: string): string | null {
   if (CONTROL_WORDS.has(word)) return 'keyword';
   if (COMMAND_WORDS.has(word)) return 'typeName';
   if (isBooleanVariable(word) || isNumberVariable(word)) return 'variableName';
-  if (isMoveDirection(word) || isTurnDirection(word) || isRobotState(word)) return 'atom';
+  if (isDriveSetting(word) || isTurnDirection(word) || isAimDirection(word) || isRobotState(word)) return 'atom';
   // Any other word is a variable of the program's own.
   return 'name';
 }

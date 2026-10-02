@@ -10,8 +10,9 @@ import type {
 import { type LexedLine, type Token, lex } from './lexer';
 import type { ScriptError } from './script_error';
 import {
+  isAimDirection,
   isBooleanVariable,
-  isMoveDirection,
+  isDriveSetting,
   isNumberVariable,
   isReservedWord,
   isRobotState,
@@ -148,14 +149,23 @@ class Parser {
     const lineNumber = line.line;
 
     switch (head.text) {
-      case 'move': {
-        if (argument === undefined) throw new LineError('Expected direction after "move"');
+      case 'drive': {
+        if (argument === undefined) throw new LineError('Expected "forward", "backward" or "stop" after "drive"');
         if (isSideways(argument.text)) {
-          throw new LineError(`Robots cannot move sideways: use "turn ${argument.text}" and "move forward"`);
+          throw new LineError(`Robots cannot drive sideways: use "turn ${argument.text}" and "drive forward"`);
         }
-        if (!isMoveDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
-        expectEnd(rest, `move ${argument.text}`);
-        return { kind: 'move', line: lineNumber, direction: argument.text };
+        if (!isDriveSetting(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
+        expectEnd(rest, `drive ${argument.text}`);
+        return { kind: 'drive', line: lineNumber, setting: argument.text };
+      }
+      case 'move':
+        // The command of earlier versions, which drove for one tick only.
+        throw new LineError('"move" is now "drive": use "drive forward" (the robot keeps driving until "drive stop")');
+      case 'aim': {
+        if (argument === undefined) throw new LineError('Expected direction after "aim"');
+        if (!isAimDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
+        expectEnd(rest, `aim ${argument.text}`);
+        return { kind: 'aim', line: lineNumber, direction: argument.text };
       }
       case 'turn': {
         if (argument === undefined) throw new LineError('Expected direction after "turn"');
@@ -223,7 +233,7 @@ function isSymbol(token: Token | undefined, text: string): boolean {
   return token !== undefined && token.type === 'symbol' && token.text === text;
 }
 
-/** `move left` / `move right` are valid English but not valid moves: robots drive like tanks. */
+/** `drive left` / `drive right` are valid English but not valid here: robots drive like tanks. */
 function isSideways(direction: string): boolean {
   return direction === 'left' || direction === 'right';
 }

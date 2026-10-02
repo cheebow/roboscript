@@ -25,13 +25,12 @@ const BRAVO_FIRE_LINE = 12;
 function matchConfig(seed = 1): SimulationConfig {
   return {
     arena: DEFAULT_ARENA,
-    stats: ROBOT_DEFAULTS,
     tickRate,
     maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
     seed,
     robots: [
-      { id: 'ALPHA', brain: compileBrain(SAMPLE_AI) },
-      { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')) },
+      { id: 'ALPHA', brain: compileBrain(SAMPLE_AI), stats: ROBOT_DEFAULTS },
+      { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')), stats: ROBOT_DEFAULTS },
     ],
   };
 }
@@ -51,8 +50,8 @@ function replayOf(program: string, maxMatchTime = 2) {
       ...matchConfig(),
       maxMatchTime,
       robots: [
-        { id: 'ALPHA', brain: compileBrain(program) },
-        { id: 'BRAVO', brain: compileBrain('loop\n    wait') },
+        { id: 'ALPHA', brain: compileBrain(program), stats: ROBOT_DEFAULTS },
+        { id: 'BRAVO', brain: compileBrain('loop\n    wait'), stats: ROBOT_DEFAULTS },
       ],
     },
     EFFECT_LIFETIMES,

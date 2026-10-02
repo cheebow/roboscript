@@ -71,7 +71,8 @@ export class BattleView {
     this.context = context;
   }
 
-  render(snapshot: Snapshot, arena: Arena, stats: RobotStats, options: RenderOptions): void {
+  /** `stats` are each robot's, in the order of the snapshot's robots. */
+  render(snapshot: Snapshot, arena: Arena, stats: readonly RobotStats[], options: RenderOptions): void {
     if (!this.fit(arena)) return;
     const ctx = this.context;
     const pixel = 1 / this.scale;
@@ -97,11 +98,11 @@ export class BattleView {
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
-    snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats, debug, options.overrun));
+    snapshot.robots.forEach((robot, index) => this.drawRobot(robot, index, stats[index], debug, options.overrun));
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
-      drawTargetMarks(ctx, watcher, watched, stats, watcherColor, pixel);
+      drawTargetMarks(ctx, watcher, watched, stats[snapshot.robots.indexOf(watched)], watcherColor, pixel);
       if (options.marks.bullets) drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
       if (options.marks.lead) drawLeadMark(ctx, watcher, watcherColor, pixel);
     }

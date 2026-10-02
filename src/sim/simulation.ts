@@ -16,11 +16,11 @@ import { Gun } from './weapon';
 export interface RobotSetup {
   id: string;
   brain: RobotBrain;
+  stats: RobotStats;
 }
 
 export interface SimulationConfig {
   arena: Arena;
-  stats: RobotStats;
   tickRate: number;
   /** sec */
   maxMatchTime: number;
@@ -68,7 +68,6 @@ export interface MatchResult {
  */
 export class Simulation {
   readonly arena: Arena;
-  readonly stats: RobotStats;
   readonly tickRate: number;
   readonly seed: number;
   readonly robots: RobotController[];
@@ -83,8 +82,8 @@ export class Simulation {
   private readonly tickDuration: number;
   private readonly maxTicks: number;
   private readonly reporter: EventReporter | null;
-  /** Ticks by which each tick of guarding puts off the robot's next shot. */
-  private readonly guardRecoveryTicks: number;
+  /** Per robot: ticks by which each tick of guarding puts off its next shot. */
+  private readonly guardRecoveryTicks: number[];
   private nextBulletId = 0;
 
   constructor(config: SimulationConfig) {
@@ -92,24 +91,23 @@ export class Simulation {
       throw new Error('Arena does not have a spawn point for every robot');
     }
     this.arena = config.arena;
-    this.stats = config.stats;
     this.tickRate = config.tickRate;
     this.seed = config.seed;
     this.rng = new MatchRng(config.seed);
     this.tickDuration = 1 / config.tickRate;
     this.maxTicks = Math.round(config.maxMatchTime * config.tickRate);
-    this.guardRecoveryTicks = Math.round(config.stats.guardRecovery * config.tickRate);
+    this.guardRecoveryTicks = config.robots.map(({ stats }) => Math.round(stats.guardRecovery * config.tickRate));
     this.robots = config.robots.map(
-      (setup, index) =>
+      ({ id, brain, stats }, index) =>
         new RobotController({
-          id: setup.id,
+          id,
           spawn: config.arena.spawns[index],
-          stats: config.stats,
-          brain: setup.brain,
-          sensor: new ConeSensor(config.stats.sensorRange, config.stats.sensorAngle, (from, to) =>
-            this.hasLineOfSight(from, to),
+          stats,
+          brain,
+          sensor: new ConeSensor(stats.sensorRange, stats.sensorAngle, (from, to) =>
+            this.hasLineOfSight(stats, from, to),
           ),
-          weapon: new Gun(config.stats, config.tickRate),
+          weapon: new Gun(stats, config.tickRate),
         }),
     );
     this.reporter = config.logger === undefined ? null : new EventReporter(config.logger, config.tickRate);
@@ -146,7 +144,7 @@ export class Simulation {
     this.robots.forEach((robot, index) => {
       robot.weapon.tick();
       // Bracing takes the gun off target: every tick of it puts off the next shot.
-      if (robot.guarding) robot.weapon.delay(this.guardRecoveryTicks);
+      if (robot.guarding) robot.weapon.delay(this.guardRecoveryTicks[index]);
       if (actions[index].fire) this.fire(robot, actions[index].sourceLines.fire);
     });
 
@@ -167,16 +165,16 @@ export class Simulation {
   /** The terrain and the bullets as the robot finds them now. Its sensor must have been read first. */
   private surroundingsOf(robot: RobotController): Surroundings {
     const { position, rotation } = robot;
-    const { radius, bulletRadius } = this.stats;
+    const { radius } = robot.stats;
     const bearingTo = (target: Vec2): Bearing => ({ position: { ...target }, ...measure(position, rotation, target) });
     const wallAt = (offset: number) => wallDistance(this.arena, position, rotation + offset, radius);
 
-    const bullet = findIncomingBullet(this.bullets, robot.id, position, radius + bulletRadius, this.arena);
+    const bullet = findIncomingBullet(this.bullets, robot.id, position, radius, this.arena);
     const findCover = this.coverFinderOf(robot);
     let cover: Cover | null | undefined;
     return {
-      blocked: this.hitsTerrain(robot.stepTarget('forward', this.tickDuration)),
-      blockedBehind: this.hitsTerrain(robot.stepTarget('backward', this.tickDuration)),
+      blocked: this.hitsTerrain(robot.stepTarget('forward', this.tickDuration), radius),
+      blockedBehind: this.hitsTerrain(robot.stepTarget('backward', this.tickDuration), radius),
       wallAhead: wallAt(0),
       wallBehind: wallAt(180),
       wallLeft: wallAt(-90),
@@ -198,11 +196,12 @@ export class Simulation {
   private coverFinderOf(robot: RobotController): () => Cover | null {
     const position = { ...robot.position };
     const { rotation } = robot;
+    const { radius } = robot.stats;
     const { lastSeen } = robot.sensorReading;
     const threat = lastSeen === null ? null : { ...lastSeen };
     return () => {
       if (threat === null) return null;
-      const found = findCover(this.arena, this.stats.radius, position, threat);
+      const found = findCover(this.arena, radius, position, threat);
       if (found === null) return null;
       const [next] = found.route;
       const angle = next === undefined ? 0 : measure(position, rotation, next).angle;
@@ -232,13 +231,13 @@ export class Simulation {
   }
 
   /**
-   * Whether a robot at one point can see a robot at the other: no obstacle
-   * comes within a robot's radius of the straight line between them. Seeing
-   * the enemy therefore also means it can be driven at, and shot at, directly.
-   * At close range, room for a bullet is enough.
+   * Whether a robot with the given stats at one point can see a robot at the
+   * other: no obstacle comes within its own radius of the straight line
+   * between them. Seeing the enemy therefore also means it can be driven at,
+   * and shot at, directly. At close range, room for its bullet is enough.
    */
-  private hasLineOfSight(from: Vec2, to: Vec2): boolean {
-    const { radius, bulletRadius } = this.stats;
+  private hasLineOfSight(viewer: RobotStats, from: Vec2, to: Vec2): boolean {
+    const { radius, bulletRadius } = viewer;
     const close = distance(from, to) <= radius * CLOSE_RANGE_RADII;
     const clearance = (close ? bulletRadius : radius) - LINE_OF_SIGHT_TOLERANCE;
     return this.arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
@@ -248,9 +247,8 @@ export class Simulation {
     return this.robots[0] === robot ? this.robots[1] : this.robots[0];
   }
 
-  /** Whether a robot at the given position would overlap a wall or an obstacle. */
-  private hitsTerrain(position: Vec2): boolean {
-    const { radius } = this.stats;
+  /** Whether a robot of the given radius at the given position would overlap a wall or an obstacle. */
+  private hitsTerrain(position: Vec2, radius: number): boolean {
     const { width, height, obstacles } = this.arena;
     if (position.x < radius || position.x > width - radius) return true;
     if (position.y < radius || position.y > height - radius) return true;
@@ -259,20 +257,20 @@ export class Simulation {
 
   /** Whether the robot cannot be at the given position: terrain or another robot is there. */
   private isBlocked(robot: RobotController, position: Vec2): boolean {
-    if (this.hitsTerrain(position)) return true;
-    const { radius } = this.stats;
+    const { radius } = robot.stats;
+    if (this.hitsTerrain(position, radius)) return true;
     return this.robots.some(
-      (other) => other !== robot && other.alive && distance(position, other.position) < radius * 2,
+      (other) => other !== robot && other.alive && distance(position, other.position) < radius + other.stats.radius,
     );
   }
 
   private stepBullets(): void {
     const targets = this.robots
       .filter((robot) => robot.alive)
-      .map((robot) => ({ id: robot.id, position: robot.position, radius: this.stats.radius }));
+      .map((robot) => ({ id: robot.id, position: robot.position, radius: robot.stats.radius }));
 
     this.bullets = this.bullets.filter((bullet) => {
-      const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets, this.stats.bulletRadius);
+      const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets);
       if (outcome.kind === 'hit' || outcome.kind === 'wall') {
         this.tickEvents.push({ kind: 'impact', ...bullet.position });
       }

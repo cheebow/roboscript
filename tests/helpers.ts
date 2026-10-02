@@ -71,19 +71,19 @@ export class FixedBrain implements RobotBrain {
   }
 }
 
+/** `stats` are both robots'; give `robots` for robots that differ. */
 export function createSimulation(
   brains: [RobotBrain, RobotBrain],
-  overrides: Partial<SimulationConfig> = {},
+  { stats = NO_SPREAD_STATS, ...overrides }: Partial<SimulationConfig> & { stats?: RobotStats } = {},
 ): Simulation {
   return new Simulation({
     arena: DUEL_ARENA,
-    stats: NO_SPREAD_STATS,
     tickRate: MATCH_DEFAULTS.tickRate,
     maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
     seed: MATCH_DEFAULTS.seed,
     robots: [
-      { id: 'ALPHA', brain: brains[0] },
-      { id: 'BRAVO', brain: brains[1] },
+      { id: 'ALPHA', brain: brains[0], stats },
+      { id: 'BRAVO', brain: brains[1], stats },
     ],
     ...overrides,
   });

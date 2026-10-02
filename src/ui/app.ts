@@ -10,7 +10,7 @@ import {
   REPLAY_TAIL_TICKS,
   ROBOT_IDS,
 } from '../data/match_defaults';
-import { ROBOT_DEFAULTS } from '../data/robot_defaults';
+import { ROBOT_DEFAULTS, type RobotStats } from '../data/robot_defaults';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../data/templates';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
@@ -44,6 +44,8 @@ const AI_LABEL = 'main.bot';
 const EDITOR_ELEMENT_IDS = ['code', 'enemy-code'];
 /** The programs the robots start with, each written for its own side. */
 const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template, robotIndex) => templateSource(template, robotIndex));
+/** Each robot's stats, in spawn order. */
+const ROBOT_STATS: readonly RobotStats[] = ROBOT_IDS.map(() => ROBOT_DEFAULTS);
 const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
@@ -318,13 +320,12 @@ class App {
   private matchConfig(brains: readonly RobotBrain[]): SimulationConfig {
     return {
       arena: this.arena.arena,
-      stats: ROBOT_DEFAULTS,
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
       seed: this.seed,
       robots: [
-        { id: ROBOT_IDS[0], brain: brains[0] },
-        { id: ROBOT_IDS[1], brain: brains[1] },
+        { id: ROBOT_IDS[0], brain: brains[0], stats: ROBOT_STATS[0] },
+        { id: ROBOT_IDS[1], brain: brains[1], stats: ROBOT_STATS[1] },
       ],
     };
   }
@@ -339,7 +340,7 @@ class App {
     });
     requireElement('config').hidden = isCode;
     this.templateMenu.hidden = !isCode;
-    if (!isCode) renderConfig(requireElement('config'), robotId, AI_LABEL, ROBOT_DEFAULTS);
+    if (!isCode) renderConfig(requireElement('config'), robotId, AI_LABEL, ROBOT_STATS[file.robotIndex]);
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
     this.projectPanel.markSelected(file);
@@ -355,7 +356,8 @@ class App {
 
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
-    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
+    const stats = replay?.recording.stats ?? ROBOT_STATS;
+    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, {
       sensorOf: debugging ? this.inspector.selected : null,
       marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
       overrun: replay?.overrun ?? 0,

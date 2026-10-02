@@ -42,12 +42,18 @@ export interface CoverRoute {
   route: Vec2[];
 }
 
-const coverMaps = new WeakMap<Arena, CoverMap>();
+/** Per arena: the cover map for each robot radius asked about so far. */
+const coverMaps = new WeakMap<Arena, Map<number, CoverMap>>();
 
 /** The cover map of an arena for robots of the given radius. Kept, so asking again costs nothing. */
 export function coverMapOf(arena: Arena, radius: number): CoverMap {
-  const known = coverMaps.get(arena);
-  if (known !== undefined && known.radius === radius) return known;
+  let byRadius = coverMaps.get(arena);
+  if (byRadius === undefined) {
+    byRadius = new Map();
+    coverMaps.set(arena, byRadius);
+  }
+  const known = byRadius.get(radius);
+  if (known !== undefined) return known;
 
   const spots = arena.obstacles
     .flatMap((obstacle) => ringAround(obstacle, radius + COVER_MARGIN))
@@ -61,7 +67,7 @@ export function coverMapOf(arena: Arena, radius: number): CoverMap {
     );
 
   const map = { radius, spots, corners, cornerLinks: corners.map(linksOf), spotLinks: spots.map(linksOf) };
-  coverMaps.set(arena, map);
+  byRadius.set(radius, map);
   return map;
 }
 

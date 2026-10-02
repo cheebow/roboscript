@@ -26,6 +26,7 @@ function createBullet(overrides: Partial<Bullet> = {}): Bullet {
     speed: NO_SPREAD_STATS.shotSpeed,
     damage: NO_SPREAD_STATS.shotDamage,
     remainingRange: NO_SPREAD_STATS.weaponRange,
+    radius: NO_SPREAD_STATS.bulletRadius,
     ...overrides,
   };
 }
@@ -79,19 +80,19 @@ describe('stepBullet', () => {
 
   it('moves by speed per tick while nothing is in the way', () => {
     const bullet = createBullet();
-    const outcome = stepBullet(bullet, TICK, EMPTY_ARENA, [], NO_SPREAD_STATS.bulletRadius);
+    const outcome = stepBullet(bullet, TICK, EMPTY_ARENA, []);
     expect(outcome.kind).toBe('flying');
     expect(bullet.position.x).toBeCloseTo(100 + NO_SPREAD_STATS.shotSpeed * TICK);
   });
 
   it('hits a robot in its path', () => {
-    const outcome = stepBullet(createBullet(), TICK, EMPTY_ARENA, [target], NO_SPREAD_STATS.bulletRadius);
+    const outcome = stepBullet(createBullet(), TICK, EMPTY_ARENA, [target]);
     expect(outcome).toEqual({ kind: 'hit', targetId: 'BRAVO' });
   });
 
   it('does not hit its owner', () => {
     const owner = { ...target, id: 'ALPHA' };
-    const outcome = stepBullet(createBullet(), TICK, EMPTY_ARENA, [owner], NO_SPREAD_STATS.bulletRadius);
+    const outcome = stepBullet(createBullet(), TICK, EMPTY_ARENA, [owner]);
     expect(outcome.kind).toBe('flying');
   });
 
@@ -99,20 +100,20 @@ describe('stepBullet', () => {
     const arena: Arena = { ...EMPTY_ARENA, obstacles: [{ x: 102, y: 90, width: 2, height: 20 }] };
     const behind = { ...target, position: { x: 125, y: 100 } };
     const bullet = createBullet({ speed: 1200 });
-    const outcome = stepBullet(bullet, TICK, arena, [behind], NO_SPREAD_STATS.bulletRadius);
+    const outcome = stepBullet(bullet, TICK, arena, [behind]);
     expect(outcome.kind).toBe('wall');
     expect(bullet.position.x).toBeCloseTo(102);
   });
 
   it('is stopped by the arena wall', () => {
     const bullet = createBullet({ position: { x: 995, y: 100 } });
-    expect(stepBullet(bullet, TICK, EMPTY_ARENA, [], NO_SPREAD_STATS.bulletRadius).kind).toBe('wall');
+    expect(stepBullet(bullet, TICK, EMPTY_ARENA, []).kind).toBe('wall');
   });
 
   it('expires after travelling the weapon range', () => {
     const bullet = createBullet();
     let ticks = 0;
-    while (stepBullet(bullet, TICK, EMPTY_ARENA, [], NO_SPREAD_STATS.bulletRadius).kind === 'flying') ticks++;
+    while (stepBullet(bullet, TICK, EMPTY_ARENA, []).kind === 'flying') ticks++;
     expect(bullet.position.x).toBeCloseTo(100 + NO_SPREAD_STATS.weaponRange);
     expect(ticks).toBeLessThanOrEqual(Math.ceil(NO_SPREAD_STATS.weaponRange / (NO_SPREAD_STATS.shotSpeed * TICK)));
   });

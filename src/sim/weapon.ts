@@ -65,6 +65,7 @@ export class Gun implements Weapon {
       speed: this.stats.shotSpeed,
       damage: this.stats.shotDamage,
       remainingRange: this.stats.weaponRange,
+      radius: bulletRadius,
     };
   }
 }

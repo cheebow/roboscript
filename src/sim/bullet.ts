@@ -11,6 +11,7 @@ export interface Bullet {
   speed: number;
   damage: number;
   remainingRange: number;
+  radius: number;
 }
 
 export interface BulletTarget {
@@ -34,7 +35,6 @@ export function stepBullet(
   tickDuration: number,
   arena: Arena,
   targets: BulletTarget[],
-  bulletRadius: number,
 ): BulletStepResult {
   const travel = Math.min(bullet.speed * tickDuration, bullet.remainingRange);
   const from = bullet.position;
@@ -53,7 +53,7 @@ export function stepBullet(
   let hitId: string | null = null;
   for (const target of targets) {
     if (target.id === bullet.ownerId) continue;
-    const t = segmentCircleHit(from, to, target.position, target.radius + bulletRadius);
+    const t = segmentCircleHit(from, to, target.position, target.radius + bullet.radius);
     if (t !== null && (hitT === null || t < hitT)) {
       hitT = t;
       hitId = target.id;

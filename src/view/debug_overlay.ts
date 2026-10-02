@@ -44,7 +44,7 @@ export function drawTargetMarks(
   ctx: CanvasRenderingContext2D,
   robot: RobotSnapshot,
   enemy: RobotSnapshot,
-  stats: RobotStats,
+  enemyStats: RobotStats,
   color: string,
   pixel: number,
 ): void {
@@ -53,7 +53,7 @@ export function drawTargetMarks(
   ctx.globalAlpha = MARK_ALPHA;
   ctx.beginPath();
   if (robot.enemyVisible) {
-    traceFrame(ctx, enemy.x, enemy.y, stats.radius + TARGET_FRAME_MARGIN);
+    traceFrame(ctx, enemy.x, enemy.y, enemyStats.radius + TARGET_FRAME_MARGIN);
   } else if (robot.lastSeen !== null) {
     traceCross(ctx, robot.lastSeen.x, robot.lastSeen.y, LAST_SEEN_MARK_SIZE);
   }

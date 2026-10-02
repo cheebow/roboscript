@@ -33,6 +33,7 @@ export interface RobotOptions {
 
 export class RobotController {
   readonly id: string;
+  readonly stats: RobotStats;
   readonly weapon: Weapon;
   position: Vec2;
   /** deg, where the hull faces. */
@@ -51,7 +52,6 @@ export class RobotController {
   /** How many more ticks the robot can guard in this match. */
   guardsLeft: number;
 
-  private readonly stats: RobotStats;
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
   private reading: SensorReading = EMPTY_READING;
@@ -64,12 +64,12 @@ export class RobotController {
 
   constructor(options: RobotOptions) {
     this.id = options.id;
+    this.stats = options.stats;
     this.weapon = options.weapon;
     this.position = { x: options.spawn.x, y: options.spawn.y };
     this.rotation = normalizeAngle(options.spawn.rotation);
     this.hp = options.stats.maxHp;
     this.guardsLeft = options.stats.maxGuards;
-    this.stats = options.stats;
     this.brain = options.brain;
     this.sensor = options.sensor;
   }

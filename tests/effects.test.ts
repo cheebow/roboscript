@@ -108,13 +108,12 @@ describe('effects in a recording', () => {
   const recording = recordMatch(
     {
       arena: DEFAULT_ARENA,
-      stats: ROBOT_DEFAULTS,
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
       seed: 1,
       robots: [
-        { id: 'ALPHA', brain: compileBrain(SAMPLE_AI) },
-        { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')) },
+        { id: 'ALPHA', brain: compileBrain(SAMPLE_AI), stats: ROBOT_DEFAULTS },
+        { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')), stats: ROBOT_DEFAULTS },
       ],
     },
     EFFECT_LIFETIMES,

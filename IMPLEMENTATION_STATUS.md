@@ -12,6 +12,9 @@
 | 3 | IDE UI | 完了（2026-10-01） |
 | 4 | DEBUG機能 | 完了（2026-10-01） |
 | 5 | Polish | 完了（2026-10-01） |
+| 6 | 機体ごとの性能値、一括対戦の関数 | 完了（2026-10-02） |
+
+Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
 **MVP 完成条件（指示書38章）の15項目は、Phase 5 の時点ですべて満たした**（確認内容は「MVP 完成条件の確認」）。その後、15番目の「ブレークポイントで停止できる」は意図して外し、行の実行時点へ移動する機能に置き換えている。
 
@@ -42,7 +45,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（473件）
+npm test           # Vitest（488件）
 npm run typecheck
 npm run build
 ```
@@ -83,6 +86,7 @@ src/
 │  ├─ bullet.ts            Bullet と1tick分の移動・衝突
 │  ├─ robot.ts             RobotController
 │  ├─ simulation.ts        Simulation（step() で1tick）と勝敗判定
+│  ├─ series.ts            playSeries（2台を、マップ × seed × 両側で戦わせて勝敗を数える）
 │  └─ event_reporter.ts    試合中の出来事をデバッグイベントにする
 ├─ ai/                     RoboScript
 │  ├─ lexer.ts             行 → インデント幅とトークン列
@@ -128,10 +132,54 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math（strategies.ts は対戦確認用のプレイヤーAI）
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series
+                           （strategies.ts は対戦確認用のプレイヤーAI）
 ```
 
 指示書34章の `BattleController` の責務は、`Simulation`（tick・ロボット更新・勝敗）、`recordMatch`（試合開始から終了まで）、`ReplayManager`（pause・速度・reset 後の再生）に分けている。
+
+---
+
+## MVP 後のロードマップ
+
+| Phase | 内容 | 画面の変化 | 状態 |
+|---|---|---|---|
+| 6 | 機体ごとの性能値、一括対戦の関数 | なし（土台） | 完了 |
+| 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 未着手 |
+| 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 未着手 |
+| 9 | パーツで使える語が変わる | 積んでいない機能の語はエラーになる | 未着手 |
+| 10 | ガレージ（ロボットを複数保存）とアリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
+| 11 | 共有: ロボットとリプレイの共有コード・URL、公開 | EXPORT / IMPORT | 未着手 |
+| 12 | 3台以上（バトルロイヤル） | アリーナモードで3〜4台 | 未着手 |
+| 13 | トーナメント／リーグ | 総当たりと順位表 | 未着手 |
+
+決めたこと:
+
+- アリーナモードは**観戦型**。ロボットとマップを選んで戦わせ、試合を見る。エディタやデバッグ表示は出さない。
+- 他の人のロボットとの対戦は、**サーバーなしの共有コード・URL** で始める。相手はプログラムの中身を読める。
+- パーツから着手する。「ロボット1台」のデータの形（プログラム + パーツ構成）を先に固めると、ガレージの保存形式と共有コードを作り直さずに済むため。
+- パーツのスロットは BODY / LEGS / GUN / SENSOR の4つを予定。「標準」4つの組み合わせが今の `ROBOT_DEFAULTS` と同じ値になるようにする。機体の半径と弾の半径はパーツで変えない。
+
+## Phase 6: 機体ごとの性能値と一括対戦
+
+性能値（`RobotStats`）を機体ごとに渡せるようにした。画面と挙動は変わらない（全機が `ROBOT_DEFAULTS` のまま）。
+
+### 実装した内容
+
+- `RobotSetup` に `stats` を持たせ、試合に1つだった `SimulationConfig.stats` をなくした。
+- `Simulation` は、当たり判定・地形との衝突・視線・隠れ場所・guard 後の射撃の遅れを、機体ごとの値で計算する。
+  - 視線（`hasLineOfSight`）は見る側の半径と弾の半径で判定する。
+  - 機体どうしの衝突は2台の半径の和で判定する。
+- 弾（`Bullet`）は自分の半径を持つ。撃った銃の `bulletRadius` が入る。
+- 隠れ場所の地図（`coverMapOf`）は、マップごと・半径ごとに持つ。
+- `Recording.stats` は機体ごとの配列。`BattleView.render()` はそれを受け取り、半径と HP バーに使う。
+- `playSeries`（`src/sim/series.ts`）: 2台を、指定したマップ × seed で、**両側を入れ替えて**戦わせ、勝ち・負け・引き分けの数と決着理由の内訳を返す。画面なしで動く。Phase 7 のバランス調整と、アリーナモード・トーナメントで使う。
+
+### 動作確認の結果
+
+- テストは 488件（追加15件: 性能値の違う2台がそれぞれ自分の値で動くこと、`playSeries` の集計）。
+- 変更前と挙動が同じことを、9マップ × テンプレート7種の総当たり × seed 1〜2 の **882試合**で確認した。勝敗、決着理由、終了 tick、最終位置、HP、残弾がすべて一致。
+- ブラウザで RUN / DEBUG を確認した（Center Block、Sample 対 DumbBot、seed 1 は 218tick で BRAVO の勝ち。ターゲット枠、HP バー、`config` の表示は変更前と同じ）。
 
 ---
 

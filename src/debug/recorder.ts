@@ -9,7 +9,8 @@ import { type Snapshot, captureSnapshot } from './snapshot';
 /** A whole match, played to its end and kept in memory for replay. */
 export interface Recording {
   arena: Arena;
-  stats: RobotStats;
+  /** Each robot's stats, in spawn order. */
+  stats: readonly RobotStats[];
   tickRate: number;
   seed: number;
   /** snapshots[n] is the state after n ticks; snapshots[0] is the starting position. */
@@ -29,7 +30,7 @@ export function recordMatch(config: Omit<SimulationConfig, 'logger'>, effectLife
   }
   return {
     arena: config.arena,
-    stats: config.stats,
+    stats: config.robots.map((robot) => robot.stats),
     tickRate: config.tickRate,
     seed: config.seed,
     snapshots,

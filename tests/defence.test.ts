@@ -53,10 +53,11 @@ describe('findIncomingBullet', () => {
     speed: shotSpeed,
     damage: shotDamage,
     remainingRange: weaponRange,
+    radius: bulletRadius,
     ...overrides,
   });
   const incoming = (bullets: Bullet[], arena = arenaWith()) =>
-    findIncomingBullet(bullets, 'ALPHA', robot, HIT_RADIUS, arena);
+    findIncomingBullet(bullets, 'ALPHA', robot, radius, arena);
 
   it('finds a bullet flying straight at the robot', () => {
     const shot = bullet();

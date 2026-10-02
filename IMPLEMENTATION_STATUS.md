@@ -17,6 +17,7 @@
 | 8 | パーツで見た目が変わる | 完了（2026-10-02） |
 | 9 | 射程を読む語 `weapon_range`（語の制限は取りやめ） | 完了（2026-10-02） |
 | 10A | ガレージ（ロボットに名前を付けて保存） | 完了（2026-10-02） |
+| 10B | アリーナモード（ロボットを選んで戦わせて見る） | 完了（2026-10-02） |
 
 Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
@@ -31,6 +32,8 @@ npm install
 npm run dev        # 表示された URL をブラウザで開く
 ```
 
+- 上部バー左端の **PROGRAM | ARENA** で画面を切り替える。PROGRAM はコードを書いて試す画面（以下の説明）、ARENA はロボットを選んで戦わせて見る画面。
+- **ARENA**: 2つの枠でロボットを選ぶ（GARAGE に保存したものと、テンプレート7種の BUILT-IN）。**FIGHT** で1試合（押すたびに seed が変わる）、**SERIES ×20** で 20試合の勝ち数。結果は左下の RESULTS に出て、試合の行を押すとその試合をもう一度再生する。
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
 - PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（パーツと性能値）を持つ。**敵（BRAVO）のコードとパーツも変えられる。**
 - PROJECT の下の **GARAGE** に、ロボット（コードとパーツ）を名前を付けて保存できる。名前を入れて SAVE ALPHA / SAVE BRAVO。一覧の `A` / `B` で ALPHA / BRAVO に読み込む（コードは Cmd / Ctrl + Z で戻せる）。`×` は2回押すと削除。
@@ -51,7 +54,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（540件）
+npm test           # Vitest（560件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -79,6 +82,8 @@ src/
 │     ├─ cover_bot.ts
 │     ├─ strafe_bot.ts
 │     └─ side.ts           障害物を回り込む側（ALPHA は左、BRAVO は右）
+├─ arena/
+│  └─ match.ts             アリーナの出場ロボット（ガレージ、内蔵）と、試合・連戦の組み立て
 ├─ sim/                    DOM非依存。Node上で単体実行できる
 │  ├─ types.ts             Vec2 / Rect / Arena
 │  ├─ math.ts              角度、衝突判定
@@ -120,7 +125,9 @@ src/
 │  ├─ project_store.ts     main.bot と project.json（マップ、パーツ構成）の保存・読み込み
 │  └─ garage.ts            ガレージ（名前を付けて保存したロボット）の保存・読み込み
 ├─ ui/                     画面。記録された Snapshot を表示する
-│  ├─ app.ts               全体の配線（試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
+│  ├─ app.ts               全体の配線（PROGRAM / ARENA の切り替え、試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
+│  ├─ arena_mode.ts        ARENA（出場ロボットの選択、FIGHT、SERIES、結果の一覧）
+│  ├─ robot_preview.ts     ロボットの絵のプレビュー（config と ARENA で使う）
 │  ├─ toolbar.ts           上部バー
 │  ├─ transport.ts         再生操作（1行 / 1tick 移動、シークバー、速度、時刻）
 │  ├─ project_panel.ts     PROJECT ツリー
@@ -142,7 +149,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -159,7 +166,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 完了 |
 | 9 | 射程を読む語 `weapon_range`（当初の「パーツで使える語が変わる」は取りやめ） | 入力候補と WATCH に語が1つ増える | 完了 |
 | 10A | ガレージ（ロボットに名前を付けて保存） | PROJECT の下に GARAGE | 完了 |
-| 10B | アリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
+| 10B | アリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 完了 |
 | 11 | 共有: ロボットとリプレイの共有コード・URL、公開 | EXPORT / IMPORT | 未着手 |
 | 12 | 3台以上（バトルロイヤル） | アリーナモードで3〜4台 | 未着手 |
 | 13 | トーナメント／リーグ | 総当たりと順位表 | 未着手 |
@@ -172,6 +179,49 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
 - ガレージは「棚」。ALPHA / BRAVO は今までどおり「作業机」として残し、名前を付けて棚に保存し、棚から机に読み込む。
 - **パーツで使える語は変えない。** 語を制限すると、動いていたプログラムがパーツを替えただけでエラーになる。ガレージや共有で受け取ったロボットのパーツを替えたときも同じことが起きるので、取りやめた。
+
+## Phase 10B: アリーナモード
+
+プログラミングをせずに、ロボットを選んで戦わせて見る画面を足した。試合の仕組み（先に最後まで計算して再生する）と、戦闘画面・再生操作は PROGRAM と同じものを使う。
+
+### 切り替え
+
+- 上部バーの左端に **PROGRAM | ARENA** のタブ。押すとその場で切り替わる。起動時は PROGRAM。
+- 切り替えても、裏に回った側の状態は残る（編集中のコード、PROGRAM の試合の再生位置、ARENA の結果一覧）。再生だけ一時停止する。
+- MAP の選択は共通。RUN / RESET / DEBUG は PROGRAM のときだけ出る。
+- ARENA では PROJECT・エディタ・DEBUG LOG・INSPECTOR・WATCH を隠し、左に LINEUP と RESULTS、右いっぱいに BATTLE VIEW（1440x900 で幅 866 → 1024）。
+
+### ARENA の画面（`src/ui/arena_mode.ts`）
+
+- **LINEUP**: 2つの枠。プルダウンは GARAGE（保存したロボット）と BUILT-IN（テンプレート7種、標準パーツ）に分かれる。選ぶと、絵・パーツ構成・コストが出て、戦闘画面の開始位置の絵も変わる。ARENA に入るたびにガレージを読み直す。
+- **FIGHT**: 新しい seed で1試合を記録して再生する。
+- **SERIES ×20**: 同じ2台を、今のマップで seed 10個 × 両側 = 20試合戦わせ、勝ち数を RESULTS に出す（再生はしない）。
+- **RESULTS**: 新しいものが上。試合の結果は、**その試合を最後まで見たとき**（または次の試合を始めたり出場ロボットを選び直したりして離れたとき）に載る。試合の行を押すと、同じ seed でその試合をもう一度再生する。
+- 再生中は、各枠に今の HP と残弾が出る。
+- 再生中に出場ロボットを選び直すと、開始位置の表示に戻る。
+- **始められないとき**: プログラムのエラーやコスト超過は、RESULTS に赤字で理由を出す（例: `Greedy: parts cost 13, over the limit of 12`）。
+- 同じロボット、または同じ名前のロボットを両方の枠に選んだときは、2台目を `名前 (2)` と呼ぶ。
+
+### 出場と試合の組み立て（`src/arena/match.ts`）
+
+- `Entrant`: 出場ロボット（名前、パーツ構成、開始位置ごとのプログラム）。内蔵ロボットはテンプレートと同じく、開始位置に合わせて障害物を回り込む向きが変わる。ガレージのロボットは保存したプログラムのまま。
+- `prepareFight`: 2台をコンパイルし、コストを確かめ、試合の設定を作る。だめなら理由の一覧を返す。
+- `playArenaSeries`: `playSeries` を使って連戦し、勝ち数を出場順に返す。
+
+### 戦闘画面
+
+- ロボットの名前とラベルが左右の壁際で切れないよう、文字が収まる位置へ寄せる（`centreInside`）。
+
+### 決めていないこと
+
+- 選んだ2台と、開いていた画面は保存しない（再読み込みすると PROGRAM、Sample 対 DumbBot に戻る）。
+- ARENA ではパーツを選び直せない。PROGRAM の `config` で選んで、ガレージに保存し直す。
+
+### 動作確認の結果
+
+- テストは 560件（追加 20件: 出場ロボット、試合の組み立て、拒否の理由、連戦、名前の位置）。
+- 標準構成の 882試合が、これまでと完全に一致した（シミュレーションには手を入れていない）。
+- ブラウザで、切り替えと状態の保持、プルダウンの内容、FIGHT と結果の追加、結果からの再生、SERIES、コスト超過での拒否、再生中の HP・残弾、選び直しで開始位置に戻ることを確認した。
 
 ## 壁際での HP バーとラベル（2026-10-02 の修正）
 

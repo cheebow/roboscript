@@ -9,6 +9,10 @@
   <body>
     <div id="app">
       <header id="toolbar">
+        <span id="screens">
+          <button id="screen-program" class="tab" type="button" title="Write and debug the programs of ALPHA and BRAVO">PROGRAM</button>
+          <button id="screen-arena" class="tab" type="button" title="Pick robots from the garage and watch them fight">ARENA</button>
+        </span>
         <span id="project-name"></span>
         <span id="message"></span>
         <div id="controls">
@@ -45,6 +49,16 @@
           <span id="inspector-tabs"></span>
         </h2>
         <div id="inspector-fields" class="panel-body"></div>
+      </section>
+
+      <section id="lineup" class="panel">
+        <h2>LINEUP</h2>
+        <div id="lineup-slots" class="panel-body"></div>
+      </section>
+
+      <section id="results" class="panel">
+        <h2>RESULTS</h2>
+        <div id="result-rows" class="panel-body"></div>
       </section>
 
       <section id="battle" class="panel">

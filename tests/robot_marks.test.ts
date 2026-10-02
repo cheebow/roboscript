@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { placeMarks } from '../src/view/battle_view';
+import { centreInside, placeMarks } from '../src/view/battle_view';
 
 const { radius } = ROBOT_DEFAULTS;
 const ARENA_HEIGHT = 600;
@@ -60,5 +60,23 @@ describe('placeMarks', () => {
       expect(barY + 3 <= y - radius || barY >= y + radius, `bar at y=${y}`).toBe(true);
       expect(labelsY + 2 * LINE <= y - radius || labelsY >= y + radius, `labels at y=${y}`).toBe(true);
     }
+  });
+});
+
+describe('centreInside', () => {
+  const WIDTH = 1000;
+
+  it('leaves a text where it belongs when all of it fits', () => {
+    expect(centreInside(500, 60, WIDTH)).toBe(500);
+    expect(centreInside(60, 60, WIDTH)).toBe(60);
+  });
+
+  it('moves a text in from the left and the right edge', () => {
+    expect(centreInside(16, 60, WIDTH)).toBe(60);
+    expect(centreInside(984, 60, WIDTH)).toBe(940);
+  });
+
+  it('starts a text wider than the arena at the left edge', () => {
+    expect(centreInside(500, 700, WIDTH)).toBe(700);
   });
 });

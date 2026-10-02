@@ -55,6 +55,21 @@ button {
     'log log inspector watch';
 }
 
+/* The arena mode: the line-up and the results take the left, the battle view the whole right. */
+#app[data-screen='arena'] {
+  grid-template-columns: 400px minmax(0, 1fr);
+  grid-template-rows: 34px auto minmax(0, 1fr);
+  grid-template-areas:
+    'toolbar toolbar'
+    'lineup battle'
+    'results battle';
+}
+
+#app[data-screen='arena'] :is(#project, #editor, #inspector, #log, #watch, #project-name, #run, #reset, #debug),
+#app:not([data-screen='arena']) :is(#lineup, #results) {
+  display: none;
+}
+
 /* Toolbar */
 
 #toolbar {
@@ -68,6 +83,11 @@ button {
 
 #project-name {
   letter-spacing: 0.08em;
+}
+
+#screens .tab {
+  margin: 0 10px 0 0;
+  font-size: inherit;
 }
 
 #message {
@@ -152,6 +172,16 @@ button {
 
 #watch {
   grid-area: watch;
+}
+
+#lineup {
+  grid-area: lineup;
+  border-right: 1px solid var(--border);
+}
+
+#results {
+  grid-area: results;
+  border-right: 1px solid var(--border);
 }
 
 .panel > h2 {
@@ -276,6 +306,97 @@ button {
 .garage-empty {
   padding: 0 10px;
   color: var(--muted);
+}
+
+/* Arena: the line-up and the results */
+
+#lineup-slots {
+  flex: none;
+  padding: 4px 0 8px;
+}
+
+.lineup-slot {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.lineup-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.lineup-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineup-select {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+.lineup-parts {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineup-figures {
+  display: flex;
+  justify-content: space-between;
+  white-space: pre;
+}
+
+.lineup-cost {
+  color: var(--muted);
+}
+
+.lineup-cost.over-limit {
+  color: var(--error);
+}
+
+.lineup-buttons {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.lineup-buttons .tool-button {
+  flex: 1;
+}
+
+#result-rows {
+  padding: 4px 0;
+}
+
+.result {
+  display: block;
+  width: 100%;
+  padding: 2px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.result.fought {
+  cursor: pointer;
+}
+
+.result.fought:hover {
+  background: var(--selected);
+}
+
+.result.problem {
+  color: var(--error);
 }
 
 /* Inspector, Watch, config */

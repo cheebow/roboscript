@@ -24,6 +24,7 @@ import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
+import { ArenaMode } from './arena_mode';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
 import { GaragePanel } from './garage_panel';
@@ -37,6 +38,10 @@ import { WatchPanel } from './watch_panel';
 
 /** RUN just plays the match; DEBUG also shows the programs running line by line and the full log, and lets a line be followed through the match. */
 type Mode = 'run' | 'debug';
+
+/** PROGRAM is where the code of ALPHA and BRAVO is written and debugged; ARENA is where saved robots fight and are watched. */
+const SCREENS = ['program', 'arena'] as const;
+type Screen = (typeof SCREENS)[number];
 
 const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
@@ -93,6 +98,8 @@ class App {
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   private readonly templateMenu: ActionMenu;
   private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
+  private readonly arenaMode: ArenaMode;
+  private screen: Screen = 'program';
   /** The arena the next match is fought in. */
   private arena = findArena(this.store?.loadInfo().arena ?? null);
   /** The parts each robot goes into the next match with, in spawn order. */
@@ -144,7 +151,7 @@ class App {
       stepBack: () => this.stepBack(),
       nextRun: () => this.goToRun('next'),
       previousRun: () => this.goToRun('previous'),
-      seek: (tick) => this.replay?.seek(tick),
+      seek: (tick) => this.shownReplay()?.seek(tick),
       setSpeed: (speed) => this.setSpeed(speed),
     });
     this.templateMenu = new ActionMenu(
@@ -159,9 +166,33 @@ class App {
     if (this.store === null) {
       this.events = [appEvent('warning', 'storage is unavailable: code will not be saved')];
     }
+    this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
+      arena: () => this.arena,
+      garage: () => this.garage?.list() ?? [],
+      speed: () => this.speed,
+    });
+    for (const screen of SCREENS) {
+      requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
+    }
+    this.showScreen(this.screen);
     this.showFile(this.shownFile);
     this.showGarage();
     requestAnimationFrame(this.frame);
+  }
+
+  /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */
+  private showScreen(screen: Screen): void {
+    this.shownReplay()?.pause();
+    this.screen = screen;
+    requireElement('app').dataset.screen = screen;
+    for (const each of SCREENS) requireElement(`screen-${each}`).classList.toggle('selected', each === screen);
+    // Robots may have been saved or deleted since the arena was last shown.
+    if (screen === 'arena') this.arenaMode.refresh();
+  }
+
+  /** The replay of the screen being shown: the one the transport and PAUSE act on. */
+  private shownReplay(): ReplayManager | null {
+    return this.screen === 'arena' ? this.arenaMode.replay : this.replay;
   }
 
   private createWorkspace(robotId: string, robotIndex: number): RobotWorkspace {
@@ -263,19 +294,20 @@ class App {
 
   /** One line of the program in view while debugging; otherwise one tick. */
   private step(): void {
-    if (this.mode === 'debug') this.replay?.stepLine();
-    else this.replay?.step();
+    if (this.screen === 'program' && this.mode === 'debug') this.replay?.stepLine();
+    else this.shownReplay()?.step();
   }
 
   private stepBack(): void {
-    if (this.mode === 'debug') this.replay?.stepLineBack();
-    else this.replay?.stepBack();
+    if (this.screen === 'program' && this.mode === 'debug') this.replay?.stepLineBack();
+    else this.shownReplay()?.stepBack();
   }
 
   private togglePlay(): void {
-    if (this.replay === null) return;
-    if (this.replay.playing) this.replay.pause();
-    else this.replay.play();
+    const replay = this.shownReplay();
+    if (replay === null) return;
+    if (replay.playing) replay.pause();
+    else replay.play();
   }
 
   private reset(): void {
@@ -360,6 +392,7 @@ class App {
   private selectArena(id: string): void {
     this.arena = findArena(id);
     this.idleSnapshot = this.captureIdle();
+    this.arenaMode.arenaChanged();
     try {
       this.store?.saveArena(this.arena.id);
     } catch (error) {
@@ -374,6 +407,7 @@ class App {
   private setSpeed(speed: number): void {
     this.speed = speed;
     if (this.replay !== null) this.replay.speed = speed;
+    if (this.arenaMode.replay !== null) this.arenaMode.replay.speed = speed;
   }
 
   /**
@@ -466,9 +500,46 @@ class App {
   }
 
   private frame = (now: number): void => {
-    const { replay } = this;
-    replay?.advance((now - this.lastFrame) / MS_PER_SECOND);
+    const elapsed = (now - this.lastFrame) / MS_PER_SECOND;
     this.lastFrame = now;
+    if (this.screen === 'arena') this.showArena(elapsed);
+    else this.showProgram(elapsed);
+    requestAnimationFrame(this.frame);
+  };
+
+  /** One frame of the arena mode: the fight being watched, or the picked robots waiting. */
+  private showArena(elapsed: number): void {
+    const { replay } = this.arenaMode;
+    replay?.advance(elapsed);
+    const { snapshot, arena, stats, loadouts } = this.arenaMode.scene();
+    this.battleView.render(snapshot, arena, stats, loadouts, {
+      sensorOf: null,
+      marks: NO_FEATURES,
+      overrun: replay?.overrun ?? 0,
+    });
+    this.arenaMode.update();
+    this.toolbar.setMessage(this.arenaMode.message());
+    this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
+    this.transport.update(
+      replay === null
+        ? null
+        : {
+            tick: replay.tick,
+            lastTick: replay.lastTick,
+            tickRate: replay.recording.tickRate,
+            playing: replay.playing,
+            marks: NO_MARKS,
+            canStep: replay.canStep,
+            canStepBack: replay.tick > 0,
+          },
+      this.speed,
+    );
+  }
+
+  /** One frame of the program mode: the match of ALPHA and BRAVO, and the panels that follow it. */
+  private showProgram(elapsed: number): void {
+    const { replay } = this;
+    replay?.advance(elapsed);
     const followed = this.followedNow();
 
     const view = replay?.view ?? this.idleSnapshot;
@@ -507,8 +578,7 @@ class App {
           },
       this.speed,
     );
-    requestAnimationFrame(this.frame);
-  };
+  }
 
   private message(): string {
     const parts = [this.notice ?? this.replayStatus()];

@@ -106,7 +106,7 @@ export class BattleView {
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], arena.height, debug, options.overrun),
+      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun),
     );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
@@ -184,7 +184,7 @@ export class BattleView {
     index: number,
     stats: RobotStats,
     loadout: Loadout,
-    arenaHeight: number,
+    arena: Arena,
     showState: boolean,
     overrun: number,
   ): void {
@@ -196,8 +196,8 @@ export class BattleView {
     this.drawPart(sprites.turret, x, y, robot.gunHeading);
 
     const lineHeight = LABEL_LINE_PX / this.scale;
-    const marks = placeMarks(y, radius, showState ? 2 : 1, lineHeight, arenaHeight);
-    if (robot.alive) this.drawGuard(robot, index, radius, marks, overrun);
+    const marks = placeMarks(y, radius, showState ? 2 : 1, lineHeight, arena.height);
+    if (robot.alive) this.drawGuard(robot, index, radius, marks, arena.width, overrun);
 
     const barWidth = radius * 2;
     ctx.fillStyle = COLORS.hpBack;
@@ -209,15 +209,28 @@ export class BattleView {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = COLORS.text;
-    ctx.fillText(robot.id, x, marks.labelsY);
+    this.fillTextInside(robot.id, x, marks.labelsY, arena.width);
     if (showState) {
       ctx.fillStyle = COLORS.mutedText;
-      ctx.fillText(robot.label, x, marks.labelsY + lineHeight);
+      this.fillTextInside(robot.label, x, marks.labelsY + lineHeight, arena.width);
     }
   }
 
+  /** Writes a text centred on `x`, or as near to that as keeps all of it between the arena's left and right edges. */
+  private fillTextInside(text: string, x: number, y: number, arenaWidth: number): void {
+    const halfWidth = this.context.measureText(text).width / 2;
+    this.context.fillText(text, centreInside(x, halfWidth, arenaWidth), y);
+  }
+
   /** A ring around a robot that guards or has just guarded, and the word for it, both fading out. */
-  private drawGuard(robot: RobotSnapshot, index: number, radius: number, marks: RobotMarks, overrun: number): void {
+  private drawGuard(
+    robot: RobotSnapshot,
+    index: number,
+    radius: number,
+    marks: RobotMarks,
+    arenaWidth: number,
+    overrun: number,
+  ): void {
     if (robot.guardAge === null) return;
     const age = robot.guardAge + overrun;
     if (age >= GUARD_SHOWN_TICKS) return;
@@ -236,7 +249,7 @@ export class BattleView {
     ctx.textAlign = 'center';
     ctx.textBaseline = marks.guardBaseline;
     ctx.fillStyle = color;
-    ctx.fillText(GUARD_LABEL, robot.x, marks.guardY);
+    this.fillTextInside(GUARD_LABEL, robot.x, marks.guardY, arenaWidth);
     ctx.globalAlpha = 1;
   }
 
@@ -302,6 +315,14 @@ export function placeMarks(
   if (above - lineHeight >= 0) return { barY, labelsY, guardY: above, guardBaseline: 'bottom' };
   const below = labelsBelow ? labelsY + labelsHeight : y + radius + LABEL_GAP;
   return { barY, labelsY, guardY: below, guardBaseline: 'top' };
+}
+
+/**
+ * Where to centre something `halfWidth` wide to either side that belongs at
+ * `x`: at `x`, or as near to it as keeps it between 0 and `width`.
+ */
+export function centreInside(x: number, halfWidth: number, width: number): number {
+  return Math.min(Math.max(x, halfWidth), Math.max(width - halfWidth, halfWidth));
 }
 
 export function formatResult(result: MatchResult): string {

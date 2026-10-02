@@ -1,7 +1,8 @@
 import { COST_LIMIT, type Loadout, SLOTS, STANDARD_LOADOUT, type Slot, costOf, partIn, partsOf, statsOf } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
-import { PATTERN_SIZE, type RobotPalette, createRobotSprites } from '../view/sprites';
+import type { RobotPalette } from '../view/sprites';
 import { createElement } from './dom';
+import { createRobotPreview, drawRobotPreview } from './robot_preview';
 
 /** One stat as the player reads it. */
 interface StatRow {
@@ -45,8 +46,7 @@ interface SlotRow {
  * up to, with what differs from a robot of standard parts marked.
  */
 export class PartsView {
-  /** The robot as it is drawn in the battle view, one pixel per dot; shown enlarged. */
-  private readonly preview: HTMLCanvasElement;
+  private readonly preview = createRobotPreview();
   private readonly identity: HTMLElement[];
   private readonly slotRows: SlotRow[];
   private readonly cost: HTMLElement;
@@ -54,9 +54,6 @@ export class PartsView {
 
   /** `onPick` is called with the part the player clicked; the view changes only when `show` is called. */
   constructor(container: HTMLElement, onPick: (slot: Slot, partId: string) => void) {
-    this.preview = createElement('canvas', 'robot-preview');
-    this.preview.width = PATTERN_SIZE;
-    this.preview.height = PATTERN_SIZE;
     const identity = createElement('div', 'field-list');
     this.identity = ['ID', 'AI'].map((name) => addField(identity, name));
     const card = createElement('div', 'robot-card');
@@ -93,7 +90,7 @@ export class PartsView {
   show(robotId: string, ai: string, loadout: Loadout, palette: RobotPalette): void {
     this.identity[0].textContent = robotId;
     this.identity[1].textContent = ai;
-    this.drawPreview(loadout, palette);
+    drawRobotPreview(this.preview, loadout, palette);
 
     for (const { slot, options, summary } of this.slotRows) {
       for (const { partId, button } of options) {
@@ -120,15 +117,6 @@ export class PartsView {
       cell.classList.toggle('better', changed && difference > 0 === row.moreIsBetter);
       cell.classList.toggle('worse', changed && difference > 0 !== row.moreIsBetter);
     });
-  }
-
-  private drawPreview(loadout: Loadout, palette: RobotPalette): void {
-    const context = this.preview.getContext('2d');
-    if (context === null) throw new Error('Canvas 2D context is not available');
-    const { hull, turret } = createRobotSprites(palette, loadout);
-    context.clearRect(0, 0, PATTERN_SIZE, PATTERN_SIZE);
-    context.drawImage(hull, 0, 0);
-    context.drawImage(turret, 0, 0);
   }
 }
 

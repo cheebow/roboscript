@@ -8,6 +8,7 @@ import type { RobotBrain } from '../sim/ai_context';
 import { type SeriesResult, playSeries } from '../sim/series';
 import type { SimulationConfig } from '../sim/simulation';
 import type { Arena } from '../sim/types';
+import { scatterSpawns } from './spawns';
 
 /** A robot that can be sent into the arena. */
 export interface Entrant {
@@ -63,8 +64,9 @@ export function fightNames([first, second]: readonly [Entrant, Entrant]): [strin
 
 /**
  * Sets up a match between the two entrants, the first at the first spawn
- * point. Refused when a program does not compile or a robot's parts cost more
- * than the limit.
+ * point. Where in the arena they start goes by the seed, so that matches with
+ * different seeds are different matches. Refused when a program does not
+ * compile or a robot's parts cost more than the limit.
  */
 export function prepareFight(
   entrants: readonly [Entrant, Entrant],
@@ -90,7 +92,7 @@ export function prepareFight(
       names,
       loadouts,
       config: {
-        arena,
+        arena: scatterSpawns(arena, seed),
         tickRate: MATCH_DEFAULTS.tickRate,
         maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
         seed,
@@ -105,7 +107,8 @@ export function prepareFight(
 
 /**
  * Plays the two entrants against each other in the arena with every seed,
- * once from each side, and counts who won. Refused for the same reasons as a
+ * once from each side, and counts who won. Each seed has its own starting
+ * places, the same for both of its matches. Refused for the same reasons as a
  * single match.
  */
 export function playArenaSeries(
@@ -133,12 +136,27 @@ export function playArenaSeries(
       return compiled.brain;
     },
   });
-  const result = playSeries({
-    contenders: [contenderOf(0), contenderOf(1)],
-    arenas: [arena],
-    seeds,
-    tickRate: MATCH_DEFAULTS.tickRate,
-    maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-  });
+  const result: SeriesResult = {
+    matches: 0,
+    wins: [0, 0],
+    draws: 0,
+    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
+  };
+  for (const seed of seeds) {
+    const played = playSeries({
+      contenders: [contenderOf(0), contenderOf(1)],
+      arenas: [scatterSpawns(arena, seed)],
+      seeds: [seed],
+      tickRate: MATCH_DEFAULTS.tickRate,
+      maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
+    });
+    result.matches += played.matches;
+    result.wins[0] += played.wins[0];
+    result.wins[1] += played.wins[1];
+    result.draws += played.draws;
+    for (const reason of Object.keys(result.reasons) as (keyof typeof result.reasons)[]) {
+      result.reasons[reason] += played.reasons[reason];
+    }
+  }
   return { ok: true, names, result };
 }

@@ -33,7 +33,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ```
 
 - 上部バー左端の **PROGRAM | ARENA** で画面を切り替える。PROGRAM はコードを書いて試す画面（以下の説明）、ARENA はロボットを選んで戦わせて見る画面。
-- **ARENA**: 2つの枠でロボットを選ぶ（GARAGE に保存したものと、テンプレート7種の BUILT-IN）。**FIGHT** で1試合（押すたびに seed が変わる）、**SERIES ×20** で 20試合の勝ち数。結果は左下の RESULTS に出て、試合の行を押すとその試合をもう一度再生する。
+- **ARENA**: 2つの枠でロボットを選ぶ（GARAGE に保存したものと、テンプレート7種の BUILT-IN）。**FIGHT** で1試合（押すたびに seed が変わり、開始位置も変わる）、**SERIES ×20** で 20試合の勝ち数。結果は左下の RESULTS に出て、試合の行を押すとその試合をもう一度再生する。
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
 - PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（パーツと性能値）を持つ。**敵（BRAVO）のコードとパーツも変えられる。**
 - PROJECT の下の **GARAGE** に、ロボット（コードとパーツ）を名前を付けて保存できる。名前を入れて SAVE ALPHA / SAVE BRAVO。一覧の `A` / `B` で ALPHA / BRAVO に読み込む（コードは Cmd / Ctrl + Z で戻せる）。`×` は2回押すと削除。
@@ -54,7 +54,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（560件）
+npm test           # Vitest（569件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -83,7 +83,8 @@ src/
 │     ├─ strafe_bot.ts
 │     └─ side.ts           障害物を回り込む側（ALPHA は左、BRAVO は右）
 ├─ arena/
-│  └─ match.ts             アリーナの出場ロボット（ガレージ、内蔵）と、試合・連戦の組み立て
+│  ├─ match.ts             アリーナの出場ロボット（ガレージ、内蔵）と、試合・連戦の組み立て
+│  └─ spawns.ts            アリーナの開始位置を seed で変える
 ├─ sim/                    DOM非依存。Node上で単体実行できる
 │  ├─ types.ts             Vec2 / Rect / Arena
 │  ├─ math.ts              角度、衝突判定
@@ -149,7 +150,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match / arena_spawns
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -208,6 +209,26 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - `prepareFight`: 2台をコンパイルし、コストを確かめ、試合の設定を作る。だめなら理由の一覧を返す。
 - `playArenaSeries`: `playSeries` を使って連戦し、勝ち数を出場順に返す。
 
+### 開始位置は seed で変わる（`src/arena/spawns.ts`、2026-10-02 に追加）
+
+seed が効くのは弾のぶれだけなので、開始位置が固定だと、同じ2台は seed を変えてもほぼ同じ試合になる。ARENA では開始位置を seed から決める。**PROGRAM は今までどおり固定の位置**（コードを直しては同じ試合で見比べるため）。
+
+- 1台目を、マップの開始位置から左右 ±40、上下 ±200 の範囲でずらす。2台目は同じだけ反対向きにずらす（点対称のマップで、どちらも得をしない）。
+- 障害物や壁から、ロボットの半径 + 8 より近い位置は使わず、引き直す。20回引いてもだめなら元の位置。
+- 向きは変えない。同じ seed なら同じ位置なので、RESULTS からの再生は同じ試合になる。
+- SERIES は seed ごとに位置が変わり、その seed の両側 2試合は同じ位置で戦う。
+- 試合を始める前の表示（出場ロボットを選んでいるとき）は、マップの元の位置。
+
+テンプレート7種の総当たり × 9マップ × seed 6個（2646試合）で測った結果:
+
+| | 固定 | seed で変える |
+|---|---|---|
+| seed 6個での試合時間の種類（平均） | 1.61 | 5.92 |
+| seed によって勝者が変わる組み合わせ | 5% | 46% |
+| 時間切れ | 0.0% | 0.2%（Zigzag だけ 2%） |
+
+どちら側で始めるかで勝敗が変わる性質そのもの（ロボットの更新順と乱数の使われ方による）は残っている。
+
 ### 戦闘画面
 
 - ロボットの名前とラベルが左右の壁際で切れないよう、文字が収まる位置へ寄せる（`centreInside`）。
@@ -219,7 +240,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 
 ### 動作確認の結果
 
-- テストは 560件（追加 20件: 出場ロボット、試合の組み立て、拒否の理由、連戦、名前の位置）。
+- テストは 560件（追加 20件: 出場ロボット、試合の組み立て、拒否の理由、連戦、名前の位置）。開始位置の追加で 569件（追加 9件）。
 - 標準構成の 882試合が、これまでと完全に一致した（シミュレーションには手を入れていない）。
 - ブラウザで、切り替えと状態の保持、プルダウンの内容、FIGHT と結果の追加、結果からの再生、SERIES、コスト超過での拒否、再生中の HP・残弾、選び直しで開始位置に戻ることを確認した。
 

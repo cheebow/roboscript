@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { type Entrant, builtInEntrants, fightNames, garageEntrants, playArenaSeries, prepareFight } from '../src/arena/match';
+import { scatterSpawns } from '../src/arena/spawns';
 import { DEFAULT_ARENA } from '../src/data/arenas';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf, statsOf } from '../src/data/parts';
 import { TEMPLATES, templateSource } from '../src/data/templates';
 import { Simulation } from '../src/sim/simulation';
 import { DUEL_ARENA, runToEnd } from './helpers';
 
-const SHOOT = 'loop\n    fire';
+/** Turns to the enemy, wherever it starts, and shoots. */
+const SHOOT = 'loop\n    turn enemy\n    fire';
 const SIT = 'loop\n    wait';
 
 function saved(name: string, source: string, loadout = STANDARD_LOADOUT): Entrant {
@@ -84,9 +86,21 @@ describe('prepareFight', () => {
     expect(names).toEqual(['Tank', 'Striker']);
     expect(loadouts).toEqual([heavy, STANDARD_LOADOUT]);
     expect(config.seed).toBe(7);
-    expect(config.arena).toBe(DUEL_ARENA);
+    expect(config.arena).toEqual(scatterSpawns(DUEL_ARENA, 7));
     expect(config.robots.map((robot) => robot.id)).toEqual(['Tank', 'Striker']);
     expect(config.robots.map((robot) => robot.stats)).toEqual([statsOf(heavy), statsOf(STANDARD_LOADOUT)]);
+  });
+
+  it('starts the robots where the seed puts them', () => {
+    const entrants: [Entrant, Entrant] = [saved('Striker', SHOOT), saved('Tank', SIT)];
+    const startOf = (seed: number) => {
+      const prepared = prepareFight(entrants, DUEL_ARENA, seed);
+      if (!prepared.ok) throw new Error('refused');
+      return new Simulation(prepared.fight.config).robots.map((robot) => robot.position);
+    };
+    expect(startOf(7)).toEqual(scatterSpawns(DUEL_ARENA, 7).spawns.map(({ x, y }) => ({ x, y })));
+    expect(startOf(7)).toEqual(startOf(7));
+    expect(startOf(8)).not.toEqual(startOf(7));
   });
 
   it('makes a match that the robots fight with their own programs', () => {
@@ -139,6 +153,20 @@ describe('playArenaSeries', () => {
     if (!played.ok) throw new Error('refused');
     expect(played.names).toEqual(['Tank', 'Striker']);
     expect(played.result).toMatchObject({ matches: seeds.length * 2, wins: [0, seeds.length * 2], draws: 0 });
+  });
+
+  it('plays each seed from its own starting places', () => {
+    // Shoots straight ahead without turning: it hits only an enemy that starts level with it.
+    const blind = saved('Blind', 'loop\n    fire');
+    const level = (seed: number) => {
+      const [first, second] = scatterSpawns(DUEL_ARENA, seed).spawns;
+      return Math.abs(first.y - second.y) < 30;
+    };
+    const candidates = Array.from({ length: 60 }, (_, index) => index + 1);
+    const apart = candidates.filter((seed) => !level(seed)).slice(0, 3);
+    const played = playArenaSeries([blind, saved('Tank', SIT)], DUEL_ARENA, apart);
+    expect(apart).toHaveLength(3);
+    expect(played.ok && played.result).toMatchObject({ matches: 6, wins: [0, 0], draws: 6 });
   });
 
   it('lets a robot play a series against itself', () => {

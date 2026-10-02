@@ -59,6 +59,11 @@ function winners(playerSource: string, enemyId: string): string[] {
   return [...new Set(SEEDS.map((seed) => outcome(playerSource, enemyId, seed).winner))];
 }
 
+/** On how many of the seeds the player wins. */
+function wins(playerSource: string, enemyId: string): number {
+  return SEEDS.filter((seed) => outcome(playerSource, enemyId, seed).winner === 'ALPHA').length;
+}
+
 /** The distinct winners over all seeds when the enemy runs a program written for the player. */
 function winnersAgainst(playerSource: string, enemyStrategy: string, arena: Arena = DEFAULT_ARENA): string[] {
   return [...new Set(SEEDS.map((seed) => duel(playerSource, mirrorTurns(enemyStrategy), seed, arena).winner))];
@@ -156,10 +161,10 @@ describe('CowardBot', () => {
 });
 
 describe('GuardBot', () => {
-  it('beats DumbBot, whose program it shares but for the guard', () => {
+  it('beats DumbBot, whose program it shares but for the guard, on all seeds but one', () => {
     const guardBot = findTemplate('guard_bot')?.build('left') ?? '';
     expect(guardBot).toContain('guard');
-    expect(winners(guardBot, 'dumb_bot')).toEqual(['ALPHA']);
+    expect(wins(guardBot, 'dumb_bot')).toBe(SEEDS.length - 1);
   });
 
   it('braces for most of the shots that hit it, a tick at a time', () => {
@@ -228,10 +233,11 @@ describe('strategies against the enemies', () => {
     expect(winners(improved, 'strafe_bot')).toEqual(['BRAVO']);
   });
 
-  it('keeping distance beats DumbBot and holds the others that shoot from afar to a draw', () => {
+  it('keeping distance beats DumbBot and does not lose to the others that shoot from afar', () => {
     expect(winners(KEEP_DISTANCE, 'dumb_bot')).toEqual(['ALPHA']);
     expect(winners(KEEP_DISTANCE, 'aggressive_bot')).toEqual(['DRAW']);
-    expect(winners(KEEP_DISTANCE, 'coward_bot')).toEqual(['DRAW']);
+    // Mostly a draw; on one seed CowardBot goes down first.
+    expect(winners(KEEP_DISTANCE, 'coward_bot')).not.toContain('BRAVO');
   });
 
   it('rushing in loses to the enemies that stop to shoot', () => {
@@ -240,10 +246,12 @@ describe('strategies against the enemies', () => {
     expect(winners(RUSH, 'aggressive_bot')).toEqual(['DRAW']);
   });
 
-  it('bracing on the very tick each bullet hits beats every enemy that stands still to shoot', () => {
-    for (const enemyId of ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot']) {
+  it('bracing on the very tick each bullet hits beats the enemies that stand still to shoot', () => {
+    for (const enemyId of ['dumb_bot', 'aggressive_bot', 'guard_bot', 'cover_bot']) {
       expect(winners(GUARD, enemyId)).toEqual(['ALPHA']);
     }
+    // CowardBot gets the better of it on one seed.
+    expect(wins(GUARD, 'coward_bot')).toBe(SEEDS.length - 1);
     expect(winners(GUARD, 'strafe_bot')).toEqual(['BRAVO']);
   });
 
@@ -259,11 +267,17 @@ describe('strategies against the enemies', () => {
     expect(winners(DODGE, 'aggressive_bot')).toEqual(['BRAVO']);
   });
 
-  it('going round the centre block on the same side as the enemy never meets it', () => {
-    // The robots then stay on opposite sides of the block until time runs out.
-    const sameSide = APPROACH.replace('turn left', 'turn right');
-    expect(sameSide).not.toBe(APPROACH);
-    expect(outcome(sameSide, 'dumb_bot', 1)).toEqual({ winner: 'DRAW', reason: 'timeout' });
+  it('going round the centre block the same way as the enemy still meets it', () => {
+    const sameWay = APPROACH.replace('turn left', 'turn right');
+    expect(sameWay).not.toBe(APPROACH);
+    for (const seed of SEEDS) expect(outcome(sameWay, 'dumb_bot', seed)).toEqual({ winner: 'BRAVO', reason: 'destroyed' });
+  });
+
+  it('but would never meet it if the robots started on the middle line', () => {
+    // They then stay half a turn apart, on opposite sides of the block, until time runs out.
+    const sameWay = APPROACH.replace('turn left', 'turn right');
+    const onTheLine = { ...DEFAULT_ARENA, spawns: DEFAULT_ARENA.spawns.map((spawn) => ({ ...spawn, y: DEFAULT_ARENA.height / 2 })) };
+    expect(duel(sameWay, enemySource('dumb_bot'), 1, onTheLine)).toEqual({ winner: 'DRAW', reason: 'timeout' });
   });
 
   it('plays out the same way for the same seed', () => {
@@ -279,10 +293,11 @@ describe('standing still against driving', () => {
     expect(winnersAgainst(TURRET, APPROACH)).toEqual(['ALPHA']);
   });
 
-  it('but loses, on all maps but one, to one that drives across its line of fire', () => {
+  it('but loses, on all maps but two, to one that drives across its line of fire', () => {
+    // In Cross the arms of the cross leave too little room to drive across. In Center Block the one standing still wins as well.
+    const standingWins = ['cross', 'center_block'];
     for (const { id, name, arena } of ARENAS) {
-      // In Cross the arms of the cross leave too little room to drive across.
-      const winner = id === 'cross' ? 'BRAVO' : 'ALPHA';
+      const winner = standingWins.includes(id) ? 'BRAVO' : 'ALPHA';
       expect(winnersAgainst(STRAFE, TURRET, arena), name).toEqual([winner]);
     }
   });
@@ -291,11 +306,10 @@ describe('standing still against driving', () => {
     expect(winnersAgainst(STRAFE, TURRET_LEAD, OPEN_FIELD)).toEqual(['BRAVO']);
   });
 
-  it('driving across the line of fire beats most enemies, but not all', () => {
-    expect(winners(STRAFE, 'aggressive_bot')).toEqual(['ALPHA']);
-    expect(winners(STRAFE, 'coward_bot')).toEqual(['ALPHA']);
-    expect(winners(STRAFE, 'dumb_bot')).toEqual(['BRAVO']);
-    expect(winners(STRAFE, 'guard_bot')).toEqual(['BRAVO']);
+  it('driving across the line of fire beats the enemies that shoot at where it is', () => {
+    for (const enemyId of ['aggressive_bot', 'coward_bot', 'dumb_bot', 'guard_bot']) {
+      expect(winners(STRAFE, enemyId)).toEqual(['ALPHA']);
+    }
   });
 });
 

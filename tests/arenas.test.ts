@@ -46,7 +46,7 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
     }
   });
 
-  it('favours neither side: it looks the same turned half around', () => {
+  it('looks the same turned half around', () => {
     const turned = arena.obstacles.map(({ x, y, width, height }) => ({
       x: arena.width - x - width,
       y: arena.height - y - height,
@@ -54,9 +54,18 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
       height,
     }));
     expect(sorted(turned)).toEqual(sorted(arena.obstacles));
+  });
 
+  it('starts the robots level with each other, as far from either end, facing each other', () => {
     const [player, enemy] = arena.spawns;
-    expect({ x: arena.width - player.x, y: arena.height - player.y }).toEqual({ x: enemy.x, y: enemy.y });
+    expect(enemy).toEqual({ x: arena.width - player.x, y: player.y, rotation: 0 });
+    expect(player.rotation).toBe(180);
+  });
+
+  it('starts the robots off the middle line, so that two that go round obstacles the same way still meet', () => {
+    // On the line they would start half a turn apart, and stay so, with the middle of the field between them.
+    const [player] = arena.spawns;
+    expect(player.y).toBe(arena.height / 2 - 50);
   });
 
   it('starts the robots clear of every obstacle', () => {

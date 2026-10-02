@@ -30,7 +30,7 @@ export interface RobotStats {
 }
 
 export const ROBOT_DEFAULTS: RobotStats = {
-  maxHp: 100,
+  maxHp: 200,
   moveSpeed: 100,
   rotateSpeed: 180,
   turretSpeed: 270,

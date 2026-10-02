@@ -96,13 +96,11 @@ describe('debug events of a match', () => {
 
   it('reports every hit with the damage and remaining HP', () => {
     const hitsOnAlpha = select(events, { type: 'hit', robotId: 'BRAVO' });
-    expect(hitsOnAlpha.map((event) => event.message)).toEqual([
-      'ALPHA damage=20 hp=80',
-      'ALPHA damage=20 hp=60',
-      'ALPHA damage=20 hp=40',
-      'ALPHA damage=20 hp=20',
-      'ALPHA damage=20 hp=0',
-    ]);
+    // ALPHA is shot to pieces, one hit at a time.
+    const { maxHp, shotDamage } = ROBOT_DEFAULTS;
+    expect(hitsOnAlpha.map((event) => event.message)).toEqual(
+      Array.from({ length: maxHp / shotDamage }, (_, hit) => `ALPHA damage=${shotDamage} hp=${maxHp - (hit + 1) * shotDamage}`),
+    );
     const hitsOnBravo = select(events, { type: 'hit', robotId: 'ALPHA' });
     expect(hitsOnBravo).toHaveLength((ROBOT_DEFAULTS.maxHp - bravo.hp) / ROBOT_DEFAULTS.shotDamage);
   });

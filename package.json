@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "balance": "vitest run --config vitest.balance.config.ts",
+    "balance": "vitest run --config vitest.report.config.ts tests/balance.report.ts",
+    "results": "vitest run --config vitest.report.config.ts tests/results.report.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -13,7 +13,7 @@ set hidden = 0
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set searching = 0  # ticks since it last saw the enemy
 loop
-    if hp < 60 and hidden == 0 and cover_visible
+    if hp < 120 and hidden == 0 and cover_visible
         set hidden = 1
         label EVADE
 

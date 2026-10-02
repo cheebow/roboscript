@@ -80,8 +80,8 @@ describe('recordMatch', () => {
     expect(snapshots[0]).toMatchObject({ tick: 0, time: 0, bullets: [], result: null });
     const [playerSpawn, enemySpawn] = DEFAULT_ARENA.spawns;
     expect(snapshots[0].robots.map(({ id, x, y, hp, label }) => ({ id, x, y, hp, label }))).toEqual([
-      { id: 'ALPHA', x: playerSpawn.x, y: playerSpawn.y, hp: 100, label: 'IDLE' },
-      { id: 'BRAVO', x: enemySpawn.x, y: enemySpawn.y, hp: 100, label: 'IDLE' },
+      { id: 'ALPHA', x: playerSpawn.x, y: playerSpawn.y, hp: ROBOT_DEFAULTS.maxHp, label: 'IDLE' },
+      { id: 'BRAVO', x: enemySpawn.x, y: enemySpawn.y, hp: ROBOT_DEFAULTS.maxHp, label: 'IDLE' },
     ]);
   });
 

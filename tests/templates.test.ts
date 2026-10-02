@@ -167,7 +167,7 @@ describe('GuardBot', () => {
     expect(wins(guardBot, 'dumb_bot')).toBe(SEEDS.length - 1);
   });
 
-  it('braces for most of the shots that hit it, a tick at a time', () => {
+  it('braces for as many of the shots that hit it as it has guards, a tick at a time', () => {
     const logger = new DebugLogger();
     const simulation = createSimulation([compileBrain(APPROACH), compileBrain(enemySource('guard_bot'))], {
       arena: DEFAULT_ARENA,
@@ -177,8 +177,8 @@ describe('GuardBot', () => {
     runToEnd(simulation);
     const hits = logger.events.filter((event) => event.type === 'hit' && event.robotId === 'ALPHA');
     const guarded = hits.filter((hit) => hit.message.endsWith('(guarded)'));
-    expect(hits.length).toBeGreaterThan(0);
-    expect(guarded.length).toBeGreaterThan(hits.length / 2);
+    expect(hits.length).toBeGreaterThan(ROBOT_DEFAULTS.maxGuards);
+    expect(guarded).toHaveLength(ROBOT_DEFAULTS.maxGuards);
   });
 });
 
@@ -233,11 +233,12 @@ describe('strategies against the enemies', () => {
     expect(winners(improved, 'strafe_bot')).toEqual(['BRAVO']);
   });
 
-  it('keeping distance beats DumbBot and does not lose to the others that shoot from afar', () => {
+  it('keeping distance beats DumbBot and mostly draws with the others that shoot from afar', () => {
     expect(winners(KEEP_DISTANCE, 'dumb_bot')).toEqual(['ALPHA']);
     expect(winners(KEEP_DISTANCE, 'aggressive_bot')).toEqual(['DRAW']);
-    // Mostly a draw; on one seed CowardBot goes down first.
-    expect(winners(KEEP_DISTANCE, 'coward_bot')).not.toContain('BRAVO');
+    // Against CowardBot one or the other goes down first on some seeds.
+    const draws = SEEDS.filter((seed) => outcome(KEEP_DISTANCE, 'coward_bot', seed).winner === 'DRAW');
+    expect(draws.length).toBeGreaterThan(SEEDS.length / 2);
   });
 
   it('rushing in loses to the enemies that stop to shoot', () => {

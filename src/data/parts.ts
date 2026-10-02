@@ -51,7 +51,7 @@ export const PARTS: readonly Part[] = [
     name: 'Light',
     cost: 2,
     summary: 'Drives and turns faster. Takes less damage.',
-    stats: { maxHp: 80 },
+    stats: { maxHp: 160 },
     scales: { moveSpeed: 1.2, rotateSpeed: 1.2 },
   },
   { id: STANDARD, slot: 'body', name: 'Standard', cost: 3, summary: 'Balanced.', stats: { maxHp } },
@@ -61,7 +61,7 @@ export const PARTS: readonly Part[] = [
     name: 'Heavy',
     cost: 4,
     summary: 'Takes more damage. Drives and turns slower.',
-    stats: { maxHp: 120 },
+    stats: { maxHp: 240 },
     scales: { moveSpeed: 0.8, rotateSpeed: 0.8 },
   },
 

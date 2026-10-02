@@ -40,7 +40,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（415件）
+npm test           # Vitest（420件）
 npm run typecheck
 npm run build
 ```
@@ -89,6 +89,7 @@ src/
 │  ├─ script_variables.ts  予約語・センサー名・方向の定義
 │  ├─ script_error.ts      ScriptError と "Line N: ..." の整形
 │  ├─ runtime.ts           ScriptBrain（途中で止まって続きから再開できるインタプリタ）
+│  ├─ features.ts          usesCover（プログラムが隠れ場所を使うか）
 │  ├─ reference.ts         語ごとの説明（入力候補とホバーで使う）、プログラムの変数の一覧
 │  ├─ completion.ts        completionsAt(source, position) → その位置に合う入力候補
 │  ├─ indentation.ts       indentFor(lines, lineIndex, unit) → その行の字下げ幅
@@ -303,7 +304,7 @@ loop
 **画面**
 
 - WATCH に新しい値の行を追加した（センサーの値は2列で表示）。
-- DEBUG の戦闘画面（INSPECTOR で選んだロボット）: 隠れ場所にひし形の印と、そこまでの経路（破線）。当たるコースの弾を輪で囲む。
+- DEBUG の戦闘画面（INSPECTOR で選んだロボット）: 隠れ場所にひし形の印と、そこまでの経路（破線）。**経路と印は、そのロボットのプログラムが `cover_*` か `turn cover` を使っているときだけ描く**（使っていないプログラムでは意味のない線になるため。値は WATCH にいつでも出る）。当たるコースの弾を輪で囲む。
 - エディタの入力候補・ホバー説明・ハイライトにも新しい語が出る。
 
 ### 行単位のデバッガ

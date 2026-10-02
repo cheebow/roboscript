@@ -86,6 +86,8 @@ class App {
   private notice: string | null = null;
   /** Set while the last attempt to save failed; shown next to the toolbar message. */
   private saveProblem: string | null = null;
+  /** Per robot: whether the program of the match being shown has anything to do with cover. */
+  private coverUsers: boolean[] = [];
   /** The line whose number was last clicked while debugging. */
   private followed: FollowedLine | null = null;
   private lastFrame = performance.now();
@@ -155,18 +157,24 @@ class App {
     }
 
     const brains: RobotBrain[] = [];
+    const coverUsers: boolean[] = [];
     const faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[] = [];
     for (const workspace of this.workspaces) {
       const result = compileScript(workspace.source);
       workspace.editor.showErrorLines(result.ok ? [] : result.errors.map((error) => error.line));
-      if (result.ok) brains.push(result.brain);
-      else faulty.push({ workspace, errors: result.errors });
+      if (result.ok) {
+        brains.push(result.brain);
+        coverUsers.push(result.usesCover);
+      } else {
+        faulty.push({ workspace, errors: result.errors });
+      }
     }
     if (faulty.length > 0) {
       this.showErrors(faulty);
       return;
     }
 
+    this.coverUsers = coverUsers;
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
@@ -329,6 +337,7 @@ class App {
     const debugging = this.mode === 'debug' && replay !== null;
     this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, ROBOT_DEFAULTS, {
       sensorOf: debugging ? this.inspector.selected : null,
+      showCover: debugging && (this.coverUsers[this.inspector.selected] ?? false),
       overrun: replay?.overrun ?? 0,
     });
     this.inspector.update(view);

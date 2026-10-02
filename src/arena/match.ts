@@ -5,6 +5,7 @@ import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, costOf, statsOf } from '../
 import { TEMPLATES, templateSource } from '../data/templates';
 import type { SavedRobot } from '../project/garage';
 import type { RobotBrain } from '../sim/ai_context';
+import { type StartSide, brainFor, readStartSide } from '../sim/mirror';
 import type { SeriesResult } from '../sim/series';
 import { type MatchEndReason, Simulation, type SimulationConfig } from '../sim/simulation';
 import type { Arena } from '../sim/types';
@@ -17,8 +18,18 @@ export interface Entrant {
   name: string;
   origin: 'garage' | 'built-in';
   loadout: Loadout;
+  /**
+   * The side its program was written for: starting on the other, it is run in
+   * a mirror. Null when it has a program for either side.
+   */
+  side: StartSide | null;
   /** Its program for a match it starts at the given spawn index. */
   sourceFor(spawnIndex: number): string;
+}
+
+/** Whether the entrant is run in a mirror when it starts at the given spawn index. */
+export function isMirrored(entrant: Entrant, spawnIndex: number): boolean {
+  return entrant.side !== null && entrant.side !== readStartSide(spawnIndex);
 }
 
 /** The templates as robots of standard parts. Like the templates, they go round obstacles on the side that suits where they start. */
@@ -28,6 +39,7 @@ export function builtInEntrants(): Entrant[] {
     name: template.name,
     origin: 'built-in',
     loadout: STANDARD_LOADOUT,
+    side: null,
     sourceFor: (spawnIndex) => templateSource(template, spawnIndex),
   }));
 }
@@ -39,6 +51,7 @@ export function garageEntrants(robots: readonly SavedRobot[]): Entrant[] {
     name: robot.name,
     origin: 'garage',
     loadout: robot.loadout,
+    side: robot.side,
     sourceFor: () => robot.source,
   }));
 }
@@ -65,8 +78,9 @@ export function fightNames([first, second]: readonly [Entrant, Entrant]): [strin
 /**
  * Sets up a match between the two entrants, the first at the first spawn
  * point. Where in the arena they start goes by the seed, so that matches with
- * different seeds are different matches. Refused when a program does not
- * compile or a robot's parts cost more than the limit.
+ * different seeds are different matches. An entrant that starts on the other
+ * side than its program was written for is run in a mirror. Refused when a
+ * program does not compile or a robot's parts cost more than the limit.
  */
 export function prepareFight(
   entrants: readonly [Entrant, Entrant],
@@ -80,7 +94,7 @@ export function prepareFight(
     const cost = costOf(entrant.loadout);
     if (cost > COST_LIMIT) problems.push(`${names[spawnIndex]}: parts cost ${cost}, over the limit of ${COST_LIMIT}`);
     const compiled = compileScript(entrant.sourceFor(spawnIndex));
-    if (compiled.ok) brains.push(compiled.brain);
+    if (compiled.ok) brains.push(entrant.side === null ? compiled.brain : brainFor(compiled.brain, entrant.side, spawnIndex));
     else problems.push(...compiled.errors.map((error) => `${names[spawnIndex]}: ${formatError(error)}`));
   });
   if (problems.length > 0) return { ok: false, problems };

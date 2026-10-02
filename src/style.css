@@ -525,6 +525,26 @@ button {
   color: var(--syntax-number);
 }
 
+/* Says that a robot's program is run in a mirror; pressing it stops that. */
+.mirror-mark {
+  margin-left: 8px;
+  padding: 0 5px;
+  border: 1px solid var(--syntax-value);
+  background: none;
+  color: var(--syntax-value);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.mirror-mark[hidden] {
+  display: none;
+}
+
+.lineup-mirrored {
+  color: var(--syntax-value);
+}
+
 /* A button that opens a list of things to do (see ActionMenu). */
 .menu {
   position: relative;

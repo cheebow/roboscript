@@ -21,7 +21,7 @@ function createGarage() {
 }
 
 function robot(name: string, changes: Partial<SavedRobot> = {}): SavedRobot {
-  return { name, source: `label ${name.toUpperCase()}\n`, loadout: STANDARD_LOADOUT, ...changes };
+  return { name, source: `label ${name.toUpperCase()}\n`, loadout: STANDARD_LOADOUT, side: 0, ...changes };
 }
 
 const names = (garage: Garage) => garage.list().map((saved) => saved.name);
@@ -71,6 +71,21 @@ describe('Garage', () => {
     expect(storage.items.get(GARAGE_KEY)).toBe(before);
   });
 
+  it('remembers which side a robot was written for, and takes it for the first when it was not saved', () => {
+    const { garage, storage } = createGarage();
+    garage.save(robot('Lefty', { side: 1 }));
+    garage.save(robot('Righty'));
+    expect(garage.find('Lefty')?.side).toBe(1);
+    expect(garage.find('Righty')?.side).toBe(0);
+
+    const robots = [
+      { name: 'Old', source: 'wait\n' },
+      { name: 'Odd', source: 'wait\n', side: 'left' },
+    ];
+    storage.setItem(GARAGE_KEY, JSON.stringify({ version: 1, robots }));
+    expect(garage.list().map((saved) => saved.side)).toEqual([0, 0]);
+  });
+
   it('still has the robots when opened again', () => {
     const { garage, storage } = createGarage();
     garage.save(robot('Striker'));
@@ -104,8 +119,8 @@ describe('Garage', () => {
     ];
     storage.setItem(GARAGE_KEY, JSON.stringify({ version: 1, robots }));
     expect(garage.list()).toEqual([
-      { name: 'Bare', source: 'wait\n', loadout: STANDARD_LOADOUT },
-      { name: 'Striker', source: 'fire\n', loadout: { ...STANDARD_LOADOUT, body: 'heavy' } },
+      { name: 'Bare', source: 'wait\n', loadout: STANDARD_LOADOUT, side: 0 },
+      { name: 'Striker', source: 'fire\n', loadout: { ...STANDARD_LOADOUT, body: 'heavy' }, side: 0 },
     ]);
   });
 

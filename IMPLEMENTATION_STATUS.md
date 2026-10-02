@@ -37,6 +37,7 @@ npm run dev        # 表示された URL をブラウザで開く
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
 - PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（パーツと性能値）を持つ。**敵（BRAVO）のコードとパーツも変えられる。**
 - PROJECT の下の **GARAGE** に、ロボット（コードとパーツ）を名前を付けて保存できる。名前を入れて SAVE ALPHA / SAVE BRAVO。一覧の `A` / `B` で ALPHA / BRAVO に読み込む（コードは Cmd / Ctrl + Z で戻せる）。`×` は2回押すと削除。
+- ガレージのロボットは「どちら側用に書かれたか」を覚えている。反対側に読み込む（ALPHA で作ったものを `B` で BRAVO へ、など）と、エディタの見出しに **MIRRORED** が出て、左右を入れ替えて動く。押すと、書いたとおりに動かす。
 - `config` を開くと、BODY / LEGS / GUN / SENSOR のパーツを選べる。下に、コストの合計（上限 12）と、その構成の性能値（標準との差つき）が出る。次の RUN / DEBUG から反映される。**コストが上限を超えていると、RUN / DEBUG は ERROR になって始まらない。**
 - `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
@@ -54,7 +55,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（595件）
+npm test           # Vitest（618件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -100,6 +101,7 @@ src/
 │  ├─ bullet.ts            Bullet と1tick分の移動・衝突
 │  ├─ robot.ts             RobotController
 │  ├─ simulation.ts        Simulation（step() で1tick）と勝敗判定
+│  ├─ mirror.ts            mirrored（左右を入れ替えてプログラムを動かす）と、ロボットが書かれた側
 │  ├─ series.ts            playSeries（2台を、マップ × seed × 両側で戦わせて勝敗を数える）
 │  └─ event_reporter.ts    試合中の出来事をデバッグイベントにする
 ├─ ai/                     RoboScript
@@ -150,7 +152,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match / arena_spawns / hit_and_touch
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match / arena_spawns / hit_and_touch / mirror
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -243,6 +245,45 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 - テストは 560件（追加 20件: 出場ロボット、試合の組み立て、拒否の理由、連戦、名前の位置）。開始位置の追加で 569件（追加 9件）。
 - 標準構成の 882試合が、これまでと完全に一致した（シミュレーションには手を入れていない）。
 - ブラウザで、切り替えと状態の保持、プルダウンの内容、FIGHT と結果の追加、結果からの再生、SERIES、コスト超過での拒否、再生中の HP・残弾、選び直しで開始位置に戻ることを確認した。
+
+## 反対側から出るロボットを鏡写しで動かす（2026-10-02）
+
+中央に障害物があるマップで、2台とも「ふさがったら左へ曲がる」と、点対称のマップの反対側を同じ回転方向に回り続けて出会えない。テンプレートは開始側に合わせて左右の版を出し分けているが、ガレージのロボットは保存したプログラムのままなので、ALPHA で作った2台を戦わせると起きていた。
+
+**直し方**: ロボットに「どちら側用に書かれたか」を覚えさせ、反対側から出るときは左右を入れ替えて動かす（`src/sim/mirror.ts` の `mirrored`）。プログラムは書き換えない。
+
+| | 入れ替えるもの |
+|---|---|
+| 行動 | `turn left` ↔ `turn right`、`aim left` ↔ `aim right` |
+| 角度のセンサー（符号を逆に） | `enemy_angle`、`bullet_angle`、`cover_angle`、`aim_angle`、`lead_angle`、`gun_angle`、`hit_angle` |
+| 左右のセンサー | `wall_left` ↔ `wall_right` |
+
+`turn enemy` / `turn cover` / `turn hit`、`aim enemy` / `aim lead` / `aim ahead`、距離や HP はそのまま。
+
+**書かれた側の持ち方**
+
+- ガレージ: 保存するときに側（ALPHA 側 = 0、BRAVO 側 = 1）も保存する。それ以前に保存したロボットは ALPHA 側とみなす。
+- 作業机（PROGRAM）: ALPHA と BRAVO それぞれに「載っているコードが書かれた側」を持つ（`project.json` の `sides`）。ふだんは自分の側。ガレージから読み込むとそのロボットの側になり、LOAD TEMPLATE で自分の側に戻る。ガレージへ保存するときは、この「書かれた側」で保存する。
+- 内蔵ロボット（ARENA）: 今までどおり、枠に合わせた版のプログラムを使う。鏡写しにはしない。
+
+**画面**
+
+- PROGRAM: 鏡写しで動くロボットのエディタ見出しに `MIRRORED`。押すと鏡写しをやめる（その側用に書き直すとき用）。読み込みのメッセージは `Twin loaded into BRAVO, mirrored (written for ALPHA's side)`。
+- WATCH: 鏡写しのロボットでは、プログラムが読む値（符号を逆にした角度、入れ替えた `wall_left` / `wall_right`）を出す。
+- DEBUG LOG: ロボットが実際にした行動を出す（鏡写しのロボットが `turn left` の行を実行すると、ログは `turn right`）。
+- ARENA: 鏡写しで出る枠に `mirrored`。
+
+**効果**（テンプレート総当たり × 9マップ × seed 6個、2268試合）
+
+| 2台のプログラム | 時間切れ |
+|---|---|
+| 内蔵どおり（左回り / 右回り） | 0.3% |
+| 2台とも左回り（これまでのガレージのロボットどうし） | 31.7%（Center Block / Long Wall / Pillars / Cross は 71%） |
+| 2台とも左回り、片方を鏡写し | 0.3% |
+
+Sample の左回り版を鏡写しにして左側から出すと、右回り版をそのまま出したときと完全に同じ試合になる（9マップでテスト）。
+
+**確認**: テスト 618件（追加 23件）。標準構成の 882試合は、これまでと完全に一致。ブラウザで、同じロボットを ARENA の両方の枠に入れて Center Block で決着がつくこと、PROGRAM で BRAVO に読み込むと `MIRRORED` が出て出会うこと、再読み込みしても残ること、`MIRRORED` を押すと書いたとおりに動いて 120秒の時間切れに戻ることを確認した。
 
 ## 壁際での HP バーとラベル（2026-10-02 の修正）
 
@@ -1300,7 +1341,7 @@ MVP の範囲では未対応のもの、遊んでみて調整が要りそうな�
 1. **横走り型（StrafeBot）の勝ちが多い。** 負ける相手はある（先読みして撃つ相手、Center Block の DumbBot と GuardBot）が、3つのマップを通していちばん勝つ。Long Wall では負けなし。折り返す間隔を変える、車体の向きを変えながら走るなど、先読みを外す動きを書けばさらに強くなる余地がある。
 2. **隠れても得にならない。** HP は回復せず、隠れている間に有利になる要素がない。隠れ場所へ向かう間は敵に背を向ける。CoverBot は Center Block で全敗する。
 3. **結果が、どちら側（ALPHA / BRAVO）で始めるかに左右される組み合わせがある。** マップは点対称だが、ロボットの更新順と乱数の使われ方が同じではないため。例: Center Block の StrafeBot 対 DumbBot は、StrafeBot が ALPHA なら負け、BRAVO なら勝つ。
-4. **旋回の向きが敵と同じだと出会えない。** `turn right` で避ける AI は、Center Block と Long Wall で敵（右へ旋回）と障害物の反対側に分かれ、120秒の引き分けになる。
+4. **旋回の向きが敵と同じだと出会えない。** `turn right` で避ける AI は、Center Block と Long Wall で敵（右へ旋回）と障害物の反対側に分かれ、120秒の引き分けになる。 **ガレージのロボットを反対側から出す場合は、鏡写しで動かすことで解消した（「反対側から出るロボットを鏡写しで動かす」）。** PROGRAM で、同じ向きに回るコードを自分で両方に書いた場合は今も起きる。
 5. **`aim lead` は直線の動きしか読まない。** 弾が届く前に折り返す相手や、曲がりながら走る相手には外れる。敵の速さや向きを数値で読むセンサーはないので、自分で補正する手段はない。
 6. **マップによって、敵を探す時間が長い。** 探し方は「前へ走り、ふさがったら曲がる」だけなので、Zigzag のように道が曲がるマップでは出会うまでに 20〜30秒かかる。
 7. 敵が見えないときのサンプルAIは「まっすぐ進み、ふさがったら左へ旋回」するだけなので、障害物の配置によっては壁沿いを回り続ける。

@@ -20,6 +20,7 @@ import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { Garage, MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
+import { type StartSide, brainFor, readStartSide } from '../sim/mirror';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
@@ -112,6 +113,15 @@ class App {
   private partsStale: boolean[] = ROBOT_IDS.map(() => false);
   /** The parts the robots carry in the match being shown. */
   private matchLoadouts: readonly Loadout[] = [];
+  /**
+   * The side each robot's program was written for, in spawn order: its own,
+   * unless it was loaded from the garage. On the other side it runs in a mirror.
+   */
+  private readonly sides: StartSide[] = ROBOT_IDS.map(
+    (_, robotIndex) => this.store?.loadSide(robotIndex) ?? readStartSide(robotIndex),
+  );
+  /** Per robot: whether its program runs in a mirror in the match being shown. */
+  private matchMirrored: readonly boolean[] = [];
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
   /** The starting positions in the chosen arena, shown while there is no match. */
   private idleSnapshot = this.captureIdle();
@@ -174,6 +184,11 @@ class App {
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
     }
+    // Pressing the mark has the robot in view run its program as written.
+    requireElement('mirrored').addEventListener('click', () => {
+      const { robotIndex } = this.shownFile;
+      this.setSide(robotIndex, readStartSide(robotIndex));
+    });
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
     this.showGarage();
@@ -213,6 +228,33 @@ class App {
     if (template === undefined) return;
     const { robotIndex } = this.shownFile;
     this.workspaces[robotIndex].load(templateSource(template, robotIndex));
+    // The template comes written for this robot's own side.
+    this.setSide(robotIndex, readStartSide(robotIndex));
+  }
+
+  /** Whether the robot's program, written for the other side, runs in a mirror. */
+  private isMirrored(robotIndex: number): boolean {
+    return this.sides[robotIndex] !== readStartSide(robotIndex);
+  }
+
+  /** Notes which side the robot's program was written for. Takes effect from the next RUN / DEBUG. */
+  private setSide(robotIndex: number, side: StartSide): void {
+    if (this.sides[robotIndex] === side) return;
+    this.sides[robotIndex] = side;
+    this.showMirrorMark();
+    try {
+      this.store?.saveSide(robotIndex, side);
+    } catch (error) {
+      this.saveProblem = `could not save the side of ${ROBOT_IDS[robotIndex]}: ${describeError(error)}`;
+    }
+  }
+
+  /** Shows the mark on the editor when the program in view runs in a mirror. */
+  private showMirrorMark(): void {
+    const { robotIndex } = this.shownFile;
+    const mark = requireElement('mirrored');
+    mark.hidden = !this.isMirrored(robotIndex);
+    mark.title = `Written for ${ROBOT_IDS[this.sides[robotIndex]]}'s side of the arena: ${ROBOT_IDS[robotIndex]} runs it with left and right swapped. Press to run it as written.`;
   }
 
   /**
@@ -244,7 +286,7 @@ class App {
       const result = compileScript(workspace.source);
       workspace.editor.showErrorLines(result.ok ? [] : result.errors.map((error) => error.line));
       if (result.ok) {
-        brains.push(result.brain);
+        brains.push(brainFor(result.brain, this.sides[robotIndex], robotIndex));
         features.push(result.features);
       } else {
         faults.push({
@@ -260,6 +302,7 @@ class App {
 
     this.features = features;
     this.matchLoadouts = [...this.loadouts];
+    this.matchMirrored = ROBOT_IDS.map((_, robotIndex) => this.isMirrored(robotIndex));
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
@@ -353,7 +396,12 @@ class App {
       return;
     }
     try {
-      const replaced = this.garage.save({ name, source: workspace.source, loadout: this.loadouts[robotIndex] });
+      const replaced = this.garage.save({
+        name,
+        source: workspace.source,
+        loadout: this.loadouts[robotIndex],
+        side: this.sides[robotIndex],
+      });
       const instead = replaced ? ', in place of the robot kept under that name' : '';
       this.garageNote = `${workspace.robotId} saved to the garage as ${name}${instead}`;
     } catch (error) {
@@ -369,8 +417,10 @@ class App {
     const workspace = this.workspaces[robotIndex];
     workspace.load(saved.source);
     this.setLoadout(robotIndex, { ...saved.loadout });
+    this.setSide(robotIndex, saved.side);
     this.showFile(codeFileOf(robotIndex));
-    this.garageNote = `${name} loaded into ${workspace.robotId}`;
+    const mirrored = this.isMirrored(robotIndex) ? `, mirrored (written for ${ROBOT_IDS[saved.side]}'s side)` : '';
+    this.garageNote = `${name} loaded into ${workspace.robotId}${mirrored}`;
   }
 
   private removeFromGarage(name: string): void {
@@ -494,6 +544,7 @@ class App {
     if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
+    this.showMirrorMark();
     this.projectPanel.markSelected(file);
     // Line-by-line stepping follows the program in view.
     this.replay?.focusOn(robotId);
@@ -553,7 +604,8 @@ class App {
     });
     this.inspector.update(view);
     const watched = view.robots[this.inspector.selected];
-    this.watch.update(watched, replay?.variablesOf(watched.id) ?? {});
+    const mirrored = replay === null ? this.isMirrored(this.inspector.selected) : this.matchMirrored[this.inspector.selected];
+    this.watch.update(watched, replay?.variablesOf(watched.id) ?? {}, mirrored);
     this.workspaces.forEach((workspace, robotIndex) => {
       const showLines = debugging && !workspace.stale;
       const current = showLines ? replay.currentLine(workspace.robotId) : null;

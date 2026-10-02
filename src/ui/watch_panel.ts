@@ -54,16 +54,22 @@ export class WatchPanel {
     this.sensors = new FieldList(sensorsContainer, SENSOR_NAMES);
   }
 
-  update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>): void {
+  /**
+   * `mirrored` is whether the robot's program is run in a mirror: the values
+   * are then shown as the program reads them, with left and right swapped.
+   */
+  update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>, mirrored = false): void {
     if (this.robotName.textContent !== robot.id) this.robotName.textContent = robot.id;
     const { lastSeen, incomingBullet, cover } = robot;
+    const angle = (degrees: number) => formatNumber(mirrored && degrees !== 0 ? -degrees : degrees);
+    const [wallLeft, wallRight] = mirrored ? [robot.wallRight, robot.wallLeft] : [robot.wallLeft, robot.wallRight];
     this.sensors.set([
       String(robot.enemyVisible),
       formatNumber(robot.enemyDistance),
-      formatNumber(robot.enemyAngle),
-      formatNumber(robot.aimAngle),
-      formatNumber(robot.leadAngle),
-      formatNumber(robot.gunAngle),
+      angle(robot.enemyAngle),
+      angle(robot.aimAngle),
+      angle(robot.leadAngle),
+      angle(robot.gunAngle),
       String(robot.weaponRange),
       String(robot.blocked),
       String(robot.blockedBehind),
@@ -76,16 +82,16 @@ export class WatchPanel {
       lastSeen === null ? NO_VALUE : formatNumber(lastSeen.y),
       String(incomingBullet !== null),
       formatNumber(incomingBullet?.distance ?? 0),
-      formatNumber(incomingBullet?.angle ?? 0),
+      angle(incomingBullet?.angle ?? 0),
       String(robot.hit),
-      formatNumber(robot.hitAngle),
+      angle(robot.hitAngle),
       String(cover !== null),
       formatNumber(cover?.distance ?? 0),
-      formatNumber(cover?.angle ?? 0),
+      angle(cover?.angle ?? 0),
       formatNumber(robot.wallAhead),
       formatNumber(robot.wallBehind),
-      formatNumber(robot.wallLeft),
-      formatNumber(robot.wallRight),
+      formatNumber(wallLeft),
+      formatNumber(wallRight),
     ]);
     this.showVariables(variables);
   }

@@ -5,6 +5,7 @@ import { DEFAULT_ARENA } from '../src/data/arenas';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf, statsOf } from '../src/data/parts';
 import { TEMPLATES, templateSource } from '../src/data/templates';
 import { Simulation } from '../src/sim/simulation';
+import type { Arena } from '../src/sim/types';
 import { DUEL_ARENA, runToEnd } from './helpers';
 
 /** Turns to the enemy, wherever it starts, and shoots. */
@@ -147,9 +148,10 @@ describe('prepareFight', () => {
 
 describe('playArenaSeries', () => {
   const seeds = [1, 2, 3];
+  const roundsIn = (arena: Arena, roundSeeds: readonly number[] = seeds) => roundSeeds.map((seed) => ({ arena, seed }));
 
   it('plays every seed from both sides and counts the wins in the order of the entrants', () => {
-    const played = playArenaSeries([saved('Tank', SIT), saved('Striker', SHOOT)], DUEL_ARENA, seeds);
+    const played = playArenaSeries([saved('Tank', SIT), saved('Striker', SHOOT)], roundsIn(DUEL_ARENA));
     if (!played.ok) throw new Error('refused');
     expect(played.names).toEqual(['Tank', 'Striker']);
     expect(played.result).toMatchObject({ matches: seeds.length * 2, wins: [0, seeds.length * 2], draws: 0 });
@@ -164,20 +166,31 @@ describe('playArenaSeries', () => {
     };
     const candidates = Array.from({ length: 60 }, (_, index) => index + 1);
     const apart = candidates.filter((seed) => !level(seed)).slice(0, 3);
-    const played = playArenaSeries([blind, saved('Tank', SIT)], DUEL_ARENA, apart);
+    const played = playArenaSeries([blind, saved('Tank', SIT)], roundsIn(DUEL_ARENA, apart));
     expect(apart).toHaveLength(3);
     expect(played.ok && played.result).toMatchObject({ matches: 6, wins: [0, 0], draws: 6 });
   });
 
+  it('plays each round in its own arena', () => {
+    // A wall right across the field: the robots never see each other, and nobody wins.
+    const walled: Arena = { ...DUEL_ARENA, obstacles: [{ x: 490, y: 0, width: 20, height: DUEL_ARENA.height }] };
+    const rounds = [
+      { arena: DUEL_ARENA, seed: 1 },
+      { arena: walled, seed: 1 },
+    ];
+    const played = playArenaSeries([saved('Striker', SHOOT), saved('Tank', SIT)], rounds);
+    expect(played.ok && played.result).toMatchObject({ matches: 4, wins: [2, 0], draws: 2 });
+  });
+
   it('lets a robot play a series against itself', () => {
     const striker = saved('Striker', SHOOT);
-    const played = playArenaSeries([striker, striker], DUEL_ARENA, seeds);
+    const played = playArenaSeries([striker, striker], roundsIn(DUEL_ARENA));
     expect(played.ok && played.names).toEqual(['Striker', 'Striker (2)']);
     expect(played.ok && played.result.matches).toBe(seeds.length * 2);
   });
 
   it('gives a built-in robot the program for the side it starts on in each match', () => {
-    const played = playArenaSeries([builtIn('sample'), builtIn('dumb_bot')], DEFAULT_ARENA, [1]);
+    const played = playArenaSeries([builtIn('sample'), builtIn('dumb_bot')], roundsIn(DEFAULT_ARENA, [1]));
     if (!played.ok) throw new Error('refused');
     // As when the two templates are played by hand, once from each side.
     const byHand = [
@@ -191,7 +204,7 @@ describe('playArenaSeries', () => {
   });
 
   it('is refused for the same reasons as a single match', () => {
-    const played = playArenaSeries([saved('Tank', SIT), saved('Broken', 'fly')], DUEL_ARENA, seeds);
+    const played = playArenaSeries([saved('Tank', SIT), saved('Broken', 'fly')], roundsIn(DUEL_ARENA));
     expect(played.ok).toBe(false);
     expect(!played.ok && played.problems[0]).toMatch(/^Broken: Line 1: /);
   });

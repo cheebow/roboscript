@@ -105,16 +105,21 @@ export function prepareFight(
   };
 }
 
+/** One round of a series: two matches in an arena with a seed, one from each side. */
+export interface SeriesRound {
+  arena: Arena;
+  seed: number;
+}
+
 /**
- * Plays the two entrants against each other in the arena with every seed,
- * once from each side, and counts who won. Each seed has its own starting
- * places, the same for both of its matches. Refused for the same reasons as a
- * single match.
+ * Plays the two entrants against each other round after round, and counts
+ * who won. A round is two matches, one from each side, in the round's arena
+ * and from the starting places its seed gives. Refused for the same reasons
+ * as a single match.
  */
 export function playArenaSeries(
   entrants: readonly [Entrant, Entrant],
-  arena: Arena,
-  seeds: readonly number[],
+  rounds: readonly SeriesRound[],
 ): { ok: true; names: [string, string]; result: SeriesResult } | Refusal {
   // Either way round: a built-in robot's program depends on where it starts.
   const ways: [Entrant, Entrant][] = [
@@ -122,7 +127,8 @@ export function playArenaSeries(
     [entrants[1], entrants[0]],
   ];
   for (const way of ways) {
-    const prepared = prepareFight(way, arena, MATCH_DEFAULTS.seed);
+    // What keeps a robot from fighting has nothing to do with the arena or the seed.
+    const prepared = prepareFight(way, rounds[0].arena, rounds[0].seed);
     if (!prepared.ok) return prepared;
   }
 
@@ -142,7 +148,7 @@ export function playArenaSeries(
     draws: 0,
     reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
   };
-  for (const seed of seeds) {
+  for (const { arena, seed } of rounds) {
     const played = playSeries({
       contenders: [contenderOf(0), contenderOf(1)],
       arenas: [scatterSpawns(arena, seed)],

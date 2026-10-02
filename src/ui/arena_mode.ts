@@ -7,7 +7,7 @@ import {
   playArenaSeries,
   prepareFight,
 } from '../arena/match';
-import type { ArenaDefinition } from '../data/arenas';
+import { ARENAS, type ArenaDefinition } from '../data/arenas';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, SLOTS, costOf, partIn, statsOf } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
@@ -51,8 +51,8 @@ interface FoughtMatch {
 }
 
 const SLOT_COUNT = 2;
-/** The seeds of one series: with a match from each side for every seed, twice as many matches. */
-const SERIES_SEEDS = 10;
+/** The rounds of one series: with a match from each side in every round, twice as many matches. */
+const SERIES_ROUNDS = 10;
 const MAX_SEED = 0x7fffffff;
 /** The entrants the slots start with: the pair the program screen starts with. */
 const DEFAULT_ENTRANT_IDS = ['built-in:sample', 'built-in:dumb_bot'];
@@ -101,8 +101,8 @@ export class ArenaMode {
     this.slots = Array.from({ length: SLOT_COUNT }, (_, index) => this.createSlot(index));
     const fight = this.createButton('FIGHT', 'Play one match, with a new seed every time', () => this.startFight());
     const series = this.createButton(
-      `SERIES ×${SERIES_SEEDS * 2}`,
-      `Play ${SERIES_SEEDS * 2} matches without showing them, half from each side, and count the wins`,
+      `SERIES ×${SERIES_ROUNDS * 2}`,
+      `Play ${SERIES_ROUNDS * 2} matches without showing them, over all the maps and half from each side, and count the wins`,
       () => this.playSeries(),
     );
     const buttons = createElement('div', 'lineup-buttons');
@@ -257,8 +257,7 @@ export class ArenaMode {
 
   /** A match between the picked robots in the chosen arena, with a seed of its own. */
   private startFight(): void {
-    const seed = 1 + Math.floor(Math.random() * MAX_SEED);
-    const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed };
+    const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed: randomSeed() };
     if (this.show(match)) this.unannounced = match;
   }
 
@@ -301,17 +300,22 @@ export class ArenaMode {
     this.addResult(entry);
   }
 
+  /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
   private playSeries(): void {
-    const seeds = Array.from({ length: SERIES_SEEDS }, () => 1 + Math.floor(Math.random() * MAX_SEED));
-    const arena = this.setting.arena();
-    const played = playArenaSeries(this.pickedEntrants(), arena.arena, seeds);
+    // Every map comes up once before any comes up twice, in an order of its own each time.
+    const maps = shuffled(ARENAS);
+    const rounds = Array.from({ length: SERIES_ROUNDS }, (_, round) => ({
+      arena: maps[round % maps.length].arena,
+      seed: randomSeed(),
+    }));
+    const played = playArenaSeries(this.pickedEntrants(), rounds);
     if (!played.ok) {
       this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
       return;
     }
     const { names, result } = played;
     const draws = result.draws === 0 ? '' : `, ${result.draws} ${result.draws === 1 ? 'draw' : 'draws'}`;
-    const text = `SERIES ×${result.matches}  ${names[0]} ${result.wins[0]} – ${result.wins[1]} ${names[1]}${draws}\n    ${arena.name}`;
+    const text = `SERIES ×${result.matches}  ${names[0]} ${result.wins[0]} – ${result.wins[1]} ${names[1]}${draws}\n    all ${maps.length} maps`;
     this.addResult(createElement('div', 'result', text));
   }
 
@@ -320,6 +324,20 @@ export class ArenaMode {
     this.results.prepend(entry);
     this.results.scrollTop = 0;
   }
+}
+
+function randomSeed(): number {
+  return 1 + Math.floor(Math.random() * MAX_SEED);
+}
+
+/** The items in a random order. */
+function shuffled<T>(items: readonly T[]): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index--) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [result[index], result[other]] = [result[other], result[index]];
+  }
+  return result;
 }
 
 function describeOutcome(result: MatchResult, [first, second]: readonly [string, string]): string {

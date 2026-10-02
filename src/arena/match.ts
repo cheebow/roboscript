@@ -105,18 +105,17 @@ export function prepareFight(
   };
 }
 
-/** One round of a series: two matches in an arena with a seed, one from each side. */
-export interface SeriesRound {
+/** One match of a series to be played. */
+export interface SeriesFixture {
   arena: Arena;
+  /** Decides where in the arena the robots start, as well as how their shots scatter. */
   seed: number;
+  /** Which of the two entrants starts at the first spawn point. */
+  first: 0 | 1;
 }
 
-/** One match of a series, and how it went. */
+/** How a match of a series went. */
 export interface SeriesMatch {
-  /** The round it belongs to, counted from 0. */
-  round: number;
-  /** Which of the two entrants started at the first spawn point. */
-  first: 0 | 1;
   /** Which of the two entrants won; null for a draw. */
   winner: 0 | 1 | null;
   reason: MatchEndReason;
@@ -125,14 +124,13 @@ export interface SeriesMatch {
 }
 
 /**
- * Plays the two entrants against each other round after round, and tells how
- * every match went and who won how many. A round is two matches, one from
- * each side, in the round's arena and from the starting places its seed
- * gives. Refused for the same reasons as a single match.
+ * Plays the two entrants against each other match after match, and tells how
+ * each match went, in the order of the fixtures, and who won how many.
+ * Refused for the same reasons as a single match.
  */
 export function playArenaSeries(
   entrants: readonly [Entrant, Entrant],
-  rounds: readonly SeriesRound[],
+  fixtures: readonly SeriesFixture[],
 ): { ok: true; names: [string, string]; matches: SeriesMatch[]; result: SeriesResult } | Refusal {
   const matches: SeriesMatch[] = [];
   const result: SeriesResult = {
@@ -141,23 +139,21 @@ export function playArenaSeries(
     draws: 0,
     reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
   };
-  for (const [round, { arena, seed }] of rounds.entries()) {
-    for (const first of [0, 1] as const) {
-      const prepared = prepareFight(inOrder(entrants, first), arena, seed);
-      if (!prepared.ok) return prepared;
-      const simulation = new Simulation(prepared.fight.config);
-      while (simulation.result === null) simulation.step();
+  for (const { arena, seed, first } of fixtures) {
+    const prepared = prepareFight(inOrder(entrants, first), arena, seed);
+    if (!prepared.ok) return prepared;
+    const simulation = new Simulation(prepared.fight.config);
+    while (simulation.result === null) simulation.step();
 
-      const { winnerId, reason } = simulation.result;
-      // The robot at the first spawn point is the entrant `first`; the other one is the other.
-      const startedFirst = winnerId === prepared.fight.names[0];
-      const winner = winnerId === null ? null : startedFirst ? first : other(first);
-      matches.push({ round, first, winner, reason, ticks: simulation.tick });
-      result.matches++;
-      result.reasons[reason]++;
-      if (winner === null) result.draws++;
-      else result.wins[winner]++;
-    }
+    const { winnerId, reason } = simulation.result;
+    // The robot at the first spawn point is the entrant `first`; the other one is the other.
+    const startedFirst = winnerId === prepared.fight.names[0];
+    const winner = winnerId === null ? null : startedFirst ? first : other(first);
+    matches.push({ winner, reason, ticks: simulation.tick });
+    result.matches++;
+    result.reasons[reason]++;
+    if (winner === null) result.draws++;
+    else result.wins[winner]++;
   }
   return { ok: true, names: fightNames(entrants), matches, result };
 }

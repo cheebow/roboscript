@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type Entrant,
+  type SeriesFixture,
   builtInEntrants,
   fightNames,
   garageEntrants,
@@ -156,7 +157,12 @@ describe('prepareFight', () => {
 
 describe('playArenaSeries', () => {
   const seeds = [1, 2, 3];
-  const roundsIn = (arena: Arena, roundSeeds: readonly number[] = seeds) => roundSeeds.map((seed) => ({ arena, seed }));
+  /** Every seed from both sides in the arena. */
+  const roundsIn = (arena: Arena, roundSeeds: readonly number[] = seeds): SeriesFixture[] =>
+    roundSeeds.flatMap((seed) => [
+      { arena, seed, first: 0 },
+      { arena, seed, first: 1 },
+    ]);
 
   it('plays every seed from both sides and counts the wins in the order of the entrants', () => {
     const played = playArenaSeries([saved('Tank', SIT), saved('Striker', SHOOT)], roundsIn(DUEL_ARENA));
@@ -182,19 +188,26 @@ describe('playArenaSeries', () => {
   it('tells how every match went, in the order they were fought', () => {
     const played = playArenaSeries([saved('Tank', SIT), saved('Striker', SHOOT)], roundsIn(DUEL_ARENA));
     if (!played.ok) throw new Error('refused');
-    expect(played.matches.map(({ round, first }) => [round, first])).toEqual([
-      [0, 0],
-      [0, 1],
-      [1, 0],
-      [1, 1],
-      [2, 0],
-      [2, 1],
-    ]);
+    expect(played.matches).toHaveLength(seeds.length * 2);
     // Striker, the second entrant, wins wherever it starts.
     for (const match of played.matches) {
       expect(match).toMatchObject({ winner: 1, reason: 'destroyed' });
       expect(match.ticks).toBeGreaterThan(0);
     }
+  });
+
+  it('plays each match from the starting places of its own seed', () => {
+    const entrants: [Entrant, Entrant] = [builtIn('sample'), builtIn('dumb_bot')];
+    const fixtures: SeriesFixture[] = [
+      { arena: DEFAULT_ARENA, seed: 5, first: 0 },
+      { arena: DEFAULT_ARENA, seed: 6, first: 1 },
+    ];
+    const played = playArenaSeries(entrants, fixtures);
+    if (!played.ok) throw new Error('refused');
+    expect(played.matches.map((match) => match.ticks)).toEqual([
+      outcomeOf(inOrder(entrants, 0), 5, DEFAULT_ARENA).tick,
+      outcomeOf(inOrder(entrants, 1), 6, DEFAULT_ARENA).tick,
+    ]);
   });
 
   it('plays a match of the series as that match is played on its own', () => {
@@ -209,11 +222,8 @@ describe('playArenaSeries', () => {
   it('plays each round in its own arena', () => {
     // A wall right across the field: the robots never see each other, and nobody wins.
     const walled: Arena = { ...DUEL_ARENA, obstacles: [{ x: 490, y: 0, width: 20, height: DUEL_ARENA.height }] };
-    const rounds = [
-      { arena: DUEL_ARENA, seed: 1 },
-      { arena: walled, seed: 1 },
-    ];
-    const played = playArenaSeries([saved('Striker', SHOOT), saved('Tank', SIT)], rounds);
+    const fixtures = [...roundsIn(DUEL_ARENA, [1]), ...roundsIn(walled, [1])];
+    const played = playArenaSeries([saved('Striker', SHOOT), saved('Tank', SIT)], fixtures);
     expect(played.ok && played.result).toMatchObject({ matches: 4, wins: [2, 0], draws: 2 });
     expect(played.ok && played.matches.map((match) => match.winner)).toEqual([0, 0, null, null]);
   });

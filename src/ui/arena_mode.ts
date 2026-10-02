@@ -52,8 +52,8 @@ interface FoughtMatch {
 }
 
 const SLOT_COUNT = 2;
-/** The rounds of one series: with a match from each side in every round, twice as many matches. */
-const SERIES_ROUNDS = 10;
+/** The matches of one series. */
+const SERIES_MATCHES = 20;
 const MAX_SEED = 0x7fffffff;
 /** The entrants the slots start with: the pair the program screen starts with. */
 const DEFAULT_ENTRANT_IDS = ['built-in:sample', 'built-in:dumb_bot'];
@@ -102,8 +102,8 @@ export class ArenaMode {
     this.slots = Array.from({ length: SLOT_COUNT }, (_, index) => this.createSlot(index));
     const fight = this.createButton('FIGHT', 'Play one match, with a new seed every time', () => this.startFight());
     const series = this.createButton(
-      `SERIES ×${SERIES_ROUNDS * 2}`,
-      `Play ${SERIES_ROUNDS * 2} matches without showing them, over all the maps and half from each side, and count the wins`,
+      `SERIES ×${SERIES_MATCHES}`,
+      `Play ${SERIES_MATCHES} matches without showing them, over all the maps and half from each side, and count the wins`,
       () => this.playSeries(),
     );
     const buttons = createElement('div', 'lineup-buttons');
@@ -304,11 +304,13 @@ export class ArenaMode {
   /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
   private playSeries(): void {
     // Every map comes up once before any comes up twice, in an order of its own each time.
-    const shuffledMaps = shuffled(ARENAS);
-    const maps = Array.from({ length: SERIES_ROUNDS }, (_, round) => shuffledMaps[round % shuffledMaps.length]);
-    const rounds = maps.map(({ arena }) => ({ arena, seed: randomSeed() }));
+    // Two matches a map, one from each side; every map comes up before any comes up again.
+    // Each match has a seed, and so starting places, of its own.
+    const order = shuffled(ARENAS);
+    const maps = Array.from({ length: SERIES_MATCHES }, (_, match) => order[Math.floor(match / 2) % order.length]);
+    const fixtures = maps.map(({ arena }, match) => ({ arena, seed: randomSeed(), first: sideOf(match) }));
     const entrants = this.pickedEntrants();
-    const played = playArenaSeries(entrants, rounds);
+    const played = playArenaSeries(entrants, fixtures);
     if (!played.ok) {
       this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
       return;
@@ -322,15 +324,12 @@ export class ArenaMode {
       const outcome = match.winner === null ? 'draw' : `${names[match.winner]} won`;
       const reason = match.reason === 'destroyed' ? '' : ` (${match.reason})`;
       const seconds = formatSeconds(match.ticks / MATCH_DEFAULTS.tickRate);
-      const text = `${`${index + 1}`.padStart(2)}  ${outcome}${reason}, ${seconds} s, ${maps[match.round].name}`;
+      const text = `${`${index + 1}`.padStart(2)}  ${outcome}${reason}, ${seconds} s, ${maps[index].name}`;
       const entry = createElement('button', 'result fought', text);
       entry.type = 'button';
       entry.title = 'Show this match';
-      const fought: FoughtMatch = {
-        entrants: inOrder(entrants, match.first),
-        arena: maps[match.round],
-        seed: rounds[match.round].seed,
-      };
+      const { seed, first } = fixtures[index];
+      const fought: FoughtMatch = { entrants: inOrder(entrants, first), arena: maps[index], seed };
       entry.addEventListener('click', () => this.show(fought));
       series.append(entry);
     });
@@ -345,6 +344,11 @@ export class ArenaMode {
     this.results.prepend(entry);
     this.results.scrollTop = 0;
   }
+}
+
+/** The entrant that starts first in the match with the given number: they take turns. */
+function sideOf(match: number): 0 | 1 {
+  return match % 2 === 0 ? 0 : 1;
 }
 
 function randomSeed(): number {

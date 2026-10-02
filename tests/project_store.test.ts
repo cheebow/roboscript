@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STANDARD_LOADOUT } from '../src/data/parts';
 import {
   BRAVO_BOT_KEY,
   DEFAULT_PROJECT,
@@ -92,6 +93,38 @@ describe('ProjectStore', () => {
     store.saveArena('open_field');
     store.saveSource(PLAYER, 'fire\n');
     expect(store.loadInfo()).toEqual({ name: 'ALPHA', version: 1, arena: 'open_field' });
+  });
+
+  it('gives a robot standard parts until some are saved for it', () => {
+    const { store } = createStore();
+    expect(store.loadLoadout(PLAYER)).toEqual(STANDARD_LOADOUT);
+    expect(store.loadLoadout(ENEMY)).toEqual(STANDARD_LOADOUT);
+  });
+
+  it('remembers the parts of each robot, also across saving the arena and the source', () => {
+    const { store } = createStore();
+    const heavy = { ...STANDARD_LOADOUT, body: 'heavy', sensor: 'scope' };
+    const rapid = { ...STANDARD_LOADOUT, gun: 'rapid' };
+
+    // The enemy's first: the player's are still standard then.
+    store.saveLoadout(ENEMY, rapid);
+    expect(store.loadLoadout(PLAYER)).toEqual(STANDARD_LOADOUT);
+    expect(store.loadLoadout(ENEMY)).toEqual(rapid);
+
+    store.saveLoadout(PLAYER, heavy);
+    store.saveArena('open_field');
+    store.saveSource(PLAYER, 'fire\n');
+    expect(store.loadLoadout(PLAYER)).toEqual(heavy);
+    expect(store.loadLoadout(ENEMY)).toEqual(rapid);
+    expect(store.loadInfo().arena).toBe('open_field');
+  });
+
+  it('puts standard parts in place of saved parts that do not exist', () => {
+    const { storage, store } = createStore();
+    const loadouts = [{ body: 'heavy', gun: 'laser' }, 'nonsense'];
+    storage.setItem(PROJECT_INFO_KEY, JSON.stringify({ ...DEFAULT_PROJECT, loadouts }));
+    expect(store.loadLoadout(PLAYER)).toEqual({ ...STANDARD_LOADOUT, body: 'heavy' });
+    expect(store.loadLoadout(ENEMY)).toEqual(STANDARD_LOADOUT);
   });
 
   it('still reads a project saved when the enemy was picked from a list', () => {

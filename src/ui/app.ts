@@ -1,6 +1,6 @@
 import type { ProgramFeatures } from '../ai/features';
 import { compileScript } from '../ai/roboscript';
-import { type ScriptError, formatError } from '../ai/script_error';
+import { formatError } from '../ai/script_error';
 import { ARENAS, findArena } from '../data/arenas';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -10,7 +10,8 @@ import {
   REPLAY_TAIL_TICKS,
   ROBOT_IDS,
 } from '../data/match_defaults';
-import { ROBOT_DEFAULTS, type RobotStats } from '../data/robot_defaults';
+import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../data/parts';
+import type { RobotStats } from '../data/robot_defaults';
 import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../data/templates';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
@@ -21,10 +22,10 @@ import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
 import { ActionMenu } from './action_menu';
-import { renderConfig } from './config_view';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
 import { Inspector } from './inspector';
+import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
 import { RobotWorkspace } from './robot_workspace';
 import { Toolbar } from './toolbar';
@@ -38,19 +39,25 @@ const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
 const READY_MESSAGE = 'Edit the code and press RUN.';
 const STALE_NOTE = 'code edited since this run';
+const PARTS_NOTE = 'parts changed since this run';
 /** What a robot's config shows as its AI: every robot runs the program in its own main.bot. */
 const AI_LABEL = 'main.bot';
 /** The element that holds each robot's code editor, in spawn order. */
 const EDITOR_ELEMENT_IDS = ['code', 'enemy-code'];
 /** The programs the robots start with, each written for its own side. */
 const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template, robotIndex) => templateSource(template, robotIndex));
-/** Each robot's stats, in spawn order. */
-const ROBOT_STATS: readonly RobotStats[] = ROBOT_IDS.map(() => ROBOT_DEFAULTS);
 const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 const NO_MARKS: readonly number[] = [];
 const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
+
+/** What keeps a match from starting: errors in a robot's code, or parts that cost too much. */
+interface Fault {
+  /** The file to put it right in. */
+  file: ProjectFile;
+  events: DebugEvent[];
+}
 
 /** A line of a robot's program that the player follows through the match: where it runs is marked on the seek bar. */
 interface FollowedLine {
@@ -62,7 +69,7 @@ interface FollowedLine {
   marks: readonly number[];
 }
 
-/** Wires the panels to a recorded match: records matches, runs the frame loop, keeps the robots' code. */
+/** Wires the panels to a recorded match: records matches, runs the frame loop, keeps the robots' code and parts. */
 class App {
   private readonly seed = readSeed();
   private readonly store = openStore();
@@ -76,8 +83,17 @@ class App {
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   private readonly templateMenu: ActionMenu;
+  private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
   /** The arena the next match is fought in. */
   private arena = findArena(this.store?.loadInfo().arena ?? null);
+  /** The parts each robot goes into the next match with, in spawn order. */
+  private readonly loadouts: Loadout[] = ROBOT_IDS.map(
+    (_, robotIndex) => this.store?.loadLoadout(robotIndex) ?? STANDARD_LOADOUT,
+  );
+  /** What the parts of each robot add up to. */
+  private stats: RobotStats[] = this.loadouts.map((loadout) => statsOf(loadout));
+  /** Per robot: whether its parts were changed after the last RUN / DEBUG. */
+  private partsStale: boolean[] = ROBOT_IDS.map(() => false);
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
   /** The starting positions in the chosen arena, shown while there is no match. */
   private idleSnapshot = this.captureIdle();
@@ -154,29 +170,45 @@ class App {
     this.workspaces[robotIndex].load(templateSource(template, robotIndex));
   }
 
-  /** Records a match with the code in the editors and plays it back, unless some code has errors. */
+  /**
+   * Records a match with the code in the editors and the parts chosen, and
+   * plays it back, unless some code has errors or some robot's parts cost too much.
+   */
   private start(mode: Mode): void {
     this.mode = mode;
     for (const workspace of this.workspaces) {
       workspace.flush();
       workspace.stale = false;
     }
+    this.partsStale.fill(false);
 
     const brains: RobotBrain[] = [];
     const features: ProgramFeatures[] = [];
-    const faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[] = [];
-    for (const workspace of this.workspaces) {
+    const faults: Fault[] = [];
+    this.loadouts.forEach((loadout, robotIndex) => {
+      const cost = costOf(loadout);
+      if (cost <= COST_LIMIT) return;
+      const message = `parts cost ${cost}, over the limit of ${COST_LIMIT}`;
+      faults.push({
+        file: { robotIndex, file: 'config' },
+        events: [appEvent('error', message, null, ROBOT_IDS[robotIndex])],
+      });
+    });
+    this.workspaces.forEach((workspace, robotIndex) => {
       const result = compileScript(workspace.source);
       workspace.editor.showErrorLines(result.ok ? [] : result.errors.map((error) => error.line));
       if (result.ok) {
         brains.push(result.brain);
         features.push(result.features);
       } else {
-        faulty.push({ workspace, errors: result.errors });
+        faults.push({
+          file: codeFileOf(robotIndex),
+          events: result.errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)),
+        });
       }
-    }
-    if (faulty.length > 0) {
-      this.showErrors(faulty);
+    });
+    if (faults.length > 0) {
+      this.showFaults(faults);
       return;
     }
 
@@ -203,17 +235,14 @@ class App {
     this.followed = { robotIndex, line, replay, marks };
   }
 
-  private showErrors(faulty: { workspace: RobotWorkspace; errors: ScriptError[] }[]): void {
+  private showFaults(faults: readonly Fault[]): void {
     this.replay = null;
-    this.events = faulty.flatMap(({ workspace, errors }) =>
-      errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)),
-    );
-    this.notice = `${this.events.length} error(s). Fix the code and press RUN.`;
+    this.events = faults.flatMap((fault) => fault.events);
+    this.notice = `${this.events.length} error(s). Fix them and press RUN.`;
     // Bring a faulty file into view, unless one is already shown.
-    const shownIsFaulty = faulty.some(({ workspace }) => workspace === this.workspaces[this.shownFile.robotIndex]);
-    if (!shownIsFaulty || this.shownFile.file !== 'main.bot') {
-      this.showFile(codeFileOf(this.workspaces.indexOf(faulty[0].workspace)));
-    }
+    const { robotIndex, file } = this.shownFile;
+    const shownIsFaulty = faults.some((fault) => fault.file.robotIndex === robotIndex && fault.file.file === file);
+    if (!shownIsFaulty) this.showFile(faults[0].file);
   }
 
   /** One line of the program in view while debugging; otherwise one tick. */
@@ -237,6 +266,23 @@ class App {
     this.replay = null;
     this.events = [];
     this.notice = null;
+    this.partsStale.fill(false);
+  }
+
+  /** Puts the part into the slot of the robot whose config is shown. Takes effect from the next RUN / DEBUG. */
+  private pickPart(slot: Slot, partId: string): void {
+    const { robotIndex } = this.shownFile;
+    const loadout = { ...this.loadouts[robotIndex], [slot]: partId };
+    this.loadouts[robotIndex] = loadout;
+    this.stats = this.loadouts.map((each) => statsOf(each));
+    this.idleSnapshot = this.captureIdle();
+    if (this.replay !== null) this.partsStale[robotIndex] = true;
+    this.partsView.show(ROBOT_IDS[robotIndex], AI_LABEL, loadout);
+    try {
+      this.store?.saveLoadout(robotIndex, loadout);
+    } catch (error) {
+      this.saveProblem = `could not save the parts of ${ROBOT_IDS[robotIndex]}: ${describeError(error)}`;
+    }
   }
 
   /** Takes effect from the next RUN / DEBUG; shown at once while there is no match. */
@@ -324,8 +370,8 @@ class App {
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
       seed: this.seed,
       robots: [
-        { id: ROBOT_IDS[0], brain: brains[0], stats: ROBOT_STATS[0] },
-        { id: ROBOT_IDS[1], brain: brains[1], stats: ROBOT_STATS[1] },
+        { id: ROBOT_IDS[0], brain: brains[0], stats: this.stats[0] },
+        { id: ROBOT_IDS[1], brain: brains[1], stats: this.stats[1] },
       ],
     };
   }
@@ -340,7 +386,7 @@ class App {
     });
     requireElement('config').hidden = isCode;
     this.templateMenu.hidden = !isCode;
-    if (!isCode) renderConfig(requireElement('config'), robotId, AI_LABEL, ROBOT_STATS[file.robotIndex]);
+    if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex]);
 
     requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
     this.projectPanel.markSelected(file);
@@ -356,7 +402,7 @@ class App {
 
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
-    const stats = replay?.recording.stats ?? ROBOT_STATS;
+    const stats = replay?.recording.stats ?? this.stats;
     this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, {
       sensorOf: debugging ? this.inspector.selected : null,
       marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
@@ -396,6 +442,8 @@ class App {
     const parts = [this.notice ?? this.replayStatus()];
     const edited = this.workspaces.filter((workspace) => workspace.stale).map((workspace) => workspace.robotId);
     if (edited.length > 0) parts.push(`[${edited.join(', ')} ${STALE_NOTE}]`);
+    const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
+    if (refitted.length > 0) parts.push(`[${refitted.join(', ')} ${PARTS_NOTE}]`);
     if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
     return parts.join('   ');
   }

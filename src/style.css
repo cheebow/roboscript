@@ -234,6 +234,64 @@ button {
   cursor: pointer;
 }
 
+/* config: the part in each slot of a robot, and the stats the parts add up to. */
+
+.parts {
+  padding: 6px 10px 0;
+}
+
+.part-slot {
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr);
+  column-gap: 8px;
+  margin-bottom: 6px;
+}
+
+.part-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.part-option {
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.part-option:hover,
+.part-option.selected {
+  color: var(--text);
+}
+
+.part-option.selected {
+  border-color: var(--text);
+}
+
+.part-cost {
+  margin-left: 1ch;
+  color: var(--muted);
+}
+
+.part-summary {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.field-value.over-limit {
+  color: var(--error);
+}
+
+.field-value.better {
+  color: var(--syntax-variable);
+}
+
+.field-value.worse {
+  color: var(--syntax-number);
+}
+
 /* A button that opens a list of things to do (see ActionMenu). */
 .menu {
   position: relative;

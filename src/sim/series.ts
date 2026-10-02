@@ -7,8 +7,11 @@ import type { Arena } from './types';
 export interface Contender {
   id: string;
   stats: RobotStats;
-  /** Makes the robot's brain. Called for every match: a brain keeps the state of the match it played. */
-  createBrain: () => RobotBrain;
+  /**
+   * Makes the robot's brain for a match it starts at the given spawn index.
+   * Called for every match: a brain keeps the state of the match it played.
+   */
+  createBrain: (spawnIndex: number) => RobotBrain;
 }
 
 export interface SeriesConfig {
@@ -62,13 +65,17 @@ export function playSeries(config: SeriesConfig): SeriesResult {
 }
 
 function playMatch(config: SeriesConfig, arena: Arena, seed: number, lineUp: [Contender, Contender]): MatchResult {
-  const setUp = ({ id, stats, createBrain }: Contender) => ({ id, stats, brain: createBrain() });
+  const setUp = ({ id, stats, createBrain }: Contender, spawnIndex: number) => ({
+    id,
+    stats,
+    brain: createBrain(spawnIndex),
+  });
   const simulation = new Simulation({
     arena,
     tickRate: config.tickRate,
     maxMatchTime: config.maxMatchTime,
     seed,
-    robots: [setUp(lineUp[0]), setUp(lineUp[1])],
+    robots: [setUp(lineUp[0], 0), setUp(lineUp[1], 1)],
   });
   for (;;) {
     simulation.step();

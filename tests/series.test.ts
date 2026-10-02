@@ -50,17 +50,18 @@ describe('playSeries', () => {
     expect(reasons.timeout).toBe(matches);
   });
 
-  it('makes a new brain for every match', () => {
-    let made = 0;
+  it('makes a new brain for every match, told where the robot starts', () => {
+    const spawnIndexes: number[] = [];
     const counted: Contender = {
       ...sitter('COUNTED'),
-      createBrain: () => {
-        made++;
+      createBrain: (spawnIndex) => {
+        spawnIndexes.push(spawnIndex);
         return new FixedBrain();
       },
     };
     const { matches } = series([counted, shooter()]);
-    expect(made).toBe(matches);
+    expect(spawnIndexes).toHaveLength(matches);
+    expect(spawnIndexes.slice(0, 2)).toEqual([0, 1]);
   });
 
   it('comes out the same every time', () => {

@@ -183,7 +183,7 @@ const LANGUAGE: readonly WordReference[] = [
     word: 'bullet_distance',
     kind: 'sensor',
     hint: 'distance to the incoming bullet',
-    summary: `Distance to the nearest bullet on course to hit the robot; 0 if there is none. A bullet covers about ${BULLET_STEP} per tick.`,
+    summary: `Distance to the nearest bullet on course to hit the robot; 0 if there is none. A bullet from a standard gun covers about ${BULLET_STEP} per tick.`,
   },
   {
     word: 'bullet_angle',

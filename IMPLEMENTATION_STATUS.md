@@ -13,6 +13,7 @@
 | 4 | DEBUG機能 | 完了（2026-10-01） |
 | 5 | Polish | 完了（2026-10-01） |
 | 6 | 機体ごとの性能値、一括対戦の関数 | 完了（2026-10-02） |
+| 7 | パーツ（選択 UI、コスト上限、保存） | 完了（2026-10-02） |
 
 Phase 6 からは MVP 後の拡張（パーツ、アリーナモード、共有、3台以上の対戦）。予定は「MVP 後のロードマップ」。
 
@@ -28,7 +29,8 @@ npm run dev        # 表示された URL をブラウザで開く
 ```
 
 - 中央上の CODE EDITOR にプレイヤー（ALPHA、緑、右側から開始）のAIコードが入っている。**RUN** で敵（BRAVO、オレンジ）との試合が始まる。
-- PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（ロボット情報）を持つ。**敵（BRAVO）のコードも編集できる。**
+- PROJECT には ALPHA と BRAVO があり、それぞれ `main.bot`（コード）と `config`（パーツと性能値）を持つ。**敵（BRAVO）のコードとパーツも変えられる。**
+- `config` を開くと、BODY / LEGS / GUN / SENSOR のパーツを選べる。下に、コストの合計（上限 12）と、その構成の性能値（標準との差つき）が出る。次の RUN / DEBUG から反映される。**コストが上限を超えていると、RUN / DEBUG は ERROR になって始まらない。**
 - `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
 - **DEBUG** で同じ試合を DEBUG モードで再生する（次に実行する行のハイライト、全種類のログ、行の実行時点への移動、戦闘画面に視線・ターゲット枠・最後に見た位置・ラベル）。視線などは INSPECTOR で選んでいるロボットのもの。
@@ -45,9 +47,10 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（488件）
+npm test           # Vitest（505件）
 npm run typecheck
 npm run build
+npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
 ```
 
 ## プロジェクト構成
@@ -58,7 +61,8 @@ IMPLEMENTATION_STATUS.md   このファイル
 index.html                 5領域のレイアウト
 src/
 ├─ data/
-│  ├─ robot_defaults.ts    ロボット基本値（数値はここに集約）
+│  ├─ robot_defaults.ts    ロボット基本値（標準パーツの値。数値はここに集約）
+│  ├─ parts.ts             パーツ（スロット、コスト、性能値）と、構成から性能値・コストを出す関数
 │  ├─ match_defaults.ts    tickレート、試合時間、既定seed、1tick の行数上限
 │  ├─ arenas/              マップ9種（index.ts が一覧。1マップ1ファイル、common.ts は共通部分）
 │  └─ templates/           テンプレート（RoboScriptソース）。index.ts が一覧と、ロード先に合わせた旋回の向きの入れ替え
@@ -109,7 +113,7 @@ src/
 │  ├─ recorder.ts          recordMatch(config) → Recording（全スナップショット + イベント）
 │  └─ replay_manager.ts    ReplayManager（表示位置 = tick + 行、再生、速度、行単位の step、seek、行の実行時点への移動）
 ├─ project/
-│  └─ project_store.ts     main.bot と project.json の保存・読み込み
+│  └─ project_store.ts     main.bot と project.json（マップ、パーツ構成）の保存・読み込み
 ├─ ui/                     画面。記録された Snapshot を表示する
 │  ├─ app.ts               全体の配線（試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
 │  ├─ toolbar.ts           上部バー
@@ -118,7 +122,7 @@ src/
 │  ├─ code_editor.ts       CodeMirror のラッパー
 │  ├─ roboscript_highlight.ts  シンタックスハイライト
 │  ├─ roboscript_assist.ts 入力候補・ホバー説明・自動インデントをエディタにつなぐ
-│  ├─ config_view.ts       config（ロボット基本値の一覧）
+│  ├─ parts_view.ts        config（パーツの選択、コスト、性能値の一覧）
 │  ├─ inspector.ts         INSPECTOR
 │  ├─ watch_panel.ts       WATCH
 │  ├─ debug_log.ts         DEBUG LOG
@@ -132,8 +136,8 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series
-                           （strategies.ts は対戦確認用のプレイヤーAI）
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts
+                           （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
 指示書34章の `BattleController` の責務は、`Simulation`（tick・ロボット更新・勝敗）、`recordMatch`（試合開始から終了まで）、`ReplayManager`（pause・速度・reset 後の再生）に分けている。
@@ -145,7 +149,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | Phase | 内容 | 画面の変化 | 状態 |
 |---|---|---|---|
 | 6 | 機体ごとの性能値、一括対戦の関数 | なし（土台） | 完了 |
-| 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 未着手 |
+| 7 | パーツ: データ、コスト上限、選択 UI、保存 | `config` がパーツ選択になる | 完了 |
 | 8 | パーツで見た目が変わる | ロボットの絵が構成ごとに変わる | 未着手 |
 | 9 | パーツで使える語が変わる | 積んでいない機能の語はエラーになる | 未着手 |
 | 10 | ガレージ（ロボットを複数保存）とアリーナモード（2台、観戦型） | モード切り替え、ロボット選択、観戦 | 未着手 |
@@ -158,7 +162,91 @@ tests/                     lexer / parser / runtime / reference / completion / i
 - アリーナモードは**観戦型**。ロボットとマップを選んで戦わせ、試合を見る。エディタやデバッグ表示は出さない。
 - 他の人のロボットとの対戦は、**サーバーなしの共有コード・URL** で始める。相手はプログラムの中身を読める。
 - パーツから着手する。「ロボット1台」のデータの形（プログラム + パーツ構成）を先に固めると、ガレージの保存形式と共有コードを作り直さずに済むため。
-- パーツのスロットは BODY / LEGS / GUN / SENSOR の4つを予定。「標準」4つの組み合わせが今の `ROBOT_DEFAULTS` と同じ値になるようにする。機体の半径と弾の半径はパーツで変えない。
+- ブランチは Phase ごとに `phase-N-名前` を切り、確認後に master へ fast-forward マージする。
+
+## Phase 7: パーツ
+
+ロボットの性能値を、パーツの選択で決められるようにした。ロボットの絵（Phase 8）と使える語（Phase 9）は変えていない。
+
+### パーツ（`src/data/parts.ts`）
+
+スロットは4つ、各3種。**コストの合計は 12 まで**（標準 3 × 4）。「標準」4つの構成は `ROBOT_DEFAULTS` と同じ値で、これまでのプログラムとテストの挙動は変わらない。
+
+| スロット | パーツ | コスト | 値 | 長所 / 短所 |
+|---|---|---|---|---|
+| BODY | Light | 2 | HP 80、速さ ×1.2 | 速い / 脆い |
+| | Standard | 3 | HP 100 | |
+| | Heavy | 4 | HP 120、速さ ×0.8 | 硬い / 遅い |
+| LEGS | Sprint | 3 | 移動 135、旋回 150 | 直進が速い / 旋回が遅い |
+| | Standard | 3 | 移動 100、旋回 180 | |
+| | Pivot | 3 | 移動 85、旋回 260 | 旋回が速い / 直進が遅い |
+| GUN | Rapid | 3 | 威力 10、間隔 0.3 秒、弾速 450、射程 340、ぶれ ±3.5°、弾 120、砲塔 360 | 手数が多い / 射程が短く、ばらつく |
+| | Standard | 3 | 威力 20、間隔 0.8 秒、弾速 400、射程 400、ぶれ ±2°、弾 50、砲塔 270 | |
+| | Cannon | 4 | 威力 45、間隔 1.3 秒、弾速 300、射程 520、ぶれ ±1°、弾 20、砲塔 150 | 一撃が重く遠くへ届く / 弾と砲塔が遅く、弾が少ない |
+| SENSOR | Short | 2 | 距離 300、360° | 安い / 近くしか見えない |
+| | Standard | 3 | 距離 1200、360° | |
+| | Scope | 2 | 距離 1200、120° | 安い / 前しか見えない |
+
+- BODY の「速さ ×」は、LEGS の移動と旋回の両方に掛かる。
+- 機体の半径、弾の半径、guard の値（回数、軽減率、射撃の遅れ）は、パーツで変わらない。
+- 強いパーツ（Heavy、Cannon）はコスト 4 なので、弱いパーツ（Light、Short、Scope）と組むことになる。Heavy と Cannon は同時に積めない。
+
+### 画面と保存
+
+- `config`（`src/ui/parts_view.ts`）: スロットごとにパーツのボタン（名前とコスト）と、選択中のパーツの説明。その下に `COST 11 / 12`（超過は赤）と性能値の一覧。標準と違う値には差を添え、良くなる値は緑、悪くなる値は橙で出す。
+- ALPHA と BRAVO のどちらもパーツを選べる。次の RUN / DEBUG から反映される。
+- **コストが上限を超える構成は選べるが、RUN / DEBUG は始まらない。** DEBUG LOG に `parts cost 14, over the limit of 12` の ERROR が出て、そのロボットの `config` が開く。
+- 試合のあとでパーツを変えると、上部に `[ALPHA parts changed since this run]` が出る。
+- 保存先は `project.json` の `loadouts`（出現順の配列。各要素は `{ body, legs, gun, sensor }` にパーツの id）。保存されていない、または存在しない id のスロットは標準になる。
+
+### バランス（`npm run balance`）
+
+各構成のロボットを、**同じテンプレートを積んだ標準構成のロボット**と戦わせた勝率（引き分けは半分）。テンプレート7種 × 9マップ × seed 1〜2 × 両側 = 1構成あたり 252試合。射程の違う銃では、テンプレートの撃ち始める距離を銃の射程に比例させている。
+
+1パーツだけ入れ替えた場合（コスト上限は無視）:
+
+| パーツ | コスト | 勝率 |
+|---|---|---|
+| BODY Light | 2 | 6% |
+| BODY Heavy | 4 | 94% |
+| LEGS Sprint | 3 | 42% |
+| LEGS Pivot | 3 | 61% |
+| GUN Rapid | 3 | 38% |
+| GUN Cannon | 4 | 75% |
+| SENSOR Short | 2 | 18% |
+| SENSOR Scope | 2 | 22% |
+
+コストを上限いっぱい（12）まで使った構成は **31〜70%**。主なもの:
+
+| 構成（BODY / LEGS / GUN / SENSOR） | 勝率 |
+|---|---|
+| Heavy / Pivot / Rapid / Short | 70%（最高） |
+| Heavy / Standard / Rapid / Short | 68% |
+| Standard / Pivot / Standard / Standard | 61% |
+| Light / Standard / Cannon / Standard | 50% |
+| Heavy / Standard / Standard / Short | 44% |
+| Heavy / Standard / Standard / Scope | 41% |
+| Standard / Standard / Rapid / Standard | 38% |
+| Standard / Standard / Cannon / Short | 31%（最低） |
+
+分かったこと:
+
+- **同じプログラムどうしの撃ち合いでは、HP の差がほぼそのまま勝敗になる。** 速さの差は、今のテンプレートではほとんど効かない（効くのは横に走って避ける StrafeBot だけ）。このため BODY は「コストで釣り合わせる」作りにした。
+- 目標は「どの構成も 35〜65%」だったが、上限いっぱいの構成で 31〜70% にとどまった。数値を少し動かすだけで勝率が 7 ポイントほど動く（Pivot の旋回 260 → 240 で 61% → 68%）ので、この測り方でこれ以上詰めても意味がないと判断した。
+- コストを余らせた構成（Light だけ入れて何も強くしない、など）は 1〜30%。Light で浮いたコストの使い道は Cannon しかない。
+- テンプレートによる差が大きい（Heavy / Standard / Rapid / Short は GuardBot で 100%、CowardBot で 19%）。プログラムとの相性が勝敗を分ける。
+
+### 残した課題
+
+- バランスは「同じテンプレートどうし」でしか測っていない。パーツに合わせて書いたプログラムどうしでは変わりうる。
+- テンプレートの撃ち始める距離は標準の銃（射程 400）前提の数字。射程を読む語（`weapon_range` など）は Phase 9 で足す。
+- 説明文（`bullet_distance`）の「1tick に約 13」は標準の銃の値。
+
+### 動作確認の結果
+
+- テストは 505件（追加 17件: パーツと構成、保存、`playSeries` に渡す出現位置）。
+- 全機が標準構成のとき、Phase 6 以前と同じ挙動であることを 882試合で確認した。
+- ブラウザで、パーツの選択、コスト超過での ERROR、再読み込み後の保持、試合後の変更の注記を確認した。
 
 ## Phase 6: 機体ごとの性能値と一括対戦
 

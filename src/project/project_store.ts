@@ -1,3 +1,5 @@
+import { type Loadout, readLoadout } from '../data/parts';
+
 /** The part of the Web Storage API the store needs. */
 export interface KeyValueStorage {
   getItem(key: string): string | null;
@@ -9,6 +11,8 @@ export interface ProjectInfo {
   version: number;
   /** Id of the arena the player chose; absent until they choose one. */
   arena?: string;
+  /** The parts of each robot, in spawn order; absent until the player changes a part. */
+  loadouts?: unknown[];
 }
 
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
@@ -44,6 +48,17 @@ export class ProjectStore {
   /** Remembers which arena the player chose. */
   saveArena(arenaId: string): void {
     this.saveInfo({ arena: arenaId });
+  }
+
+  /** The saved parts of the robot at the given spawn index; standard parts wherever nothing usable was saved. */
+  loadLoadout(robotIndex: number): Loadout {
+    return readLoadout(this.loadInfo().loadouts?.[robotIndex]);
+  }
+
+  saveLoadout(robotIndex: number, loadout: Loadout): void {
+    const loadouts = [...(this.loadInfo().loadouts ?? [])];
+    loadouts[robotIndex] = loadout;
+    this.saveInfo({ loadouts });
   }
 
   /** The saved project.json, or the default project if it is missing or unreadable. */
@@ -83,5 +98,6 @@ function isProjectInfo(value: unknown): value is ProjectInfo {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
   if (candidate.arena !== undefined && typeof candidate.arena !== 'string') return false;
+  if (candidate.loadouts !== undefined && !Array.isArray(candidate.loadouts)) return false;
   return typeof candidate.name === 'string' && typeof candidate.version === 'number';
 }

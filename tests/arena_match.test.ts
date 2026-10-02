@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type Entrant, builtInEntrants, fightNames, garageEntrants, playArenaSeries, prepareFight } from '../src/arena/match';
+import {
+  type Entrant,
+  builtInEntrants,
+  fightNames,
+  garageEntrants,
+  inOrder,
+  playArenaSeries,
+  prepareFight,
+} from '../src/arena/match';
 import { scatterSpawns } from '../src/arena/spawns';
 import { DEFAULT_ARENA } from '../src/data/arenas';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf, statsOf } from '../src/data/parts';
@@ -171,6 +179,33 @@ describe('playArenaSeries', () => {
     expect(played.ok && played.result).toMatchObject({ matches: 6, wins: [0, 0], draws: 6 });
   });
 
+  it('tells how every match went, in the order they were fought', () => {
+    const played = playArenaSeries([saved('Tank', SIT), saved('Striker', SHOOT)], roundsIn(DUEL_ARENA));
+    if (!played.ok) throw new Error('refused');
+    expect(played.matches.map(({ round, first }) => [round, first])).toEqual([
+      [0, 0],
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [2, 0],
+      [2, 1],
+    ]);
+    // Striker, the second entrant, wins wherever it starts.
+    for (const match of played.matches) {
+      expect(match).toMatchObject({ winner: 1, reason: 'destroyed' });
+      expect(match.ticks).toBeGreaterThan(0);
+    }
+  });
+
+  it('plays a match of the series as that match is played on its own', () => {
+    const entrants: [Entrant, Entrant] = [builtIn('sample'), builtIn('dumb_bot')];
+    const played = playArenaSeries(entrants, roundsIn(DEFAULT_ARENA, [5]));
+    if (!played.ok) throw new Error('refused');
+    const [fromFirst, fromSecond] = played.matches;
+    expect(fromFirst.ticks).toBe(outcomeOf(inOrder(entrants, 0), 5, DEFAULT_ARENA).tick);
+    expect(fromSecond.ticks).toBe(outcomeOf(inOrder(entrants, 1), 5, DEFAULT_ARENA).tick);
+  });
+
   it('plays each round in its own arena', () => {
     // A wall right across the field: the robots never see each other, and nobody wins.
     const walled: Arena = { ...DUEL_ARENA, obstacles: [{ x: 490, y: 0, width: 20, height: DUEL_ARENA.height }] };
@@ -180,6 +215,7 @@ describe('playArenaSeries', () => {
     ];
     const played = playArenaSeries([saved('Striker', SHOOT), saved('Tank', SIT)], rounds);
     expect(played.ok && played.result).toMatchObject({ matches: 4, wins: [2, 0], draws: 2 });
+    expect(played.ok && played.matches.map((match) => match.winner)).toEqual([0, 0, null, null]);
   });
 
   it('lets a robot play a series against itself', () => {

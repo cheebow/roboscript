@@ -5,8 +5,8 @@ import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, costOf, statsOf } from '../
 import { TEMPLATES, templateSource } from '../data/templates';
 import type { SavedRobot } from '../project/garage';
 import type { RobotBrain } from '../sim/ai_context';
-import { type SeriesResult, playSeries } from '../sim/series';
-import type { SimulationConfig } from '../sim/simulation';
+import type { SeriesResult } from '../sim/series';
+import { type MatchEndReason, Simulation, type SimulationConfig } from '../sim/simulation';
 import type { Arena } from '../sim/types';
 import { scatterSpawns } from './spawns';
 
@@ -111,58 +111,62 @@ export interface SeriesRound {
   seed: number;
 }
 
+/** One match of a series, and how it went. */
+export interface SeriesMatch {
+  /** The round it belongs to, counted from 0. */
+  round: number;
+  /** Which of the two entrants started at the first spawn point. */
+  first: 0 | 1;
+  /** Which of the two entrants won; null for a draw. */
+  winner: 0 | 1 | null;
+  reason: MatchEndReason;
+  /** How many ticks it lasted. */
+  ticks: number;
+}
+
 /**
- * Plays the two entrants against each other round after round, and counts
- * who won. A round is two matches, one from each side, in the round's arena
- * and from the starting places its seed gives. Refused for the same reasons
- * as a single match.
+ * Plays the two entrants against each other round after round, and tells how
+ * every match went and who won how many. A round is two matches, one from
+ * each side, in the round's arena and from the starting places its seed
+ * gives. Refused for the same reasons as a single match.
  */
 export function playArenaSeries(
   entrants: readonly [Entrant, Entrant],
   rounds: readonly SeriesRound[],
-): { ok: true; names: [string, string]; result: SeriesResult } | Refusal {
-  // Either way round: a built-in robot's program depends on where it starts.
-  const ways: [Entrant, Entrant][] = [
-    [entrants[0], entrants[1]],
-    [entrants[1], entrants[0]],
-  ];
-  for (const way of ways) {
-    // What keeps a robot from fighting has nothing to do with the arena or the seed.
-    const prepared = prepareFight(way, rounds[0].arena, rounds[0].seed);
-    if (!prepared.ok) return prepared;
-  }
-
-  const names = fightNames(entrants);
-  const contenderOf = (index: number) => ({
-    id: names[index],
-    stats: statsOf(entrants[index].loadout),
-    createBrain: (spawnIndex: number) => {
-      const compiled = compileScript(entrants[index].sourceFor(spawnIndex));
-      if (!compiled.ok) throw new Error(`${names[index]} does not compile`);
-      return compiled.brain;
-    },
-  });
+): { ok: true; names: [string, string]; matches: SeriesMatch[]; result: SeriesResult } | Refusal {
+  const matches: SeriesMatch[] = [];
   const result: SeriesResult = {
     matches: 0,
     wins: [0, 0],
     draws: 0,
     reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
   };
-  for (const { arena, seed } of rounds) {
-    const played = playSeries({
-      contenders: [contenderOf(0), contenderOf(1)],
-      arenas: [scatterSpawns(arena, seed)],
-      seeds: [seed],
-      tickRate: MATCH_DEFAULTS.tickRate,
-      maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-    });
-    result.matches += played.matches;
-    result.wins[0] += played.wins[0];
-    result.wins[1] += played.wins[1];
-    result.draws += played.draws;
-    for (const reason of Object.keys(result.reasons) as (keyof typeof result.reasons)[]) {
-      result.reasons[reason] += played.reasons[reason];
+  for (const [round, { arena, seed }] of rounds.entries()) {
+    for (const first of [0, 1] as const) {
+      const prepared = prepareFight(inOrder(entrants, first), arena, seed);
+      if (!prepared.ok) return prepared;
+      const simulation = new Simulation(prepared.fight.config);
+      while (simulation.result === null) simulation.step();
+
+      const { winnerId, reason } = simulation.result;
+      // The robot at the first spawn point is the entrant `first`; the other one is the other.
+      const startedFirst = winnerId === prepared.fight.names[0];
+      const winner = winnerId === null ? null : startedFirst ? first : other(first);
+      matches.push({ round, first, winner, reason, ticks: simulation.tick });
+      result.matches++;
+      result.reasons[reason]++;
+      if (winner === null) result.draws++;
+      else result.wins[winner]++;
     }
   }
-  return { ok: true, names, result };
+  return { ok: true, names: fightNames(entrants), matches, result };
+}
+
+/** The two entrants with the given one first. */
+export function inOrder(entrants: readonly [Entrant, Entrant], first: 0 | 1): [Entrant, Entrant] {
+  return [entrants[first], entrants[other(first)]];
+}
+
+function other(index: 0 | 1): 0 | 1 {
+  return index === 0 ? 1 : 0;
 }

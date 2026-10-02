@@ -399,6 +399,24 @@ button {
   color: var(--error);
 }
 
+/* A series: its matches one under the other, the count of wins last. */
+.series {
+  margin: 2px 0 6px;
+}
+
+.series .result {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.series-title {
+  color: var(--muted);
+}
+
+.series-total {
+  color: var(--syntax-value);
+}
+
 /* Inspector, Watch, config */
 
 .field-list {

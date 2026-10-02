@@ -4,6 +4,7 @@ import {
   builtInEntrants,
   fightNames,
   garageEntrants,
+  inOrder,
   playArenaSeries,
   prepareFight,
 } from '../arena/match';
@@ -303,20 +304,40 @@ export class ArenaMode {
   /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
   private playSeries(): void {
     // Every map comes up once before any comes up twice, in an order of its own each time.
-    const maps = shuffled(ARENAS);
-    const rounds = Array.from({ length: SERIES_ROUNDS }, (_, round) => ({
-      arena: maps[round % maps.length].arena,
-      seed: randomSeed(),
-    }));
-    const played = playArenaSeries(this.pickedEntrants(), rounds);
+    const shuffledMaps = shuffled(ARENAS);
+    const maps = Array.from({ length: SERIES_ROUNDS }, (_, round) => shuffledMaps[round % shuffledMaps.length]);
+    const rounds = maps.map(({ arena }) => ({ arena, seed: randomSeed() }));
+    const entrants = this.pickedEntrants();
+    const played = playArenaSeries(entrants, rounds);
     if (!played.ok) {
       this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
       return;
     }
-    const { names, result } = played;
+
+    // One line for every match, in the order they were fought, and the count of wins at the end.
+    const { names, matches, result } = played;
+    const series = createElement('div', 'series');
+    series.append(createElement('div', 'result series-title', `SERIES ×${matches.length}  ${names.join(' vs ')}`));
+    matches.forEach((match, index) => {
+      const outcome = match.winner === null ? 'draw' : `${names[match.winner]} won`;
+      const reason = match.reason === 'destroyed' ? '' : ` (${match.reason})`;
+      const seconds = formatSeconds(match.ticks / MATCH_DEFAULTS.tickRate);
+      const text = `${`${index + 1}`.padStart(2)}  ${outcome}${reason}, ${seconds} s, ${maps[match.round].name}`;
+      const entry = createElement('button', 'result fought', text);
+      entry.type = 'button';
+      entry.title = 'Show this match';
+      const fought: FoughtMatch = {
+        entrants: inOrder(entrants, match.first),
+        arena: maps[match.round],
+        seed: rounds[match.round].seed,
+      };
+      entry.addEventListener('click', () => this.show(fought));
+      series.append(entry);
+    });
     const draws = result.draws === 0 ? '' : `, ${result.draws} ${result.draws === 1 ? 'draw' : 'draws'}`;
-    const text = `SERIES ×${result.matches}  ${names[0]} ${result.wins[0]} – ${result.wins[1]} ${names[1]}${draws}\n    all ${maps.length} maps`;
-    this.addResult(createElement('div', 'result', text));
+    const total = `${names[0]} ${result.wins[0]} – ${result.wins[1]} ${names[1]}${draws}`;
+    series.append(createElement('div', 'result series-total', total));
+    this.addResult(series);
   }
 
   /** The newest result goes on top. */

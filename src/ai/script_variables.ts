@@ -13,6 +13,8 @@ export const BOOLEAN_VARIABLES = {
   blocked_behind: (context: AIContext) => context.blockedBehind,
   bullet_incoming: (context: AIContext) => context.bulletIncoming,
   cover_visible: (context: AIContext) => context.coverVisible,
+  hit: (context: AIContext) => context.hit,
+  touching_enemy: (context: AIContext) => context.touchingEnemy,
 };
 
 export const NUMBER_VARIABLES = {
@@ -33,6 +35,7 @@ export const NUMBER_VARIABLES = {
   lead_angle: (context: AIContext) => context.leadAngle,
   gun_angle: (context: AIContext) => context.gunAngle,
   weapon_range: (context: AIContext) => context.weaponRange,
+  hit_angle: (context: AIContext) => context.hitAngle,
 };
 
 export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;

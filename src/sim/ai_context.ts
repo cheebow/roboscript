@@ -55,6 +55,15 @@ export interface AIContext {
   readonly gunAngle: number;
   /** How far the robot's own gun shoots. */
   readonly weaponRange: number;
+  /**
+   * An enemy bullet has hit the robot since its AI last looked at this. Looking
+   * uses it up: it is false again from the next tick, until the next hit.
+   */
+  readonly hit: boolean;
+  /** Where the bullet that last hit the robot came from, relative to the hull (deg, positive = to the right). 0 before the first hit. */
+  readonly hitAngle: number;
+  /** The robot and the enemy stand against each other: neither can drive any closer. */
+  readonly touchingEnemy: boolean;
 }
 
 /**

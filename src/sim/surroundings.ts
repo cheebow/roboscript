@@ -13,6 +13,8 @@ export interface Surroundings {
   /** A wall or an obstacle keeps the robot from moving one step forward / backward. */
   blocked: boolean;
   blockedBehind: boolean;
+  /** Another robot stands right against this one: driving cannot bring them any closer. */
+  touchingEnemy: boolean;
   /** Distance from the robot's edge to the nearest wall or obstacle in each direction. */
   wallAhead: number;
   wallBehind: number;
@@ -43,6 +45,7 @@ export interface Cover {
 export const OPEN_SURROUNDINGS: Surroundings = {
   blocked: false,
   blockedBehind: false,
+  touchingEnemy: false,
   wallAhead: 0,
   wallBehind: 0,
   wallLeft: 0,

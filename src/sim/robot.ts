@@ -59,6 +59,11 @@ export class RobotController {
   /** Where to shoot to hit the enemy if it keeps moving as it does; null until it has been seen. */
   private leadTarget: Vec2 | null = null;
   private sensed: GunReading = NO_GUN_READING;
+  /** A bullet has hit the robot, and the brain has not looked at `hit` since. */
+  private struck = false;
+  /** deg on the field: where the bullet that last hit the robot came from. Null until it is hit. */
+  private hitFrom: number | null = null;
+  private hitSensed: HitReading = NO_HIT_READING;
   private lastAction: AIAction | null = null;
   private readonly knownVariables = new Map<string, number>();
 
@@ -137,6 +142,17 @@ export class RobotController {
     return measure(this.position, this.gunHeading, target).angle;
   }
 
+  /** What the brain was told about being hit on the latest tick. */
+  get hitReading(): HitReading {
+    return this.hitSensed;
+  }
+
+  /** Tells the robot that a bullet coming from the given direction on the field (deg) has hit it. */
+  noteHit(from: number): void {
+    this.struck = true;
+    this.hitFrom = from;
+  }
+
   /** Tells the robot what the simulation found around it this tick. */
   noteSurroundings(surroundings: Surroundings): void {
     this.around = surroundings;
@@ -154,7 +170,14 @@ export class RobotController {
 
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
-    const action = this.brain.decide(this.buildContext());
+    let lookedAtHit = false;
+    const action = this.brain.decide(
+      this.buildContext(() => {
+        lookedAtHit = true;
+      }),
+    );
+    // A hit is told of once: the brain that has looked is not told again.
+    if (lookedAtHit) this.struck = false;
     if (action.label !== null) this.label = action.label;
     this.lastAction = action;
     for (const { name, value } of action.assignments) this.knownVariables.set(name, value);
@@ -236,9 +259,13 @@ export class RobotController {
     }
   }
 
-  private buildContext(): AIContext {
+  /** `onHitRead` is called when the brain looks at `hit`. */
+  private buildContext(onHitRead: () => void): AIContext {
     const around = this.around;
     const { incomingBullet } = around;
+    const hit = this.struck;
+    const hitAngle = this.hitFrom === null ? 0 : normalizeAngle(this.hitFrom - this.rotation);
+    this.hitSensed = { hit, hitAngle };
     return {
       enemyVisible: this.reading.enemyVisible,
       enemyDistance: this.reading.enemyDistance,
@@ -271,6 +298,12 @@ export class RobotController {
       leadAngle: this.sensed.leadAngle,
       gunAngle: this.sensed.gunAngle,
       weaponRange: this.stats.weaponRange,
+      get hit() {
+        onHitRead();
+        return hit;
+      },
+      hitAngle,
+      touchingEnemy: around.touchingEnemy,
     };
   }
 }
@@ -288,3 +321,13 @@ export interface GunReading {
 }
 
 const NO_GUN_READING: GunReading = { aimAngle: 0, leadAngle: 0, gunAngle: 0, lead: null };
+
+/** What a robot knows about the bullets that have hit it, as told to its brain. */
+export interface HitReading {
+  /** A bullet has hit the robot and the brain had not looked since. */
+  hit: boolean;
+  /** deg from the hull to where the last such bullet came from. 0 before the first hit. */
+  hitAngle: number;
+}
+
+const NO_HIT_READING: HitReading = { hit: false, hitAngle: 0 };

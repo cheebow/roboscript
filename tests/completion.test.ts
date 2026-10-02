@@ -27,8 +27,18 @@ const NUMBERS = [
   'lead_angle',
   'gun_angle',
   'weapon_range',
+  'hit_angle',
 ];
-const SENSORS = ['enemy_visible', 'blocked', 'blocked_behind', 'bullet_incoming', 'cover_visible', ...NUMBERS];
+const SENSORS = [
+  'enemy_visible',
+  'blocked',
+  'blocked_behind',
+  'bullet_incoming',
+  'cover_visible',
+  'hit',
+  'touching_enemy',
+  ...NUMBERS,
+];
 
 describe('completionsAt: statements', () => {
   it('offers the statements that start with what is typed at the start of a line', () => {
@@ -197,7 +207,7 @@ describe('completionsAt: functions', () => {
   it('offers values between the parentheses of a call, after each comma too', () => {
     expect(offered(`${program}loop\n    approach(|`, true)).toEqual([...NUMBERS, 'approach', 'abs', 'stop']);
     expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle']);
-    expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp']);
+    expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });
 
   it('offers the parameters of a function inside it, and nowhere else', () => {

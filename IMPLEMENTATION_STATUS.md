@@ -54,7 +54,7 @@ npm run dev        # 表示された URL をブラウザで開く
 ## テスト方法
 
 ```sh
-npm test           # Vitest（573件）
+npm test           # Vitest（590件）
 npm run typecheck
 npm run build
 npm run balance    # パーツのバランス表を出す（数分かかる。`-- -t swapped` で1パーツ入れ替えの表だけ）
@@ -150,7 +150,7 @@ src/
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
                            battle / determinism / debug_logger / project_store / replay /
-                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match / arena_spawns
+                           effects / templates / arenas / surroundings / defence / turret / math / robot_stats / series / parts / sprites / garage / robot_marks / arena_match / arena_spawns / hit_and_touch
                            （strategies.ts は対戦確認用のプレイヤーAI、balance.report.ts は `npm run balance` の本体）
 ```
 
@@ -508,8 +508,51 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 | `wall_ahead` / `wall_behind` / `wall_left` / `wall_right` | その方向の壁・障害物までの距離（下記） |
 | `aim_angle` / `lead_angle` / `gun_angle` | 砲塔から敵まで、砲塔から敵の移動先までの角度と、車体の上での砲塔の向き（下記） |
 | `weapon_range` | 自分の銃の射程。積んでいる GUN で決まる（標準は 400） |
+| `hit` / `hit_angle` | 撃たれたか（読むまで真）、最後に当たった弾が来た方向（下記） |
+| `touching_enemy` | 相手ロボットと接している（下記） |
 
 実装: `ScriptBrain`（`src/ai/runtime.ts`）は JavaScript のジェネレータで書いたインタプリタで、行動の文で `yield` して tick を終え、次の `decide()` で続きから再開する。実行位置と変数はロボットごとに持つ。エンジン側（`RobotBrain` / `AIContext` / `AIAction`、`Simulation`）の形は変えていない。同じ seed・同じコードなら同じ結果になる。
+
+### 被弾と、相手との接触（2026-10-02 に追加）
+
+それまでは、撃たれたことは `hp` の減りから、相手にぶつかったことは `enemy_distance` から推測するしかなかった。
+
+**`hit`（真偽）**
+
+- 敵の弾が当たると真になり、**プログラムが `hit` を読んだ tick の終わりまで真のまま**。読まなければ、何 tick でも真のまま残る。
+- 読んだ tick の中では、何度読んでも同じ値。次の tick から偽に戻る。
+- 「直後の 1tick だけ真」にしなかったのは、行動1つで 1tick 進むので、ループ1周に 2tick 以上かかると、その tick に `if hit` を通らず見逃すため。
+- `guard` で軽減した弾も数える。読んで消えるまでの間に何発当たっても、真が1回。
+
+**`hit_angle`（数値）**
+
+- 最後に当たった弾が飛んできた方向。度で、0 が車体の正面、右が正（`enemy_angle` と同じ基準）。
+- フィールド上の方角として覚えておき、読むたびに今の車体の向きから測り直す。車体をその方向へ回せば 0 に近づく。
+- `hit` を読んでも消えない。次に撃たれるまで同じ方角を指す。一度も撃たれていなければ 0。
+
+**`touching_enemy`（真偽）**
+
+- 相手ロボットと接している間、ずっと真。どちらがぶつかったかは問わず、2台とも真になる。
+- 「接している」= 2台の車体のすき間が、2台のうち速い方の 1tick ぶんの移動より小さい（走ってもそれ以上詰められない）。
+- 方向は `enemy_angle` で読む。`blocked` / `blocked_behind` は今までどおり、壁と障害物だけを見る。
+
+```text
+set hits = 0
+drive forward
+loop
+    if hit
+        set hits = hits + 1
+        label HIT
+    if touching_enemy
+        label BUMPED
+        drive stop
+    turn enemy
+    wait
+```
+
+実装: 被弾は `RobotController.noteHit()`（`src/sim/robot.ts`）が「まだ読まれていない被弾」と弾の来た方角を覚える。`AIContext.hit` は読むと印が付く形で渡し、その tick の判断が終わったら、読まれていた場合だけ下ろす。接触は `Simulation` が毎 tick のはじめに判定する。WATCH に3つとも出る。
+
+確認: テスト 590件（追加 17件）。標準構成の 882試合は、これまでと完全に一致（読むだけの語を足しても挙動は変わらない）。ブラウザで、上のプログラムが被弾を数え、接したところで `BUMPED` に切り替わること、入力候補に3語が出ることを確認した。
 
 ### 走りながら撃つ: 走行、砲塔、偏差射撃
 

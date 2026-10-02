@@ -251,6 +251,24 @@ const LANGUAGE: readonly WordReference[] = [
     hint: 'how far the gun shoots',
     summary: `How far this robot's own gun shoots: ${ROBOT_DEFAULTS.weaponRange} with a standard gun. A bullet fired at an enemy further away than this falls short.`,
   },
+  {
+    word: 'hit',
+    kind: 'sensor',
+    hint: 'a bullet has hit the robot',
+    summary: 'True once an enemy bullet has hit the robot, and until the program has looked: however many ticks it takes to get to a line that reads it, it is still true there, and false again from the next tick. See hit_angle for where the bullet came from.',
+  },
+  {
+    word: 'hit_angle',
+    kind: 'sensor',
+    hint: 'where the last hit came from',
+    summary: `Direction from which the bullet that last hit the robot came, ${ANGLE}. It stays until the next hit, and follows the hull as it turns. 0 before the first hit.`,
+  },
+  {
+    word: 'touching_enemy',
+    kind: 'sensor',
+    hint: 'right against the enemy',
+    summary: 'True while the robot and the enemy stand right against each other, whichever of them drove into the other: neither can drive any closer. enemy_angle tells where the enemy is.',
+  },
 ];
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));

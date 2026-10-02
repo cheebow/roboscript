@@ -3,7 +3,7 @@ import type { RobotBrain } from './ai_context';
 import { type Bullet, stepBullet } from './bullet';
 import { findCover } from './cover';
 import { type DebugEventSink, EventReporter } from './event_reporter';
-import { circleIntersectsRect, distance, segmentRectDistance } from './math';
+import { circleIntersectsRect, distance, radToDeg, segmentRectDistance } from './math';
 import { wallDistance } from './range_finder';
 import { MatchRng } from './rng';
 import { RobotController } from './robot';
@@ -175,6 +175,7 @@ export class Simulation {
     return {
       blocked: this.hitsTerrain(robot.stepTarget('forward', this.tickDuration), radius),
       blockedBehind: this.hitsTerrain(robot.stepTarget('backward', this.tickDuration), radius),
+      touchingEnemy: this.robots.some((other) => other !== robot && other.alive && this.areTouching(robot, other)),
       wallAhead: wallAt(0),
       wallBehind: wallAt(180),
       wallLeft: wallAt(-90),
@@ -207,6 +208,15 @@ export class Simulation {
       const angle = next === undefined ? 0 : measure(position, rotation, next).angle;
       return { ...found, angle };
     };
+  }
+
+  /**
+   * Whether two robots stand against each other: the gap between them is less
+   * than the faster of them drives in a tick, so driving cannot close it further.
+   */
+  private areTouching(a: RobotController, b: RobotController): boolean {
+    const gap = distance(a.position, b.position) - a.stats.radius - b.stats.radius;
+    return gap < Math.max(a.stats.moveSpeed, b.stats.moveSpeed) * this.tickDuration;
   }
 
   private think(robot: RobotController) {
@@ -284,6 +294,8 @@ export class Simulation {
     if (target === undefined) throw new Error(`Bullet hit unknown robot "${targetId}"`);
     const wasAlive = target.alive;
     const damage = target.takeDamage(bullet.damage);
+    // It came from the way opposite to the one it flew.
+    target.noteHit(radToDeg(Math.atan2(-bullet.direction.y, -bullet.direction.x)));
     if (target.guarding) this.tickEvents.push({ kind: 'deflected', ...target.position });
     if (wasAlive && !target.alive) this.tickEvents.push({ kind: 'destroyed', ...target.position });
     this.reporter?.hit(bullet.ownerId, target.id, damage, target.hp, target.guarding);

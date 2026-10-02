@@ -48,6 +48,11 @@ export interface RobotSnapshot {
   lead: Vec2 | null;
   /** How far the robot's gun shoots. */
   weaponRange: number;
+  /** Whether the AI was told of a hit, and where the bullet that last hit the robot came from. */
+  hit: boolean;
+  hitAngle: number;
+  /** The robot and the enemy stood against each other. */
+  touchingEnemy: boolean;
   /** Source lines the AI executed on this tick, in order; the last is the action it took. */
   executedLines: readonly number[];
   /** What the AI assigned to its variables on this tick, in order. */
@@ -87,7 +92,8 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
     time: simulation.time,
     robots: simulation.robots.map((robot) => {
       const { enemyVisible, enemyDistance, enemyAngle, lastSeen } = robot.sensorReading;
-      const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover } = robot.surroundings;
+      const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover, touchingEnemy } = robot.surroundings;
+      const { hit, hitAngle } = robot.hitReading;
       const { aimAngle, leadAngle, gunAngle, lead } = robot.gunReading;
       return {
         id: robot.id,
@@ -120,6 +126,9 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         gunAngle,
         lead: lead === null ? null : { ...lead },
         weaponRange: robot.stats.weaponRange,
+        hit,
+        hitAngle,
+        touchingEnemy,
         executedLines: [...(robot.action?.executedLines ?? [])],
         assignments: (robot.action?.assignments ?? []).map((assignment) => ({ ...assignment })),
         variables: Object.fromEntries(robot.variables),

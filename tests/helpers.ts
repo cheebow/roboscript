@@ -50,6 +50,9 @@ export const QUIET_CONTEXT: AIContext = {
   leadAngle: 0,
   gunAngle: 0,
   weaponRange: ROBOT_DEFAULTS.weaponRange,
+  hit: false,
+  hitAngle: 0,
+  touchingEnemy: false,
 };
 
 const TURN = /\bturn (left|right)\b/g;

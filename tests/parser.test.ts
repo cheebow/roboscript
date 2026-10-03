@@ -346,6 +346,7 @@ describe('parser: errors', () => {
     expect(errorsOf(`if enemy_visible < 3${block}`)).toEqual(['Line 1: enemy_visible is not a number']);
     expect(errorsOf(`if hp < blocked${block}`)).toEqual(['Line 1: blocked is not a number']);
     expect(errorsOf(`if hp${block}`)).toEqual(['Line 1: Expected comparison after "hp"']);
+    expect(errorsOf(`if 1${block}`)).toEqual(['Line 1: Expected comparison after "1"']);
     expect(errorsOf(`if hp <${block}`)).toEqual(['Line 1: Expected value after "<"']);
     expect(errorsOf(`if enemy_visible and${block}`)).toEqual(['Line 1: Expected condition']);
     expect(errorsOf(`if < 3${block}`)).toEqual(['Line 1: Expected condition']);
@@ -387,5 +388,35 @@ describe('parser: errors', () => {
 
   it('reports lexer errors before anything else', () => {
     expect(errorsOf('shoot\nfire!')).toEqual(['Line 2: Unexpected character "!"']);
+  });
+});
+
+describe('parser: true, false and conditions that stand on their own', () => {
+  const body = '\n    fire';
+
+  it('reads true and false as the numbers 1 and 0', () => {
+    const { program } = parse('set yes = true\nset no = false\nloop\n    wait');
+    expect(program?.body.slice(0, 2)).toEqual([
+      { kind: 'set', line: 1, name: 'yes', value: { kind: 'number', value: 1 } },
+      { kind: 'set', line: 2, name: 'no', value: { kind: 'number', value: 0 } },
+    ]);
+  });
+
+  it("lets a function's result or a variable stand as a condition", () => {
+    const source = `def hurt()\n    if hp < 100\n        return true\n    return false\nset ready = 1\nif hurt()${body}\nif ready${body}\nif not hurt() and ready${body}`;
+    expect(errorsOf(source)).toEqual([]);
+    const { program } = parse(source);
+    // Functions are kept apart from the body: the body is the set and the three ifs.
+    expect(program?.body[1]).toMatchObject({ kind: 'if', condition: { kind: 'truthy', value: { kind: 'call', name: 'hurt' } } });
+    expect(program?.body[2]).toMatchObject({ kind: 'if', condition: { kind: 'truthy', value: { kind: 'variable' } } });
+  });
+
+  it('keeps asking for a comparison after a sensor or a number', () => {
+    expect(errorsOf(`if hp${body}`)).toEqual(['Line 1: Expected comparison after "hp"']);
+  });
+
+  it('does not let true or false be a variable or function name', () => {
+    expect(errorsOf('set true = 1')).toEqual(['Line 1: "true" cannot be used as a variable name']);
+    expect(errorsOf('def false()\n    return 0')).toEqual(['Line 1: "false" cannot be used as a function name']);
   });
 });

@@ -228,6 +228,8 @@ export class ScriptBrain implements RobotBrain {
     switch (condition.kind) {
       case 'boolean_variable':
         return BOOLEAN_VARIABLES[condition.name](this.context);
+      case 'truthy':
+        return this.valueOf(condition.value) !== 0;
       case 'comparison':
         return compare(condition.operator, this.valueOf(condition.left), this.valueOf(condition.right));
       case 'not':

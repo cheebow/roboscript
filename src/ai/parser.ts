@@ -485,6 +485,9 @@ class ExpressionParser {
     const left = this.parseSum();
     const operator = this.peek();
     if (operator === undefined || !isComparison(operator)) {
+      // A function's result or a variable stands as a condition on its own: it holds when it is not 0.
+      const standsAlone = operator === undefined || isLogicalWord(operator) || isSymbol(operator, ')');
+      if (standsAlone && (left.kind === 'call' || left.kind === 'variable')) return { kind: 'truthy', value: left };
       throw new LineError(`Expected comparison after "${describeEnd(this.tokens, this.position, start)}"`);
     }
     this.position++;
@@ -537,6 +540,9 @@ class ExpressionParser {
       return inner;
     }
     if (token.type !== 'word') throw new LineError(`Unexpected "${token.text}"`);
+    // true and false are the numbers 1 and 0, so that a function can return a yes or a no.
+    if (token.text === 'true') return { kind: 'number', value: 1 };
+    if (token.text === 'false') return { kind: 'number', value: 0 };
     if (isSymbol(this.peek(), '(')) return this.parseCall(token.text);
     if (isNumberVariable(token.text)) return { kind: 'sensor', name: token.text };
     if (isBooleanVariable(token.text)) throw new LineError(`${token.text} is not a number`);

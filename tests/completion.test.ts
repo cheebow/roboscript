@@ -132,7 +132,7 @@ describe('completionsAt: conditions', () => {
 
   it('offers numbers only after a comparison or arithmetic, once a letter is typed', () => {
     expect(offered('if enemy_distance < |')).toBeNull();
-    expect(offered('if enemy_distance < |', true)).toEqual(NUMBERS);
+    expect(offered('if enemy_distance < |', true)).toEqual(['true', 'false', ...NUMBERS]);
     expect(offered('set limit = 1\nif enemy_distance < li|')).toEqual(['limit']);
     expect(offered('if hp + am|')).toEqual(['ammo']);
   });
@@ -162,7 +162,7 @@ describe('completionsAt: set', () => {
 
   it('offers number sensors and variables in the value', () => {
     expect(offered('set left = am|')).toEqual(['ammo']);
-    expect(offered('set n = 0\nset m = n + |', true)).toEqual([...NUMBERS, 'n', 'm']);
+    expect(offered('set n = 0\nset m = n + |', true)).toEqual(['true', 'false', ...NUMBERS, 'n', 'm']);
     expect(offered('set left = ammo |', true)).toBeNull();
   });
 });
@@ -207,7 +207,7 @@ describe('completionsAt: functions', () => {
   });
 
   it('offers values between the parentheses of a call, after each comma too', () => {
-    expect(offered(`${program}loop\n    approach(|`, true)).toEqual([...NUMBERS, 'approach', 'abs', 'stop']);
+    expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'approach', 'abs', 'stop']);
     expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle']);
     expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });

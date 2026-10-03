@@ -36,6 +36,37 @@ function valueOf(expression: string, context: Partial<AIContext> = {}): number {
   return action.assignments[1].value;
 }
 
+describe('runtime: functions that answer yes or no', () => {
+  const program = `def about_to_be_hit()
+    if bullet_incoming and bullet_distance < 36
+        return true
+    return false
+
+loop
+    if about_to_be_hit()
+        guard
+    else
+        if not about_to_be_hit() and hp > 0
+            fire
+        else
+            wait`;
+
+  it('take a function call as a condition: its result holds when it is not 0', () => {
+    expect(describe1(runTicks(program, 1, { bulletIncoming: true, bulletDistance: 20 })[0])).toBe('guard');
+    expect(describe1(runTicks(program, 1, { bulletIncoming: false })[0])).toBe('fire');
+  });
+
+  it('take a variable as a condition the same way', () => {
+    const counted = 'set ready = 0\nloop\n    if ready\n        fire\n    else\n        set ready = 1\n        wait';
+    expect(runTicks(counted, 2).map(describe1)).toEqual(['nothing', 'fire']);
+  });
+
+  it('give true and false back as 1 and 0', () => {
+    expect(valueOf('true')).toBe(1);
+    expect(valueOf('false')).toBe(0);
+  });
+});
+
 describe('runtime: face', () => {
   it('turns the hull a tick at a time until it faces the target, then goes on without taking a tick', () => {
     const program = 'loop\n    face enemy\n    fire';

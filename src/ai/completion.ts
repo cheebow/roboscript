@@ -166,7 +166,7 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
 }
 
 /** A number is expected: a sensor that gives one, a variable or a function. Not offered until a letter is typed. */
-const VALUE: Expectation = { words: NUMBER_SENSORS, variables: true, functions: true, eager: false };
+const VALUE: Expectation = { words: ['true', 'false', ...NUMBER_SENSORS], variables: true, functions: true, eager: false };
 
 /** What fits next in a condition (`if`, `while`) or, when not `inCondition`, in the value of a `set`. */
 function valueAfter(tokens: readonly Token[], inCondition: boolean): Expectation | null {

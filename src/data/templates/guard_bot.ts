@@ -11,8 +11,8 @@ export const GUARD_BOT = `# GuardBot: DumbBot with a defence: it braces (guard) 
 # use them on the very tick of the hit.
 def about_to_be_hit()
     if bullet_incoming and bullet_distance < 36 and guards > 0
-        return 1
-    return 0
+        return true
+    return false
 
 # Two robots that go round obstacles the same way can chase each other for good.
 set other_way = 0  # 1 while it goes round obstacles on the other side
@@ -26,7 +26,7 @@ loop
         if lost > 300
             set lost = 0
             set other_way = 1 - other_way
-    if about_to_be_hit() == 1
+    if about_to_be_hit()
         guard
     else
         if hit and not enemy_visible
@@ -46,7 +46,7 @@ loop
                     turn enemy
 
                     # A tick has passed: look for the bullet again.
-                    if about_to_be_hit() == 1
+                    if about_to_be_hit()
                         guard
                     else
                         if enemy_distance < 300

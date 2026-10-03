@@ -66,6 +66,9 @@ function noteCondition(condition: ConditionNode, used: Set<string>): void {
     case 'boolean_variable':
       used.add(condition.name);
       return;
+    case 'truthy':
+      noteExpression(condition.value, used);
+      return;
     case 'comparison':
       noteExpression(condition.left, used);
       noteExpression(condition.right, used);

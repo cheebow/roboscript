@@ -18,6 +18,8 @@ export type Expression =
 
 export type ConditionNode =
   | { kind: 'boolean_variable'; name: BooleanVariableName }
+  /** A function's result or a variable standing for itself: holds when it is not 0. */
+  | { kind: 'truthy'; value: Expression }
   | { kind: 'comparison'; operator: ComparisonOperator; left: Expression; right: Expression }
   | { kind: 'not'; operand: ConditionNode }
   | { kind: 'and' | 'or'; left: ConditionNode; right: ConditionNode };

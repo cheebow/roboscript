@@ -138,13 +138,16 @@ export class Simulation {
 
     // Every robot senses and decides on the same snapshot, so update order
     // gives none an information advantage.
-    for (const robot of this.robots) this.sense(robot);
+    // A destroyed robot is a wreck: it no longer senses, thinks, drives or shoots.
+    const standing = this.robots.filter((robot) => robot.alive);
+    for (const robot of standing) this.sense(robot);
     // Every sensor has been read: each robot now learns whether the others' missed it.
-    for (const robot of this.robots) this.recover(robot);
-    const actions = this.robots.map((robot) => this.think(robot));
+    for (const robot of standing) this.recover(robot);
+    const actions = this.robots.map((robot) => (robot.alive ? this.think(robot) : null));
 
     this.robots.forEach((robot, index) => {
       const action = actions[index];
+      if (action === null) return;
       robot.guarding = action.guard && robot.brace(this.tick);
       if (action.guard && !robot.guarding) this.reporter?.outOfGuards(robot.id, action.sourceLines.guard);
       robot.setDrive(action.drive);
@@ -152,13 +155,18 @@ export class Simulation {
       robot.drive(this.tickDuration, (position) => this.isBlocked(robot, position));
     });
     // Turrets turn once every robot is where it will be when the shots are fired.
-    this.robots.forEach((robot, index) => robot.aim(actions[index].aim, this.tickDuration));
+    this.robots.forEach((robot, index) => {
+      const action = actions[index];
+      if (action !== null) robot.aim(action.aim, this.tickDuration);
+    });
 
     this.robots.forEach((robot, index) => {
+      const action = actions[index];
+      if (action === null) return;
       robot.weapon.tick();
       // Bracing takes the gun off target: every tick of it puts off the next shot.
       if (robot.guarding) robot.weapon.delay(this.guardRecoveryTicks[index]);
-      if (actions[index].fire) this.fire(robot, actions[index].sourceLines.fire);
+      if (action.fire) this.fire(robot, action.sourceLines.fire);
     });
 
     this.stepBullets();

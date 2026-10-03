@@ -73,6 +73,22 @@ describe('a battle royale', () => {
     expect(simulation.robots[0].hp).toBe(NO_SPREAD_STATS.maxHp - 50);
   });
 
+  it('leaves a destroyed robot where it fell: it no longer drives, turns or shoots', () => {
+    const shooter = compileBrain('loop\n    if lead_angle > 1 or lead_angle < -1\n        aim lead\n    else\n        fire');
+    const restless = new FixedBrain({ drive: 'forward', turn: 'left', fire: true });
+    const simulation = royale([shooter, restless, new FixedBrain()]);
+    const wreck = simulation.robots[1];
+    while (wreck.alive) simulation.step();
+    const where = { ...wreck.position };
+    const { rotation, gunHeading } = wreck;
+    const ammo = wreck.weapon.ammo;
+    runTicks(simulation, MATCH_DEFAULTS.tickRate);
+    expect(wreck.position).toEqual(where);
+    expect(wreck.rotation).toBe(rotation);
+    expect(wreck.gunHeading).toBe(gunHeading);
+    expect(wreck.weapon.ammo).toBe(ammo);
+  });
+
   it('forgets an enemy once it is destroyed, rather than looking for its wreck', () => {
     const shooter = compileBrain('loop\n    if lead_angle > 1 or lead_angle < -1\n        aim lead\n    else\n        fire');
     const twoOnly: Arena = { ...THREE, spawns: THREE.spawns.slice(0, 2).concat([{ x: 150, y: 300, rotation: 0 }]) };

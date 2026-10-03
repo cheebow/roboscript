@@ -14,7 +14,14 @@ import {
   programVariables,
   withoutComment,
 } from './reference';
-import { AIM_DIRECTIONS, BOOLEAN_VARIABLES, DRIVE_SETTINGS, NUMBER_VARIABLES, TURN_DIRECTIONS } from './script_variables';
+import {
+  AIM_DIRECTIONS,
+  BOOLEAN_VARIABLES,
+  DRIVE_SETTINGS,
+  FACE_TARGETS,
+  NUMBER_VARIABLES,
+  TURN_DIRECTIONS,
+} from './script_variables';
 
 /** One word offered to the player. */
 export interface Suggestion extends WordReference {
@@ -31,11 +38,11 @@ export interface Suggestions {
   options: Suggestion[];
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const BOOLEAN_SENSORS = Object.keys(BOOLEAN_VARIABLES);
 const NUMBER_SENSORS = Object.keys(NUMBER_VARIABLES);
 /** Words that are always followed by something on the same line. */
-const TAKES_MORE = new Set(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'aim', 'and', 'or', 'not']);
+const TAKES_MORE = new Set(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'and', 'or', 'not']);
 
 const WORD_BEING_TYPED = /[A-Za-z_][A-Za-z0-9_]*$/;
 const COMPARISONS = new Set(['<', '>', '<=', '>=', '==', '!=']);
@@ -136,6 +143,8 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
       return argument ? { words: AIM_DIRECTIONS, variables: false, directions: true, eager: true } : null;
     case 'turn':
       return argument ? { words: TURN_DIRECTIONS, variables: false, directions: true, eager: true } : null;
+    case 'face':
+      return argument ? { words: FACE_TARGETS, variables: false, directions: true, eager: true } : null;
     case 'label':
       // Any word will do; the ones already in use are the likely ones.
       return argument ? { words: [], variables: false, labels: true, eager: true } : null;

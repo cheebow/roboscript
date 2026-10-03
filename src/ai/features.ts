@@ -52,6 +52,10 @@ function noteStatement(statement: StatementNode, used: Set<string>): void {
     case 'aim':
       used.add(`${statement.kind} ${statement.direction}`);
       return;
+    case 'face':
+      // Facing cover is turning to it, as far as the marks are concerned.
+      used.add(`turn ${statement.target}`);
+      return;
     default:
       return;
   }

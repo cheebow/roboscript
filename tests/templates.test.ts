@@ -169,7 +169,7 @@ describe('GuardBot', () => {
     const guardBot = compileBrain(enemySource('guard_bot'));
     expect(guardBot.decide({ ...QUIET_CONTEXT, hit: true, hitAngle: 90 })).toMatchObject({ turn: 'hit' });
     expect(guardBot.decide({ ...QUIET_CONTEXT, hitAngle: 40 })).toMatchObject({ turn: 'hit' });
-    expect(guardBot.decide({ ...QUIET_CONTEXT, hitAngle: 2 })).toMatchObject({ turn: null, drive: 'forward' });
+    expect(guardBot.decide({ ...QUIET_CONTEXT, hitAngle: 0 })).toMatchObject({ turn: null, drive: 'forward' });
     expect(firstTick({ ...QUIET_CONTEXT, hit: true, enemyVisible: true, enemyDistance: 200 })).toMatchObject({ turn: 'enemy' });
     expect(firstTick(QUIET_CONTEXT)).toMatchObject({ drive: 'forward', turn: null });
   });

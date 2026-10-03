@@ -44,6 +44,9 @@ export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 
 export const DRIVE_SETTINGS: readonly string[] = ['forward', 'backward', 'stop'] satisfies DriveSetting[];
 export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover', 'hit'] satisfies TurnDirection[];
+/** What the hull can be turned to face until it does: the turn directions that are a place, not a side. */
+export type FaceTarget = Extract<TurnDirection, 'enemy' | 'cover' | 'hit'>;
+export const FACE_TARGETS: readonly string[] = ['enemy', 'cover', 'hit'] satisfies FaceTarget[];
 export const AIM_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'lead', 'ahead'] satisfies AimDirection[];
 
 /** Words with a meaning of their own, which a program may not use as a variable name. */
@@ -57,6 +60,7 @@ export const KEYWORDS: readonly string[] = [
   'set',
   'drive',
   'turn',
+  'face',
   'aim',
   'fire',
   'guard',
@@ -90,5 +94,9 @@ export function isAimDirection(name: string): name is AimDirection {
 
 export function isTurnDirection(name: string): name is TurnDirection {
   return TURN_DIRECTIONS.includes(name);
+}
+
+export function isFaceTarget(name: string): name is FaceTarget {
+  return FACE_TARGETS.includes(name);
 }
 

@@ -36,6 +36,29 @@ function valueOf(expression: string, context: Partial<AIContext> = {}): number {
   return action.assignments[1].value;
 }
 
+describe('runtime: face', () => {
+  it('turns the hull a tick at a time until it faces the target, then goes on without taking a tick', () => {
+    const program = 'loop\n    face enemy\n    fire';
+    const angles = [20, 14, 8, 2, 0.2, 0.2];
+    const actions = run(program, angles.map((enemyAngle) => ({ enemyAngle })));
+    expect(actions.map(describe1)).toEqual(['turn enemy', 'turn enemy', 'turn enemy', 'turn enemy', 'fire', 'fire']);
+    // The face line runs on every tick of turning, and the turn is reported from it.
+    expect(actions[1].executedLines).toEqual([2]);
+    expect(actions[1].sourceLines.turn).toBe(2);
+    expect(actions[4].executedLines).toEqual([2, 3]);
+  });
+
+  it('faces cover and the last hit the same way', () => {
+    expect(runTicks('loop\n    face cover\n    fire', 3, { coverAngle: -30 }).map(describe1)).toEqual(['turn cover', 'turn cover', 'turn cover']);
+    expect(run('loop\n    face hit\n    fire', [{ hitAngle: 90 }, { hitAngle: 0 }]).map(describe1)).toEqual(['turn hit', 'fire']);
+  });
+
+  it('does nothing, and takes no time, when there is nothing to face', () => {
+    // Before the first hit, and with no enemy ever seen, the angles are 0.
+    expect(runTicks('loop\n    face hit\n    face enemy\n    fire', 2).map(describe1)).toEqual(['fire', 'fire']);
+  });
+});
+
 describe('runtime: one action per tick', () => {
   it('does one action per tick and picks up where it left off', () => {
     const actions = runTicks('aim left\nturn left\nfire\nguard', 4);

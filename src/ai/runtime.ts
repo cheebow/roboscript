@@ -9,13 +9,16 @@ import {
   type StatementNode,
   parameterVariable,
 } from './ast';
-import { BOOLEAN_VARIABLES, NUMBER_VARIABLES } from './script_variables';
+import { BOOLEAN_VARIABLES, type FaceTarget, NUMBER_VARIABLES } from './script_variables';
 
 /** How a stretch of program ended: by a `return`, with its value, or (null) by running to its end. */
 type Completion = { value: number } | null;
 
 /** Execution that hands control back whenever a tick is over. */
 type Execution = Generator<void, Completion, void>;
+
+/** deg: `face` is done when the target is this close to straight ahead; the last tick of turning lands exactly on it. */
+const FACED_WITHIN = 0.5;
 
 /**
  * Runs a parsed RoboScript program the way an ordinary program runs: from the
@@ -79,6 +82,16 @@ export class ScriptBrain implements RobotBrain {
           yield* this.enter(statement.line);
         }
         return null;
+      case 'face':
+        // One tick of turning at a time, until the hull faces the target. Facing it already, or with
+        // nothing to face (the angle is 0 then), it takes no time at all.
+        while (Math.abs(this.angleTo(statement.target)) > FACED_WITHIN) {
+          this.action.turn = statement.target;
+          this.action.sourceLines.turn = statement.line;
+          yield;
+          yield* this.enter(statement.line);
+        }
+        return null;
       case 'call': {
         const body = this.prepareCall(statement.name, statement.args);
         // What the function returns is of no use to a call on a line of its own.
@@ -109,6 +122,18 @@ export class ScriptBrain implements RobotBrain {
     // An action was chosen: the tick is over.
     yield;
     return null;
+  }
+
+  /** deg, how far the hull is from facing the target: positive to the right. 0 when there is nothing to face. */
+  private angleTo(target: FaceTarget): number {
+    switch (target) {
+      case 'enemy':
+        return this.context.enemyAngle;
+      case 'cover':
+        return this.context.coverAngle;
+      case 'hit':
+        return this.context.hitAngle;
+    }
   }
 
   /** The statements that take no time and have no block: they work the same wherever they are run from. */

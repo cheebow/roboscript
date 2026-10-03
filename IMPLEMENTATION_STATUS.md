@@ -248,6 +248,19 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 - 標準構成の 882試合が、これまでと完全に一致した（シミュレーションには手を入れていない）。
 - ブラウザで、切り替えと状態の保持、プルダウンの内容、FIGHT と結果の追加、結果からの再生、SERIES、コスト超過での拒否、再生中の HP・残弾、選び直しで開始位置に戻ることを確認した。
 
+## `face` 命令: 向くまで回る（2026-10-03）
+
+`turn enemy` / `turn cover` / `turn hit` は 1 tick ぶん（旋回速度 180°/秒なら 6°）しか回らないので、「向くまで回す」には `while hit_angle > 5 or hit_angle < -5` のような `while` が要った。これを 1 つの命令にした。
+
+- **`face enemy` / `face cover` / `face hit`**: その方向を向くまで、tick ごとに `turn` を繰り返す。`turn` と同じ刻みで回るので、最後の tick でぴったり向く（判定は ±0.5°）。**向いていれば、または向く先がなければ（敵を一度も見ていない、隠れ場所がない、撃たれていない: 角度が 0）、時間を使わずに次の行へ進む**（`while` と同じ扱い。計画では「何もせず 1 tick」としていたが、`while` 版と同じ振る舞いのほうが素直なので 0 tick にした）。
+- `drive` の設定はそのまま続くので、走りながら向きを直せる。
+- `face left` / `face right` はエラー（向く先がない。`turn left` を使う旨を出す）。
+- DEBUG では、回っている間はその行が毎 tick 実行され（実行した行に毎 tick 入る）、ログの `turn enemy` などはその行から出る。
+- 実装: `FaceNode`（`src/ai/ast.ts`）、`parser.ts`、`runtime.ts`（角度を読み、0.5° より大きければ `turn` を出して tick を終え、次の tick にまた読む）、入力候補・説明・`face cover` を cover の機能として数える（`features.ts`）。
+- GuardBot と SentryBot の `while hit_angle … turn hit` を `face hit` に置き換えた。CoverBot の「走りながら `cover_angle` を直す」はそのまま。
+
+**確認**: テスト 643件（解析 3、実行 3、入力候補 2、機能 1 を追加）。ブラウザで、`face enemy` を書いたプログラムを DEBUG で見て、回っている間その行が実行され続けることを確認した。
+
 ## 隠れると回復する（2026-10-03）
 
 **仕組み**（`src/sim/robot.ts` の `noteHidden`、`simulation.ts` の `recover`）
@@ -310,7 +323,7 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 
 - **テンプレートを 1 つのプログラムにした。** それまで BRAVO にロードすると `turn right` に入れ替えていた（`build('left' | 'right')`、`templateSource`、`side.ts`）のをやめ、`Template` は `{ id, name, source }` に。ARENA の内蔵ロボットも同じプログラムで戦う。障害物はどれも `turn left` で回り込む。
 - **AggressiveBot**: 敵に接したら（`touching_enemy`）`drive stop`。押し続けても意味がない。
-- **GuardBot**: 見えない相手に撃たれたら（`hit and not enemy_visible`）`turn hit` で撃たれた向きを向く。`hit` は読むまで真なので、毎 tick 読む位置に置き、敵が見えている間の被弾は捨てる。**`turn hit` は 1 tick ぶん（6°）回るだけ**なので、`while hit_angle > 5 or hit_angle < -5` で向くまで回し、そのあと `drive forward` でそちらへ向かう（当初は 1 tick だけ回していた。2026-10-03 に修正。勝率は 34.6 → 34.7% で変わらない: 360° のセンサーでは「見えない相手に撃たれる」こと自体がまれ）。
+- **GuardBot**: 見えない相手に撃たれたら（`hit and not enemy_visible`）`turn hit` で撃たれた向きを向く。`hit` は読むまで真なので、毎 tick 読む位置に置き、敵が見えている間の被弾は捨てる。**`turn hit` は 1 tick ぶん（6°）回るだけ**なので、向くまで回してから `drive forward` でそちらへ向かう（当初は 1 tick だけ回していた。2026-10-03 に `while hit_angle > 5 or hit_angle < -5` で修正し、同じ日に足した `face hit` に置き換えた。勝率は 34.6 → 34.7% で変わらない: 360° のセンサーでは「見えない相手に撃たれる」こと自体がまれ）。
 - **SentryBot（新規、8 つ目）**: 射程内に入るまで近づき、入ったら止まって `aim lead` で敵が動く先を撃つ。`lead_angle` が ±2° に収まったら `fire`。見えない相手に撃たれたら `turn hit`。テストにあった「動かず先読み型」を元にした。
 - CoverBot は変えていない（隠れても得がないのは、次の「隠れることに意味を持たせる」で扱う）。Sample、DumbBot、CowardBot、StrafeBot も変えていない。
 
@@ -682,6 +695,7 @@ Phase 2 の言語（毎tick プログラム全体を先頭から評価し直す�
 | 種類 | 文 | かかる時間 |
 |---|---|---|
 | 行動 | 車体の旋回 `turn left` / `right` / `enemy` / `cover` / `hit`、砲塔の旋回 `aim left` / `right` / `enemy` / `lead` / `ahead`、`fire` / `guard` / `wait` | **1tick** |
+| 向くまで回る | `face enemy` / `cover` / `hit`: その方向を向くまで `turn` を tick ごとに繰り返す（2026-10-03 に追加） | 向くまで（向いていれば 0） |
 | 走行 | `drive forward` / `drive backward` / `drive stop`（止めるまで走り続ける） | なし |
 | 制御 | `if 条件` / `else` / `loop`（ずっと繰り返す）/ `while 条件`（条件が真の間繰り返す） | なし |
 | 関数 | `def 名前(引数, …)` で定義、`名前(値, …)` で呼ぶ、`return` / `return 式` で抜ける（下記） | 呼び出し自体はなし |
@@ -1034,10 +1048,10 @@ loop
 | DumbBot | Sample と同じで、距離300未満で撃つ |
 | AggressiveBot | 止まらずに敵へ走り、射程（400）内なら撃つ。敵に接したら（`touching_enemy`）押し続けず止まる |
 | CowardBot | 距離300未満なら後退しながら撃つ。後ろがふさがったら（`blocked_behind`）止まって撃つ。距離400未満なら止まって撃ち、それより遠ければ近づく |
-| GuardBot | DumbBot に防御を足したもの。「弾が当たる直前か」を関数 `about_to_be_hit()` にして、行動の前ごとに確かめ、当たる tick だけ `guard` する。見えない相手に撃たれたら（`hit and not enemy_visible`）`turn hit` を `hit_angle` が ±5° に収まるまで繰り返して撃たれた向きを向き、そちらへ進む |
+| GuardBot | DumbBot に防御を足したもの。「弾が当たる直前か」を関数 `about_to_be_hit()` にして、行動の前ごとに確かめ、当たる tick だけ `guard` する。見えない相手に撃たれたら（`hit and not enemy_visible`）`face hit` で撃たれた向きを向き、そちらへ進む |
 | CoverBot | 射程より 50 手前から撃つ。HP が 120 を切ると、1回だけ物陰へ逃げ込み（`turn cover` と `drive forward`）、敵から見えない間（`hidden`）は止まって HP を回復し、180 まで戻るか敵に見つかるまで最大10秒待つ。そのあとは障害物を逆回りして敵を探す |
 | StrafeBot | 距離 340 まで近づいたら、車体を敵に対して横向きにし、壁の間を往復しながら `aim lead` で撃つ。障害物で敵が見えなくなったら引き返す。「壁で折り返す」「横を向く」「近づく」「往復しながら撃つ」「探す」をそれぞれ関数にして、最後のループで組み合わせている |
-| SentryBot | 射程内に入るまで近づき、入ったら止まって、敵が動く先を狙って撃つ（`aim lead`、`lead_angle` が ±2° に収まったら `fire`）。見えない相手に撃たれたら、撃たれた向きを向くまで `turn hit` を繰り返す。敵が見えない間は探して歩く |
+| SentryBot | 射程内に入るまで近づき、入ったら止まって、敵が動く先を狙って撃つ（`aim lead`、`lead_angle` が ±2° に収まったら `fire`）。見えない相手に撃たれたら `face hit` で撃たれた向きを向く。敵が見えない間は探して歩く |
 
 - **テンプレートはどこにロードしても同じプログラム**（2026-10-03 から）。障害物はどれも `turn left` で回り込む。それまでは BRAVO にロードすると `turn right` に入れ替えていたが、「同じテンプレートなのにコードが違う」のをやめた。同じ向きに回る2台は出会えないことがある（下の「テンプレートの見直し」）。
 - 違うテンプレートどうしの全組み合わせ（8 × 7）は、9マップすべてで時間切れにならず決着する（テストで固定。同じテンプレートどうしは除く）。

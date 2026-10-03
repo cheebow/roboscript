@@ -8,7 +8,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
@@ -81,6 +81,7 @@ describe('completionsAt: arguments', () => {
     expect(offered('aim |')).toEqual(['left', 'right', 'enemy', 'lead', 'ahead']);
     expect(offered('aim l|')).toEqual(['left', 'lead']);
     expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover', 'hit']);
+    expect(offered('face |')).toEqual(['enemy', 'cover', 'hit']);
     expect(offered('turn left |', true)).toBeNull();
   });
 
@@ -96,7 +97,7 @@ describe('completionsAt: arguments', () => {
   it('marks the words that need something after them', () => {
     const options = completionsAt('', 0, true)?.options ?? [];
     const needingMore = options.filter((option) => option.insert === `${option.word} `).map((option) => option.word);
-    expect(needingMore).toEqual(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'aim']);
+    expect(needingMore).toEqual(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'face', 'aim']);
     expect(options.filter((option) => option.insert === option.word).map((option) => option.word)).toEqual([
       'else',
       'loop',

@@ -87,6 +87,12 @@ const LANGUAGE: readonly WordReference[] = [
     summary: 'Turns the hull left, right, towards the enemy or towards cover for one tick. The turret turns with it.',
   },
   {
+    word: 'face',
+    kind: 'command',
+    hint: 'turn the hull until it faces',
+    summary: 'Turns the hull towards the enemy, cover or where the last hit came from, a tick at a time, until it faces it: "face hit" does what "turn hit" repeated would. Takes no time once the hull faces it, or when there is nothing to face.',
+  },
+  {
     word: 'aim',
     kind: 'command',
     hint: 'turn the turret, 1 tick',

@@ -17,6 +17,7 @@ import {
   isBooleanVariable,
   isDriveSetting,
   isNumberVariable,
+  isFaceTarget,
   isReservedWord,
   isTurnDirection,
 } from './script_variables';
@@ -237,6 +238,14 @@ class Parser {
         if (!isTurnDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
         expectEnd(rest, `turn ${argument.text}`);
         return { kind: 'turn', line: lineNumber, direction: argument.text };
+      }
+      case 'face': {
+        if (argument === undefined) throw new LineError('Expected what to face after "face": enemy, cover or hit');
+        if (!isFaceTarget(argument.text)) {
+          throw new LineError(`"face ${argument.text}" is not a thing to face: use face enemy, face cover or face hit (or "turn ${argument.text}")`);
+        }
+        expectEnd(rest, `face ${argument.text}`);
+        return { kind: 'face', line: lineNumber, target: argument.text };
       }
       case 'label': {
         if (argument === undefined) throw new LineError('Expected a name after "label"');

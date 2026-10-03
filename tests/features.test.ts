@@ -60,6 +60,11 @@ describe('program features: lead', () => {
 });
 
 describe('program features', () => {
+  it('count facing cover as turning to it', () => {
+    expect(featuresOf('loop\n    face cover')).toEqual({ ...NONE, cover: true });
+    expect(featuresOf('loop\n    face hit')).toEqual(NONE);
+  });
+
   it('are none for a program that does not use any of it', () => {
     expect(featuresOf('loop\n    if enemy_visible and hp > wall_ahead\n        turn enemy\n    else\n        wait')).toEqual(NONE);
     expect(featuresOf('')).toEqual(NONE);

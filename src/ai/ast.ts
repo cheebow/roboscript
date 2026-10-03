@@ -1,5 +1,5 @@
 import type { AimDirection, DriveSetting, TurnDirection } from '../sim/ai_context';
-import type { BooleanVariableName, NumberVariableName } from './script_variables';
+import type { BooleanVariableName, FaceTarget, NumberVariableName } from './script_variables';
 
 export type ComparisonOperator = '<' | '>' | '<=' | '>=' | '==' | '!=';
 export type ArithmeticOperator = '+' | '-' | '*' | '/';
@@ -62,6 +62,13 @@ export type ActionNode =
   | { kind: 'guard'; line: number }
   | { kind: 'wait'; line: number };
 
+/** Turns the hull, a tick at a time, until it faces the target; takes no time once it does, or when there is no target. */
+export interface FaceNode {
+  kind: 'face';
+  line: number;
+  target: FaceTarget;
+}
+
 /** Names what the robot is doing, for show: under the robot, and in the log when it changes. Takes no time. */
 export interface LabelNode {
   kind: 'label';
@@ -97,6 +104,7 @@ export type StatementNode =
   | WhileNode
   | SetNode
   | ActionNode
+  | FaceNode
   | LabelNode
   | DriveNode
   | CallNode

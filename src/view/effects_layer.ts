@@ -1,5 +1,5 @@
 import type { EffectLifetimes, EffectSnapshot } from '../debug/effects';
-import { DOT } from './sprites';
+import { DOT, paletteOf } from './sprites';
 
 const FLASH = '#f2e9c4';
 const SPARK = '#e6c98a';
@@ -36,6 +36,10 @@ const BURST_FLASH_SIZE = 20;
 const DEFLECT_START_RADIUS = 20;
 const DEFLECT_GROWTH = 14;
 const DEFLECT_DOTS = 16;
+// A robot caught sight of the enemy: a ring in its own colour that widens around it.
+const DETECT_START_RADIUS = 22;
+const DETECT_GROWTH = 26;
+const DETECT_DOTS = 12;
 
 /**
  * Draws the effects of a snapshot as coarse dots. `overrun` is how many ticks
@@ -66,6 +70,9 @@ export function drawEffects(
       case 'destroyed':
         drawBurst(ctx, effect, progress);
         break;
+      case 'detected':
+        drawDetection(ctx, effect, progress);
+        break;
     }
   }
   ctx.globalAlpha = 1;
@@ -95,6 +102,12 @@ function drawDeflection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, p
   ctx.fillStyle = SHIELD;
   ctx.globalAlpha = 1 - progress;
   drawRing(ctx, effect, DEFLECT_START_RADIUS + DEFLECT_GROWTH * progress, DEFLECT_DOTS, 0);
+}
+
+function drawDetection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {
+  ctx.fillStyle = paletteOf(effect.robot ?? 0).body;
+  ctx.globalAlpha = 1 - progress;
+  drawRing(ctx, effect, DETECT_START_RADIUS + DETECT_GROWTH * progress, DETECT_DOTS, Math.PI / DETECT_DOTS);
 }
 
 function drawBurst(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {

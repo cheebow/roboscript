@@ -46,14 +46,16 @@ export type MatchEndReason = 'destroyed' | 'timeout' | 'out of ammo';
  */
 const CLOSE_RANGE_RADII = 3;
 
-/** `deflected`: a bullet hit a robot that was guarding. */
-export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed';
+/** `deflected`: a bullet hit a robot that was guarding. `detected`: a robot caught sight of the enemy. */
+export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
   kind: TickEventKind;
   x: number;
   y: number;
+  /** The index of the robot it happened to, for the events that are a robot's own. */
+  robot?: number;
 }
 
 export interface MatchResult {
@@ -160,6 +162,9 @@ export class Simulation {
     const visible = robot.sensorReading.enemyVisible;
     robot.noteSurroundings(this.surroundingsOf(robot));
     if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
+    if (visible && !wasVisible) {
+      this.tickEvents.push({ kind: 'detected', ...robot.position, robot: this.robots.indexOf(robot) });
+    }
   }
 
   /** The terrain and the bullets as the robot finds them now. Its sensor must have been read first. */

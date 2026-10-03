@@ -1,6 +1,10 @@
 import type { RobotStats } from '../data/robot_defaults';
 import type { RobotSnapshot } from '../debug/snapshot';
+import type { Arena } from '../sim/types';
+import { sensorField } from './sensor_field';
 
+const SENSOR_FIELD_ALPHA = 0.07;
+const SENSOR_EDGE_ALPHA = 0.3;
 const SIGHT_LINE_ALPHA = 0.3;
 const MARK_ALPHA = 0.9;
 // Sizes in arena units.
@@ -16,6 +20,31 @@ const BULLET_RING_RADIUS = 7;
 const LEAD_MARK_SIZE = 5;
 /** Line width of the marks, in screen pixels. */
 const MARK_LINE_PX = 1.5;
+
+/** What the robot's sensor covers right now: a tint over the ground it sees, with an edge where obstacles or its range stop it. */
+export function drawSensorField(
+  ctx: CanvasRenderingContext2D,
+  robot: RobotSnapshot,
+  stats: RobotStats,
+  arena: Arena,
+  color: string,
+  pixel: number,
+): void {
+  const points = sensorField(robot, robot.rotation, stats, arena);
+  if (points.length < 3) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = SENSOR_FIELD_ALPHA;
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = pixel;
+  ctx.globalAlpha = SENSOR_EDGE_ALPHA;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
 
 /** The line along which the robot sees the enemy; drawn only while it does. */
 export function drawSightLine(

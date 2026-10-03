@@ -41,6 +41,7 @@ npm run dev        # 表示された URL をブラウザで開く
 - `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
 - **DEBUG** で同じ試合を DEBUG モードで再生する（次に実行する行のハイライト、全種類のログ、行の実行時点への移動、戦闘画面に視線・ターゲット枠・最後に見た位置・ラベル）。視線などは INSPECTOR で選んでいるロボットのもの。
+- 戦闘画面には、待機中・RUN・DEBUG・ARENA のいつでも、**各ロボットのセンサーが今見えている範囲**がそのロボットの色で薄く塗られる（障害物の陰と範囲外は抜ける。Short は半径 300 の円、Scope は前方 120° の扇）。ロボットが**敵を見つけた瞬間**には、そのロボットの色の輪が広がる。
 - **PAUSE / PLAY** で停止 / 再開、**RESET** で初期配置に戻る。
 - BATTLE VIEW の下の操作列: PLAY / PAUSE、`◀1` と `1▶`（DEBUG では**1行**、RUN では 1tick ずつ戻る / 進む）、`◀◆` と `◆▶`（マークした行が実行される時点を前後に移動）、シークバー、再生速度（0.25x〜4x）。
 - DEBUG LOG の行をクリックすると、その時点に戻り、該当するコード行へ移動する。
@@ -146,8 +147,9 @@ src/
 ├─ view/
 │  ├─ battle_view.ts       Canvas描画（Snapshot を描く）
 │  ├─ sprites.ts           パーツごとのドットパターンと、構成からのスプライト生成
-│  ├─ effects_layer.ts     エフェクトの描画
-│  └─ debug_overlay.ts     視線、ターゲット枠、最後に見た位置
+│  ├─ effects_layer.ts     エフェクトの描画（発射、着弾、guard、破壊、敵の発見）
+│  ├─ sensor_field.ts      センサーが今見えている範囲の多角形
+│  └─ debug_overlay.ts     センサーの範囲、視線、ターゲット枠、最後に見た位置
 ├─ main.ts
 └─ style.css
 tests/                     lexer / parser / runtime / reference / completion / indentation / scripts / sensor / weapon / movement /
@@ -245,6 +247,22 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 - テストは 560件（追加 20件: 出場ロボット、試合の組み立て、拒否の理由、連戦、名前の位置）。開始位置の追加で 569件（追加 9件）。
 - 標準構成の 882試合が、これまでと完全に一致した（シミュレーションには手を入れていない）。
 - ブラウザで、切り替えと状態の保持、プルダウンの内容、FIGHT と結果の追加、結果からの再生、SERIES、コスト超過での拒否、再生中の HP・残弾、選び直しで開始位置に戻ることを確認した。
+
+## センサーの範囲と、敵を見つけた瞬間の表示（2026-10-03）
+
+**センサーの範囲**（`src/view/sensor_field.ts`、`debug_overlay.ts` の `drawSensorField`）
+
+- 各ロボットのセンサーが今見えている範囲を、そのロボットの色で薄く塗る（塗り alpha 0.07、縁 0.3）。センサーの角度 × 距離の扇形から、障害物の陰とアリーナの外を抜いた多角形。Standard（1200、360°）は「障害物の陰以外ぜんぶ」、Short は半径 300 の円、Scope は前方 120° の扇。
+- 多角形は、ロボットの中心から 2° 刻みと、障害物の角の両脇（±0.05°）へ光線を飛ばし、最初に当たる障害物かアリーナの端で切って作る。試合の視線判定（`hasLineOfSight`）はロボットの半径ぶんの太さで見るので、影の縁は表示のほうが数ピクセル内側になる。
+- 待機中、RUN、DEBUG、ARENA のすべてで、生きているロボット 2 台ぶん描く（障害物の次、弾とロボットの前）。
+
+**敵を見つけた瞬間**（`src/sim/simulation.ts` の `detected` イベント、`effects_layer.ts` の `drawDetection`）
+
+- センサーが「見えない → 見えた」になった tick に、tick イベント `detected`（見つけた側の位置と番号）を出す。`shot` / `impact` などと同じ仕組みで録画に入るので、再生のどこへ飛んでも正しいフレームが出る。
+- 表示は、見つけたロボットの色の点 12 個の輪が、半径 22 → 48 に広がりながら消える（12 tick = 0.4 秒。`EFFECT_LIFETIMES.detected`）。`TickEvent` / `EffectSnapshot` に、そのロボットの番号 `robot` を足した（色のため）。
+- ログの `enemy detected` と同じ瞬間。
+
+**確認**: テスト 629件（多角形: 全周・円・扇・向き・障害物の影 5件、`detected` が見えた tick だけ出ること 2件、録画の効果 1件）。標準構成の試合結果は変わらない（描画とイベントだけ）。ブラウザで、待機画面で Standard / Short / Scope の範囲、ブロックの影、RUN と DEBUG（seed 2、5.3 秒）で見つけた瞬間の輪、ARENA での 2 台ぶんの塗りをスクリーンショットで確認した。
 
 ## テンプレートの見直し（2026-10-03）
 

@@ -20,10 +20,42 @@ describe('Simulation.tickEvents', () => {
     simulation.step();
     const [shooter] = simulation.robots;
     const muzzle = shooter.position.x + NO_SPREAD_STATS.radius + NO_SPREAD_STATS.bulletRadius;
-    expect(simulation.tickEvents).toEqual([{ kind: 'shot', x: muzzle, y: shooter.position.y }]);
+    expect(simulation.tickEvents.filter((event) => event.kind !== 'detected')).toEqual([
+      { kind: 'shot', x: muzzle, y: shooter.position.y },
+    ]);
 
     simulation.step();
     expect(simulation.tickEvents).toEqual([]);
+  });
+
+  it('reports a detection at each robot on the tick it catches sight of the enemy, with the index of the robot', () => {
+    // In the duel arena the robots see each other from the start.
+    const simulation = createSimulation([new FixedBrain(), new FixedBrain()]);
+    simulation.step();
+    const [alpha, bravo] = simulation.robots;
+    expect(simulation.tickEvents).toEqual([
+      { kind: 'detected', ...alpha.position, robot: 0 },
+      { kind: 'detected', ...bravo.position, robot: 1 },
+    ]);
+    simulation.step();
+    expect(simulation.tickEvents).toEqual([]);
+  });
+
+  it('reports a detection again only after the enemy was out of sight', () => {
+    const simulation = createSimulation([compileBrain(SAMPLE_AI), compileBrain(enemySource('dumb_bot'))], {
+      arena: DEFAULT_ARENA,
+      stats: ROBOT_DEFAULTS,
+    });
+    const detections: number[] = [];
+    while (simulation.result === null) {
+      simulation.step();
+      for (const event of simulation.tickEvents) if (event.kind === 'detected') detections.push(simulation.tick);
+    }
+    // Hidden by the centre block at first, they catch sight of each other once they have driven round it.
+    expect(detections.length).toBeGreaterThanOrEqual(2);
+    expect(detections[0]).toBeGreaterThan(1);
+    const sightings = simulation.robots.map((robot) => robot.sensorReading.enemyVisible);
+    expect(sightings).toEqual([true, true]);
   });
 
   it('reports an impact where a bullet hits, and a destruction where a robot dies', () => {
@@ -89,7 +121,7 @@ describe('a hit on a guarding robot', () => {
 
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 
@@ -137,6 +169,20 @@ describe('effects in a recording', () => {
     const firstShot = shots[0].tick;
     expect(agesAt(firstShot - 1, 'shot')).toEqual([]);
     expect(agesAt(firstShot + EFFECT_LIFETIMES.shot, 'shot')).toEqual([]);
+  });
+
+  it('shows a detection effect, marked with the robot, from the tick it catches sight of the enemy', () => {
+    const detections = events.filter((event) => event.type === 'sensor' && event.message.startsWith('enemy detected'));
+    expect(detections.length).toBeGreaterThan(0);
+    for (const { tick, robotId } of detections) {
+      const robot = snapshots[tick].robots.findIndex((candidate) => candidate.id === robotId);
+      const started = snapshots[tick].effects.filter((effect) => effect.kind === 'detected' && effect.age === 0);
+      expect(started.map((effect) => effect.robot)).toContain(robot);
+      // The effect sits where the robot was when it looked, at the start of the tick: at most one step from where it ends it.
+      const effect = started.find((candidate) => candidate.robot === robot);
+      const { x, y } = snapshots[tick].robots[robot];
+      expect(Math.hypot((effect?.x ?? 0) - x, (effect?.y ?? 0) - y)).toBeLessThan(ROBOT_DEFAULTS.moveSpeed / MATCH_DEFAULTS.tickRate + 1);
+    }
   });
 
   it('shows an impact effect from the tick of each hit', () => {

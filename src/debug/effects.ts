@@ -10,6 +10,8 @@ export interface EffectSnapshot {
   y: number;
   /** Ticks since the effect started; 0 on the tick it happened. */
   age: number;
+  /** The index of the robot it is about, for the effects that are a robot's own. */
+  robot?: number;
 }
 
 interface ActiveEffect extends TickEvent {
@@ -30,6 +32,6 @@ export class EffectTracker {
   update(tick: number, events: readonly TickEvent[]): EffectSnapshot[] {
     this.active.push(...events.map((event) => ({ ...event, startTick: tick })));
     this.active = this.active.filter((effect) => tick - effect.startTick < this.lifetimes[effect.kind]);
-    return this.active.map(({ kind, x, y, startTick }) => ({ kind, x, y, age: tick - startTick }));
+    return this.active.map(({ kind, x, y, startTick, robot }) => ({ kind, x, y, age: tick - startTick, ...(robot === undefined ? {} : { robot }) }));
   }
 }

@@ -5,7 +5,14 @@ import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
 import type { MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
-import { drawCoverMark, drawIncomingBulletMark, drawLeadMark, drawSightLine, drawTargetMarks } from './debug_overlay';
+import {
+  drawCoverMark,
+  drawIncomingBulletMark,
+  drawLeadMark,
+  drawSensorField,
+  drawSightLine,
+  drawTargetMarks,
+} from './debug_overlay';
 import { drawEffects } from './effects_layer';
 import { DOT, type RobotSprites, WRECK_PALETTE, createRobotSprites, paletteOf } from './sprites';
 
@@ -99,6 +106,9 @@ export class BattleView {
       ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
 
+    snapshot.robots.forEach((robot, index) => {
+      if (robot.alive) drawSensorField(ctx, robot, stats[index], arena, this.colorOf(index), pixel);
+    });
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawSightLine(ctx, watcher, watched, watcherColor, pixel);
       if (options.marks.cover) drawCoverMark(ctx, watcher, watcherColor, pixel);

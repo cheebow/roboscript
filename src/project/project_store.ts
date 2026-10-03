@@ -17,7 +17,7 @@ export interface ProjectInfo {
 
 export const DEFAULT_PROJECT: ProjectInfo = { name: 'ALPHA', version: 1 };
 
-// Keys mirror the project layout in SPEC §43: projects/alpha/{project.json, main.bot}.
+// Keys mirror the project layout in the first spec (docs/SPEC_v0.1.md) §43: projects/alpha/{project.json, main.bot}.
 const PROJECT_DIRECTORY = 'roboscript/projects/alpha';
 // Where the project was kept under the app's earlier name. It is read when nothing is saved under the present one.
 const EARLIER_DIRECTORY = 'robograming/projects/alpha';

@@ -13,6 +13,7 @@ import {
   gutter,
   keymap,
   lineNumbers,
+  tooltips,
 } from '@codemirror/view';
 import { parse } from '../ai/parser';
 import { withoutComment } from '../ai/lexer';
@@ -178,6 +179,8 @@ export class CodeEditor {
           lineNumbers({ domEventHandlers: { mousedown: passOnClick } }),
           history(),
           drawSelection(),
+          // Tooltips (suggestions, their explanations, hover help) go on the page itself: inside the editor's panel they were cut off at its edge.
+          tooltips({ parent: document.body }),
           indentUnit.of(INDENT),
           EditorState.tabSize.of(INDENT.length),
           // Tab picks the selected suggestion while a list is open, and indents otherwise.

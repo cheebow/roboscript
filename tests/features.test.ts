@@ -75,6 +75,7 @@ describe('program features', () => {
       guard_bot: { ...NONE, bullets: true },
       cover_bot: { ...NONE, cover: true },
       strafe_bot: { ...NONE, lead: true },
+      sentry_bot: { ...NONE, lead: true },
     });
   });
 });

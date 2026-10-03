@@ -66,10 +66,10 @@ function winnersAgainst(playerSource: string, enemyStrategy: string, arena: Aren
 }
 
 /** The templates written as enemies; the player's own starting program is the sample. */
-const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot', 'strafe_bot'];
+const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot', 'strafe_bot', 'sentry_bot'];
 
 describe('template list', () => {
-  it('offers the sample, the three enemies of the spec and three that defend themselves, each with a unique id', () => {
+  it('offers the sample, the three enemies of the spec and four that defend themselves or aim ahead, each with a unique id', () => {
     expect(TEMPLATES.map((template) => template.name)).toEqual([
       'Sample',
       'DumbBot',
@@ -78,6 +78,7 @@ describe('template list', () => {
       'GuardBot',
       'CoverBot',
       'StrafeBot',
+      'SentryBot',
     ]);
     expect(new Set(TEMPLATES.map((template) => template.id)).size).toBe(TEMPLATES.length);
   });
@@ -121,6 +122,23 @@ describe('the side a template goes round obstacles', () => {
   });
 });
 
+describe('AggressiveBot', () => {
+  const inRange = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 200 };
+
+  it('keeps driving at the enemy while it shoots', () => {
+    const aggressive = compileBrain(enemySource('aggressive_bot'));
+    expect(aggressive.decide(inRange)).toMatchObject({ drive: 'forward', turn: 'enemy' });
+    expect(aggressive.decide(inRange)).toMatchObject({ fire: true });
+  });
+
+  it('stops pushing once it is right up against the enemy', () => {
+    const aggressive = compileBrain(enemySource('aggressive_bot'));
+    const touching = { ...inRange, touchingEnemy: true };
+    expect(aggressive.decide(touching)).toMatchObject({ drive: 'stop', turn: 'enemy' });
+    expect(aggressive.decide(touching)).toMatchObject({ fire: true });
+  });
+});
+
 describe('CowardBot', () => {
   const closeEnemy = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 200 };
 
@@ -144,6 +162,13 @@ describe('CowardBot', () => {
 });
 
 describe('GuardBot', () => {
+  it('turns to face a shooter it cannot see, and only then', () => {
+    const firstTick = (context: typeof QUIET_CONTEXT) => compileBrain(enemySource('guard_bot')).decide(context);
+    expect(firstTick({ ...QUIET_CONTEXT, hit: true })).toMatchObject({ turn: 'hit', label: 'SEARCH' });
+    expect(firstTick({ ...QUIET_CONTEXT, hit: true, enemyVisible: true, enemyDistance: 200 })).toMatchObject({ turn: 'enemy' });
+    expect(firstTick(QUIET_CONTEXT)).toMatchObject({ drive: 'forward', turn: null });
+  });
+
   it('beats DumbBot, whose program it shares but for the guard, from most starting places', () => {
     const guardBot = findTemplate('guard_bot')?.source ?? '';
     expect(guardBot).toContain('guard');
@@ -182,6 +207,35 @@ describe('CoverBot', () => {
     const evading = messages.indexOf('label ATTACK -> EVADE');
     expect(evading).toBeGreaterThan(-1);
     expect(messages.indexOf('turn cover', evading)).toBeGreaterThan(evading);
+  });
+});
+
+describe('SentryBot', () => {
+  const inRange = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 300 };
+
+  it('closes in on an enemy out of range, and stops within range to aim ahead of it and fire', () => {
+    const sentry = compileBrain(enemySource('sentry_bot'));
+    expect(sentry.decide({ ...inRange, enemyDistance: 500 })).toMatchObject({ drive: 'forward', turn: 'enemy', label: 'TRACK' });
+    expect(sentry.decide({ ...inRange, leadAngle: 10 })).toMatchObject({ drive: 'stop', aim: 'lead', fire: false, label: 'ATTACK' });
+    expect(sentry.decide({ ...inRange, leadAngle: 1 })).toMatchObject({ drive: 'stop', aim: null, fire: true });
+  });
+
+  it('turns to face a shooter it cannot see', () => {
+    const sentry = compileBrain(enemySource('sentry_bot'));
+    expect(sentry.decide({ ...QUIET_CONTEXT, hit: true })).toMatchObject({ turn: 'hit' });
+  });
+
+  it('hits an enemy that drives across its line of fire, from standing still', () => {
+    // StrafeBot crosses to and fro at range; shots aimed at where it is pass behind it.
+    const logger = new DebugLogger();
+    const simulation = createSimulation(
+      [compileBrain(enemySource('sentry_bot')), compileBrain(STRAFE)],
+      { arena: OPEN_FIELD, stats: ROBOT_DEFAULTS, logger },
+    );
+    runToEnd(simulation);
+    const hitsOnStrafe = logger.events.filter((event) => event.type === 'hit' && event.robotId === 'BRAVO');
+    expect(hitsOnStrafe.length).toBeGreaterThanOrEqual(5);
+    expect(logger.events.filter((event) => event.robotId === 'ALPHA').map((event) => event.message)).toContain('aim lead');
   });
 });
 

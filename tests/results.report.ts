@@ -19,7 +19,7 @@ import { APPROACH, DODGE, EARLY_GUARD, GUARD, KEEP_DISTANCE, RUSH, STRAFE, TURRE
 const { tickRate } = MATCH_DEFAULTS;
 const FEW_SEEDS = [1, 2, 3, 4, 5];
 const MANY_SEEDS = [11, 22, 33, 44, 55, 66, 77, 88];
-const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot', 'strafe_bot'];
+const ENEMY_IDS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot', 'strafe_bot', 'sentry_bot'];
 /** A match shorter than this is over almost as soon as the robots meet. */
 const SHORT_SECONDS = 8;
 const LONG_SECONDS = 30;
@@ -83,7 +83,7 @@ it('strategies: the player\'s ways of fighting against the enemy templates, and 
   ];
   const lines: string[] = [];
   for (const [name, arena] of arenas) {
-    lines.push(`**${name}**`, '', '| プレイヤーの戦い方 | 対 DumbBot | 対 AggressiveBot | 対 CowardBot | 対 GuardBot | 対 CoverBot | 対 StrafeBot |', '|---|---|---|---|---|---|---|');
+    lines.push(`**${name}**`, '', '| プレイヤーの戦い方 | 対 DumbBot | 対 AggressiveBot | 対 CowardBot | 対 GuardBot | 対 CoverBot | 対 StrafeBot | 対 SentryBot |', '|---|---|---|---|---|---|---|---|');
     for (const [label, source] of strategies) {
       lines.push(`| ${label} | ${ENEMY_IDS.map((enemyId) => tally(source, enemySource(enemyId), arena)).join(' | ')} |`);
     }

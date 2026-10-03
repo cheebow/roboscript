@@ -102,19 +102,23 @@ export class BootScreen {
     this.items = [];
   }
 
-  /** The start-up text: a title, then each thing the game is made of, checked. */
+  /**
+   * The start-up text: a title, then each thing the game is made of, checked.
+   * Always in English, as a computer's start-up text is; only the menu below it follows the language of the screen.
+   */
   private lines(): (BootLine | string)[] {
+    const slots = SLOTS.map((slot) => slot.toUpperCase()).join(' / ');
     return [
-      t('boot.heading', { version: RULES_VERSION }),
+      `ROBOSCRIPT BIOS   rules ${RULES_VERSION}`,
       '',
-      { label: t('boot.cpu'), result: t('boot.ok') },
-      { label: t('boot.memory', { lines: MATCH_DEFAULTS.lineBudget }), result: t('boot.ok') },
-      { label: t('boot.parts', { slots: SLOTS.map((slot) => slot.toUpperCase()).join(' / ') }), result: t('boot.found', { count: PARTS.length }) },
-      { label: t('boot.arenas', { count: ARENAS.length }), result: t('boot.ok') },
-      { label: t('boot.templates', { count: TEMPLATES.length }), result: t('boot.ok') },
-      { label: t('boot.clock', { rate: MATCH_DEFAULTS.tickRate }), result: t('boot.ok') },
+      { label: 'CPU   RoboScript interpreter', result: 'OK' },
+      { label: `MEM   program memory, ${MATCH_DEFAULTS.lineBudget} lines a tick`, result: 'OK' },
+      { label: `PARTS ${slots}`, result: `${PARTS.length} found` },
+      { label: `ARENA ${ARENAS.length} maps`, result: 'OK' },
+      { label: `BOTS  ${TEMPLATES.length} built-in robots`, result: 'OK' },
+      { label: `CLOCK ${MATCH_DEFAULTS.tickRate} ticks a second`, result: 'OK' },
       '',
-      t('boot.ready'),
+      'Ready.',
     ];
   }
 

@@ -133,3 +133,30 @@ describe('garageName', () => {
     expect(garageName('x'.repeat(MAX_NAME_LENGTH + 1))).toBeNull();
   });
 });
+
+describe('Garage.importRobot', () => {
+  it('keeps a received robot under its own name when that is free', () => {
+    const { garage } = createGarage();
+    expect(garage.importRobot(robot('Striker'))).toBe('Striker');
+    expect(names(garage)).toEqual(['Striker']);
+  });
+
+  it('numbers the name when it is taken, without touching the robot kept under it', () => {
+    const { garage } = createGarage();
+    garage.save(robot('Striker', { source: 'loop\n    wait' }));
+    expect(garage.importRobot(robot('Striker', { source: 'loop\n    fire' }))).toBe('Striker (2)');
+    expect(garage.importRobot(robot('Striker'))).toBe('Striker (3)');
+    expect(garage.find('Striker')?.source).toBe('loop\n    wait');
+    expect(garage.find('Striker (2)')?.source).toBe('loop\n    fire');
+  });
+
+  it('keeps a numbered name within the length limit, and gives a bad name a name', () => {
+    const { garage } = createGarage();
+    const long = 'A'.repeat(MAX_NAME_LENGTH);
+    garage.save(robot(long));
+    const numbered = garage.importRobot(robot(long));
+    expect(numbered).toBe(`${'A'.repeat(MAX_NAME_LENGTH - 4)} (2)`);
+    expect(numbered.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
+    expect(garage.importRobot(robot('   '))).toBe('Shared');
+  });
+});

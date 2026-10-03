@@ -56,6 +56,23 @@ export class Garage {
     return replaced;
   }
 
+  /**
+   * Keeps a robot received from elsewhere, under its own name if that is free,
+   * otherwise under the name with a number ("Striker (2)"). A name that will
+   * not do is replaced by "Shared". Returns the name it is kept under.
+   */
+  importRobot(robot: SavedRobot): string {
+    const taken = new Set(this.list().map((saved) => saved.name));
+    const base = garageName(robot.name) ?? 'Shared';
+    let name = base;
+    for (let n = 2; taken.has(name); n++) {
+      const suffix = ` (${n})`;
+      name = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
+    }
+    this.save({ name, source: robot.source, loadout: { ...robot.loadout } });
+    return name;
+  }
+
   /** Does nothing when no robot is kept under the name. */
   remove(name: string): void {
     const robots = this.list();

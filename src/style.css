@@ -308,6 +308,40 @@ button {
   color: var(--muted);
 }
 
+.garage-import {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.garage-import .tool-button {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.garage-share {
+  display: grid;
+  gap: 3px;
+  padding: 2px 6px 6px 18px;
+}
+
+.garage-share-line {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.garage-share-field {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+}
+
 /* Arena: the line-up and the results */
 
 #lineup-slots {

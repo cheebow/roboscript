@@ -21,6 +21,8 @@ import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { Garage, MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
+import { RULES_VERSION } from '../data/rules_version';
+import { ROBOT_PARAM, codeInText, decodeRobot, encodeRobot, robotUrl } from '../share/codec';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
@@ -91,6 +93,8 @@ class App {
     save: (name, robotIndex) => this.saveToGarage(name, robotIndex),
     load: (name, robotIndex) => this.loadFromGarage(name, robotIndex),
     remove: (name) => this.removeFromGarage(name),
+    share: (name) => this.shareRobot(name),
+    importCode: (text) => void this.importRobot(codeInText(text)),
   });
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
@@ -183,6 +187,39 @@ class App {
     this.showFile(this.shownFile);
     this.showGarage();
     requestAnimationFrame(this.frame);
+    const received = takeSharedRobotFromUrl();
+    if (received !== null) void this.importRobot(received);
+  }
+
+  /** The share code and URL of a saved robot. */
+  private async shareRobot(name: string): Promise<{ url: string; code: string } | null> {
+    const saved = this.garage?.find(name);
+    if (saved === undefined) return null;
+    const code = await encodeRobot(saved);
+    return { url: robotUrl(window.location.href, code), code };
+  }
+
+  /** Keeps the robot in a share code in the garage, and says so, or says what is wrong with the code. */
+  private async importRobot(code: string): Promise<void> {
+    if (this.garage === null) {
+      this.garageNote = 'storage is unavailable: the garage cannot keep robots';
+      return;
+    }
+    const decoded = await decodeRobot(code);
+    if (!decoded.ok) {
+      this.garageNote = `could not import: ${decoded.problem}`;
+      return;
+    }
+    const { robot, rules } = decoded.shared;
+    try {
+      const name = this.garage.importRobot(robot);
+      const renamed = name === robot.name ? '' : ` (as ${name})`;
+      const otherRules = rules === RULES_VERSION ? '' : `. It was made under other rules (${rules || 'unknown'}, now ${RULES_VERSION}): it may not play out the same`;
+      this.garageNote = `${robot.name} received into the garage${renamed}${otherRules}`;
+    } catch (error) {
+      this.garageNote = `could not keep ${robot.name}: ${describeError(error)}`;
+    }
+    this.showGarage();
   }
 
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */
@@ -653,6 +690,16 @@ function readPinnedSeed(): number | null {
 }
 
 /** null when the browser refuses access to localStorage (e.g. blocked site data). */
+/** The share code in the page's URL, taken out of the URL so that a reload does not bring the robot in again. */
+function takeSharedRobotFromUrl(): string | null {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get(ROBOT_PARAM);
+  if (code === null) return null;
+  url.searchParams.delete(ROBOT_PARAM);
+  window.history.replaceState(null, '', url.toString());
+  return code;
+}
+
 function openStore(): ProjectStore | null {
   try {
     return new ProjectStore(window.localStorage, DEFAULT_SOURCES);

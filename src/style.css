@@ -90,8 +90,24 @@ button {
     'results battle';
 }
 
-#app[data-screen='arena'] :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #project-name, #run, #reset, #debug),
-#app:not([data-screen='arena']) :is(#lineup, #results) {
+/* The contest screen: the list of robots on the left, the battle view (and the board over it) on the right. */
+#app[data-screen='contest'] {
+  grid-template-columns: 400px minmax(0, 1fr);
+  grid-template-rows: 34px minmax(0, 1fr);
+  grid-template-areas:
+    'toolbar toolbar'
+    'contest battle';
+}
+
+#contest {
+  grid-area: contest;
+  border-right: 1px solid var(--border);
+}
+
+#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #project-name, #run, #reset, #debug),
+#app[data-screen='contest'] .picker,
+#app:not([data-screen='arena']) :is(#lineup, #results),
+#app:not([data-screen='contest']) #contest {
   display: none;
 }
 
@@ -1009,7 +1025,7 @@ button {
 }
 
 #board[hidden],
-#app:not([data-screen='arena']) #board {
+#app:not([data-screen='contest']) #board {
   display: none;
 }
 
@@ -1312,4 +1328,94 @@ button {
   color: #f2c230;
   font-weight: bold;
   letter-spacing: 0.1em;
+}
+
+/* The contest screen's panel. */
+
+.contest-formats {
+  display: flex;
+  gap: 0;
+  margin: 10px 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.contest-format {
+  flex: 1;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.contest-format + .contest-format {
+  border-left: 1px solid var(--border);
+}
+
+.contest-format.selected {
+  background: var(--selected);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--syntax-value);
+}
+
+.contest-heading {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+}
+
+.contest-count.over-limit {
+  color: var(--error);
+}
+
+.contest-entries {
+  display: grid;
+  gap: 4px;
+  padding: 0 10px 6px;
+}
+
+.contest-entry {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.contest-entry .robot-preview {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+
+.contest-entry-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.contest-entry-origin {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.contest-selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.contest-add-select {
+  min-width: 0;
+  padding: 2px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
 }

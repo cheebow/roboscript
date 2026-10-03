@@ -31,6 +31,7 @@ import { BattleView, formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { ArenaMode } from './arena_mode';
+import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
 import { GaragePanel } from './garage_panel';
@@ -47,7 +48,7 @@ import { WatchPanel } from './watch_panel';
 type Mode = 'run' | 'debug';
 
 /** PROGRAM is where the code of ALPHA and BRAVO is written and debugged; ARENA is where saved robots fight and are watched. */
-const SCREENS = ['program', 'arena'] as const;
+const SCREENS = ['program', 'arena', 'contest'] as const;
 type Screen = (typeof SCREENS)[number];
 
 const MS_PER_SECOND = 1000;
@@ -109,6 +110,7 @@ class App {
   private readonly templateMenu: ActionMenu;
   private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
   private readonly arenaMode: ArenaMode;
+  private readonly contestMode: ContestMode;
   private screen: Screen = 'program';
   /** The arena the next match is fought in. */
   private arena = findArena(this.store?.loadInfo().arena ?? null);
@@ -176,7 +178,7 @@ class App {
     if (this.store === null) {
       this.events = [appEvent('warning', t('program.storageUnavailable'))];
     }
-    this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), requireElement('board'), {
+    this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
       arena: () => this.arena,
       garage: () => this.garage?.list() ?? [],
       speed: () => this.speed,
@@ -190,6 +192,11 @@ class App {
         this.showGarage();
         return names;
       },
+    });
+    this.contestMode = new ContestMode(requireElement('contest-body'), requireElement('board'), {
+      garage: () => this.garage?.list() ?? [],
+      speed: () => this.speed,
+      storage: openStorage(),
     });
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
@@ -239,11 +246,14 @@ class App {
     for (const each of SCREENS) requireElement(`screen-${each}`).classList.toggle('selected', each === screen);
     // Robots may have been saved or deleted since the arena was last shown.
     if (screen === 'arena') this.arenaMode.refresh();
+    if (screen === 'contest') this.contestMode.shown();
   }
 
   /** The replay of the screen being shown: the one the transport and PAUSE act on. */
   private shownReplay(): ReplayManager | null {
-    return this.screen === 'arena' ? this.arenaMode.replay : this.replay;
+    if (this.screen === 'arena') return this.arenaMode.replay;
+    if (this.screen === 'contest') return this.contestMode.replay;
+    return this.replay;
   }
 
   private createWorkspace(robotId: string, robotIndex: number): RobotWorkspace {
@@ -466,6 +476,7 @@ class App {
     this.speed = speed;
     if (this.replay !== null) this.replay.speed = speed;
     if (this.arenaMode.replay !== null) this.arenaMode.replay.speed = speed;
+    if (this.contestMode.replay !== null) this.contestMode.replay.speed = speed;
   }
 
   /**
@@ -562,23 +573,34 @@ class App {
     const elapsed = (now - this.lastFrame) / MS_PER_SECOND;
     this.lastFrame = now;
     if (this.screen === 'arena') this.showArena(elapsed);
+    else if (this.screen === 'contest') this.showContest(elapsed);
     else this.showProgram(elapsed);
     requestAnimationFrame(this.frame);
   };
 
   /** One frame of the arena mode: the fight being watched, or the picked robots waiting. */
   private showArena(elapsed: number): void {
-    const { replay } = this.arenaMode;
+    this.arenaMode.update();
+    this.showWatched(elapsed, this.arenaMode);
+  }
+
+  /** One frame of the contest screen: a match of the contest being watched, or an empty arena under its board. */
+  private showContest(elapsed: number): void {
+    this.showWatched(elapsed, this.contestMode);
+  }
+
+  /** Draws the match a watching screen shows, and sets the toolbar and the transport to it. */
+  private showWatched(elapsed: number, screen: ArenaMode | ContestMode): void {
+    const { replay } = screen;
     replay?.advance(elapsed);
-    const { snapshot, arena, stats, loadouts } = this.arenaMode.scene();
+    const { snapshot, arena, stats, loadouts } = screen.scene();
     this.battleView.render(snapshot, arena, stats, loadouts, {
       sensorOf: null,
       marks: NO_FEATURES,
-      coverRoutes: this.arenaMode.coverRoutes(),
+      coverRoutes: screen.coverRoutes(),
       overrun: replay?.overrun ?? 0,
     });
-    this.arenaMode.update();
-    this.toolbar.setMessage(this.arenaMode.message());
+    this.toolbar.setMessage(screen.message());
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null

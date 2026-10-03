@@ -269,6 +269,12 @@ const LANGUAGE: readonly WordReference[] = [
     hint: 'right against the enemy',
     summary: 'True while the robot and the enemy stand right against each other, whichever of them drove into the other: neither can drive any closer. enemy_angle tells where the enemy is.',
   },
+  {
+    word: 'hidden',
+    kind: 'sensor',
+    hint: "out of the enemy's sight",
+    summary: `True while the enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. Standing still while hidden for ${ROBOT_DEFAULTS.recoveryDelay} seconds, the robot then regains ${ROBOT_DEFAULTS.recoveryRate} hp a second, up to its full hp, until it drives or is seen again.`,
+  },
 ];
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));

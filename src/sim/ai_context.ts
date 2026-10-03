@@ -64,6 +64,8 @@ export interface AIContext {
   readonly hitAngle: number;
   /** The robot and the enemy stand against each other: neither can drive any closer. */
   readonly touchingEnemy: boolean;
+  /** The enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. */
+  readonly hidden: boolean;
 }
 
 /**

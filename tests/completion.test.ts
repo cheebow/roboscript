@@ -37,6 +37,7 @@ const SENSORS = [
   'cover_visible',
   'hit',
   'touching_enemy',
+  'hidden',
   ...NUMBERS,
 ];
 

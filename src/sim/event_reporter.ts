@@ -38,6 +38,10 @@ export class EventReporter {
     this.emit('sensor', robotId, `${visible ? 'enemy detected' : 'enemy lost'}: ${enemyId}`);
   }
 
+  recoveryChanged(robotId: string, recovering: boolean): void {
+    this.emit('sensor', robotId, recovering ? 'hidden from the enemy: recovering hp' : 'recovery ended');
+  }
+
   labelChanged(robotId: string, from: string, to: string, sourceLine: number | null): void {
     this.emit('ai', robotId, `label ${from} -> ${to}`, sourceLine);
   }

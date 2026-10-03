@@ -23,6 +23,8 @@ const COLORS = {
   obstacleEdge: '#3a444d',
   destroyed: '#4a5158',
   hpBack: '#2c333a',
+  /** The hp bar of a robot regaining hp. */
+  recovering: '#8fd6a6',
   bullet: '#e6e2c8',
   bulletTail: '#8c8873',
   text: '#c5ccd3',
@@ -212,7 +214,7 @@ export class BattleView {
     const barWidth = radius * 2;
     ctx.fillStyle = COLORS.hpBack;
     ctx.fillRect(x - radius, marks.barY, barWidth, HP_BAR_HEIGHT);
-    ctx.fillStyle = robot.alive ? this.colorOf(index) : COLORS.destroyed;
+    ctx.fillStyle = !robot.alive ? COLORS.destroyed : robot.recovering ? COLORS.recovering : this.colorOf(index);
     ctx.fillRect(x - radius, marks.barY, barWidth * (robot.hp / stats.maxHp), HP_BAR_HEIGHT);
 
     ctx.font = this.font(LABEL_FONT_PX);

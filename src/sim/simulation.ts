@@ -130,6 +130,8 @@ export class Simulation {
     // Both robots sense and decide on the same snapshot, so update order
     // gives neither an information advantage.
     for (const robot of this.robots) this.sense(robot);
+    // Both sensors have been read: each robot now learns whether the other's missed it.
+    for (const robot of this.robots) this.recover(robot);
     const actions = this.robots.map((robot) => this.think(robot));
 
     this.robots.forEach((robot, index) => {
@@ -165,6 +167,13 @@ export class Simulation {
     if (visible && !wasVisible) {
       this.tickEvents.push({ kind: 'detected', ...robot.position, robot: this.robots.indexOf(robot) });
     }
+  }
+
+  /** Hp comes back to a robot the enemy's sensor misses for long enough. Reported when it starts and stops. */
+  private recover(robot: RobotController): void {
+    const wasRecovering = robot.recovering;
+    robot.noteHidden(!this.enemyOf(robot).sensorReading.enemyVisible, this.tickRate);
+    if (robot.recovering !== wasRecovering) this.reporter?.recoveryChanged(robot.id, robot.recovering);
   }
 
   /** The terrain and the bullets as the robot finds them now. Its sensor must have been read first. */

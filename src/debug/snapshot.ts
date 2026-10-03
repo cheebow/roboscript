@@ -53,6 +53,10 @@ export interface RobotSnapshot {
   hitAngle: number;
   /** The robot and the enemy stood against each other. */
   touchingEnemy: boolean;
+  /** The enemy's sensor did not see the robot on this tick. */
+  hidden: boolean;
+  /** Regaining hp on this tick. */
+  recovering: boolean;
   /** Source lines the AI executed on this tick, in order; the last is the action it took. */
   executedLines: readonly number[];
   /** What the AI assigned to its variables on this tick, in order. */
@@ -129,6 +133,8 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         hit,
         hitAngle,
         touchingEnemy,
+        hidden: robot.hidden,
+        recovering: robot.recovering,
         executedLines: [...(robot.action?.executedLines ?? [])],
         assignments: (robot.action?.assignments ?? []).map((assignment) => ({ ...assignment })),
         variables: Object.fromEntries(robot.variables),

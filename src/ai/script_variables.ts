@@ -15,6 +15,7 @@ export const BOOLEAN_VARIABLES = {
   cover_visible: (context: AIContext) => context.coverVisible,
   hit: (context: AIContext) => context.hit,
   touching_enemy: (context: AIContext) => context.touchingEnemy,
+  hidden: (context: AIContext) => context.hidden,
 };
 
 export const NUMBER_VARIABLES = {

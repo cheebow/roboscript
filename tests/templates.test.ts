@@ -195,6 +195,20 @@ describe('GuardBot', () => {
 });
 
 describe('CoverBot', () => {
+  it('recovers in cover until it is nearly whole, and comes out to fight when the enemy finds it', () => {
+    const coverBot = findTemplate('cover_bot')?.source ?? '';
+    const atCover = { ...QUIET_CONTEXT, hp: 100, coverVisible: true, coverDistance: 0, hidden: true };
+    const brain = compileBrain(coverBot);
+    // Hurt, at cover and out of the enemy's sight: it waits there, facing where the enemy was, while it is hurt.
+    expect(brain.decide(atCover)).toMatchObject({ turn: 'enemy', fire: false, label: 'EVADE' });
+    const recovering = { ...atCover, hp: 150 };
+    for (let tick = 0; tick < 5; tick++) expect(brain.decide(recovering)).toMatchObject({ turn: 'enemy', fire: false });
+    // Found by the enemy: it fights.
+    const found = { ...atCover, hidden: false, hp: 150, enemyVisible: true, enemyDistance: 300 };
+    brain.decide(found);
+    expect(brain.decide(found)).toMatchObject({ fire: true, label: 'ATTACK' });
+  });
+
   it('goes into hiding once it is hurt', () => {
     const logger = new DebugLogger();
     const simulation = createSimulation(

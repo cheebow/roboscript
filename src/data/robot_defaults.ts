@@ -27,6 +27,10 @@ export interface RobotStats {
   maxGuards: number;
   /** sec, how much later the weapon can fire again for each tick spent guarding. */
   guardRecovery: number;
+  /** sec, how long the robot must stay still and out of the enemy's sight before it starts recovering hp. */
+  recoveryDelay: number;
+  /** hp/sec regained while still and out of the enemy's sight, once the delay is over. */
+  recoveryRate: number;
 }
 
 export const ROBOT_DEFAULTS: RobotStats = {
@@ -52,4 +56,6 @@ export const ROBOT_DEFAULTS: RobotStats = {
   guardDamageFactor: 0.5,
   maxGuards: 4,
   guardRecovery: 0.3,
+  recoveryDelay: 0.5,
+  recoveryRate: 20,
 };

@@ -51,6 +51,17 @@ export class RobotController {
   guardedAt: number | null = null;
   /** How many more ticks the robot can guard in this match. */
   guardsLeft: number;
+  /** The enemy's sensor did not see the robot on the latest tick. */
+  hidden = false;
+  /** Regaining hp on the latest tick: still and out of the enemy's sight for long enough, and hurt. */
+  recovering = false;
+  /** Ticks in a row that the robot has been still and out of the enemy's sight. */
+  private hiddenTicks = 0;
+  /** Where the robot stood when it last learnt whether it was hidden: moving since then is not resting. */
+  private restingAt: Vec2;
+  /** Ticks of recovery in the current rest, and the hp they have given: hp stays a whole number. */
+  private restTicks = 0;
+  private restGiven = 0;
 
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
@@ -74,6 +85,7 @@ export class RobotController {
     this.position = { x: options.spawn.x, y: options.spawn.y };
     this.rotation = normalizeAngle(options.spawn.rotation);
     this.hp = options.stats.maxHp;
+    this.restingAt = { ...this.position };
     this.guardsLeft = options.stats.maxGuards;
     this.brain = options.brain;
     this.sensor = options.sensor;
@@ -156,6 +168,30 @@ export class RobotController {
   /** Tells the robot what the simulation found around it this tick. */
   noteSurroundings(surroundings: Surroundings): void {
     this.around = surroundings;
+  }
+
+  /**
+   * Tells the robot whether the enemy's sensor misses it this tick. Resting
+   * (still, and out of the enemy's sight) for the recovery delay, and hurt, it
+   * regains hp at the recovery rate, a whole point at a time, until it moves,
+   * is seen again or is whole. Turning on the spot is resting; driving is not.
+   */
+  noteHidden(hidden: boolean, tickRate: number): void {
+    this.hidden = hidden;
+    const still = this.restingAt.x === this.position.x && this.restingAt.y === this.position.y;
+    this.restingAt = { ...this.position };
+    this.hiddenTicks = hidden && still && this.alive ? this.hiddenTicks + 1 : 0;
+    const { recoveryDelay, recoveryRate, maxHp } = this.stats;
+    this.recovering = this.hiddenTicks > recoveryDelay * tickRate && this.hp < maxHp && recoveryRate > 0;
+    if (!this.recovering) {
+      this.restTicks = 0;
+      this.restGiven = 0;
+      return;
+    }
+    this.restTicks++;
+    const due = Math.floor((this.restTicks * recoveryRate) / tickRate);
+    this.hp = Math.min(maxHp, this.hp + due - this.restGiven);
+    this.restGiven = due;
   }
 
   /** What the brain decided on the latest tick, or null before the first. */
@@ -300,6 +336,7 @@ export class RobotController {
       leadAngle: this.sensed.leadAngle,
       gunAngle: this.sensed.gunAngle,
       weaponRange: this.stats.weaponRange,
+      hidden: this.hidden,
       get hit() {
         onHitRead();
         return hit;

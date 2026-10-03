@@ -345,10 +345,31 @@ button {
   color: var(--muted);
 }
 
-.garage-import {
+/* The menu to take in a robot, and the field for a share code that takes its place while in use. */
+.intake-code {
   display: flex;
   gap: 4px;
-  padding: 6px 10px;
+  align-items: center;
+  padding: 6px 10px 0;
+}
+
+.intake-code[hidden] {
+  display: none;
+}
+
+.intake-code .tool-button {
+  padding: 1px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.garage-intake {
+  padding-bottom: 6px;
+}
+
+.garage-intake .panel-menu > .menu-list {
+  right: 10px;
+  min-width: 0;
 }
 
 .garage-import .tool-button {

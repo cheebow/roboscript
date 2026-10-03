@@ -1,6 +1,7 @@
 import { createElement } from './dom';
 import { t } from '../i18n/messages';
 import { acceptDrops, chooseFile } from '../share/file';
+import { RobotIntake } from './robot_intake';
 
 export interface GarageHandlers {
   /** Keep the robot at the given spawn index under the name as typed, which may not be a usable name. */
@@ -10,8 +11,8 @@ export interface GarageHandlers {
   remove(name: string): void;
   /** The share code of the robot kept under the name; null when there is none. */
   share(name: string): Promise<string | null>;
-  /** Keep the robot in the pasted share code. */
-  importCode(text: string): void;
+  /** Keep the robot in the pasted share code; true when it was kept. */
+  importCode(text: string): Promise<boolean>;
   /** Save the robot kept under the name as a file. */
   saveFile(name: string): void;
   /** Keep the robot in the text of a robot file. */
@@ -30,7 +31,6 @@ const SHARE_LABEL = '⇪';
 export class GaragePanel {
   private readonly nameInput: HTMLInputElement;
   private readonly rows = createElement('div', 'garage-rows');
-  private readonly importInput: HTMLInputElement;
   /** The delete button that was pressed once and waits for the second press. */
   private armed: HTMLButtonElement | null = null;
   /** The robot whose share code is shown under its row, if any, and the code. */
@@ -59,31 +59,14 @@ export class GaragePanel {
     const save = createElement('div', 'garage-save');
     save.append(this.nameInput, saveButtons);
 
-    this.importInput = createElement('input', 'garage-name-input');
-    this.importInput.type = 'text';
-    this.importInput.placeholder = t('garage.import.placeholder');
-    this.importInput.setAttribute('aria-label', 'Share code of a robot to keep');
-    this.importInput.spellcheck = false;
-    const importButton = createElement('button', 'tool-button', t('garage.import'));
-    importButton.type = 'button';
-    importButton.title = t('garage.import.title');
-    const doImport = () => {
-      handlers.importCode(this.importInput.value);
-      this.importInput.value = '';
-    };
-    importButton.addEventListener('click', doImport);
-    this.importInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') doImport();
-    });
-    const importRow = createElement('div', 'garage-import');
-    importRow.append(this.importInput, importButton);
-    const openFile = createElement('button', 'tool-button', t('garage.openFile'));
-    openFile.type = 'button';
-    openFile.title = t('garage.openFile.title');
-    openFile.addEventListener('click', () => chooseFile((text) => handlers.importFile(text)));
-    const fileRow = createElement('div', 'garage-import');
-    fileRow.append(openFile);
-    container.replaceChildren(save, this.rows, importRow, fileRow);
+    const intake = new RobotIntake(
+      { label: t('garage.intake'), title: t('garage.intake.title'), submit: t('garage.import'), submitTitle: t('garage.import.title') },
+      (code) => handlers.importCode(code),
+      () => chooseFile((text) => handlers.importFile(text)),
+    );
+    intake.setItems([{ id: 'file', label: t('garage.openFile') }]);
+    intake.element.classList.add('garage-intake');
+    container.replaceChildren(save, this.rows, intake.element);
     acceptDrops(container, (text) => handlers.importFile(text));
 
     // A press anywhere but on the waiting delete button calls the deletion off.

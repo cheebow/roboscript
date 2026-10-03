@@ -97,7 +97,7 @@ class App {
     load: (name, robotIndex) => this.loadFromGarage(name, robotIndex),
     remove: (name) => this.removeFromGarage(name),
     share: (name) => this.shareRobot(name),
-    importCode: (text) => void this.importRobot(text),
+    importCode: (text) => this.importRobot(text),
     saveFile: (name) => this.saveRobotFile(name),
     importFile: (text) => this.importRobotFile(text),
   });
@@ -218,17 +218,17 @@ class App {
   }
 
   /** Keeps the robot in a share code in the garage, and says so, or says what is wrong with the code. */
-  private async importRobot(code: string): Promise<void> {
+  private async importRobot(code: string): Promise<boolean> {
     if (this.garage === null) {
       this.garageNote = t('garage.noStorage');
-      return;
+      return false;
     }
     const decoded = await decodeRobot(code);
     if (!decoded.ok) {
       this.garageNote = t('garage.couldNotImport', { problem: decoded.problem });
-      return;
+      return false;
     }
-    this.keepRobot(decoded.shared.robot, decoded.shared.rules);
+    return this.keepRobot(decoded.shared.robot, decoded.shared.rules);
   }
 
   /** Has the browser save a robot of the garage as a file. */
@@ -252,17 +252,21 @@ class App {
     this.keepRobot(read.file.robot, read.file.rules);
   }
 
-  private keepRobot(robot: SavedRobot, rules: string): void {
-    if (this.garage === null) return;
+  /** Keeps the robot in the garage and says so; true when it was kept. */
+  private keepRobot(robot: SavedRobot, rules: string): boolean {
+    if (this.garage === null) return false;
+    let kept = false;
     try {
       const name = this.garage.importRobot(robot);
       const received = name === robot.name ? t('garage.received', { name }) : t('garage.receivedAs', { name: robot.name, kept: name });
       const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
       this.garageNote = `${received}${otherRules}`;
+      kept = true;
     } catch (error) {
       this.garageNote = t('garage.couldNotKeep', { name: robot.name, reason: describeError(error) });
     }
     this.showGarage();
+    return kept;
   }
 
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */

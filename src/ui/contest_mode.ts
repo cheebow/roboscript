@@ -20,6 +20,7 @@ import { formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import type { ArenaScene } from './arena_mode';
 import { ActionMenu, type MenuItem } from './action_menu';
+import { RobotIntake } from './robot_intake';
 import { createElement } from './dom';
 import { createLeagueBoard } from './league_board';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
@@ -76,10 +77,7 @@ export class ContestMode {
   private readonly formatButtons: HTMLButtonElement[];
   private readonly countLabel = createElement('span', 'contest-count');
   private readonly list = createElement('div', 'contest-entries');
-  private readonly codeInput: HTMLInputElement;
-  /** The line to paste a share code in, shown when that is picked from the menu. */
-  private readonly codeRow = createElement('div', 'lineup-import');
-  private readonly addMenu: ActionMenu;
+  private readonly addMenu: RobotIntake;
   private readonly resultMenu: ActionMenu;
   private readonly startButton: HTMLButtonElement;
 
@@ -104,20 +102,11 @@ export class ContestMode {
     const heading = createElement('div', 'contest-heading');
     heading.append(createElement('span', 'field-name', t('contest.entrants')), this.countLabel);
 
-    this.codeInput = createElement('input', 'garage-name-input');
-    this.codeInput.type = 'text';
-    this.codeInput.placeholder = t('contest.code.placeholder');
-    this.codeInput.spellcheck = false;
-    const addCode = this.button(t('contest.add'), t('contest.code.title'), () => void this.addFromCode());
-    this.codeInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') addCode.click();
-      if (event.key === 'Escape') this.codeRow.hidden = true;
-    });
-    this.codeRow.append(this.codeInput, addCode);
-    this.codeRow.hidden = true;
-
-    const [addHolder, addButton] = this.menuButton(t('contest.addMenu'), t('contest.addMenu.title'));
-    this.addMenu = new ActionMenu(addHolder, addButton, [], (id) => this.pickAdd(id));
+    this.addMenu = new RobotIntake(
+      { label: t('contest.addMenu'), title: t('contest.addMenu.title'), submit: t('contest.add'), submitTitle: t('contest.code.title') },
+      (code) => this.addFromCode(code),
+      (id) => this.pickAdd(id),
+    );
 
     this.startButton = this.button('', '', () => this.start());
     const [resultHolder, resultButton] = this.menuButton(t('contest.resultMenu'), t('contest.resultMenu.title'));
@@ -125,7 +114,7 @@ export class ContestMode {
     const buttons = createElement('div', 'lineup-buttons');
     buttons.append(this.startButton, resultHolder);
 
-    panel.replaceChildren(formats, heading, this.list, addHolder, this.codeRow, buttons);
+    panel.replaceChildren(formats, heading, this.list, this.addMenu.element, buttons);
     // A robot file dropped on the panel joins the list; a result file shows its board.
     acceptDrops(panel, (text) => this.openFile(text));
     acceptDrops(board.parentElement ?? board, (text) => this.openFile(text));
@@ -140,7 +129,6 @@ export class ContestMode {
       garage.length === 0
         ? { id: 'garage', label: t('contest.add.garageEmpty'), disabled: true }
         : { id: 'garage', label: t('contest.add.garage'), items: garage.map((robot, index) => ({ id: `garage:${index}`, label: robot.name })) },
-      { id: 'code', label: t('contest.add.code') },
       { id: 'file', label: t('contest.add.file') },
     ];
     this.addMenu.setItems(items);
@@ -203,9 +191,6 @@ export class ContestMode {
     } else if (kind === 'garage') {
       const robot = this.setting.garage()[index];
       if (robot !== undefined) this.add(robot, 'garage');
-    } else if (kind === 'code') {
-      this.codeRow.hidden = false;
-      this.codeInput.focus();
     } else if (kind === 'file') {
       chooseFile((text) => this.openFile(text));
     }
@@ -270,14 +255,15 @@ export class ContestMode {
     );
   }
 
-  private add(robot: SavedRobot, origin: ContestOrigin): void {
+  private add(robot: SavedRobot, origin: ContestOrigin): boolean {
     const added = addEntry(this.entries, { robot, origin });
     if (!added.ok) {
       this.note = t('contest.full', { max: LEAGUE_MAX });
-      return;
+      return false;
     }
     this.note = t('contest.added', { name: robot.name });
     this.setEntries(added.list);
+    return true;
   }
 
   private setEntries(list: ContestEntry[]): void {
@@ -291,16 +277,16 @@ export class ContestMode {
     this.showFormat();
   }
 
-  private async addFromCode(): Promise<void> {
-    const decoded = await decodeRobot(this.codeInput.value);
+  /** Adds the robot of a pasted share code; true when it was added. */
+  private async addFromCode(code: string): Promise<boolean> {
+    const decoded = await decodeRobot(code);
     if (!decoded.ok) {
       this.note = t('garage.couldNotImport', { problem: decoded.problem });
-      return;
+      return false;
     }
-    this.codeInput.value = '';
-    this.codeRow.hidden = true;
-    this.add(decoded.shared.robot, 'code');
+    return this.add(decoded.shared.robot, 'code');
   }
+
 
   /** Plays the contest of the chosen format between the robots on the list, and shows its board. */
   private start(): void {

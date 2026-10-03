@@ -2,7 +2,7 @@ import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, costOf, statsOf } from '../data/parts';
-import { TEMPLATES, templateSource } from '../data/templates';
+import { TEMPLATES } from '../data/templates';
 import type { SavedRobot } from '../project/garage';
 import type { RobotBrain } from '../sim/ai_context';
 import type { SeriesResult } from '../sim/series';
@@ -17,29 +17,29 @@ export interface Entrant {
   name: string;
   origin: 'garage' | 'built-in';
   loadout: Loadout;
-  /** Its program for a match it starts at the given spawn index. */
-  sourceFor(spawnIndex: number): string;
+  /** Its program, run as it is wherever it starts. */
+  source: string;
 }
 
-/** The templates as robots of standard parts. Like the templates, they go round obstacles on the side that suits where they start. */
+/** The templates as robots of standard parts. */
 export function builtInEntrants(): Entrant[] {
   return TEMPLATES.map((template) => ({
     id: `built-in:${template.id}`,
     name: template.name,
     origin: 'built-in',
     loadout: STANDARD_LOADOUT,
-    sourceFor: (spawnIndex) => templateSource(template, spawnIndex),
+    source: template.source,
   }));
 }
 
-/** The saved robots, each running its program as it was saved wherever it starts. */
+/** The saved robots. */
 export function garageEntrants(robots: readonly SavedRobot[]): Entrant[] {
   return robots.map((robot) => ({
     id: `garage:${robot.name}`,
     name: robot.name,
     origin: 'garage',
     loadout: robot.loadout,
-    sourceFor: () => robot.source,
+    source: robot.source,
   }));
 }
 
@@ -79,7 +79,7 @@ export function prepareFight(
   entrants.forEach((entrant, spawnIndex) => {
     const cost = costOf(entrant.loadout);
     if (cost > COST_LIMIT) problems.push(`${names[spawnIndex]}: parts cost ${cost}, over the limit of ${COST_LIMIT}`);
-    const compiled = compileScript(entrant.sourceFor(spawnIndex));
+    const compiled = compileScript(entrant.source);
     if (compiled.ok) brains.push(compiled.brain);
     else problems.push(...compiled.errors.map((error) => `${names[spawnIndex]}: ${formatError(error)}`));
   });

@@ -2,7 +2,7 @@ import { compileScript } from '../src/ai/roboscript';
 import { formatError } from '../src/ai/script_error';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS, type RobotStats } from '../src/data/robot_defaults';
-import { findTemplate, templateSource } from '../src/data/templates';
+import { findTemplate } from '../src/data/templates';
 import { type AIAction, type AIContext, type RobotBrain, createIdleAction } from '../src/sim/ai_context';
 import { Simulation, type SimulationConfig } from '../src/sim/simulation';
 import type { Arena } from '../src/sim/types';
@@ -100,11 +100,11 @@ export function compileBrain(source: string): RobotBrain {
   return result.brain;
 }
 
-/** The given template as loaded into the enemy's editor: turning right around obstacles. */
+/** The program of the given template. */
 export function enemySource(templateId: string): string {
   const template = findTemplate(templateId);
   if (template === undefined) throw new Error(`No template "${templateId}"`);
-  return templateSource(template, 1);
+  return template.source;
 }
 
 export function runTicks(simulation: Simulation, ticks: number): void {

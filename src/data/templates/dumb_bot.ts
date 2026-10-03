@@ -1,11 +1,9 @@
-import type { Side } from './side';
 
 /** Drives up to the enemy and shoots once close; goes looking for it when it is hidden (SPEC §30). */
-export function dumbBot(avoid: Side): string {
-  return `loop
+export const DUMB_BOT = `loop
     if blocked
         label SEARCH
-        turn ${avoid}
+        turn left
     else
         if enemy_visible
             turn enemy
@@ -22,4 +20,3 @@ export function dumbBot(avoid: Side): string {
             drive forward
             wait
 `;
-}

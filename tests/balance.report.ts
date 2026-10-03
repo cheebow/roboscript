@@ -14,7 +14,7 @@ import {
   statsOf,
 } from '../src/data/parts';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { TEMPLATES, type Template, templateSource } from '../src/data/templates';
+import { TEMPLATES, type Template } from '../src/data/templates';
 import { playSeries } from '../src/sim/series';
 import { compileBrain } from './helpers';
 
@@ -27,9 +27,9 @@ const ATTACK_DISTANCE = /(enemy_distance [<>] |attack\()(\d+)/g;
  * The template as a player would tune it for the loadout's gun: the distances
  * it shoots from, written for the standard gun, in proportion to the gun's range.
  */
-function tunedSource(template: Template, spawnIndex: number, loadout: Loadout): string {
+function tunedSource(template: Template, loadout: Loadout): string {
   const reach = statsOf(loadout).weaponRange / ROBOT_DEFAULTS.weaponRange;
-  return templateSource(template, spawnIndex).replace(
+  return template.source.replace(
     ATTACK_DISTANCE,
     (_, before: string, distance: string) => `${before}${Math.round(Number(distance) * reach)}`,
   );
@@ -59,12 +59,12 @@ function fight(loadout: Loadout, template: Template): Score {
       {
         id: 'PARTS',
         stats: statsOf(loadout),
-        createBrain: (spawnIndex) => compileBrain(tunedSource(template, spawnIndex, loadout)),
+        createBrain: () => compileBrain(tunedSource(template, loadout)),
       },
       {
         id: 'STANDARD',
         stats: ROBOT_DEFAULTS,
-        createBrain: (spawnIndex) => compileBrain(templateSource(template, spawnIndex)),
+        createBrain: () => compileBrain(template.source),
       },
     ],
     arenas: ARENA_LIST,

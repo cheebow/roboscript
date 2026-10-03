@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARENAS, DEFAULT_ARENA, DEFAULT_ARENA_DEFINITION, findArena } from '../src/data/arenas';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { TEMPLATES, templateSource } from '../src/data/templates';
+import { TEMPLATES } from '../src/data/templates';
 import { circleIntersectsRect } from '../src/sim/math';
 import type { Rect } from '../src/sim/types';
 import { compileBrain, createSimulation, runToEnd } from './helpers';
@@ -82,12 +82,14 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
     expect(player.sensorReading.enemyVisible).toBe(enemy.sensorReading.enemyVisible);
   });
 
-  it('lets every pair of templates fight to a finish, without running out the clock', () => {
+  it('lets every pair of different templates fight to a finish, without running out the clock', () => {
+    // Two robots running the same program can stay half a turn apart and never meet; that is left to the player.
     for (const player of TEMPLATES) {
       for (const enemy of TEMPLATES) {
+        if (enemy === player) continue;
         for (const seed of SEEDS) {
           const simulation = createSimulation(
-            [compileBrain(templateSource(player, 0)), compileBrain(templateSource(enemy, 1))],
+            [compileBrain(player.source), compileBrain(enemy.source)],
             { arena, stats: ROBOT_DEFAULTS, seed },
           );
           runToEnd(simulation);

@@ -77,10 +77,12 @@ describe('debug events of a match', () => {
     const actions = select(events, { type: 'action', robotId: 'ALPHA' }).filter(
       (event) => event.message !== 'fire',
     );
-    // Forward to the centre block, a quarter turn left, along the block, then
-    // turning to the enemy, closing in on it and stopping to shoot.
+    // Forward to the centre block, a quarter turn left, along the block, a
+    // quarter turn left at its corner, then turning to the enemy, closing in on
+    // it and stopping to shoot.
     expect(actions.map(({ message, sourceLine }) => ({ message, sourceLine }))).toEqual([
       { message: 'drive forward', sourceLine: 22 },
+      { message: 'turn left', sourceLine: 6 },
       { message: 'turn left', sourceLine: 6 },
       { message: 'turn enemy', sourceLine: 10 },
       { message: 'drive forward', sourceLine: 18 },

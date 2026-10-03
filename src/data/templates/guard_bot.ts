@@ -1,4 +1,3 @@
-import type { Side } from './side';
 
 /**
  * DumbBot with a defence: it braces when a bullet is about to hit. A robot has
@@ -6,8 +5,7 @@ import type { Side } from './side';
  * bullet before every action, and only braces on the tick of the hit. The
  * check is a function, so that it is written once and asked twice.
  */
-export function guardBot(avoid: Side): string {
-  return `# guard halves the damage of a bullet that hits on that tick.
+export const GUARD_BOT = `# guard halves the damage of a bullet that hits on that tick.
 # There are only a few guards per match, and each puts off the next shot:
 # use them on the very tick of the hit.
 def about_to_be_hit()
@@ -21,7 +19,7 @@ loop
     else
         if blocked
             label SEARCH
-            turn ${avoid}
+            turn left
         else
             if enemy_visible
                 turn enemy
@@ -42,4 +40,3 @@ loop
                 drive forward
                 wait
 `;
-}

@@ -1,4 +1,3 @@
-import { type Side, otherSide } from './side';
 
 /**
  * Fights from a distance and, the first time it is badly hurt, drives behind
@@ -7,8 +6,7 @@ import { type Side, otherSide } from './side';
  * good; and when it cannot find the enemy again, it changes the side on
  * which it goes round obstacles, so that the two do not chase each other's tail.
  */
-export function coverBot(avoid: Side): string {
-  return `# Once hurt, it hides behind an obstacle and waits for the enemy there.
+export const COVER_BOT = `# Once hurt, it hides behind an obstacle and waits for the enemy there.
 set hidden = 0
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set searching = 0  # ticks since it last saw the enemy
@@ -50,9 +48,9 @@ loop
         if blocked
             label SEARCH
             if other_way == 1
-                turn ${otherSide(avoid)}
+                turn right
             else
-                turn ${avoid}
+                turn left
         else
             if enemy_visible
                 turn enemy
@@ -69,4 +67,3 @@ loop
                 drive forward
                 wait
 `;
-}

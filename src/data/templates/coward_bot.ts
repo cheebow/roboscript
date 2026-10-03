@@ -1,11 +1,9 @@
-import type { Side } from './side';
 
 /**
  * Backs away when the enemy gets close, and shoots while keeping its distance
  * (SPEC §30). With its back against an obstacle or a wall it stands and fights.
  */
-export function cowardBot(avoid: Side): string {
-  return `loop
+export const COWARD_BOT = `loop
     if enemy_visible
         turn enemy
 
@@ -30,8 +28,7 @@ export function cowardBot(avoid: Side): string {
         drive forward
 
         if blocked
-            turn ${avoid}
+            turn left
         else
             wait
 `;
-}

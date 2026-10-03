@@ -1,5 +1,5 @@
 import { SAMPLE_AI } from '../src/data/templates/sample';
-import { strafeBot } from '../src/data/templates/strafe_bot';
+import { STRAFE_BOT } from '../src/data/templates/strafe_bot';
 
 // Ways a player might write their AI (SPEC §32), used to check that the choice
 // of strategy changes who wins. They go round obstacles on the left, like the
@@ -84,7 +84,7 @@ export const RUSH = `loop
 `;
 
 /** Drives to and fro across the enemy's line of fire, and shoots where the enemy will be: StrafeBot. */
-export const STRAFE = strafeBot('left');
+export const STRAFE = STRAFE_BOT;
 
 /** Gets out of the way of every bullet: turns side-on to it and drives off its path, to and fro between the walls. */
 function sidestep(indent: string): string {

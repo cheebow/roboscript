@@ -12,7 +12,7 @@ import {
 import { scatterSpawns } from '../src/arena/spawns';
 import { DEFAULT_ARENA } from '../src/data/arenas';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf, statsOf } from '../src/data/parts';
-import { TEMPLATES, templateSource } from '../src/data/templates';
+import { TEMPLATES } from '../src/data/templates';
 import { Simulation } from '../src/sim/simulation';
 import type { Arena } from '../src/sim/types';
 import { DUEL_ARENA, runToEnd } from './helpers';
@@ -51,12 +51,9 @@ describe('builtInEntrants', () => {
     }
   });
 
-  it('gives a robot the program that suits the side it starts on', () => {
+  it('gives a robot the program of its template', () => {
     const template = TEMPLATES[0];
-    const entrant = builtIn(template.id);
-    expect(entrant.sourceFor(0)).toBe(templateSource(template, 0));
-    expect(entrant.sourceFor(1)).toBe(templateSource(template, 1));
-    expect(entrant.sourceFor(0)).not.toBe(entrant.sourceFor(1));
+    expect(builtIn(template.id).source).toBe(template.source);
   });
 });
 
@@ -65,8 +62,7 @@ describe('garageEntrants', () => {
     const loadout = { ...STANDARD_LOADOUT, body: 'heavy', sensor: 'short' };
     const [entrant] = garageEntrants([{ name: 'Tank', source: SHOOT, loadout }]);
     expect(entrant).toMatchObject({ id: 'garage:Tank', name: 'Tank', origin: 'garage', loadout });
-    expect(entrant.sourceFor(0)).toBe(SHOOT);
-    expect(entrant.sourceFor(1)).toBe(SHOOT);
+    expect(entrant.source).toBe(SHOOT);
   });
 
   it('tells a saved robot from a built-in one of the same name', () => {

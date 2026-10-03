@@ -5,7 +5,7 @@ import { LONG_WALL } from '../src/data/arenas/long_wall';
 import { OPEN_FIELD } from '../src/data/arenas/open_field';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import { TEMPLATES, templateSource } from '../src/data/templates';
+import { TEMPLATES } from '../src/data/templates';
 import { SAMPLE_AI } from '../src/data/templates/sample';
 import { recordMatch } from '../src/debug/recorder';
 import type { Arena } from '../src/sim/types';
@@ -100,8 +100,8 @@ it('strategies: the player\'s ways of fighting against the enemy templates, and 
 it('templates: every template against every other, in every arena', () => {
   const lines: string[] = [];
 
-  /** All pairings of two different templates, the second one written for the given side. */
-  const roundRobin = (label: string, secondSide: 'left' | 'right', field: (arena: Arena, seed: number) => Arena) => {
+  /** All pairings of two different templates, each running its program as it is. */
+  const roundRobin = (label: string, field: (arena: Arena, seed: number) => Arena) => {
     const ticks: number[] = [];
     const reasons: Record<string, number> = {};
     const points = new Map<string, number>();
@@ -118,7 +118,7 @@ it('templates: every template against every other, in every arena', () => {
           const lengths = new Set<number>();
           const winners = new Set<string>();
           for (const seed of MANY_SEEDS) {
-            const outcome = duel(first.build('left'), second.build(secondSide), seed, field(arena, seed));
+            const outcome = duel(first.source, second.source, seed, field(arena, seed));
             ticks.push(outcome.ticks);
             reasons[outcome.reason] = (reasons[outcome.reason] ?? 0) + 1;
             lengths.add(outcome.ticks);
@@ -149,24 +149,26 @@ it('templates: every template against every other, in every arena', () => {
     );
   };
 
-  roundRobin('内蔵どおり（左回り / 右回り）、開始位置は固定', 'right', (arena) => arena);
-  roundRobin('内蔵どおり（左回り / 右回り）、開始位置は seed でばらつく', 'right', scatterSpawns);
-  roundRobin('2台とも左回り、開始位置は固定', 'left', (arena) => arena);
-  roundRobin('2台とも左回り、開始位置は seed でばらつく', 'left', scatterSpawns);
+  roundRobin('開始位置は固定', (arena) => arena);
+  roundRobin('開始位置は seed でばらつく（PROGRAM / ARENA）', scatterSpawns);
 
-  let timeouts = 0;
-  let matches = 0;
-  for (const { arena } of ARENAS) {
-    for (const first of TEMPLATES) {
-      for (const second of TEMPLATES) {
-        for (const seed of FEW_SEEDS) {
+  for (const [label, field] of [['固定', (arena: Arena) => arena], ['ばらつく', scatterSpawns]] as const) {
+    let timeouts = 0;
+    let matches = 0;
+    const perArena: string[] = [];
+    for (const { name, arena } of ARENAS) {
+      let arenaTimeouts = 0;
+      for (const template of TEMPLATES) {
+        for (const seed of MANY_SEEDS) {
           matches++;
-          if (duel(templateSource(first, 0), templateSource(second, 1), seed, arena).reason === 'timeout') timeouts++;
+          if (duel(template.source, template.source, seed, field(arena, seed)).reason === 'timeout') arenaTimeouts++;
         }
       }
+      timeouts += arenaTimeouts;
+      if (arenaTimeouts > 0) perArena.push(`${name} ${percent(arenaTimeouts, TEMPLATES.length * MANY_SEEDS.length)}`);
     }
+    lines.push(`同じテンプレートどうし、開始位置は${label}（${matches}試合）の時間切れ: ${percent(timeouts, matches)}${perArena.length > 0 ? `（${perArena.join('、')}）` : ''}`);
   }
-  lines.push(`同じテンプレートどうしを含む全組み合わせ（seed 1〜5、${matches}試合）の時間切れ: ${timeouts}`);
   print(lines);
 });
 

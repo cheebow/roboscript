@@ -14,7 +14,7 @@ import {
 } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
-import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate, templateSource } from '../data/templates';
+import { DEFAULT_TEMPLATES, TEMPLATES, findTemplate } from '../data/templates';
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
@@ -54,8 +54,8 @@ const PARTS_NOTE = 'parts changed since this run';
 const AI_LABEL = 'main.bot';
 /** The element that holds each robot's code editor, in spawn order. */
 const EDITOR_ELEMENT_IDS = ['code', 'enemy-code'];
-/** The programs the robots start with, each written for its own side. */
-const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template, robotIndex) => templateSource(template, robotIndex));
+/** The programs the robots start with. */
+const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template) => template.source);
 const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
@@ -212,12 +212,11 @@ class App {
     });
   }
 
-  /** Loading a template replaces the code of the robot whose file is shown, written for that robot's side. */
+  /** Loading a template replaces the code of the robot whose file is shown. */
   private loadTemplate(id: string): void {
     const template = findTemplate(id);
     if (template === undefined) return;
-    const { robotIndex } = this.shownFile;
-    this.workspaces[robotIndex].load(templateSource(template, robotIndex));
+    this.workspaces[this.shownFile.robotIndex].load(template.source);
   }
 
   /**

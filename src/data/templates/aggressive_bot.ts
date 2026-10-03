@@ -1,11 +1,9 @@
-import type { Side } from './side';
 
 /** Never stops: keeps driving at the enemy and fires as soon as it is in weapon range (SPEC §30). */
-export function aggressiveBot(avoid: Side): string {
-  return `loop
+export const AGGRESSIVE_BOT = `loop
     if blocked
         label SEARCH
-        turn ${avoid}
+        turn left
     else
         drive forward
 
@@ -19,4 +17,3 @@ export function aggressiveBot(avoid: Side): string {
             label SEARCH
             wait
 `;
-}

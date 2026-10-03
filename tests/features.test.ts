@@ -66,7 +66,7 @@ describe('program features', () => {
   });
 
   it('are found for the templates that defend themselves, and for none of the plain ones', () => {
-    const found = Object.fromEntries(TEMPLATES.map((template) => [template.id, featuresOf(template.build('left'))]));
+    const found = Object.fromEntries(TEMPLATES.map((template) => [template.id, featuresOf(template.source)]));
     expect(found).toEqual({
       sample: NONE,
       dumb_bot: NONE,

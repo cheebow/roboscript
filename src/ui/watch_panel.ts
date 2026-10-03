@@ -1,4 +1,5 @@
 import type { RobotSnapshot } from '../debug/snapshot';
+import { t } from '../i18n/messages';
 import { createElement } from './dom';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber } from './format';
@@ -52,7 +53,11 @@ export class WatchPanel {
   ) {
     const sensorsContainer = createElement('div', 'watch-sensors');
     container.replaceChildren(this.variablesContainer, sensorsContainer);
-    this.sensors = new FieldList(sensorsContainer, SENSOR_NAMES);
+    // In Japanese the labels are short translations; the word itself is the tooltip, so the program's word can still be found.
+    this.sensors = new FieldList(
+      sensorsContainer,
+      SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: word })),
+    );
   }
 
   update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>): void {

@@ -74,6 +74,14 @@ describe('Japanese for the words and the parts', () => {
     expect(describeWord('no_such_word')).toBeUndefined();
   });
 
+  it('has a watch label for every word the watch panel shows', () => {
+    const shown = ['enemy_visible', 'hp', 'wall_right', 'cover_angle', 'last_seen_x'];
+    for (const word of shown) {
+      expect(en[`watch.${word}` as MessageKey]).toBe(word);
+      expect(ja[`watch.${word}` as MessageKey]).toBeTruthy();
+    }
+  });
+
   it('covers every part', () => {
     for (const part of PARTS) expect(PART_SUMMARIES_JA[`${part.slot}:${part.id}`], part.id).toBeDefined();
     const cannon = PARTS.find((part) => part.id === 'cannon');

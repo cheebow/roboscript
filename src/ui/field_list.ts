@@ -4,12 +4,16 @@ import { createElement } from './dom';
 export class FieldList {
   private readonly values: HTMLElement[];
 
-  constructor(container: HTMLElement, names: readonly string[]) {
+  /** `names` are the labels; a `{ name, title }` carries a tooltip besides (e.g. the word a translated label stands for). */
+  constructor(container: HTMLElement, names: readonly (string | { name: string; title: string })[]) {
     const list = createElement('div', 'field-list');
-    this.values = names.map((name) => {
+    this.values = names.map((entry) => {
+      const { name, title } = typeof entry === 'string' ? { name: entry, title: '' } : entry;
       const row = createElement('div', 'field');
       const value = createElement('span', 'field-value');
-      row.append(createElement('span', 'field-name', name), value);
+      const label = createElement('span', 'field-name', name);
+      if (title !== '') label.title = title;
+      row.append(label, value);
       list.append(row);
       return value;
     });

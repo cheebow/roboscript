@@ -31,6 +31,7 @@ import { TutorialPanel } from './tutorial_panel';
 import { tutorialMatch } from '../tutorial/match';
 import { trimmed } from '../tutorial';
 import { createReplay } from './watched_match';
+import { CommentaryView } from './commentary_view';
 import { parse } from '../ai/parser';
 import { functionLines } from '../ai/structure';
 import { ArenaMode } from './arena_mode';
@@ -125,6 +126,9 @@ class App {
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly seedLabel = requireElement('battle-seed');
+  /** The commentary over the battle view, on the arena and contest screens. */
+  private readonly commentaryView = new CommentaryView();
+  private commentaryOn = readCommentaryOn(this.storage);
   private ownersOf: { source: string; owners: Map<number, string> } | null = null;
   /** The start-up screen and its menu: shown first, and again from the ⏻ button. */
   private readonly boot = new BootScreen(this.storage, (choice) => this.bootInto(choice));
@@ -240,6 +244,18 @@ class App {
     new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
+    requireElement('battle-frame').append(this.commentaryView.element);
+    const toggle = requireElement('commentary-toggle');
+    toggle.classList.toggle('selected', this.commentaryOn);
+    toggle.addEventListener('click', () => {
+      this.commentaryOn = !this.commentaryOn;
+      toggle.classList.toggle('selected', this.commentaryOn);
+      try {
+        this.storage?.setItem(COMMENTARY_KEY, this.commentaryOn ? 'on' : 'off');
+      } catch {
+        // Storage may be full or blocked: the choice holds until the page is left.
+      }
+    });
     document.addEventListener('keydown', (event) => this.onShortcut(event));
     requestAnimationFrame(this.frame);
     this.boot.show();
@@ -740,6 +756,7 @@ class App {
     });
     this.toolbar.setMessage(screen.message());
     this.showSeed(replay?.recording.seed ?? null);
+    this.commentaryView.update(screen.commentary(), replay?.tick ?? 0, this.commentaryOn);
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
@@ -877,6 +894,16 @@ function readPinnedSeed(): number | null {
 }
 
 const MARK_KEY = 'roboscript/mark.json';
+const COMMENTARY_KEY = 'roboscript/commentary';
+
+/** Whether the commentary is on: it is unless it was turned off. */
+function readCommentaryOn(storage: Storage | null): boolean {
+  try {
+    return storage?.getItem(COMMENTARY_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
 
 /** Whether a key goes to something being typed in: a field, a list, or the code editor. */
 function isTyping(target: EventTarget | null): boolean {

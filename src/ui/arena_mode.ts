@@ -33,6 +33,7 @@ import { createShareBox } from './share_box';
 import { describeError, formatSeconds } from './format';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 import { type ArenaScene, WatchedMatch } from './watched_match';
+import type { CommentaryLine } from '../arena/commentary';
 
 /** What the arena mode needs to know of the rest of the app. */
 export interface ArenaSetting {
@@ -248,6 +249,11 @@ export class ArenaMode {
   /** Per robot of the match being shown, whether its program has to do with cover: the way there is drawn for those. */
   coverRoutes(): readonly boolean[] {
     return this.watched.coverRoutes();
+  }
+
+  /** The commentary of the match being watched. */
+  commentary(): readonly CommentaryLine[] {
+    return this.watched.commentary;
   }
 
   /** The line for the toolbar: who fights whom, and how it stands. */

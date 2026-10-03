@@ -17,6 +17,7 @@ import { type SharedFile, acceptDrops, chooseFile, contestFileText, downloadText
 import { Simulation } from '../sim/simulation';
 import { paletteOf } from '../view/sprites';
 import { type ArenaScene, WatchedMatch } from './watched_match';
+import type { CommentaryLine } from '../arena/commentary';
 import { ActionMenu, type MenuItem } from './action_menu';
 import { Notice } from './notice';
 import { RobotIntake } from './robot_intake';
@@ -167,6 +168,11 @@ export class ContestMode {
 
   coverRoutes(): readonly boolean[] {
     return this.watched.coverRoutes();
+  }
+
+  /** The commentary of the match being watched. */
+  commentary(): readonly CommentaryLine[] {
+    return this.watched.commentary;
   }
 
   /** The line for the toolbar. */

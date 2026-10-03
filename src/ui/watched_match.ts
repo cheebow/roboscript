@@ -1,3 +1,4 @@
+import { type CommentaryLine, commentaryOf } from '../arena/commentary';
 import type { Fight } from '../arena/match';
 import type { Loadout } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
@@ -32,17 +33,22 @@ export function createReplay(recording: Recording, speed: number, focus: string)
 export class WatchedMatch {
   replay: ReplayManager | null = null;
   fight: Fight | null = null;
+  /** The commentary of the match, worked out from its recording. */
+  commentary: readonly CommentaryLine[] = [];
 
   /** Records the fight and plays it from the start. */
   watch(fight: Fight, speed: number): void {
     this.fight = fight;
-    this.replay = createReplay(recordMatch(fight.config, EFFECT_LIFETIMES), speed, fight.names[0]);
+    const recording = recordMatch(fight.config, EFFECT_LIFETIMES);
+    this.commentary = commentaryOf(recording, fight.names, fight.config.maxMatchTime);
+    this.replay = createReplay(recording, speed, fight.names[0]);
     this.replay.restart();
   }
 
   leave(): void {
     this.replay = null;
     this.fight = null;
+    this.commentary = [];
   }
 
   /** What to draw: the match, or `idle` while there is none. */

@@ -25,6 +25,7 @@ import { Simulation } from '../sim/simulation';
 import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
+import { Notice } from './notice';
 import { createShareBox } from './share_box';
 import { describeError, formatSeconds } from './format';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
@@ -102,8 +103,8 @@ export class ArenaMode {
   private nextSeed = randomSeed();
   /** The picked robots where the next FIGHT will start them, shown while there is no match. */
   private idle: ArenaScene;
-  /** What the last import did, or why it could not; shown in the toolbar until the next fight or pick. */
-  private note: string | null = null;
+  /** What the last import or share did, or why it could not: under the line-up's buttons. */
+  private readonly notice = new Notice();
 
   constructor(
     lineup: HTMLElement,
@@ -133,17 +134,20 @@ export class ArenaMode {
     importInput.setAttribute('aria-label', t('arena.import.placeholder'));
     importInput.spellcheck = false;
     const importButton = createButton('tool-button', t('arena.import'), t('arena.import.title'), () => {
-      void this.importMatch(importInput.value);
-      importInput.value = '';
+      void this.importMatch(importInput.value).then((played) => {
+        // Kept when it could not be played, to be put right.
+        if (played) importInput.value = '';
+      });
     });
     importInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') importButton.click();
     });
     const importRow = createElement('div', 'lineup-import');
     importRow.append(importInput, importButton);
-    lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow);
+    lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow, this.notice.element);
 
     this.results = results;
+    results.dataset.empty = t('arena.results.empty');
     this.refresh();
     this.idle = this.captureIdle();
     this.showCount();
@@ -152,7 +156,7 @@ export class ArenaMode {
   /** Changes how many robots the next match takes. Leaves the match being shown. */
   private setCount(count: number): void {
     if (count === this.count) return;
-    this.note = null;
+    this.notice.clear();
     this.count = count;
     this.leaveMatch();
     this.idle = this.captureIdle();
@@ -167,6 +171,8 @@ export class ArenaMode {
     this.countButtons.forEach((button, index) => button.classList.toggle('selected', COUNTS[index] === this.count));
     // A series, and the share codes of matches, are for duels.
     this.seriesButton.disabled = this.count !== 2;
+    // A disabled button says why it is.
+    this.seriesButton.title = this.count === 2 ? t('arena.series.title', { count: SERIES_MATCHES }) : t('arena.series.duelsOnly');
   }
 
   /** Reads the garage again: robots saved or deleted since show up in, or go from, the line-up. */
@@ -213,46 +219,68 @@ export class ArenaMode {
 
   /** The line for the toolbar: who fights whom, and how it stands. */
   message(): string {
-    const note = this.note === null ? '' : `   [${this.note}]`;
     const { fight } = this.watched;
     const status = this.watched.status();
-    if (status === null || fight === null) return `${t('arena.ready')}${note}`;
+    if (status === null || fight === null) return t('arena.ready');
     const lineup = fight.names.length === 2 ? t('arena.vs', { first: fight.names[0], second: fight.names[1] }) : fight.names.join(' / ');
-    return `${lineup}   ${status}${note}`;
+    return `${lineup}   ${status}`;
   }
 
-  /** Plays the match in a share code: its robots go into the garage and the line-up, its arena is chosen, and its seed is used. */
-  private async importMatch(text: string): Promise<void> {
+  /**
+   * Plays the match in a share code, in its arena and with its seed. Its
+   * robots join the line-up: a built-in robot or one already in the garage as
+   * it is, any other kept in the garage first. Without a garage the match is
+   * still played. True when it was played.
+   */
+  private async importMatch(text: string): Promise<boolean> {
     const decoded = await decodeMatch(text);
     if (!decoded.ok) {
-      this.note = t('arena.couldNotImport', { problem: decoded.problem });
-      return;
+      this.notice.show(t('arena.couldNotImport', { problem: decoded.problem }), true);
+      return false;
     }
     const { robots, arenaId, seed, rules } = decoded.shared;
-    let names: string[];
-    try {
-      names = this.setting.keepRobots(robots);
-    } catch (error) {
-      this.note = t('arena.couldNotKeep', { reason: describeError(error) });
-      return;
+    const ids: string[] = [];
+    const kept: string[] = [];
+    let keepProblem: string | null = null;
+    for (const robot of robots) {
+      const same = this.entrants.find((entrant) => sameRobot(entrant, robot));
+      if (same !== undefined) {
+        ids.push(same.id);
+        continue;
+      }
+      try {
+        const [name] = this.setting.keepRobots([robot]);
+        ids.push(`garage:${name}`);
+        kept.push(name);
+      } catch (error) {
+        keepProblem = describeError(error);
+      }
     }
     this.refresh();
-    this.picked = [...names.map((name) => `garage:${name}`), ...this.picked.slice(names.length)];
-    this.count = 2;
-    this.showCount();
-    this.slots.forEach((slot, index) => {
-      slot.select.value = this.picked[index];
-      this.showEntrant(index);
-    });
     const known = ARENAS.some((arena) => arena.id === arenaId);
     const arena = findArena(arenaId);
     this.setting.chooseArena(arena.id);
-    const match: FoughtMatch = { entrants: this.pickedEntrants(), arena, seed };
-    const played = this.show(match);
-    if (played) this.unannounced = match;
+    let entrants: Entrant[];
+    if (keepProblem === null) {
+      this.picked = [...ids, ...this.picked.slice(ids.length)];
+      this.count = 2;
+      this.showCount();
+      this.slots.forEach((slot, index) => {
+        slot.select.value = this.picked[index];
+        this.showEntrant(index);
+      });
+      entrants = this.pickedEntrants();
+    } else {
+      // Not in the line-up, which only holds robots that can be picked again: played as they came.
+      entrants = robots.map((robot, index) => ({ id: `code:${index}`, name: robot.name, origin: 'garage', loadout: robot.loadout, source: robot.source }));
+    }
+    const match: FoughtMatch = { entrants, arena, seed };
+    if (this.show(match)) this.unannounced = match;
+    const keptText = keepProblem !== null ? t('arena.notKept', { reason: keepProblem }) : kept.length > 0 ? t('arena.keptAs', { names: kept.join(', ') }) : '';
     const unknownMap = known ? '' : t('arena.unknownMap', { map: arenaId, instead: arena.name });
     const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
-    this.note = `${t('arena.received', { first: robots[0].name, second: robots[1].name, names: names.join(', ') })}${unknownMap}${otherRules}`;
+    this.notice.show(`${t('arena.received', { first: robots[0].name, second: robots[1].name })}${keptText}${unknownMap}${otherRules}`, keepProblem !== null);
+    return true;
   }
 
   /** A result's entry with a share button beside it; pressing the button shows the match's share code under the row. */
@@ -278,7 +306,7 @@ export class ArenaMode {
           row.after(box);
         })
         .catch(() => {
-          this.note = t('arena.couldNotShare');
+          this.notice.show(t('arena.couldNotShare'), true);
         })
         .finally(() => {
           making = false;
@@ -310,7 +338,7 @@ export class ArenaMode {
     const select = createElement('select', 'lineup-select');
     select.setAttribute('aria-label', t('arena.robot.label', { number: index + 1 }));
     select.addEventListener('change', () => {
-      this.note = null;
+      this.notice.clear();
       this.picked[index] = select.value;
       this.showEntrant(index);
       this.leaveMatch();
@@ -404,7 +432,7 @@ export class ArenaMode {
 
   /** A match between the picked robots in the chosen arena, from where they were waiting. The next one gets a seed of its own. */
   private startFight(): void {
-    this.note = null;
+    this.notice.clear();
     const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed: this.nextSeed };
     this.nextSeed = randomSeed();
     this.idle = this.captureIdle();
@@ -437,15 +465,16 @@ export class ArenaMode {
     this.fights++;
     const seconds = (recording.snapshots.length - 1) / recording.tickRate;
     const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
-    const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
+    // Only a duel has a share code; the entry of a battle royale says so.
+    const title = match.entrants.length === 2 ? t('arena.showAgain.title') : `${t('arena.showAgain.title')}\n${t('arena.share.duelsOnly')}`;
+    const entry = createButton('result fought', text, title, () => this.show(match));
     this.addResult(match.entrants.length === 2 ? this.shareableRow(entry, match) : entry);
   }
 
   /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
   private playSeries(): void {
-    // Every map comes up once before any comes up twice, in an order of its own each time.
-    // Two matches a map, one from each side; every map comes up before any comes up again.
-    // Each match has a seed, and so starting places, of its own.
+    // Two matches a map, one from each side; every map comes up before any comes up again,
+    // in an order of its own each time. Each match has a seed, and so starting places, of its own.
     const order = shuffled(ARENAS);
     const maps = Array.from({ length: SERIES_MATCHES }, (_, match) => order[Math.floor(match / 2) % order.length]);
     const fixtures = maps.map(({ arena }, match) => ({ arena, seed: randomSeed(), first: sideOf(match) }));
@@ -484,7 +513,6 @@ export class ArenaMode {
   }
 }
 
-/** The robot an entrant was in a match: what a share code carries. */
 /** The entrant that starts first in the match with the given number: they take turns. */
 function sideOf(match: number): 0 | 1 {
   return match % 2 === 0 ? 0 : 1;
@@ -509,4 +537,9 @@ function describeOutcome(result: MatchResult, names: readonly string[]): string 
   // A battle royale: every robot by its place, the best first.
   const byPlace = [...names].sort((a, b) => (result.places[a] ?? 0) - (result.places[b] ?? 0));
   return byPlace.map((name) => t('arena.place', { place: result.places[name] ?? 0, name })).join('  ');
+}
+
+/** Whether the entrant is the robot: the same name, program and parts. */
+function sameRobot(entrant: Entrant, robot: SavedRobot): boolean {
+  return entrant.name === robot.name && entrant.source === robot.source && SLOTS.every((slot) => entrant.loadout[slot] === robot.loadout[slot]);
 }

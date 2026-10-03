@@ -1,4 +1,5 @@
 import { createButton, createElement } from './dom';
+import { MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { t } from '../i18n/messages';
 import { acceptDrops, chooseFile } from '../share/file';
 import { RobotIntake } from './robot_intake';
@@ -40,6 +41,8 @@ export class GaragePanel {
   private shared: string | null = null;
   /** Set while a share code is being made. */
   private making = false;
+  /** What the waiting button said before it was pressed once. */
+  private armedLabel = '';
   /** The names last shown. */
   private names: readonly string[] = [];
 
@@ -53,10 +56,23 @@ export class GaragePanel {
     this.nameInput.placeholder = t('garage.name.placeholder');
     this.nameInput.setAttribute('aria-label', t('garage.name.label'));
     this.nameInput.spellcheck = false;
+    this.nameInput.maxLength = MAX_NAME_LENGTH;
+    this.nameInput.title = t('garage.name.limit', { max: MAX_NAME_LENGTH });
 
     const saveButtons = createElement('div', 'garage-save-buttons');
     robotIds.forEach((robotId, robotIndex) => {
-      const button = createButton('tool-button', t('garage.save', { robot: robotId }), t('garage.save.title', { robot: robotId }), () => handlers.save(this.nameInput.value, robotIndex));
+      const label = t('garage.save', { robot: robotId });
+      const button = createButton('tool-button', label, t('garage.save.title', { robot: robotId }));
+      button.addEventListener('click', () => {
+        // Saving over a robot kept under the same name takes a second press, as deleting does.
+        const name = garageName(this.nameInput.value);
+        if (name !== null && this.names.includes(name) && this.armed !== button) {
+          this.arm(button, t('garage.save.confirm'));
+          return;
+        }
+        this.disarm();
+        handlers.save(this.nameInput.value, robotIndex);
+      });
       saveButtons.append(button);
     });
     const save = createElement('div', 'garage-save');
@@ -72,7 +88,7 @@ export class GaragePanel {
     container.replaceChildren(save, this.rows, intake.element);
     acceptDrops(container, (text) => handlers.importFile(text));
 
-    // A press anywhere but on the waiting delete button calls the deletion off.
+    // A press anywhere but on the waiting button calls it off.
     document.addEventListener('mousedown', (event) => {
       if (event.target !== this.armed) this.disarm();
     });
@@ -118,7 +134,7 @@ export class GaragePanel {
   }
 
   private shareBox(name: string, code: string): HTMLElement {
-    const saveFile = createButton('garage-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
+    const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
     return createShareBox(code, 'garage-share', [saveFile]);
   }
 
@@ -147,18 +163,24 @@ export class GaragePanel {
         this.handlers.remove(name);
         return;
       }
-      this.disarm();
-      this.armed = remove;
-      remove.textContent = t('garage.delete.confirm');
-      remove.classList.add(ARMED_CLASS);
+      this.arm(remove, t('garage.delete.confirm'));
     });
     row.append(remove);
     return row;
   }
 
+  /** Makes the button wait for a second press, saying what that press will do. */
+  private arm(button: HTMLButtonElement, asking: string): void {
+    this.disarm();
+    this.armed = button;
+    this.armedLabel = button.textContent ?? '';
+    button.textContent = asking;
+    button.classList.add(ARMED_CLASS);
+  }
+
   private disarm(): void {
     if (this.armed === null) return;
-    this.armed.textContent = REMOVE_LABEL;
+    this.armed.textContent = this.armedLabel;
     this.armed.classList.remove(ARMED_CLASS);
     this.armed = null;
   }

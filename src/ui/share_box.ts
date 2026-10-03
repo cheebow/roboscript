@@ -12,7 +12,7 @@ export function createShareBox(code: string, className: string, others: readonly
   field.value = code;
   field.setAttribute('aria-label', t('share.field'));
   field.addEventListener('focus', () => field.select());
-  const copy = createButton('garage-action', t('garage.copy'), t('garage.copy.title'), () => {
+  const copy = createButton('tool-button share-action', t('garage.copy'), t('garage.copy.title'), () => {
     field.select();
     navigator.clipboard?.writeText(code).catch(() => {
       // Left selected: the player can copy it by hand.

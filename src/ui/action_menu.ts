@@ -37,7 +37,16 @@ export class ActionMenu {
 
     button.setAttribute('aria-haspopup', 'menu');
     button.setAttribute(OPEN_ATTRIBUTE, 'false');
-    button.addEventListener('click', () => (this.list.hidden ? this.open() : this.close()));
+    button.addEventListener('click', (event) => {
+      if (!this.list.hidden) {
+        this.close();
+        return;
+      }
+      this.open();
+      // Opened from the keyboard: the keys go on into the list.
+      if (event.detail === 0) this.itemsOf(this.list)[0]?.focus();
+    });
+    this.list.addEventListener('keydown', (event) => this.moveFocus(event));
     listenOnce();
   }
 
@@ -86,6 +95,37 @@ export class ActionMenu {
     return wrapper;
   }
 
+  /** Up and down go through the items of a list, right into a submenu and left back out of it. */
+  private moveFocus(event: KeyboardEvent): void {
+    const current = document.activeElement;
+    if (!(current instanceof HTMLButtonElement)) return;
+    const list = current.closest('.menu-list');
+    if (!(list instanceof HTMLElement)) return;
+    const items = this.itemsOf(list);
+    const at = items.indexOf(current);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      items[(at + step + items.length) % items.length]?.focus();
+    } else if (event.key === 'ArrowRight' && current.classList.contains('menu-parent')) {
+      const sub = current.nextElementSibling;
+      if (sub instanceof HTMLElement) this.itemsOf(sub)[0]?.focus();
+    } else if (event.key === 'ArrowLeft' && list.classList.contains('menu-sublist')) {
+      const parent = list.previousElementSibling;
+      if (parent instanceof HTMLElement) parent.focus();
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  /** The items of a list that can be picked or opened, without those of its submenus. */
+  private itemsOf(list: HTMLElement): HTMLButtonElement[] {
+    return [...list.children]
+      .map((child) => (child instanceof HTMLButtonElement ? child : child.querySelector(':scope > .menu-item')))
+      .filter((item): item is HTMLButtonElement => item instanceof HTMLButtonElement && !item.disabled);
+  }
+
   private open(): void {
     this.list.hidden = false;
     this.button.setAttribute(OPEN_ATTRIBUTE, 'true');
@@ -102,7 +142,14 @@ export class ActionMenu {
   static closeOnOutside(event: Event): void {
     for (const menu of [...openMenus]) {
       const inside = event.target instanceof Node && menu.container.contains(event.target);
-      if (event instanceof KeyboardEvent ? event.key === 'Escape' : !inside) menu.close();
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== 'Escape') continue;
+        menu.close();
+        // Back to where the menu was opened from, rather than nowhere.
+        if (inside) menu.button.focus();
+      } else if (!inside) {
+        menu.close();
+      }
     }
   }
 }

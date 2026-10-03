@@ -7,6 +7,7 @@ import { decodeRobot, encodeRobot } from '../share/codec';
 import { downloadText, fileName, readSharedFile, robotFileText } from '../share/file';
 import { describeError } from './format';
 import { GaragePanel } from './garage_panel';
+import { Notice } from './notice';
 
 /** The robots on the program screen, as the garage sees them: what to save from, and where to load into. */
 export interface Workbench {
@@ -19,11 +20,11 @@ export interface Workbench {
 /**
  * The garage and its panel: saving the robots of the program screen under a
  * name, loading them back, deleting them, and taking robots in from share
- * codes and files. What each did is kept as a note to show the player.
+ * codes and files. What each did is said under the garage.
  */
 export class GarageController {
-  /** What the last action did, or why it could not; null when there is nothing to say. */
-  note: string | null = null;
+  /** What the last action did, or why it could not: under the garage. */
+  private readonly notice = new Notice();
   private readonly garage: Garage | null;
   private readonly panel: GaragePanel;
 
@@ -43,6 +44,7 @@ export class GarageController {
       saveFile: (name) => this.saveFile(name),
       importFile: (text) => this.importFile(text),
     });
+    container.append(this.notice.element);
     this.show();
   }
 
@@ -65,18 +67,18 @@ export class GarageController {
     const name = garageName(typedName);
     const robotId = this.robotIds[robotIndex];
     if (name === null) {
-      this.note = t('garage.noName', { robot: robotId, max: MAX_NAME_LENGTH });
+      this.notice.show(t('garage.noName', { robot: robotId, max: MAX_NAME_LENGTH }), true);
       return;
     }
     if (this.garage === null) {
-      this.note = t('garage.noStorage');
+      this.notice.show(t('garage.noStorage'), true);
       return;
     }
     try {
       const replaced = this.garage.save({ name, ...this.workbench.robot(robotIndex) });
-      this.note = t(replaced ? 'garage.savedInstead' : 'garage.saved', { robot: robotId, name });
+      this.notice.show(t(replaced ? 'garage.savedInstead' : 'garage.saved', { robot: robotId, name }));
     } catch (error) {
-      this.note = t('garage.couldNotSave', { name, reason: describeError(error) });
+      this.notice.show(t('garage.couldNotSave', { name, reason: describeError(error) }), true);
     }
     this.show();
   }
@@ -86,16 +88,16 @@ export class GarageController {
     const saved = this.garage?.find(name);
     if (saved === undefined) return;
     this.workbench.load(robotIndex, saved);
-    this.note = t('garage.loaded', { name, robot: this.robotIds[robotIndex] });
+    this.notice.show(t('garage.loaded', { name, robot: this.robotIds[robotIndex] }));
   }
 
   private remove(name: string): void {
     if (this.garage === null) return;
     try {
       this.garage.remove(name);
-      this.note = t('garage.deleted', { name });
+      this.notice.show(t('garage.deleted', { name }));
     } catch (error) {
-      this.note = t('garage.couldNotDelete', { name, reason: describeError(error) });
+      this.notice.show(t('garage.couldNotDelete', { name, reason: describeError(error) }), true);
     }
     this.show();
   }
@@ -109,12 +111,12 @@ export class GarageController {
   /** Keeps the robot in a share code, and says so, or says what is wrong with the code. True when it was kept. */
   private async importCode(code: string): Promise<boolean> {
     if (this.garage === null) {
-      this.note = t('garage.noStorage');
+      this.notice.show(t('garage.noStorage'), true);
       return false;
     }
     const decoded = await decodeRobot(code);
     if (!decoded.ok) {
-      this.note = t('garage.couldNotImport', { problem: decoded.problem });
+      this.notice.show(t('garage.couldNotImport', { problem: decoded.problem }), true);
       return false;
     }
     return this.keepOne(decoded.shared.robot, decoded.shared.rules);
@@ -129,12 +131,12 @@ export class GarageController {
   /** Keeps the robot of a robot file, or says what is wrong with the file. */
   private importFile(text: string): void {
     if (this.garage === null) {
-      this.note = t('garage.noStorage');
+      this.notice.show(t('garage.noStorage'), true);
       return;
     }
     const read = readSharedFile(text);
     if (!read.ok || read.file.kind !== 'robot') {
-      this.note = t('file.couldNotOpen', { problem: read.ok ? t('file.notARobot') : read.problem });
+      this.notice.show(t('file.couldNotOpen', { problem: read.ok ? t('file.notARobot') : read.problem }), true);
       return;
     }
     this.keepOne(read.file.robot, read.file.rules);
@@ -148,10 +150,10 @@ export class GarageController {
       const name = this.garage.importRobot(robot);
       const received = name === robot.name ? t('garage.received', { name }) : t('garage.receivedAs', { name: robot.name, kept: name });
       const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
-      this.note = `${received}${otherRules}`;
+      this.notice.show(`${received}${otherRules}`);
       kept = true;
     } catch (error) {
-      this.note = t('garage.couldNotKeep', { name: robot.name, reason: describeError(error) });
+      this.notice.show(t('garage.couldNotKeep', { name: robot.name, reason: describeError(error) }), true);
     }
     this.show();
     return kept;

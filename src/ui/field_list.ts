@@ -12,7 +12,8 @@ export class FieldList {
       const row = createElement('div', 'field');
       const value = createElement('span', 'field-value');
       const label = createElement('span', 'field-name', name);
-      if (title !== '') label.title = title;
+      // The whole label on hovering, as a narrow panel may cut it short.
+      label.title = title === '' ? name : `${name}  ${title}`;
       row.append(label, value);
       list.append(row);
       return value;

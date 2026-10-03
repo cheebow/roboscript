@@ -1,3 +1,4 @@
+import { t } from '../i18n/messages';
 import type { DebugEvent } from '../debug/debug_event';
 import { createElement } from './dom';
 import { formatTimestamp } from './format';
@@ -23,6 +24,7 @@ export class DebugLogView {
     private readonly container: HTMLElement,
     onSelect: (event: DebugEvent) => void,
   ) {
+    container.dataset.empty = t('log.empty');
     container.addEventListener('click', (click) => {
       const row = click.target instanceof Element ? click.target.closest<HTMLElement>('.log-row') : null;
       const index = row === null ? -1 : this.rows.indexOf(row);

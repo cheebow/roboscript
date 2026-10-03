@@ -111,6 +111,7 @@ class App {
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
+  private readonly seedLabel = requireElement('battle-seed');
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   private readonly templateMenu: ActionMenu;
   private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
@@ -253,7 +254,6 @@ class App {
       workspace.stale = false;
     }
     this.partsStale.fill(false);
-    this.garage.note = null;
 
     const brains: RobotBrain[] = [];
     const features: ProgramFeatures[] = [];
@@ -341,7 +341,6 @@ class App {
     this.followed = null;
     for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
-    this.garage.note = null;
     this.drawSeed();
   }
 
@@ -512,6 +511,7 @@ class App {
 
   /** One frame of the contest screen: a match of the contest being watched, or an empty arena under its board. */
   private showContest(elapsed: number): void {
+    this.contestMode.update();
     this.showWatched(elapsed, this.contestMode);
   }
 
@@ -527,6 +527,7 @@ class App {
       overrun: replay?.overrun ?? 0,
     });
     this.toolbar.setMessage(screen.message());
+    this.showSeed(replay?.recording.seed ?? null);
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
@@ -573,6 +574,8 @@ class App {
     });
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
     this.toolbar.setMessage(this.message());
+    this.toolbar.setMode(replay === null ? null : this.mode);
+    this.showSeed(replay?.recording.seed ?? this.seed);
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
@@ -590,6 +593,12 @@ class App {
     );
   }
 
+  /** The seed of the match shown, or of the next one, in the battle view's heading. */
+  private showSeed(seed: number | null): void {
+    const text = seed === null ? '' : t('program.seed', { seed });
+    if (this.seedLabel.textContent !== text) this.seedLabel.textContent = text;
+  }
+
   private message(): string {
     const parts = [this.notice ?? this.replayStatus()];
     const edited = this.workspaces.filter((workspace) => workspace.stale).map((workspace) => workspace.robotId);
@@ -597,13 +606,12 @@ class App {
     const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
     if (refitted.length > 0) parts.push(`[${t('program.partsNote', { robots: refitted.join(', ') })}]`);
     for (const problem of this.saveProblems.values()) parts.push(`[${problem}]`);
-    if (this.garage.note !== null) parts.push(`[${this.garage.note}]`);
     return parts.join('   ');
   }
 
   private replayStatus(): string {
-    if (this.replay === null) return `${t('program.ready')}   ${t('program.seed', { seed: this.seed })}`;
-    const parts = [t(this.mode === 'run' ? 'program.mode.run' : 'program.mode.debug'), playbackStatus(this.replay), t('program.seed', { seed: this.replay.recording.seed })];
+    if (this.replay === null) return t('program.ready');
+    const parts = [t(this.mode === 'run' ? 'program.mode.run' : 'program.mode.debug'), playbackStatus(this.replay)];
     const followed = this.followedNow();
     if (followed !== null) parts.push(this.describeFollowed(followed));
     return parts.join('   ');

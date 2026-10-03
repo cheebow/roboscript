@@ -45,6 +45,12 @@ export class Toolbar {
     if (this.message.textContent !== text) this.message.textContent = text;
   }
 
+  /** Marks the button of the mode the match shown was started in; none while there is no match. */
+  setMode(mode: 'run' | 'debug' | null): void {
+    requireElement('run').classList.toggle('selected', mode === 'run');
+    requireElement('debug').classList.toggle('selected', mode === 'debug');
+  }
+
   /** `available` is false when there is no match to play. */
   setPlayback(available: boolean, playing: boolean): void {
     const label = playing ? t('toolbar.pause') : t('toolbar.play');

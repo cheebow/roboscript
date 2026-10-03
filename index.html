@@ -71,7 +71,10 @@
       </section>
 
       <section id="battle" class="panel">
-        <h2 data-i18n="panel.battle">BATTLE VIEW</h2>
+        <h2>
+          <span data-i18n="panel.battle">BATTLE VIEW</span>
+          <span id="battle-seed" class="panel-aside" data-i18n-title="battle.seed.title" title="The seed decides where the robots start and how their shots scatter; ?seed= in the URL plays the same match again"></span>
+        </h2>
         <div id="battle-frame">
           <canvas id="battle-canvas"></canvas>
           <div id="board" hidden></div>

@@ -104,7 +104,7 @@ button {
   border-right: 1px solid var(--border);
 }
 
-#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug),
+#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug, #previous-run, #next-run),
 #app[data-screen='contest'] .picker,
 #app:not([data-screen='arena']) :is(#lineup, #results),
 #app:not([data-screen='contest']) #contest {
@@ -231,6 +231,45 @@ button {
   font-size: 11px;
   font-weight: normal;
   letter-spacing: 0.08em;
+}
+
+/* An empty list says what will come in it (see data-empty). */
+[data-empty]:empty::before {
+  content: attr(data-empty);
+  display: block;
+  padding: 6px 10px;
+  color: var(--muted);
+}
+
+.panel-aside {
+  letter-spacing: 0;
+}
+
+/* A line under a panel's controls saying what the last action there did (see Notice). */
+.notice {
+  margin: 6px 10px 0;
+  padding: 3px 6px;
+  border-left: 2px solid var(--syntax-variable);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  animation: notice-in 0.15s ease-out;
+}
+
+.notice.problem {
+  border-left-color: var(--error);
+  color: var(--error);
+}
+
+.notice[hidden] {
+  display: none;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .panel-body {
@@ -365,6 +404,22 @@ button {
 
 .garage-intake {
   padding-bottom: 6px;
+}
+
+/* The garage is narrow: the code gets a line of its own, the buttons go under it. */
+.garage-intake .intake-code {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.garage-intake .intake-code input {
+  flex: 1 1 100%;
+}
+
+.share-action {
+  padding: 1px 8px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .garage-intake .panel-menu > .menu-list {
@@ -639,10 +694,15 @@ button {
 }
 
 .field-name {
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .field-value {
+  flex: none;
   white-space: pre;
 }
 
@@ -894,6 +954,19 @@ button {
   column-rule: 1px solid var(--border);
 }
 
+/* Too narrow for two columns of names and values: one, to scroll. */
+#inspector-fields,
+#watch-fields {
+  container-type: inline-size;
+}
+
+@container (max-width: 400px) {
+  #inspector-fields .field-list,
+  .watch-sensors .field-list {
+    column-count: 1;
+  }
+}
+
 #watch-robot {
   color: var(--text);
 }
@@ -920,8 +993,9 @@ button {
 
 #transport {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
   padding: 5px 10px;
   border-top: 1px solid var(--border);
 }
@@ -941,7 +1015,8 @@ button {
   display: flex;
   flex: 1;
   align-items: center;
-  min-width: 0;
+  /* Never squeezed away: the speeds and the clock go to a line of their own first. */
+  min-width: 120px;
   height: 17px;
   margin: 0 6px;
 }
@@ -997,8 +1072,10 @@ button {
   gap: 4px;
 }
 
-.speed.selected {
+.speed.selected,
+#controls .tool-button.selected {
   border-color: var(--text);
+  color: var(--text);
 }
 
 #clock {
@@ -1070,6 +1147,29 @@ button {
 }
 
 /* The board of a contest's result, over the battle view. */
+
+/* Over the battle view while a match of a contest is watched: the way back to the board. */
+.board-return {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 11px;
+}
+
+.board-return[hidden],
+#app:not([data-screen='contest']) .board-return {
+  display: none;
+}
+
+.board-return-what {
+  color: var(--muted);
+}
 
 #board {
   position: absolute;

@@ -1,8 +1,10 @@
 import { createElement } from './dom';
 
 /**
- * The little markup of the tutorial's texts, as elements: paragraphs parted by
- * blank lines, "- " lists, ``` code blocks, `code` and **bold** in a line.
+ * The little markup of the tutorial's and the help's texts, as elements:
+ * paragraphs parted by blank lines, "- " lists, "| a | b |" tables (the first
+ * row is the heading; a "|---|" row is skipped), ``` code blocks, `code` and
+ * **bold** in a line.
  */
 export function renderMarkup(text: string): HTMLElement {
   const root = createElement('div', 'markup');
@@ -18,6 +20,23 @@ export function renderMarkup(text: string): HTMLElement {
       while (index < lines.length && !lines[index].startsWith('```')) code.push(lines[index++]);
       index++;
       root.append(createElement('pre', 'markup-code', code.join('\n')));
+    } else if (line.startsWith('|')) {
+      const rows: string[][] = [];
+      while (index < lines.length && lines[index].startsWith('|')) {
+        const cells = lines[index++].trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
+        if (!cells.every((cell) => /^-+$/.test(cell))) rows.push(cells);
+      }
+      const table = createElement('table', 'markup-table');
+      rows.forEach((cells, at) => {
+        const row = createElement('tr', '');
+        for (const cell of cells) {
+          const element = createElement(at === 0 ? 'th' : 'td', '');
+          element.append(...inline(cell));
+          row.append(element);
+        }
+        table.append(row);
+      });
+      root.append(table);
     } else if (line.startsWith('- ')) {
       const list = createElement('ul', 'markup-list');
       while (index < lines.length && lines[index].startsWith('- ')) {
@@ -28,7 +47,7 @@ export function renderMarkup(text: string): HTMLElement {
       root.append(list);
     } else {
       const words: string[] = [];
-      while (index < lines.length && lines[index].trim() !== '' && !lines[index].startsWith('```') && !lines[index].startsWith('- ')) {
+      while (index < lines.length && lines[index].trim() !== '' && !/^(```|- |\|)/.test(lines[index])) {
         words.push(lines[index++]);
       }
       const paragraph = createElement('p', 'markup-paragraph');

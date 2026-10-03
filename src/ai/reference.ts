@@ -337,7 +337,6 @@ const AS_DIRECTION = new Map<string, WordReference>([
     },
   ],
 ]);
-/** What comes before a direction on its line. */
 /** A word right after one of these is a direction, not a sensor: "turn cover", "face hit". */
 const BEFORE_DIRECTION = /\b(?:turn|aim|face)\s+$/;
 
@@ -351,6 +350,16 @@ export function describeWord(word: string): WordReference | undefined {
 export function describeDirection(word: string): WordReference | undefined {
   const asDirection = AS_DIRECTION.get(word);
   return asDirection === undefined ? describeWord(word) : inLanguage(asDirection, DIRECTION_HIT_JA);
+}
+
+/** Every word of the language, in the current language, in the order of the list: `hit` comes twice, as a sensor and as a direction. */
+export function allWords(): WordReference[] {
+  const words = LANGUAGE.map((reference) => inLanguage(reference, WORDS_JA[reference.word]));
+  for (const word of AS_DIRECTION.keys()) {
+    const direction = describeDirection(word);
+    if (direction !== undefined) words.push(direction);
+  }
+  return words;
 }
 
 /** The reference with its hint and summary in the current language, where there is a translation. */

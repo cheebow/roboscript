@@ -32,6 +32,9 @@ import { tutorialMatch } from '../tutorial/match';
 import { trimmed } from '../tutorial';
 import { createReplay } from './watched_match';
 import { CommentaryView } from './commentary_view';
+import { HelpPanel } from './help_panel';
+import { HELP } from '../help/topics';
+import { GUIDE_EVENT } from './roboscript_assist';
 import { parse } from '../ai/parser';
 import { functionLines } from '../ai/structure';
 import { ArenaMode } from './arena_mode';
@@ -126,6 +129,8 @@ class App {
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly seedLabel = requireElement('battle-seed');
+  /** The help and the guide to the language, from the right. */
+  private readonly help = new HelpPanel();
   /** The commentary over the battle view, on the arena and contest screens. */
   private readonly commentaryView = new CommentaryView();
   private commentaryOn = readCommentaryOn(this.storage);
@@ -244,6 +249,13 @@ class App {
     new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
+    requireElement('help-button').addEventListener('click', () => this.help.toggle());
+    requireElement('guide-button').addEventListener('click', () => this.help.open(HELP[1].topics[0].id));
+    document.addEventListener(GUIDE_EVENT, (event) => {
+      const word = (event as CustomEvent<string>).detail;
+      if (word === '') this.help.open(HELP[1].topics[0].id);
+      else this.help.openWord(word);
+    });
     requireElement('battle-frame').append(this.commentaryView.element);
     const toggle = requireElement('commentary-toggle');
     toggle.classList.toggle('selected', this.commentaryOn);
@@ -268,6 +280,10 @@ class App {
    */
   private onShortcut(event: KeyboardEvent): void {
     if (this.boot.shown || event.altKey) return;
+    if (event.key === 'Escape' && this.help.shown) {
+      this.help.close();
+      return;
+    }
     const run = event.key === 'Enter' && (event.metaKey || event.ctrlKey);
     if (run) {
       if (!this.coding) return;
@@ -283,9 +299,10 @@ class App {
     event.preventDefault();
   }
 
-  /** What the start menu starts. */
+  /** What the start menu starts. Help opens over the screen that was shown. */
   private bootInto(choice: BootChoice): void {
     if (choice === 'language') switchLanguage(this.storage);
+    else if (choice === 'help') this.help.open(HELP[0].topics[0].id);
     else this.showScreen(choice);
   }
 

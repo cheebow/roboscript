@@ -8,8 +8,8 @@ import type { KeyValueStorage } from '../project/project_store';
 import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
-export type BootChoice = 'tutorial' | 'program' | 'arena' | 'contest' | 'language';
-const CHOICES: readonly BootChoice[] = ['tutorial', 'program', 'arena', 'contest', 'language'];
+export type BootChoice = 'tutorial' | 'program' | 'arena' | 'contest' | 'help' | 'language';
+const CHOICES: readonly BootChoice[] = ['tutorial', 'program', 'arena', 'contest', 'help', 'language'];
 
 export const BOOT_KEY = 'roboscript/boot.json';
 
@@ -186,7 +186,8 @@ export class BootScreen {
 
   private choose(choice: BootChoice): void {
     if (this.unavailable.has(choice)) return;
-    if (choice !== 'language') this.save(choice);
+    // Help and language are not where the screen goes: the menu remembers the screen.
+    if (choice !== 'language' && choice !== 'help') this.save(choice);
     if (choice !== 'language') this.hide();
     this.onChoose(choice);
   }

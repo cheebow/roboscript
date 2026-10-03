@@ -1995,3 +1995,182 @@ button {
   border-color: var(--syntax-value);
   color: var(--syntax-value);
 }
+
+/* The help, sliding in from the right over the battle view (see HelpPanel). The editor stays usable beside it. */
+.help {
+  position: fixed;
+  top: 34px;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 56vw);
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+  animation: help-in 0.15s ease-out;
+}
+
+@keyframes help-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.help-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.help-title {
+  color: var(--syntax-value);
+  letter-spacing: 0.08em;
+}
+
+.help-search {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+.help-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+}
+
+.help-nav {
+  overflow: auto;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+}
+
+.help-section {
+  padding: 10px 12px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.help-link,
+.help-result {
+  display: block;
+  width: 100%;
+  padding: 3px 12px 3px 18px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.help-link:hover,
+.help-result:hover {
+  background: var(--selection);
+}
+
+.help-link.selected {
+  background: var(--selected);
+  color: var(--syntax-value);
+}
+
+.help-result {
+  padding-left: 0;
+  color: var(--syntax-command);
+}
+
+.help-content {
+  overflow: auto;
+  padding: 12px 20px 24px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.help-topic-title {
+  margin: 0 0 8px;
+  color: var(--syntax-value);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.help-word-group {
+  margin: 18px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+
+.help-word {
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+}
+
+.help-word-found {
+  border-left-color: var(--syntax-value);
+  background: var(--selected);
+}
+
+.help-word-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.help-word-hint {
+  color: var(--muted);
+}
+
+.help-word-summary {
+  margin: 2px 0 4px;
+}
+
+.markup-table {
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.markup-table th,
+.markup-table td {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markup-table th {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.guide-button {
+  margin-right: 14px;
+}
+
+/* A button, not a menu: no ▾. */
+.guide-button::after {
+  content: none;
+}
+
+.cm-word-guide {
+  display: block;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--syntax-command);
+  font: inherit;
+  cursor: pointer;
+}

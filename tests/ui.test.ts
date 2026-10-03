@@ -34,6 +34,13 @@ describe('the tutorial markup', () => {
     expect(root.querySelector('pre')?.textContent).toBe('loop\n    fire');
     expect(root.querySelector('strong code')?.textContent).toBe('wait');
   });
+
+  it('makes a table, its first row the heading, without the row of dashes', () => {
+    const root = renderMarkup('| word | meaning |\n|---|---|\n| `fire` | shoot |\n| `wait` | rest |');
+    expect(root.querySelectorAll('th')).toHaveLength(2);
+    expect(root.querySelectorAll('tr')).toHaveLength(3);
+    expect(root.querySelector('td code')?.textContent).toBe('fire');
+  });
 });
 
 describe('a notice', () => {

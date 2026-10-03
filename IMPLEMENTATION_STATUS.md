@@ -41,7 +41,7 @@ npm run dev        # 表示された URL をブラウザで開く
 - `main.bot` を開いているとき、見出し右の **LOAD TEMPLATE** ボタンを押すと一覧が開き、選んだテンプレート（Sample / DumbBot / AggressiveBot / CowardBot / GuardBot / CoverBot / StrafeBot）をそのエディタにロードできる（Cmd / Ctrl + Z で取り消せる）。一覧は、外側のクリックか Esc で閉じる。初期状態は ALPHA が Sample、BRAVO が DumbBot。
 - 上部の **MAP** でマップ（9種: Center Block / Open Field / Long Wall / Bare Ground / Pillars / Corridor / Bunkers / Cross / Zigzag）を選ぶ。次の RUN / DEBUG から反映される。
 - **DEBUG** で同じ試合を DEBUG モードで再生する（次に実行する行のハイライト、全種類のログ、行の実行時点への移動、戦闘画面に視線・ターゲット枠・最後に見た位置・ラベル）。視線などは INSPECTOR で選んでいるロボットのもの。
-- 戦闘画面には、待機中・RUN・DEBUG・ARENA のいつでも、**各ロボットのセンサーが今見えている範囲**がそのロボットの色で薄く塗られる（障害物の陰と範囲外は抜ける。Short は半径 300 の円、Scope は前方 120° の扇）。ロボットが**敵を見つけた瞬間**には、そのロボットの色の輪が広がる。
+- 戦闘画面には、待機中・RUN・DEBUG・ARENA のいつでも、**各ロボットのセンサーが今見えている範囲**がそのロボットの色で薄く塗られる（障害物の陰と範囲外は抜ける。Short は半径 300 の円、Scope は前方 120° の扇）。ロボットが**敵を見つけた瞬間**には、そのロボットの色の輪が広がる。プログラムが `cover_*` / `turn cover` / `face cover` を使うロボットには、**隠れ場所への道（点線）と隠れ場所（◇）**が RUN・DEBUG・ARENA で出る（2026-10-03 から。それまでは DEBUG で INSPECTOR のロボットだけ）。
 - **PAUSE / PLAY** で停止 / 再開、**RESET** で初期配置に戻る。
 - BATTLE VIEW の下の操作列: PLAY / PAUSE、`◀1` と `1▶`（DEBUG では**1行**、RUN では 1tick ずつ戻る / 進む）、`◀◆` と `◆▶`（マークした行が実行される時点を前後に移動）、シークバー、再生速度（0.25x〜4x）。
 - DEBUG LOG の行をクリックすると、その時点に戻り、該当するコード行へ移動する。
@@ -336,6 +336,10 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 - パーツの測り直し（「バランス」の節）: 1 パーツ入れ替えは全部が狙いの中。上限いっぱいの 29 構成は 43〜74% で、35〜65% に収まるのは 20 個（前は 17）。
 
 **確認**: テスト 651件（走りながらの弾のばらつき 1件、6 種が 10 秒で逆回りすること 7件を追加。教訓のテストを取り直し、DumbBot の行番号が変わったので再生のテストを直した）。ブラウザで `config` に `MOVING_SPREAD`（Standard ±10、Cannon ±5）が出ることを確認した。
+
+## 隠れ場所への道を RUN でも出す（2026-10-03）
+
+隠れ場所への点線と ◇ は DEBUG で INSPECTOR のロボットだけだったが、センサーの範囲の塗りに埋もれて見えにくかったのと、RUN で隠れようとしているのが分からなかったので、**プログラムが cover の語を使うロボットすべてに、RUN・DEBUG・ARENA で出す**ようにした（太く濃くもした）。`RenderOptions.coverRoutes`（ロボットごとの真偽）で指定し、PROGRAM では `features[i].cover`、ARENA では `Fight.features`（`prepareFight` がコンパイル時に集める）から決める。待機中は出ない。
 
 ## CoverBot は何度でも隠れる（2026-10-03）
 

@@ -63,6 +63,7 @@ const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 const NO_MARKS: readonly number[] = [];
 const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
+const NO_COVER_ROUTES: readonly boolean[] = [];
 
 /** What keeps a match from starting: errors in a robot's code, or parts that cost too much. */
 interface Fault {
@@ -572,6 +573,7 @@ class App {
     this.battleView.render(snapshot, arena, stats, loadouts, {
       sensorOf: null,
       marks: NO_FEATURES,
+      coverRoutes: this.arenaMode.coverRoutes(),
       overrun: replay?.overrun ?? 0,
     });
     this.arenaMode.update();
@@ -606,6 +608,8 @@ class App {
     this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, loadouts, {
       sensorOf: debugging ? this.inspector.selected : null,
       marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
+      // The way to cover is shown for any robot whose program has to do with cover, in RUN as well.
+      coverRoutes: replay === null ? NO_COVER_ROUTES : this.features.map((features) => features.cover),
       overrun: replay?.overrun ?? 0,
     });
     this.inspector.update(view);

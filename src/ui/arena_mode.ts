@@ -177,6 +177,12 @@ export class ArenaMode {
     return { snapshot: replay.view, arena: recording.arena, stats: recording.stats, loadouts: fight.loadouts };
   }
 
+  /** Per robot of the match being shown, whether its program has to do with cover: the way there is drawn for those. */
+  coverRoutes(): readonly boolean[] {
+    const { replay, fight } = this;
+    return replay === null || fight === null ? [] : fight.features.map((features) => features.cover);
+  }
+
   /** The line for the toolbar: who fights whom, and how it stands. */
   message(): string {
     const note = this.note === null ? '' : `   [${this.note}]`;

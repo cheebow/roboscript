@@ -1,3 +1,4 @@
+import type { ProgramFeatures } from '../ai/features';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
@@ -48,6 +49,8 @@ export interface Fight {
   /** What the robots are called in the match, in spawn order. */
   names: [string, string];
   loadouts: [Loadout, Loadout];
+  /** What each program has to do with, in spawn order: which marks to draw for it. */
+  features: [ProgramFeatures, ProgramFeatures];
   config: Omit<SimulationConfig, 'logger'>;
 }
 
@@ -76,12 +79,17 @@ export function prepareFight(
   const names = fightNames(entrants);
   const problems: string[] = [];
   const brains: RobotBrain[] = [];
+  const features: ProgramFeatures[] = [];
   entrants.forEach((entrant, spawnIndex) => {
     const cost = costOf(entrant.loadout);
     if (cost > COST_LIMIT) problems.push(`${names[spawnIndex]}: parts cost ${cost}, over the limit of ${COST_LIMIT}`);
     const compiled = compileScript(entrant.source);
-    if (compiled.ok) brains.push(compiled.brain);
-    else problems.push(...compiled.errors.map((error) => `${names[spawnIndex]}: ${formatError(error)}`));
+    if (compiled.ok) {
+      brains.push(compiled.brain);
+      features.push(compiled.features);
+    } else {
+      problems.push(...compiled.errors.map((error) => `${names[spawnIndex]}: ${formatError(error)}`));
+    }
   });
   if (problems.length > 0) return { ok: false, problems };
 
@@ -91,6 +99,7 @@ export function prepareFight(
     fight: {
       names,
       loadouts,
+      features: [features[0], features[1]],
       config: {
         arena: scatterSpawns(arena, seed),
         tickRate: MATCH_DEFAULTS.tickRate,

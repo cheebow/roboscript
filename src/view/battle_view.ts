@@ -60,6 +60,8 @@ export interface RenderOptions {
   sensorOf: number | null;
   /** Which of that robot's marks to draw besides: those its program has to do with. */
   marks: ProgramFeatures;
+  /** Per robot, in spawn order: whether to draw the way to its hiding place (its program has to do with cover). */
+  coverRoutes: readonly boolean[];
   /** Ticks played past the snapshot; ages its effects further. */
   overrun: number;
 }
@@ -109,11 +111,12 @@ export class BattleView {
     }
 
     snapshot.robots.forEach((robot, index) => {
-      if (robot.alive) drawSensorField(ctx, robot, stats[index], arena, this.colorOf(index), pixel);
+      if (!robot.alive) return;
+      drawSensorField(ctx, robot, stats[index], arena, this.colorOf(index), pixel);
+      if (options.coverRoutes[index]) drawCoverMark(ctx, robot, this.colorOf(index), pixel);
     });
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawSightLine(ctx, watcher, watched, watcherColor, pixel);
-      if (options.marks.cover) drawCoverMark(ctx, watcher, watcherColor, pixel);
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);

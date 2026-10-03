@@ -2155,8 +2155,10 @@ button {
   font-weight: normal;
 }
 
-.guide-button {
-  margin-right: 14px;
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* A button, not a menu: no ▾. */

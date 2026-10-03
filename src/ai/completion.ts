@@ -37,7 +37,7 @@ export interface Suggestions {
   options: Suggestion[];
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const BOOLEAN_SENSORS = Object.keys(BOOLEAN_VARIABLES);
 const NUMBER_SENSORS = Object.keys(NUMBER_VARIABLES);
 /** Words that are always followed by something on the same line. */

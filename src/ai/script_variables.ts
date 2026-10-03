@@ -55,6 +55,7 @@ export const KEYWORDS: readonly string[] = [
   'else',
   'loop',
   'while',
+  'break',
   'def',
   'return',
   'true',

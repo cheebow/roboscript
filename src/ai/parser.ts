@@ -78,6 +78,8 @@ class Parser {
   private readonly signatures = new Map<string, Header & { line: number }>();
   /** The function whose body is being parsed. */
   private owner: Header | null = null;
+  /** How many loops and whiles the line being parsed is in, within its function: where `break` may go. */
+  private loopDepth = 0;
   private index = 0;
   private previousIndent = 0;
 
@@ -144,28 +146,46 @@ class Parser {
 
     let elseLine: number | null = null;
     let elseBody: StatementNode[] = [];
+    let elseIf = false;
     const next = this.lines[this.index];
     if (next !== undefined && next.indent === line.indent && isWord(next.tokens[0], 'else')) {
       this.consume(next);
-      if (next.tokens.length > 1) this.report(next, t('parse.unexpectedAfter', { text: next.tokens[1].text, command: 'else' }));
       elseLine = next.line;
-      elseBody = this.parseChildBlock(next);
+      if (isWord(next.tokens[1], 'if')) {
+        // `else if`: an if of its own in the else branch, with any else of its own after it.
+        elseIf = true;
+        const chained = this.parseIf({ ...next, tokens: next.tokens.slice(1) });
+        elseBody = chained === null ? [] : [chained];
+      } else {
+        if (next.tokens.length > 1) this.report(next, t('parse.unexpectedAfter', { text: next.tokens[1].text, command: 'else' }));
+        elseBody = this.parseChildBlock(next);
+      }
     }
 
     if (condition === null) return null;
-    return { kind: 'if', line: line.line, condition, thenBody, elseLine, elseBody };
+    return { kind: 'if', line: line.line, condition, thenBody, elseLine, elseBody, elseIf };
+  }
+
+  /** The block of a loop or a while, in which `break` may be used. */
+  private parseLoopBody(line: LexedLine): StatementNode[] {
+    this.loopDepth++;
+    try {
+      return this.parseChildBlock(line);
+    } finally {
+      this.loopDepth--;
+    }
   }
 
   private parseWhile(line: LexedLine): StatementNode | null {
     const condition = this.attempt(line, () => this.conditionOf(line));
-    const body = this.parseChildBlock(line);
+    const body = this.parseLoopBody(line);
     if (condition === null) return null;
     return { kind: 'while', line: line.line, condition, body };
   }
 
   private parseLoop(line: LexedLine): StatementNode | null {
     if (line.tokens.length > 1) this.report(line, t('parse.unexpectedAfter', { text: line.tokens[1].text, command: 'loop' }));
-    const body = this.parseChildBlock(line);
+    const body = this.parseLoopBody(line);
     return { kind: 'loop', line: line.line, body };
   }
 
@@ -180,7 +200,11 @@ class Parser {
 
     const header = this.attempt(line, () => this.checkedHeader(line));
     this.owner = header ?? { name: '', params: [] };
+    // A break in a function cannot leave a loop of whoever called it.
+    const outerLoops = this.loopDepth;
+    this.loopDepth = 0;
     const body = this.parseChildBlock(line);
+    this.loopDepth = outerLoops;
     this.owner = null;
     if (header !== null) this.functions.set(header.name, { ...header, line: line.line, body });
   }
@@ -264,6 +288,10 @@ class Parser {
         return { kind: head.text, line: lineNumber };
       case 'set':
         return this.parseSet(line);
+      case 'break':
+        if (this.loopDepth === 0) throw new LineError(t('parse.breakOutside'));
+        expectEnd(line.tokens.slice(1), 'break');
+        return { kind: 'break', line: lineNumber };
       case 'return': {
         if (this.owner === null) throw new LineError(t('parse.returnOutside'));
         const value = line.tokens.slice(1);

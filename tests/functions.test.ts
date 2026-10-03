@@ -156,6 +156,19 @@ describe('functions: errors on the line', () => {
   });
 });
 
+describe('break: where it may go', () => {
+  it('is refused outside a loop or a while, and in a function outside a loop of its own', () => {
+    expect(errorsOf('break')).toEqual(['Line 1: "break" can only be used inside a loop or a while']);
+    expect(errorsOf('loop\n    if hp > 0\n        break\n    wait')).toEqual([]);
+    expect(errorsOf('def f()\n    break\nloop\n    f()\n    wait')).toEqual(['Line 2: "break" can only be used inside a loop or a while']);
+  });
+
+  it('else if checks its own condition, and says what is wrong on its line', () => {
+    expect(errorsOf('if hp > 0\n    wait\nelse if\n    fire')).not.toEqual([]);
+    expect(errorsOf('if hp > 0\n    wait\nelse if hp > 1\n    fire\nelse\n    wait')).toEqual([]);
+  });
+});
+
 describe('functions: errors in how they call each other', () => {
   it('reports a function that calls itself', () => {
     expect(errorsOf('def f()\n    f()')).toEqual(['Line 1: "f" calls itself']);

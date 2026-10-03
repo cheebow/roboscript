@@ -8,7 +8,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
@@ -101,6 +101,7 @@ describe('completionsAt: arguments', () => {
     expect(options.filter((option) => option.insert === option.word).map((option) => option.word)).toEqual([
       'else',
       'loop',
+      'break',
       'return',
       'fire',
       'guard',

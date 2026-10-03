@@ -37,7 +37,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'else',
     kind: 'control',
     hint: 'otherwise',
-    summary: 'Runs the indented lines below when the condition of the "if" above does not hold.',
+    summary: 'Runs the indented lines below when the condition of the "if" above does not hold. "else if condition" on one line checks another condition, as many times as needed.',
   },
   {
     word: 'loop',
@@ -50,6 +50,12 @@ export const LANGUAGE: readonly WordReference[] = [
     kind: 'control',
     hint: 'repeat while a condition holds',
     summary: 'Repeats the indented lines below for as long as the condition holds.',
+  },
+  {
+    word: 'break',
+    kind: 'control',
+    hint: 'leave the loop',
+    summary: `Leaves the innermost loop or while at once, and goes on after it. ${NO_TIME}`,
   },
   {
     word: 'def',

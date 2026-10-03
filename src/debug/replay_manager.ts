@@ -1,3 +1,4 @@
+import { MATCH_DEFAULTS } from '../data/match_defaults';
 import type { Recording } from './recorder';
 import type { RobotSnapshot, Snapshot } from './snapshot';
 
@@ -154,10 +155,34 @@ export class ReplayManager {
   stepLine(): void {
     this.pause();
     if (this.atEnd) return;
-    if (this.linesRun + 1 < this.comingLines(this.focusId).length) {
+    const lines = this.comingLines(this.focusId);
+    // A tick that ran out of lines without an action goes round the same lines up to the line budget:
+    // once round them is enough to see, then on to the next tick.
+    const goesRound = lines.length >= MATCH_DEFAULTS.lineBudget && lines.slice(0, this.linesRun + 1).includes(lines[this.linesRun + 1]);
+    if (this.linesRun + 1 < lines.length && !goesRound) {
       this.linesRun++;
     } else {
       this.moveTo(this.cursor + 1);
+    }
+  }
+
+  /**
+   * Steps over a call: on through the lines of whatever function the line
+   * calls, to the next line of the same part of the program (the main program,
+   * or the function the line is in). `ownerOf` gives the function of a line.
+   */
+  stepOver(ownerOf: (line: number) => string | null): void {
+    const start = this.currentLine(this.focusId);
+    if (start === null) {
+      this.stepLine();
+      return;
+    }
+    const home = ownerOf(start);
+    // However long the call goes on, it stops at the end of the match.
+    for (;;) {
+      this.stepLine();
+      const line = this.currentLine(this.focusId);
+      if (this.atEnd || line === null || ownerOf(line) === home) return;
     }
   }
 

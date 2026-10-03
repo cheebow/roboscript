@@ -119,7 +119,7 @@ button {
   border-right: 1px solid var(--border);
 }
 
-#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug, #previous-run, #next-run),
+#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug, #previous-run, #next-run, #step-over),
 #app[data-screen='contest'] .picker,
 #app:not([data-screen='arena']) :is(#lineup, #results),
 #app:not([data-screen='contest']) #contest,

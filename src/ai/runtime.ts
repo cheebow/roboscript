@@ -11,8 +11,8 @@ import {
 } from './ast';
 import { BOOLEAN_VARIABLES, type FaceTarget, NUMBER_VARIABLES } from './script_variables';
 
-/** How a stretch of program ended: by a `return`, with its value, or (null) by running to its end. */
-type Completion = { value: number } | null;
+/** How a stretch of program ended: by a `return`, with its value, by a `break`, or (null) by running to its end. */
+type Completion = { value: number } | { break: true } | null;
 
 /** Execution that hands control back whenever a tick is over. */
 type Execution = Generator<void, Completion, void>;
@@ -67,18 +67,19 @@ export class ScriptBrain implements RobotBrain {
       case 'if':
         if (this.holds(statement.condition)) return yield* this.runBlock(statement.thenBody);
         if (statement.elseLine === null) return null;
-        yield* this.enter(statement.elseLine);
+        // An `else if` notes its line itself, as the if it is.
+        if (!statement.elseIf) yield* this.enter(statement.elseLine);
         return yield* this.runBlock(statement.elseBody);
       case 'loop':
         for (;;) {
           const completion = yield* this.runBlock(statement.body);
-          if (completion !== null) return completion;
+          if (completion !== null) return 'break' in completion ? null : completion;
           yield* this.enter(statement.line);
         }
       case 'while':
         while (this.holds(statement.condition)) {
           const completion = yield* this.runBlock(statement.body);
-          if (completion !== null) return completion;
+          if (completion !== null) return 'break' in completion ? null : completion;
           yield* this.enter(statement.line);
         }
         return null;
@@ -154,6 +155,8 @@ export class ScriptBrain implements RobotBrain {
         return null;
       case 'return':
         return { value: statement.value === null ? 0 : this.valueOf(statement.value) };
+      case 'break':
+        return { break: true };
       default:
         throw new Error(`"${statement.kind}" on line ${statement.line} cannot be run without taking time`);
     }
@@ -197,7 +200,8 @@ export class ScriptBrain implements RobotBrain {
    * to that), so it runs through without a break.
    */
   private call(name: string, args: Expression[]): number {
-    return this.runWithoutBreak(this.prepareCall(name, args))?.value ?? 0;
+    const completion = this.runWithoutBreak(this.prepareCall(name, args));
+    return completion !== null && 'value' in completion ? completion.value : 0;
   }
 
   private runWithoutBreak(body: StatementNode[]): Completion {
@@ -214,7 +218,7 @@ export class ScriptBrain implements RobotBrain {
       case 'if':
         if (this.holds(statement.condition)) return this.runWithoutBreak(statement.thenBody);
         if (statement.elseLine === null) return null;
-        this.action.executedLines.push(statement.elseLine);
+        if (!statement.elseIf) this.action.executedLines.push(statement.elseLine);
         return this.runWithoutBreak(statement.elseBody);
       case 'call':
         this.runWithoutBreak(this.prepareCall(statement.name, statement.args));

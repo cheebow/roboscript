@@ -314,3 +314,75 @@ describe('runtime: the sample AI', () => {
     expect(run(SAMPLE_AI, contexts)).toEqual(run(SAMPLE_AI, contexts));
   });
 });
+
+describe('runtime: else if', () => {
+  const program = `loop
+    if enemy_distance < 100
+        guard
+    else if enemy_distance < 300
+        fire
+    else if enemy_distance < 500
+        aim enemy
+    else
+        wait`;
+
+  it('takes the first branch whose condition holds, and the else when none does', () => {
+    expect(describe1(runTicks(program, 1, { enemyDistance: 50 })[0])).toBe('guard');
+    expect(describe1(runTicks(program, 1, { enemyDistance: 200 })[0])).toBe('fire');
+    expect(describe1(runTicks(program, 1, { enemyDistance: 400 })[0])).toBe('aim enemy');
+    expect(describe1(runTicks(program, 1, { enemyDistance: 900 })[0])).toBe('nothing');
+  });
+
+  it('notes each line it checks once, the else if lines among them', () => {
+    expect(runTicks(program, 1, { enemyDistance: 400 })[0].executedLines).toEqual([1, 2, 4, 6, 7]);
+    expect(runTicks(program, 1, { enemyDistance: 900 })[0].executedLines).toEqual([1, 2, 4, 6, 8, 9]);
+  });
+
+  it('works in a function called for its value', () => {
+    const source = `def zone()
+    if enemy_distance < 100
+        return 1
+    else if enemy_distance < 300
+        return 2
+    return 3
+set z = zone()
+wait`;
+    expect(runTicks(source, 1, { enemyDistance: 200 })[0].assignments[0].value).toBe(2);
+  });
+});
+
+describe('runtime: break', () => {
+  it('leaves the innermost loop and goes on after it', () => {
+    const source = `set n = 0
+loop
+    set n = n + 1
+    if n == 3
+        break
+    turn left
+fire
+wait`;
+    expect(runTicks(source, 4).map(describe1)).toEqual(['turn left', 'turn left', 'fire', 'nothing']);
+  });
+
+  it('leaves a while, and only the loop it is in', () => {
+    const source = `loop
+    set n = 0
+    while hp > 0
+        set n = n + 1
+        if n > 1
+            break
+        aim left
+    fire`;
+    expect(runTicks(source, 4).map(describe1)).toEqual(['aim left', 'fire', 'aim left', 'fire']);
+  });
+
+  it('can be used in a function, inside a loop of the function', () => {
+    const source = `def spin()
+    loop
+        turn right
+        break
+spin()
+fire`;
+    expect(runTicks(source, 2).map(describe1)).toEqual(['turn right', 'fire']);
+  });
+});

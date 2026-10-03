@@ -9,7 +9,7 @@ import {
   isTurnDirection,
 } from '../ai/script_variables';
 
-const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'def', 'return', 'and', 'or', 'not', 'true', 'false']);
+const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'and', 'or', 'not', 'true', 'false']);
 const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'set']);
 /** The commands that are followed by a direction. */
 const DIRECTED_WORDS = new Set(['drive', 'turn', 'aim']);

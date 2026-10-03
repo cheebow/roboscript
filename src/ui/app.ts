@@ -31,6 +31,8 @@ import { TutorialPanel } from './tutorial_panel';
 import { tutorialMatch } from '../tutorial/match';
 import { trimmed } from '../tutorial';
 import { createReplay } from './watched_match';
+import { parse } from '../ai/parser';
+import { functionLines } from '../ai/structure';
 import { ArenaMode } from './arena_mode';
 import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
@@ -123,6 +125,7 @@ class App {
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly seedLabel = requireElement('battle-seed');
+  private ownersOf: { source: string; owners: Map<number, string> } | null = null;
   /** The start-up screen and its menu: shown first, and again from the ⏻ button. */
   private readonly boot = new BootScreen(this.storage, (choice) => this.bootInto(choice));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
@@ -161,6 +164,8 @@ class App {
   private features: ProgramFeatures[] = [];
   /** The line whose number was last clicked while debugging. */
   private followed: FollowedLine | null = null;
+  /** The marked line of the program screen, kept in storage: it is marked again in the next DEBUG, after a reload too. */
+  private savedMark = readMark(this.storage);
   private lastFrame = performance.now();
 
   constructor() {
@@ -177,6 +182,7 @@ class App {
     this.transport = new Transport(PLAYBACK_SPEEDS, {
       playPause: () => this.togglePlay(),
       step: () => this.step(),
+      stepOver: () => this.stepOver(),
       stepBack: () => this.stepBack(),
       nextRun: () => this.goToRun('next'),
       previousRun: () => this.goToRun('previous'),
@@ -423,8 +429,9 @@ class App {
 
   /** Keeps following the same line in a new match, so that a change to the code can be compared with the run before. */
   private refollow(replay: ReplayManager): void {
-    if (this.followed === null) return;
-    const { robotIndex, line } = this.followed;
+    const mark = this.followed ?? (this.screen === 'program' ? this.savedMark : null);
+    if (mark === null) return;
+    const { robotIndex, line } = mark;
     const marks = replay.runsOf(ROBOT_IDS[robotIndex], line).map((run) => run.tick);
     this.followed = { robotIndex, line, replay, marks };
   }
@@ -446,6 +453,28 @@ class App {
       if (this.screen === 'tutorial') this.tutorial.acted('stepLine');
     }
     else this.shownReplay()?.step();
+  }
+
+  /** One line of the program in view, through any function the line calls; only while debugging. */
+  private stepOver(): void {
+    const { replay } = this;
+    if (!this.coding || this.mode !== 'debug' || replay === null) return;
+    const workspace = this.workspaces[this.shownFile.robotIndex];
+    if (workspace.stale) {
+      replay.stepLine();
+      return;
+    }
+    const owners = this.functionLinesOf(workspace.source);
+    replay.stepOver((line) => owners.get(line) ?? null);
+  }
+
+  /** Which function each line of a program belongs to; kept for the last program asked about. */
+  private functionLinesOf(source: string): Map<number, string> {
+    if (this.ownersOf?.source !== source) {
+      const { program } = parse(source);
+      this.ownersOf = { source, owners: program === null ? new Map() : functionLines(program) };
+    }
+    return this.ownersOf.owners;
   }
 
   private stepBack(): void {
@@ -566,12 +595,26 @@ class App {
     const marked = this.followedNow();
     if (marked !== null && marked.robotIndex === robotIndex && marked.line === line) {
       this.followed = null;
+      this.keepMark(null);
       return;
     }
     replay.seekToNextRun(workspace.robotId, line);
     const marks = replay.runsOf(workspace.robotId, line).map((run) => run.tick);
     this.followed = { robotIndex, line, replay, marks };
+    this.keepMark({ robotIndex, line });
     if (this.screen === 'tutorial') this.tutorial.acted('mark');
+  }
+
+  /** Keeps the marked line of the program screen (null when the mark is taken off). The tutorial's marks are not kept. */
+  private keepMark(mark: { robotIndex: number; line: number } | null): void {
+    if (this.screen !== 'program') return;
+    this.savedMark = mark;
+    try {
+      if (mark === null) this.storage?.removeItem(MARK_KEY);
+      else this.storage?.setItem(MARK_KEY, JSON.stringify(mark));
+    } catch {
+      // Storage may be full or blocked: the mark is then kept until the page is left.
+    }
   }
 
   /** Goes to the next or the previous time the marked line runs, and shows its program. */
@@ -685,6 +728,7 @@ class App {
             marks: NO_MARKS,
             canStep: replay.canStep,
             canStepBack: replay.tick > 0,
+            canStepOver: false,
           },
       this.speed,
     );
@@ -738,6 +782,7 @@ class App {
             marks: followed?.marks ?? NO_MARKS,
             canStep: replay.canStep,
             canStepBack: debugging ? replay.canStepBack : replay.tick > 0,
+            canStepOver: debugging,
           },
       this.speed,
     );
@@ -805,6 +850,22 @@ function readPinnedSeed(): number | null {
   const seed = Number.parseInt(value, 10);
   // A seed that is not a number is left out: the page still starts, with seeds of its own.
   return Number.isNaN(seed) ? null : seed;
+}
+
+const MARK_KEY = 'roboscript/mark.json';
+
+/** The marked line kept from before, if there is a usable one. */
+function readMark(storage: Storage | null): { robotIndex: number; line: number } | null {
+  try {
+    const value: unknown = JSON.parse(storage?.getItem(MARK_KEY) ?? 'null');
+    if (typeof value !== 'object' || value === null) return null;
+    const { robotIndex, line } = value as Record<string, unknown>;
+    if (!Number.isInteger(robotIndex) || !Number.isInteger(line)) return null;
+    if ((robotIndex as number) < 0 || (robotIndex as number) >= ROBOT_IDS.length || (line as number) < 1) return null;
+    return { robotIndex: robotIndex as number, line: line as number };
+  } catch {
+    return null;
+  }
 }
 
 /** Keeps the other language and starts the page again in it: every text is made at start-up. */

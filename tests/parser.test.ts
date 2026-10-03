@@ -72,7 +72,7 @@ describe('parser: statements', () => {
 
   it('parses a plain if', () => {
     expect(parseOk('if enemy_visible\n    fire')).toEqual([
-      { kind: 'if', line: 1, condition: VISIBLE, thenBody: [{ kind: 'fire', line: 2 }], elseLine: null, elseBody: [] },
+      { kind: 'if', line: 1, condition: VISIBLE, thenBody: [{ kind: 'fire', line: 2 }], elseLine: null, elseBody: [], elseIf: false },
     ]);
   });
 
@@ -84,7 +84,7 @@ describe('parser: statements', () => {
         condition: VISIBLE,
         thenBody: [{ kind: 'fire', line: 2 }],
         elseLine: 3,
-        elseBody: [{ kind: 'turn', line: 4, direction: 'right' }],
+        elseBody: [{ kind: 'turn', line: 4, direction: 'right' }], elseIf: false,
       },
     ]);
   });
@@ -155,7 +155,7 @@ describe('parser: statements', () => {
         elseBody: [
           { kind: 'label', line: 17, label: 'TRACK' },
           { kind: 'drive', line: 18, setting: 'forward' },
-        ],
+        ], elseIf: false,
       },
     ]);
 

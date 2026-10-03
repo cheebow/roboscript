@@ -6,6 +6,8 @@ export interface TransportHandlers {
   /** Toggles between playing and paused. */
   playPause(): void;
   step(): void;
+  /** One line, through any function the line calls. */
+  stepOver(): void;
   stepBack(): void;
   /** Goes to the next / the previous time the marked line runs. */
   nextRun(): void;
@@ -25,6 +27,8 @@ export interface TransportState {
   /** Whether there is anything left to step forward / back to. */
   canStep: boolean;
   canStepBack: boolean;
+  /** Whether stepping over a call makes sense: while debugging. */
+  canStepOver: boolean;
 }
 
 const SELECTED_CLASS = 'selected';
@@ -38,6 +42,7 @@ export class Transport {
   private readonly playButton = requireElement<HTMLButtonElement>('transport-play');
   private readonly stepBackButton = requireElement<HTMLButtonElement>('step-back');
   private readonly stepButton = requireElement<HTMLButtonElement>('step');
+  private readonly stepOverButton = requireElement<HTMLButtonElement>('step-over');
   private readonly previousRunButton = requireElement<HTMLButtonElement>('previous-run');
   private readonly nextRunButton = requireElement<HTMLButtonElement>('next-run');
   private readonly seekBar = requireElement<HTMLInputElement>('seek');
@@ -51,6 +56,7 @@ export class Transport {
     this.playButton.addEventListener('click', handlers.playPause);
     this.stepBackButton.addEventListener('click', handlers.stepBack);
     this.stepButton.addEventListener('click', handlers.step);
+    this.stepOverButton.addEventListener('click', handlers.stepOver);
     this.previousRunButton.addEventListener('click', handlers.previousRun);
     this.nextRunButton.addEventListener('click', handlers.nextRun);
     this.seekBar.addEventListener('input', () => handlers.seek(this.seekBar.valueAsNumber));
@@ -72,6 +78,7 @@ export class Transport {
     this.playButton.disabled = state === null;
     this.stepBackButton.disabled = state === null || !state.canStepBack;
     this.stepButton.disabled = state === null || !state.canStep;
+    this.stepOverButton.disabled = state === null || !state.canStep || !state.canStepOver;
     // Only with a marked line that runs at all is there anywhere to jump to.
     const nowhereToJump = state === null || state.marks.length === 0;
     this.previousRunButton.disabled = nowhereToJump;

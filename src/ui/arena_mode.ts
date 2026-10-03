@@ -19,6 +19,7 @@ import { captureSnapshot } from '../debug/snapshot';
 import { type SavedRobot, copyRobot } from '../project/garage';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeMatch, encodeMatch } from '../share/codec';
+import { type SharedMatch, acceptDrops, chooseFile, downloadText, fileName, matchFileText, readSharedFile } from '../share/file';
 import { createIdleAction } from '../sim/ai_context';
 import type { MatchResult } from '../sim/simulation';
 import { Simulation } from '../sim/simulation';
@@ -142,9 +143,13 @@ export class ArenaMode {
     importInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') importButton.click();
     });
+    const openFile = createButton('tool-button', t('arena.openFile'), t('arena.openFile.title'), () =>
+      chooseFile((text) => this.openMatchFile(text), (problem) => this.notice.show(problem, true)),
+    );
     const importRow = createElement('div', 'lineup-import');
-    importRow.append(importInput, importButton);
+    importRow.append(importInput, importButton, openFile);
     lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow, this.notice.element);
+    acceptDrops(lineup, (text) => this.openMatchFile(text), { onProblem: (problem) => this.notice.show(problem, true) });
 
     this.results = results;
     results.dataset.empty = t('arena.results.empty');
@@ -238,7 +243,22 @@ export class ArenaMode {
       this.notice.show(t('arena.couldNotImport', { problem: decoded.problem }), true);
       return false;
     }
-    const { robots, arenaId, seed, rules } = decoded.shared;
+    return this.playShared(decoded.shared, decoded.shared.rules);
+  }
+
+  /** Plays the match of a match file, as a pasted match code is played. */
+  private openMatchFile(text: string): void {
+    const read = readSharedFile(text);
+    if (!read.ok || read.file.kind !== 'match') {
+      this.notice.show(t('file.couldNotOpen', { problem: read.ok ? t('file.notAMatch') : read.problem }), true);
+      return;
+    }
+    this.playShared(read.file.match, read.file.rules);
+  }
+
+  /** Plays a shared match, keeping its robots that are new to the garage. True when it was played. */
+  private playShared(shared: SharedMatch, rules: string): boolean {
+    const { robots, arenaId, seed } = shared;
     const ids: string[] = [];
     const kept: string[] = [];
     let keepProblem: string | null = null;
@@ -263,7 +283,7 @@ export class ArenaMode {
     let entrants: Entrant[];
     if (keepProblem === null) {
       this.picked = [...ids, ...this.picked.slice(ids.length)];
-      this.count = 2;
+      this.count = robots.length;
       this.showCount();
       this.slots.forEach((slot, index) => {
         slot.select.value = this.picked[index];
@@ -279,7 +299,7 @@ export class ArenaMode {
     const keptText = keepProblem !== null ? t('arena.notKept', { reason: keepProblem }) : kept.length > 0 ? t('arena.keptAs', { names: kept.join(', ') }) : '';
     const unknownMap = known ? '' : t('arena.unknownMap', { map: arenaId, instead: arena.name });
     const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
-    this.notice.show(`${t('arena.received', { first: robots[0].name, second: robots[1].name })}${keptText}${unknownMap}${otherRules}`, keepProblem !== null);
+    this.notice.show(`${t('arena.received', { robots: robots.map((robot) => robot.name).join(t('arena.vsJoin')) })}${keptText}${unknownMap}${otherRules}`, keepProblem !== null);
     return true;
   }
 
@@ -302,7 +322,10 @@ export class ArenaMode {
       // Only a duel has a share code.
       encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed })
         .then((code) => {
-          box = createShareBox(code, 'garage-share result-share');
+          const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
+            downloadText(fileName(`${robots.map((robot) => robot.name).join('-vs-')}`), matchFileText({ robots, arenaId: match.arena.id, seed: match.seed })),
+          );
+          box = createShareBox(code, 'garage-share result-share', [saveFile]);
           row.after(box);
         })
         .catch(() => {

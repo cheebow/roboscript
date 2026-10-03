@@ -169,3 +169,25 @@ describe('a file that is not right', () => {
     expect(read.kind === 'contest' && read.contest.format === 'league' && read.contest.matches[0].reason).toBe('destroyed');
   });
 });
+
+describe('match files', () => {
+  it('give back the match: its robots in order, the arena and the seed', async () => {
+    const { matchFileText } = await import('../src/share/file');
+    const file = reopen(matchFileText({ robots: ROBOTS, arenaId: 'cross', seed: 77 }));
+    expect(file).toEqual({ kind: 'match', rules: RULES_VERSION, match: { robots: ROBOTS, arenaId: 'cross', seed: 77 } });
+  });
+
+  it('are refused without 2 to 4 robots, or without an arena and a seed', async () => {
+    const { matchFileText } = await import('../src/share/file');
+    const good = JSON.parse(matchFileText({ robots: ROBOTS, arenaId: 'cross', seed: 77 }));
+    const problem = (change: (file: Record<string, any>) => void) => {
+      const copy = structuredClone(good);
+      change(copy);
+      const read = readSharedFile(JSON.stringify(copy));
+      return read.ok ? null : read.problem;
+    };
+    expect(problem((file) => { file.robots = file.robots.slice(0, 1); })).toBe('a match without 2 to 4 robots in it');
+    expect(problem((file) => { file.robots = [...file.robots, ...file.robots]; })).toBe('a match without 2 to 4 robots in it');
+    expect(problem((file) => { delete file.seed; })).toBe('a share code with no arena or seed in it');
+  });
+});

@@ -593,3 +593,36 @@ describe('ReplayManager: seekToLine', () => {
     expect(replay.tick).toBe(5);
   });
 });
+
+describe('ReplayManager: stepping over and through', () => {
+  it('steps over a call: through the lines of the function, to the next line of the same part', async () => {
+    const { parse } = await import('../src/ai/parser');
+    const { functionLines } = await import('../src/ai/structure');
+    const source = 'def shoot()\n    aim enemy\n    fire\nloop\n    shoot()\n    wait';
+    const owners = functionLines(parse(source).program!);
+    const replay = replayOf(source);
+    // The first tick starts at the loop, then the call.
+    replay.stepLine();
+    expect(replay.currentLine('ALPHA')).toBe(5);
+    replay.stepOver((line) => owners.get(line) ?? null);
+    expect(replay.currentLine('ALPHA')).toBe(6);
+    // Inside the function, stepping over a line stays in the function.
+    const inside = replayOf(source);
+    inside.stepLine();
+    inside.stepLine();
+    expect(inside.currentLine('ALPHA')).toBe(2);
+    inside.stepOver((line) => owners.get(line) ?? null);
+    expect(inside.currentLine('ALPHA')).toBe(3);
+  });
+
+  it('goes round a loop without an action once, then on to the next tick', () => {
+    const replay = replayOf('loop\n    set x = 1');
+    let presses = 0;
+    while (replay.tick === 0 && presses < 50) {
+      replay.stepLine();
+      presses++;
+    }
+    expect(replay.tick).toBe(1);
+    expect(presses).toBeLessThan(5);
+  });
+});

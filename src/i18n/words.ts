@@ -15,9 +15,10 @@ const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
 
 export const WORDS_JA: Record<string, WordText> = {
   if: { hint: '条件が成り立つときに実行', summary: `条件が成り立つとき、下の字下げした行を実行する。${NO_TIME}` },
-  else: { hint: 'そうでなければ', summary: '上の if の条件が成り立たないとき、下の字下げした行を実行する。' },
+  else: { hint: 'そうでなければ', summary: '上の if の条件が成り立たないとき、下の字下げした行を実行する。1 行で else if 条件 と書くと、別の条件を調べられる（何回でも続けられる）。' },
   loop: { hint: 'ずっと繰り返す', summary: '下の字下げした行をずっと繰り返す。loop がないとプログラムは 1 回で終わり、そのあとは何もしない: 車体は最後に決めた drive のまま走り続ける（drive stop で止まる）。' },
   while: { hint: '条件が成り立つ間、繰り返す', summary: '条件が成り立っている間、下の字下げした行を繰り返す。' },
+  break: { hint: '繰り返しを抜ける', summary: `いちばん内側の loop / while をすぐに抜けて、その次の行へ進む。${NO_TIME}` },
   def: { hint: '関数を定義する', summary: 'def approach(limit) のように関数を定義する。中身は下に字下げして書く。approach(350) と呼んだときに実行される。' },
   return: { hint: '関数を抜ける', summary: '関数を終える。return limit + 1 や return true のように値を付けると、呼び出しがその値になる。付けなければ 0。' },
   true: { hint: 'はい: 数の 1', summary: '数の 1 を「はい」として書いたもの。問いに答える関数で return true のように使う。0 でない関数の結果や変数は、if about_to_be_hit() のように条件として成り立つ。' },

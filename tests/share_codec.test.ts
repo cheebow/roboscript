@@ -82,7 +82,7 @@ describe('share codes for matches', () => {
       return btoa(String.fromCharCode(...deflated)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     };
     const robot = { name: 'A', source: 'loop\n    wait' };
-    expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot], arena: 'cross', seed: 1 }))).toEqual({ ok: false, problem: 'a share code without two robots in it' });
+    expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot], arena: 'cross', seed: 1 }))).toEqual({ ok: false, problem: 'a match without 2 to 4 robots in it' });
     expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot, robot], seed: 1 }))).toEqual({ ok: false, problem: 'a share code with no arena or seed in it' });
     expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot, robot], arena: 'cross', seed: 1.5 }))).toEqual({ ok: false, problem: 'a share code with no arena or seed in it' });
   });

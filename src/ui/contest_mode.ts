@@ -370,6 +370,11 @@ export class ContestMode {
       this.add(file.robot, 'file');
       return;
     }
+    if (file.kind === 'match') {
+      // A match is played in the arena, not here.
+      this.notice.show(t('contest.matchFile'), true);
+      return;
+    }
     const { contest } = file;
     this.setBoard(contest, { savedAt: file.savedAt, rules: file.rules });
     this.format = contest.format;

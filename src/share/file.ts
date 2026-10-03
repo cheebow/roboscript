@@ -12,7 +12,34 @@ export const FILE_EXTENSION = '.roboscript.json';
 /** What a file holds, with the rules it was made under. */
 export type SharedFile =
   | { kind: 'robot'; rules: string; robot: SavedRobot }
-  | { kind: 'contest'; rules: string; savedAt: string; contest: ReadRecord };
+  | { kind: 'contest'; rules: string; savedAt: string; contest: ReadRecord }
+  | { kind: 'match'; rules: string; match: SharedMatch };
+
+/** A match as it is shared: its robots in the order they start, its arena by id, and its seed. */
+export interface SharedMatch {
+  robots: SavedRobot[];
+  arenaId: string;
+  seed: number;
+}
+
+/** How many robots a match may have. */
+const MATCH_ROBOTS = { least: 2, most: 4 };
+
+export function matchFileText(match: SharedMatch): string {
+  return JSON.stringify(
+    {
+      format: FILE_FORMAT,
+      v: FILE_VERSION,
+      kind: 'match',
+      rules: RULES_VERSION,
+      arena: match.arenaId,
+      seed: match.seed,
+      robots: match.robots.map((robot) => ({ name: robot.name, loadout: robot.loadout, source: robot.source })),
+    },
+    null,
+    2,
+  );
+}
 
 export function robotFileText(robot: SavedRobot): string {
   return JSON.stringify(
@@ -53,6 +80,14 @@ export function readSharedFile(text: string): { ok: true; file: SharedFile } | {
     const contest = readRecord(file.contest);
     if (contest === null) return { ok: false, problem: t('file.brokenContest') };
     return { ok: true, file: { kind: 'contest', rules, savedAt: typeof file.savedAt === 'string' ? file.savedAt : '', contest } };
+  }
+  if (file.kind === 'match') {
+    const robots = Array.isArray(file.robots) ? file.robots.map(readSavedRobot) : [];
+    if (robots.length < MATCH_ROBOTS.least || robots.length > MATCH_ROBOTS.most || robots.some((robot) => robot === null)) {
+      return { ok: false, problem: t('share.notTwoRobots') };
+    }
+    if (typeof file.arena !== 'string' || !Number.isInteger(file.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
+    return { ok: true, file: { kind: 'match', rules, match: { robots: robots as SavedRobot[], arenaId: file.arena, seed: file.seed as number } } };
   }
   return { ok: false, problem: t('file.unknownKind') };
 }

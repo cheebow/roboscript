@@ -32,6 +32,8 @@ export interface IfNode {
   /** Line of the `else` keyword, or null when there is no else branch. */
   elseLine: number | null;
   elseBody: StatementNode[];
+  /** The else branch is an `else if` on the same line: its one statement is that if, which notes the line itself. */
+  elseIf: boolean;
 }
 
 /** Repeats its body forever. */
@@ -93,6 +95,12 @@ export interface CallNode {
   args: Expression[];
 }
 
+/** Leaves the innermost loop or while it is in. */
+export interface BreakNode {
+  kind: 'break';
+  line: number;
+}
+
 /** Ends the function it is in, with the value it returns (0 when none is given). */
 export interface ReturnNode {
   kind: 'return';
@@ -110,7 +118,8 @@ export type StatementNode =
   | LabelNode
   | DriveNode
   | CallNode
-  | ReturnNode;
+  | ReturnNode
+  | BreakNode;
 
 /** A named piece of program, run when it is called. */
 export interface FunctionNode {

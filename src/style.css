@@ -322,6 +322,8 @@ button {
 .garage-share {
   display: grid;
   gap: 3px;
+  /* The panel is narrow: nothing here may ask for more width than it has, or the buttons get cut off. */
+  min-width: 0;
   padding: 2px 6px 6px 18px;
 }
 
@@ -329,10 +331,12 @@ button {
   display: flex;
   gap: 4px;
   align-items: center;
+  min-width: 0;
 }
 
 .garage-share-field {
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   padding: 1px 4px;
   border: 1px solid var(--border);

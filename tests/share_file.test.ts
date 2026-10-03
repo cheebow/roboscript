@@ -131,7 +131,6 @@ describe('a file that is not right', () => {
     expect(broken(() => {})).toBeNull();
     expect(broken((contest) => { contest.matches[0].first = 7; })).toBe('the contest in the file cannot be read');
     expect(broken((contest) => { contest.robots = contest.robots.slice(0, 1); })).not.toBeNull();
-    expect(broken((contest) => { contest.standings.pop(); })).not.toBeNull();
     expect(broken((contest) => { contest.format = 'cup'; })).not.toBeNull();
     expect(broken((contest) => { contest.matches[2].arena = 3; })).not.toBeNull();
   });
@@ -143,9 +142,30 @@ describe('a file that is not right', () => {
       change(copy.contest);
       return problem(JSON.stringify(copy));
     };
-    expect(broken((contest) => { contest.champion = 9; })).not.toBeNull();
     expect(broken((contest) => { contest.rounds = []; })).not.toBeNull();
     expect(broken((contest) => { contest.rounds[0][0].winner = -1; })).not.toBeNull();
-    expect(broken((contest) => { contest.places.pop(); })).not.toBeNull();
+    // A winner who was not in the tie, or a final between robots who did not win their ties.
+    expect(broken((contest) => { contest.rounds[0][0].winner = 2; })).not.toBeNull();
+    expect(broken((contest) => { contest.rounds[1][0].a = 1; })).not.toBeNull();
+  });
+
+  it('works out the table, the champion and the places from the matches, whatever the file says', () => {
+    const league = JSON.parse(contestFileText(recordLeague(ROBOTS, MATCHES, standingsOf(3, MATCHES)), new Date()));
+    league.contest.standings = [];
+    const readLeague = reopen(JSON.stringify(league));
+    expect(readLeague.kind === 'contest' && readLeague.contest.format === 'league' && readLeague.contest.standings).toEqual(standingsOf(3, MATCHES));
+
+    const cup = JSON.parse(contestFileText(recordTournament(ROBOTS, BRACKET), new Date()));
+    cup.contest.champion = 0;
+    cup.contest.places = [1, 1, 1];
+    const readCup = reopen(JSON.stringify(cup));
+    expect(readCup.kind === 'contest' && readCup.contest.format === 'tournament' && readCup.contest.bracket).toEqual(BRACKET);
+  });
+
+  it('reads an end of a match it does not know as "destroyed"', () => {
+    const league = JSON.parse(contestFileText(recordLeague(ROBOTS, MATCHES, standingsOf(3, MATCHES)), new Date()));
+    league.contest.matches[0].reason = 'exploded';
+    const read = reopen(JSON.stringify(league));
+    expect(read.kind === 'contest' && read.contest.format === 'league' && read.contest.matches[0].reason).toBe('destroyed');
   });
 });

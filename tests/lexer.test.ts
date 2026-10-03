@@ -70,6 +70,12 @@ describe('lexer', () => {
     ]);
   });
 
+  it('rejects full-width spaces used for indentation, saying so', () => {
+    expect(lex('if enemy_visible\n\u3000\u3000fire').errors).toEqual([
+      { line: 2, message: 'Full-width spaces are not allowed for indentation: indent with ordinary spaces' },
+    ]);
+  });
+
   it('rejects characters outside the language', () => {
     expect(lex('fire\ndrive forward;').errors).toEqual([{ line: 2, message: 'Unexpected character ";"' }]);
   });

@@ -36,6 +36,10 @@ export class GaragePanel {
   /** The robot whose share code is shown under its row, if any, and the code. */
   private sharing: string | null = null;
   private shared: string | null = null;
+  /** Set while a share code is being made. */
+  private making = false;
+  /** The names last shown. */
+  private names: readonly string[] = [];
 
   constructor(
     container: HTMLElement,
@@ -45,7 +49,7 @@ export class GaragePanel {
     this.nameInput = createElement('input', 'garage-name-input');
     this.nameInput.type = 'text';
     this.nameInput.placeholder = t('garage.name.placeholder');
-    this.nameInput.setAttribute('aria-label', 'Name to save a robot under');
+    this.nameInput.setAttribute('aria-label', t('garage.name.label'));
     this.nameInput.spellcheck = false;
 
     const saveButtons = createElement('div', 'garage-save-buttons');
@@ -78,27 +82,35 @@ export class GaragePanel {
   /** Lists the saved robots by the given names. */
   show(names: readonly string[]): void {
     this.armed = null;
+    this.names = names;
+    if (this.sharing !== null && !names.includes(this.sharing)) this.closeShare();
     if (names.length === 0) {
       this.rows.replaceChildren(createElement('div', 'garage-empty', t('garage.empty')));
       return;
     }
-    if (this.sharing !== null && !names.includes(this.sharing)) this.closeShare();
     this.rows.replaceChildren(
       ...names.flatMap((name) => (name === this.sharing && this.shared !== null ? [this.rowOf(name), this.shareBox(name, this.shared)] : [this.rowOf(name)])),
     );
   }
 
   /** Shows the share code of the robot under its row, or puts it away when shown already. */
-  async toggleShare(name: string, names: readonly string[]): Promise<void> {
+  private async toggleShare(name: string): Promise<void> {
     if (this.sharing === name) {
       this.closeShare();
     } else {
-      const shared = await this.handlers.share(name);
-      if (shared === null) return;
-      this.sharing = name;
-      this.shared = shared;
+      // The code is made in the background: a second press meanwhile is not a second request.
+      if (this.making) return;
+      this.making = true;
+      try {
+        const shared = await this.handlers.share(name).catch(() => null);
+        if (shared === null) return;
+        this.sharing = name;
+        this.shared = shared;
+      } finally {
+        this.making = false;
+      }
     }
-    this.show(names);
+    this.show(this.names);
   }
 
   private closeShare(): void {
@@ -111,7 +123,7 @@ export class GaragePanel {
     field.type = 'text';
     field.readOnly = true;
     field.value = code;
-    field.setAttribute('aria-label', 'Share code');
+    field.setAttribute('aria-label', t('share.field'));
     field.addEventListener('focus', () => field.select());
     const copy = createElement('button', 'garage-action', t('garage.copy'));
     copy.type = 'button';
@@ -158,7 +170,7 @@ export class GaragePanel {
     share.type = 'button';
     share.title = t('garage.share.title', { name });
     share.addEventListener('click', () => {
-      void this.toggleShare(name, [...this.rows.querySelectorAll('.garage-name')].map((label) => label.textContent ?? ''));
+      void this.toggleShare(name);
     });
     row.append(share);
     const remove = createElement('button', 'garage-action', REMOVE_LABEL);

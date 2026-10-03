@@ -77,30 +77,57 @@ export function downloadText(name: string, text: string): void {
 }
 
 /** Asks for a file and gives its text; nothing happens when none is chosen. */
-export function chooseFile(onText: (text: string) => void): void {
+export function chooseFile(onText: (text: string) => void, onProblem: (problem: string) => void = () => {}): void {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = `${FILE_EXTENSION},.json,application/json`;
   input.addEventListener('change', () => {
     const file = input.files?.[0];
-    if (file !== undefined) void file.text().then(onText);
+    if (file !== undefined) readText(file, onText, onProblem);
   });
   input.click();
 }
 
-/** Takes a file dropped on the element, giving its text. The element is marked while a file is over it. */
-export function acceptDrops(element: HTMLElement, onText: (text: string) => void): void {
+/**
+ * Takes a file dropped on the element, giving its text. The element is marked
+ * while a file is over it. `accepts` says whether to take files at the moment;
+ * while it does not, a dropped file goes past as if the element were not there.
+ */
+export function acceptDrops(
+  element: HTMLElement,
+  onText: (text: string) => void,
+  { accepts = () => true, onProblem = () => {} }: { accepts?: () => boolean; onProblem?: (problem: string) => void } = {},
+): void {
+  // Entering a child of the element leaves the element itself: count, so that the mark stays until the file is really gone.
+  let over = 0;
+  const unmark = () => {
+    over = 0;
+    element.classList.remove('drop-target');
+  };
+  element.addEventListener('dragenter', (event) => {
+    if (!accepts() || !event.dataTransfer?.types.includes('Files')) return;
+    over++;
+    element.classList.add('drop-target');
+  });
   element.addEventListener('dragover', (event) => {
-    if (!event.dataTransfer?.types.includes('Files')) return;
+    if (!accepts() || !event.dataTransfer?.types.includes('Files')) return;
     event.preventDefault();
     element.classList.add('drop-target');
   });
-  element.addEventListener('dragleave', () => element.classList.remove('drop-target'));
+  element.addEventListener('dragleave', () => {
+    over = Math.max(0, over - 1);
+    if (over === 0) element.classList.remove('drop-target');
+  });
   element.addEventListener('drop', (event) => {
-    element.classList.remove('drop-target');
+    unmark();
+    if (!accepts()) return;
     const file = event.dataTransfer?.files[0];
     if (file === undefined) return;
     event.preventDefault();
-    void file.text().then(onText);
+    readText(file, onText, onProblem);
   });
+}
+
+function readText(file: File, onText: (text: string) => void, onProblem: (problem: string) => void): void {
+  file.text().then(onText, () => onProblem(t('file.couldNotRead')));
 }

@@ -416,6 +416,16 @@ describe('ReplayManager: view', () => {
     expect(replay.view.tick).toBe(sightedAt - 1);
   });
 
+  it('shows whether the robot is hidden as its program reads it: from the coming tick', () => {
+    const replay = createReplay();
+    const { snapshots } = replay.recording;
+    const changedAt = snapshots.findIndex((snapshot, tick) => tick > 0 && snapshot.robots[0].hidden !== snapshots[tick - 1].robots[0].hidden);
+    expect(changedAt).toBeGreaterThan(0);
+    replay.seek(changedAt - 1);
+    expect(replay.view.robots[0].hidden).toBe(snapshots[changedAt].robots[0].hidden);
+    expect(replay.view.robots[0].targetId).toBe(snapshots[changedAt].robots[0].targetId);
+  });
+
   it('is the last snapshot itself at the end', () => {
     const replay = createReplay();
     replay.seek(replay.lastTick);

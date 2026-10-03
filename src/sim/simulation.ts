@@ -315,11 +315,11 @@ export class Simulation {
   }
 
   private stepBullets(): void {
-    const targets = this.robots
-      .filter((robot) => robot.alive)
-      .map((robot) => ({ id: robot.id, position: robot.position, radius: robot.stats.radius }));
-
     this.bullets = this.bullets.filter((bullet) => {
+      // Read afresh for every bullet: a robot destroyed by one bullet of this tick is no longer in the way of the next.
+      const targets = this.robots
+        .filter((robot) => robot.alive)
+        .map((robot) => ({ id: robot.id, position: robot.position, radius: robot.stats.radius }));
       const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets);
       if (outcome.kind === 'hit' || outcome.kind === 'wall') {
         this.tickEvents.push({ kind: 'impact', ...bullet.position });

@@ -4,7 +4,7 @@ import { type Loadout, SLOTS } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
 import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
-import type { MatchResult } from '../sim/simulation';
+import type { MatchEndReason, MatchResult } from '../sim/simulation';
 import type { Arena } from '../sim/types';
 import {
   drawCoverMark,
@@ -353,4 +353,14 @@ export function centreInside(x: number, halfWidth: number, width: number): numbe
 
 export function formatResult(result: MatchResult): string {
   return result.winnerId === null ? t('battle.draw') : t('battle.winner', { name: result.winnerId });
+}
+
+/** How a match ended, in words: destroyed, time up, out of ammo. */
+export function formatReason(reason: MatchEndReason): string {
+  return t(`reason.${reason === 'out of ammo' ? 'outOfAmmo' : reason}`);
+}
+
+/** Who won and how the match ended, for a status line. */
+export function formatOutcome(result: MatchResult): string {
+  return t('program.result', { result: formatResult(result), reason: formatReason(result.reason) });
 }

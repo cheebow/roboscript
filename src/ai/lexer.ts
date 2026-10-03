@@ -1,3 +1,4 @@
+import { t } from '../i18n/messages';
 import type { ScriptError } from './script_error';
 
 /** Punctuation the language knows: comparisons, arithmetic, grouping, assignment and the comma between values. */
@@ -24,7 +25,8 @@ export interface LexResult {
 }
 
 const COMMENT_START = '#';
-const LEADING_WHITESPACE = /^[ \t]*/;
+/** Spaces at the start of a line, with tabs and full-width spaces so that those can be reported. */
+const LEADING_WHITESPACE = /^[ \t\u3000]*/;
 const TOKEN = /\s+|(\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)|(<=|>=|==|!=|[<>+\-*/()=,])/y;
 
 export function lex(source: string): LexResult {
@@ -37,7 +39,11 @@ export function lex(source: string): LexResult {
     const line = index + 1;
     const leading = LEADING_WHITESPACE.exec(text)?.[0] ?? '';
     if (leading.includes('\t')) {
-      errors.push({ line, message: 'Tabs are not allowed for indentation' });
+      errors.push({ line, message: t('parse.tabIndent') });
+      return;
+    }
+    if (leading.includes('\u3000')) {
+      errors.push({ line, message: t('parse.fullWidthIndent') });
       return;
     }
     try {
@@ -65,7 +71,7 @@ function lexTokens(text: string): Token[] {
   while (position < text.length) {
     TOKEN.lastIndex = position;
     const match = TOKEN.exec(text);
-    if (match === null) throw new UnexpectedCharacter(`Unexpected character "${text[position]}"`);
+    if (match === null) throw new UnexpectedCharacter(t('parse.unexpectedCharacter', { character: text[position] }));
     position = TOKEN.lastIndex;
 
     const [, number, word, symbol] = match;

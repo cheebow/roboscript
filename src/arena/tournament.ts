@@ -131,7 +131,8 @@ function playTie(entrants: readonly Entrant[], a: number, b: number, rng: MatchR
   return { ok: true, tie: { a, b, matches, score, winner } };
 }
 
-function placesOf(count: number, rounds: readonly Tie[][]): (number | null)[] {
+/** Each entrant's place from the rounds: 1 and 2 from the final, 3 for the losers of the semi-finals. */
+export function placesOf(count: number, rounds: readonly Tie[][]): (number | null)[] {
   const places: (number | null)[] = Array.from({ length: count }, () => null);
   const final = rounds[rounds.length - 1][0];
   places[final.winner] = 1;

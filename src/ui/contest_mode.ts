@@ -16,7 +16,7 @@ import { RULES_VERSION } from '../data/rules_version';
 import { decodeRobot } from '../share/codec';
 import { type SharedFile, acceptDrops, chooseFile, contestFileText, downloadText, fileName, readSharedFile } from '../share/file';
 import { Simulation } from '../sim/simulation';
-import { formatResult } from '../view/battle_view';
+import { formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import type { ArenaScene } from './arena_mode';
 import { ActionMenu, type MenuItem } from './action_menu';
@@ -32,6 +32,8 @@ export interface ContestSetting {
   garage(): readonly SavedRobot[];
   /** The playback speed chosen under the battle view. */
   speed(): number;
+  /** Whether the contest screen is the one shown. */
+  shown(): boolean;
   storage: KeyValueStorage | null;
 }
 
@@ -116,8 +118,12 @@ export class ContestMode {
 
     panel.replaceChildren(formats, heading, this.list, this.addMenu.element, buttons);
     // A robot file dropped on the panel joins the list; a result file shows its board.
-    acceptDrops(panel, (text) => this.openFile(text));
-    acceptDrops(board.parentElement ?? board, (text) => this.openFile(text));
+    const onProblem = (problem: string) => {
+      this.note = problem;
+    };
+    acceptDrops(panel, (text) => this.openFile(text), { onProblem });
+    // The battle view is on the other screens too: it takes files only while the contest screen is shown.
+    acceptDrops(board.parentElement ?? board, (text) => this.openFile(text), { accepts: () => setting.shown(), onProblem });
     this.refresh();
   }
 
@@ -154,7 +160,7 @@ export class ContestMode {
     const { replay, fight } = this;
     if (replay === null || fight === null) return `${t('contest.ready', { min: LEAGUE_MIN, max: LEAGUE_MAX })}${note}`;
     const { result } = replay.snapshot;
-    const status = result !== null ? `${formatResult(result)} (${result.reason})` : replay.playing ? t('arena.playing') : t('arena.paused');
+    const status = result !== null ? formatOutcome(result) : replay.playing ? t('arena.playing') : t('arena.paused');
     return `${t('arena.vs', { first: fight.names[0], second: fight.names[1] })}   ${status}${note}`;
   }
 
@@ -192,7 +198,9 @@ export class ContestMode {
       const robot = this.setting.garage()[index];
       if (robot !== undefined) this.add(robot, 'garage');
     } else if (kind === 'file') {
-      chooseFile((text) => this.openFile(text));
+      chooseFile((text) => this.openFile(text), (problem) => {
+        this.note = problem;
+      });
     }
   }
 
@@ -200,7 +208,11 @@ export class ContestMode {
     const shown = this.boards.get(this.format);
     if (id === 'board') this.showBoard();
     else if (id === 'save' && shown !== undefined) this.saveResult(shown);
-    else if (id === 'open') chooseFile((text) => this.openFile(text));
+    else if (id === 'open') {
+      chooseFile((text) => this.openFile(text), (problem) => {
+        this.note = problem;
+      });
+    }
   }
 
   private setFormat(format: Format): void {
@@ -408,7 +420,11 @@ export class ContestMode {
   /** Plays a match of the contest in the battle view, putting the board away. */
   private watch(entrants: readonly Entrant[], first: number, second: number, arena: ArenaDefinition, seed: number): void {
     const prepared = prepareFight([entrants[first], entrants[second]], arena.arena, seed);
-    if (!prepared.ok) return;
+    if (!prepared.ok) {
+      // A robot of a file made under other rules may no longer be a working program.
+      this.note = t('contest.cannotPlay', { problems: prepared.problems.join(' / ') });
+      return;
+    }
     this.board.hidden = true;
     this.fight = prepared.fight;
     this.replay = new ReplayManager(recordMatch(prepared.fight.config, EFFECT_LIFETIMES), {

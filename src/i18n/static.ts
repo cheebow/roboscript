@@ -3,7 +3,8 @@ import { type MessageKey, t } from './messages';
 /**
  * Puts the current language on the page's fixed texts: elements with a
  * `data-i18n` attribute get the text of that key, those with a
- * `data-i18n-title` the tooltip of that key. The HTML carries the English.
+ * `data-i18n-title` the tooltip of that key, and those with a
+ * `data-i18n-label` the name read out for them. The HTML carries the English.
  */
 export function translateStatic(root: ParentNode): void {
   for (const element of root.querySelectorAll<HTMLElement>('[data-i18n]')) {
@@ -13,5 +14,8 @@ export function translateStatic(root: ParentNode): void {
   for (const element of root.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
     const key = element.dataset.i18nTitle as MessageKey;
     element.title = t(key);
+  }
+  for (const element of root.querySelectorAll<HTMLElement>('[data-i18n-label]')) {
+    element.setAttribute('aria-label', t(element.dataset.i18nLabel as MessageKey));
   }
 }

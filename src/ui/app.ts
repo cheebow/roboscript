@@ -28,7 +28,7 @@ import { decodeRobot, encodeRobot } from '../share/codec';
 import { downloadText, fileName, readSharedFile, robotFileText } from '../share/file';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
-import { BattleView, formatResult } from '../view/battle_view';
+import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { ArenaMode } from './arena_mode';
@@ -138,8 +138,8 @@ class App {
   private events: readonly DebugEvent[] = [];
   /** Replaces the usual toolbar message until the next RUN, DEBUG or RESET. */
   private notice: string | null = null;
-  /** Set while the last attempt to save failed; shown next to the toolbar message. */
-  private saveProblem: string | null = null;
+  /** What could not be saved the last time it was, by what it is: shown next to the toolbar message until a save of it works. */
+  private readonly saveProblems = new Map<string, string>();
   /** What the garage last did, or why it could not; shown next to the toolbar message until the next RUN, DEBUG or RESET. */
   private garageNote: string | null = null;
   /** Per robot: what the program of the match being shown has to do with, which decides the marks drawn for it. */
@@ -198,6 +198,7 @@ class App {
     this.contestMode = new ContestMode(requireElement('contest-body'), requireElement('board'), {
       garage: () => this.garage?.list() ?? [],
       speed: () => this.speed,
+      shown: () => this.screen === 'contest',
       storage: openStorage(),
     });
     for (const screen of SCREENS) {
@@ -292,9 +293,7 @@ class App {
     return new RobotWorkspace(robotId, requireElement(EDITOR_ELEMENT_IDS[robotIndex]), source, {
       save: (code) => this.store?.saveSource(robotIndex, code),
       edited: (workspace) => this.codeEdited(workspace),
-      saveProblem: (problem) => {
-        this.saveProblem = problem;
-      },
+      saveProblem: (problem) => this.noteSave(`code:${robotIndex}`, problem),
       lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
     });
   }
@@ -406,6 +405,8 @@ class App {
     this.replay = null;
     this.events = [];
     this.notice = null;
+    this.followed = null;
+    for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
     this.garageNote = null;
     this.drawSeed();
@@ -435,8 +436,9 @@ class App {
     }
     try {
       this.store?.saveLoadout(robotIndex, loadout);
+      this.noteSave(`parts:${robotIndex}`, null);
     } catch (error) {
-      this.saveProblem = t('program.couldNotSaveParts', { robot: ROBOT_IDS[robotIndex], reason: describeError(error) });
+      this.noteSave(`parts:${robotIndex}`, t('program.couldNotSaveParts', { robot: ROBOT_IDS[robotIndex], reason: describeError(error) }));
     }
   }
 
@@ -494,8 +496,9 @@ class App {
     this.arenaMode.arenaChanged();
     try {
       this.store?.saveArena(this.arena.id);
+      this.noteSave('map', null);
     } catch (error) {
-      this.saveProblem = t('program.couldNotSaveMap', { reason: describeError(error) });
+      this.noteSave('map', t('program.couldNotSaveMap', { reason: describeError(error) }));
     }
   }
 
@@ -562,6 +565,12 @@ class App {
     const { followed } = this;
     if (followed === null || followed.replay !== this.replay || this.mode !== 'debug') return null;
     return this.workspaces[followed.robotIndex].stale ? null : followed;
+  }
+
+  /** Notes how the last save of one thing (a robot's code or parts, the map) went: a problem, or null when it worked. */
+  private noteSave(what: string, problem: string | null): void {
+    if (problem === null) this.saveProblems.delete(what);
+    else this.saveProblems.set(what, problem);
   }
 
   private codeEdited(workspace: RobotWorkspace): void {
@@ -701,7 +710,7 @@ class App {
     if (edited.length > 0) parts.push(`[${t('program.staleNote', { robots: edited.join(', ') })}]`);
     const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
     if (refitted.length > 0) parts.push(`[${t('program.partsNote', { robots: refitted.join(', ') })}]`);
-    if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
+    for (const problem of this.saveProblems.values()) parts.push(`[${problem}]`);
     if (this.garageNote !== null) parts.push(`[${this.garageNote}]`);
     return parts.join('   ');
   }
@@ -727,7 +736,7 @@ class App {
 
 function playbackStatus(replay: ReplayManager): string {
   const { result } = replay.snapshot;
-  if (result !== null) return t('program.result', { result: formatResult(result), reason: result.reason });
+  if (result !== null) return formatOutcome(result);
   return replay.playing ? t('program.playing') : t('program.paused');
 }
 
@@ -750,11 +759,10 @@ function readPinnedSeed(): number | null {
   const value = new URLSearchParams(window.location.search).get('seed');
   if (value === null) return null;
   const seed = Number.parseInt(value, 10);
-  if (Number.isNaN(seed)) throw new Error(`Invalid seed: "${value}"`);
-  return seed;
+  // A seed that is not a number is left out: the page still starts, with seeds of its own.
+  return Number.isNaN(seed) ? null : seed;
 }
 
-/** null when the browser refuses access to localStorage (e.g. blocked site data). */
 /** Keeps the other language and starts the page again in it: every text is made at start-up. */
 function switchLanguage(storage: Storage | null): void {
   try {

@@ -4,7 +4,7 @@ import { ARENAS } from '../src/data/arenas';
 import { CORNER_SPAWNS } from '../src/data/arenas/common';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
-import type { RobotBrain } from '../src/sim/ai_context';
+import { type RobotBrain, createIdleAction } from '../src/sim/ai_context';
 import { circleIntersectsRect } from '../src/sim/math';
 import { Simulation } from '../src/sim/simulation';
 import type { Arena } from '../src/sim/types';
@@ -87,6 +87,35 @@ describe('a battle royale', () => {
     expect(wreck.rotation).toBe(rotation);
     expect(wreck.gunHeading).toBe(gunHeading);
     expect(wreck.weapon.ammo).toBe(ammo);
+  });
+
+  it('lets a bullet pass a robot destroyed by another bullet on the same tick', () => {
+    // ALPHA and CHARLIE each fire once, at the same moment, at BRAVO between them: their bullets reach it on the same tick.
+    class FireOnce implements RobotBrain {
+      private fired = false;
+      decide() {
+        const action = { ...createIdleAction(), fire: !this.fired };
+        this.fired = true;
+        return action;
+      }
+    }
+    const line: Arena = {
+      width: 1000,
+      height: 600,
+      obstacles: [],
+      spawns: [
+        { x: 350, y: 300, rotation: 0 },
+        { x: 500, y: 300, rotation: 0 },
+        { x: 650, y: 300, rotation: 180 },
+      ],
+    };
+    const simulation = royale([new FireOnce(), new FixedBrain(), new FireOnce()], line);
+    const [alpha, bravo, charlie] = simulation.robots;
+    bravo.hp = 1;
+    while (bravo.alive) simulation.step();
+    runTicks(simulation, 60);
+    // The second bullet flew on past the wreck to the robot behind it.
+    expect(Math.min(alpha.hp, charlie.hp)).toBeLessThan(NO_SPREAD_STATS.maxHp);
   });
 
   it('forgets an enemy once it is destroyed, rather than looking for its wreck', () => {

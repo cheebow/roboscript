@@ -304,8 +304,13 @@ function withSensorsOf(robot: RobotSnapshot, sensing: RobotSnapshot): RobotSnaps
   const { enemyVisible, enemyDistance, enemyAngle, lastSeen, blocked, blockedBehind } = sensing;
   const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover } = sensing;
   const { aimAngle, leadAngle, gunAngle, lead, hit, hitAngle, touchingEnemy } = sensing;
+  // Whether the robot is hidden is known before its program runs, so the program reads the coming tick's value too.
+  const { targetId, hidden, recovering } = sensing;
   return {
     ...robot,
+    targetId,
+    hidden,
+    recovering,
     enemyVisible,
     enemyDistance,
     enemyAngle,

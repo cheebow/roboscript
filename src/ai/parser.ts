@@ -108,7 +108,7 @@ class Parser {
       if (line.indent < indent) break;
       if (line.indent > indent) {
         const dedented = this.previousIndent > line.indent;
-        this.report(line, dedented ? 'Indent does not match any outer block' : 'Unexpected indent');
+        this.report(line, dedented ? t('parse.indentMismatch') : t('parse.unexpectedIndent'));
         // Parsed only to report errors inside it and to move past it.
         this.parseBlock(line.indent);
         continue;
@@ -131,7 +131,7 @@ class Parser {
       return null;
     }
     if (isWord(head, 'else')) {
-      this.report(line, 'Unexpected else');
+      this.report(line, t('parse.unexpectedElse'));
       this.parseChildBlock(line);
       return null;
     }
@@ -147,7 +147,7 @@ class Parser {
     const next = this.lines[this.index];
     if (next !== undefined && next.indent === line.indent && isWord(next.tokens[0], 'else')) {
       this.consume(next);
-      if (next.tokens.length > 1) this.report(next, `Unexpected "${next.tokens[1].text}" after "else"`);
+      if (next.tokens.length > 1) this.report(next, t('parse.unexpectedAfter', { text: next.tokens[1].text, command: 'else' }));
       elseLine = next.line;
       elseBody = this.parseChildBlock(next);
     }
@@ -164,7 +164,7 @@ class Parser {
   }
 
   private parseLoop(line: LexedLine): StatementNode | null {
-    if (line.tokens.length > 1) this.report(line, `Unexpected "${line.tokens[1].text}" after "loop"`);
+    if (line.tokens.length > 1) this.report(line, t('parse.unexpectedAfter', { text: line.tokens[1].text, command: 'loop' }));
     const body = this.parseChildBlock(line);
     return { kind: 'loop', line: line.line, body };
   }
@@ -172,7 +172,7 @@ class Parser {
   /** A function: its `def` line and the block below it. It is kept apart from the statements, to be run when called. */
   private parseDefinition(line: LexedLine): void {
     if (line.indent > 0) {
-      this.report(line, 'Functions can only be defined at the top level');
+      this.report(line, t('parse.functionNotTopLevel'));
       // Parsed only to report errors inside it and to move past it.
       this.parseChildBlock(line);
       return;
@@ -204,7 +204,7 @@ class Parser {
   private parseChildBlock(header: LexedLine): StatementNode[] {
     const next = this.lines[this.index];
     if (next === undefined || next.indent <= header.indent) {
-      this.report(header, 'Expected indented block');
+      this.report(header, t('parse.expectIndentedBlock'));
       return [];
     }
     return this.parseBlock(next.indent);
@@ -568,8 +568,11 @@ class ExpressionParser {
     while (!isSymbol(this.peek(), ')')) {
       if (this.peek() === undefined) throw new LineError(t('parse.expectCloseParen'));
       args.push(this.parseSum());
-      if (isSymbol(this.peek(), ',')) this.position++;
-      else if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
+      if (isSymbol(this.peek(), ',')) {
+        this.position++;
+        // A comma is between two values: none may end the list.
+        if (isSymbol(this.peek(), ')')) throw new LineError(t('parse.valueAfterComma'));
+      } else if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
     }
     this.position++;
 

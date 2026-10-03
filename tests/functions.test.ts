@@ -138,6 +138,7 @@ describe('functions: errors on the line', () => {
     expect(errorsOf('def g()\n    wait\ng(1)')).toEqual(['Line 3: "g" takes no values, not 1']);
     expect(errorsOf('def h(a, b)\n    wait\nh(1)')).toEqual(['Line 3: "h" takes 2 values, not 1']);
     expect(errorsOf(`${f}f(1`)).toEqual(['Line 3: Expected ")"']);
+    expect(errorsOf(`${f}f(1,)`)).toEqual(['Line 3: Expected a value after ","']);
     expect(errorsOf(`${f}f`)).toEqual(['Line 3: Expected "(" after "f"']);
     expect(errorsOf(`${f}set n = f + 1`)).toEqual(['Line 3: Expected "(" after "f"']);
     expect(errorsOf(`${f}f(1) + 2`)).toEqual(['Line 3: Only a call can stand on a line of its own']);
@@ -179,6 +180,17 @@ describe('functions: errors in how they call each other', () => {
     ]);
     // On a line of its own it may take all the time it needs.
     expect(errorsOf(`${sweep}loop\n    sweep()`)).toEqual([]);
+  });
+
+  it('checks a function called alone as a condition, as it does any other value', () => {
+    expect(errorsOf('def f()\n    if f()\n        return 1\n    return 0\nloop\n    wait')).toEqual(['Line 1: "f" calls itself']);
+    const sweep = 'def sweep()\n    turn left\n    return 1\n';
+    expect(errorsOf(`${sweep}loop\n    if sweep()\n        fire`)).toEqual([
+      'Line 5: "sweep" cannot be used as a value: it takes time (line 2)',
+    ]);
+    expect(errorsOf(`${sweep}loop\n    while not sweep()\n        wait`)).toEqual([
+      'Line 5: "sweep" cannot be used as a value: it takes time (line 2)',
+    ]);
   });
 
   it('reports a function that loops when it is called for its value', () => {

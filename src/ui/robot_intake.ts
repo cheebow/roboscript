@@ -24,6 +24,8 @@ export class RobotIntake {
   private readonly menu: ActionMenu;
   private readonly codeRow = createElement('div', 'intake-code');
   private readonly input: HTMLInputElement;
+  /** Set while a pasted code is being read: a second press waits for the first to finish. */
+  private busy = false;
 
   constructor(
     texts: IntakeTexts,
@@ -82,6 +84,12 @@ export class RobotIntake {
   }
 
   private async take(): Promise<void> {
-    if (await this.onCode(this.input.value)) this.closeCode();
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      if (await this.onCode(this.input.value)) this.closeCode();
+    } finally {
+      this.busy = false;
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { t } from '../i18n/messages';
 import { type Loadout, readLoadout } from '../data/parts';
 import type { KeyValueStorage } from './project_store';
 
@@ -63,7 +64,7 @@ export class Garage {
    */
   importRobot(robot: SavedRobot): string {
     const taken = new Set(this.list().map((saved) => saved.name));
-    const base = garageName(robot.name) ?? 'Shared';
+    const base = garageName(robot.name) ?? t('garage.sharedName');
     let name = base;
     for (let n = 2; taken.has(name); n++) {
       const suffix = ` (${n})`;

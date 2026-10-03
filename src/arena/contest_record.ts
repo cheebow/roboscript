@@ -2,8 +2,8 @@ import { ARENAS, type ArenaDefinition, DEFAULT_ARENA_DEFINITION } from '../data/
 import { readLoadout } from '../data/parts';
 import type { SavedRobot } from '../project/garage';
 import type { MatchEndReason } from '../sim/simulation';
-import type { LeagueMatch, Standing } from './league';
-import type { Bracket, Tie, TieMatch } from './tournament';
+import { type LeagueMatch, type Standing, standingsOf } from './league';
+import { type Bracket, type Tie, type TieMatch, placesOf } from './tournament';
 
 /**
  * A finished contest as it is written to a file: the robots as they fought
@@ -49,7 +49,13 @@ export type ReadRecord =
   | { format: 'league'; robots: SavedRobot[]; matches: LeagueMatch[]; standings: Standing[]; unknownArenas: string[] }
   | { format: 'tournament'; robots: SavedRobot[]; bracket: Bracket; unknownArenas: string[] };
 
-/** The record checked and turned back into what the boards draw; null when it is not one. */
+const REASONS: readonly MatchEndReason[] = ['destroyed', 'timeout', 'out of ammo'];
+
+/**
+ * The record checked and turned back into what the boards draw; null when it
+ * is not one. The table and the places are worked out again from the matches,
+ * so that a file cannot claim a result its matches do not give.
+ */
 export function readRecord(value: unknown): ReadRecord | null {
   if (!isRecord(value) || !Array.isArray(value.robots)) return null;
   const robots = value.robots.map(readRobot);
@@ -75,45 +81,56 @@ export function readRecord(value: unknown): ReadRecord | null {
       arena,
       seed: match.seed as number,
       winner: match.winner as number | null,
-      reason: (typeof match.reason === 'string' ? match.reason : 'destroyed') as MatchEndReason,
+      reason: REASONS.includes(match.reason as MatchEndReason) ? (match.reason as MatchEndReason) : 'destroyed',
       hpLeft: [Number(hpLeft[0]) || 0, Number(hpLeft[1]) || 0],
     };
   };
   const ok = robots as SavedRobot[];
 
   if (value.format === 'league') {
-    if (!Array.isArray(value.matches) || !Array.isArray(value.standings)) return null;
+    if (!Array.isArray(value.matches)) return null;
     const matches: LeagueMatch[] = [];
     for (const each of value.matches) {
       const match = readMatch(each);
       if (match === null) return null;
       matches.push({ ...match, ticks: isRecord(each) && typeof each.ticks === 'number' ? each.ticks : 0 });
     }
-    const standings = value.standings.filter((line): line is Standing => isRecord(line) && seat(line.entrant));
-    if (standings.length !== seats) return null;
-    return { format: 'league', robots: ok, matches, standings, unknownArenas: [...unknown] };
+    return { format: 'league', robots: ok, matches, standings: standingsOf(seats, matches), unknownArenas: [...unknown] };
   }
   if (value.format === 'tournament') {
-    if (!Array.isArray(value.rounds) || !seat(value.champion) || !Array.isArray(value.places)) return null;
+    if (!Array.isArray(value.rounds)) return null;
     const rounds: Tie[][] = [];
     for (const round of value.rounds) {
       if (!Array.isArray(round)) return null;
       const ties: Tie[] = [];
       for (const tie of round) {
-        if (!isRecord(tie) || !seat(tie.a) || (tie.b !== null && !seat(tie.b)) || !seat(tie.winner) || !Array.isArray(tie.matches)) return null;
+        if (!isRecord(tie) || !seat(tie.a) || (tie.b !== null && !seat(tie.b)) || !Array.isArray(tie.matches)) return null;
+        if (tie.winner !== tie.a && tie.winner !== tie.b) return null;
         const matches = tie.matches.map(readMatch);
         if (matches.some((match) => match === null)) return null;
         const score = Array.isArray(tie.score) ? (tie.score as [number, number]) : ([0, 0] as [number, number]);
-        ties.push({ a: tie.a, b: tie.b as number | null, winner: tie.winner, score: [Number(score[0]) || 0, Number(score[1]) || 0], matches: matches as TieMatch[] });
+        ties.push({ a: tie.a, b: tie.b as number | null, winner: tie.winner as number, score: [Number(score[0]) || 0, Number(score[1]) || 0], matches: matches as TieMatch[] });
       }
       rounds.push(ties);
     }
-    if (rounds.length === 0) return null;
-    const places = value.places.map((place) => (Number.isInteger(place) ? (place as number) : null));
-    if (places.length !== seats) return null;
-    return { format: 'tournament', robots: ok, bracket: { rounds, champion: value.champion, places }, unknownArenas: [...unknown] };
+    if (!isBracket(rounds)) return null;
+    const champion = rounds[rounds.length - 1][0].winner;
+    return { format: 'tournament', robots: ok, bracket: { rounds, champion, places: placesOf(seats, rounds) }, unknownArenas: [...unknown] };
   }
   return null;
+}
+
+/** Whether the rounds make a bracket: each round half the one before, met by its winners, down to one final. */
+function isBracket(rounds: readonly Tie[][]): boolean {
+  if (rounds.length === 0 || rounds[rounds.length - 1].length !== 1) return false;
+  for (let index = 1; index < rounds.length; index++) {
+    const before = rounds[index - 1];
+    const round = rounds[index];
+    if (round.length * 2 !== before.length) return false;
+    const met = round.every((tie, at) => tie.a === before[at * 2].winner && tie.b === before[at * 2 + 1].winner);
+    if (!met) return false;
+  }
+  return true;
 }
 
 function copyRobot(robot: SavedRobot): SavedRobot {

@@ -26,7 +26,7 @@ import { createIdleAction } from '../sim/ai_context';
 import type { MatchResult } from '../sim/simulation';
 import { Simulation } from '../sim/simulation';
 import type { Arena } from '../sim/types';
-import { formatResult } from '../view/battle_view';
+import { formatOutcome, formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createElement } from './dom';
 import { formatSeconds } from './format';
@@ -140,7 +140,7 @@ export class ArenaMode {
     const importInput = createElement('input', 'garage-name-input');
     importInput.type = 'text';
     importInput.placeholder = t('arena.import.placeholder');
-    importInput.setAttribute('aria-label', 'Share code of a match to play');
+    importInput.setAttribute('aria-label', t('arena.import.placeholder'));
     importInput.spellcheck = false;
     const importButton = this.createButton(t('arena.import'), t('arena.import.title'), () => {
       void this.importMatch(importInput.value);
@@ -226,7 +226,7 @@ export class ArenaMode {
     const { replay, fight } = this;
     if (replay === null || fight === null) return `${t('arena.ready')}${note}`;
     const { result } = replay.snapshot;
-    const status = result !== null ? `${formatResult(result)} (${result.reason})` : replay.playing ? t('arena.playing') : t('arena.paused');
+    const status = result !== null ? formatOutcome(result) : replay.playing ? t('arena.playing') : t('arena.paused');
     const lineup = fight.names.length === 2 ? t('arena.vs', { first: fight.names[0], second: fight.names[1] }) : fight.names.join(' / ');
     return `${lineup}   ${status}${note}`;
   }
@@ -272,18 +272,29 @@ export class ArenaMode {
     share.type = 'button';
     share.title = t('arena.share.title');
     let box: HTMLElement | null = null;
+    /** Set while the code is being made: a second press meanwhile is not a second request. */
+    let making = false;
     share.addEventListener('click', () => {
       if (box !== null) {
         box.remove();
         box = null;
         return;
       }
+      if (making) return;
+      making = true;
       const robots: [SavedRobot, SavedRobot] = [matchRobot(match.entrants[0]), matchRobot(match.entrants[1])];
       // Only a duel has a share code.
-      void encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed }).then((code) => {
-        box = shareBox(code);
-        row.after(box);
-      });
+      encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed })
+        .then((code) => {
+          box = shareBox(code);
+          row.after(box);
+        })
+        .catch(() => {
+          this.note = t('arena.couldNotShare');
+        })
+        .finally(() => {
+          making = false;
+        });
     });
     const line = createElement('div', 'result-line');
     line.append(entry, share);
@@ -452,7 +463,7 @@ export class ArenaMode {
 
     this.fights++;
     const seconds = (recording.snapshots.length - 1) / recording.tickRate;
-    const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: result.reason, seconds: formatSeconds(seconds), map: match.arena.name });
+    const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
     const entry = createElement('button', 'result fought', text);
     entry.type = 'button';
     entry.title = t('arena.showAgain.title');
@@ -481,7 +492,7 @@ export class ArenaMode {
     series.append(createElement('div', 'result series-title', t('arena.seriesTitle', { count: matches.length, first: names[0], second: names[1] })));
     matches.forEach((match, index) => {
       const outcome = match.winner === null ? t('arena.seriesRow.draw') : t('arena.seriesRow.won', { name: names[match.winner] });
-      const reason = match.reason === 'destroyed' ? '' : ` (${match.reason})`;
+      const reason = match.reason === 'destroyed' ? '' : t('arena.seriesReason', { reason: formatReason(match.reason) });
       const seconds = formatSeconds(match.ticks / MATCH_DEFAULTS.tickRate);
       const text = t('arena.seriesRow', { number: `${index + 1}`.padStart(2), outcome, reason, seconds, map: maps[index].name });
       const entry = createElement('button', 'result fought', text);
@@ -516,7 +527,7 @@ function shareBox(code: string): HTMLElement {
   field.type = 'text';
   field.readOnly = true;
   field.value = code;
-  field.setAttribute('aria-label', 'Share code');
+  field.setAttribute('aria-label', t('share.field'));
   field.addEventListener('focus', () => field.select());
   const copy = createElement('button', 'garage-action', t('garage.copy'));
   copy.type = 'button';

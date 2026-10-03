@@ -46,13 +46,38 @@ button {
 #app {
   height: 100%;
   display: grid;
-  /* The battle view takes the two right-hand columns; INSPECTOR and WATCH sit under it. */
-  grid-template-columns: 180px minmax(320px, 3fr) minmax(0, 3.5fr) minmax(0, 3.5fr);
-  grid-template-rows: 34px minmax(0, 1fr) 224px;
+  /*
+   * The battle view takes the two right-hand columns; INSPECTOR and WATCH sit under it.
+   * The splitters (6px) between the editor and the battle view, and between the two rows,
+   * are dragged to set --editor-width and --bottom-height (src/ui/splitters.ts).
+   */
+  grid-template-columns: 180px var(--editor-width, minmax(320px, 3fr)) 6px minmax(0, 3.5fr) minmax(0, 3.5fr);
+  grid-template-rows: 34px minmax(0, 1fr) 6px var(--bottom-height, 224px);
   grid-template-areas:
-    'toolbar toolbar toolbar toolbar'
-    'project editor battle battle'
-    'log log inspector watch';
+    'toolbar toolbar toolbar toolbar toolbar'
+    'project editor vsplit battle battle'
+    'hsplit hsplit hsplit hsplit hsplit'
+    'log log log inspector watch';
+}
+
+.splitter {
+  background: var(--border);
+  touch-action: none;
+}
+
+.splitter:hover,
+.splitter.dragging {
+  background: var(--muted);
+}
+
+.splitter-v {
+  grid-area: vsplit;
+  cursor: col-resize;
+}
+
+.splitter-h {
+  grid-area: hsplit;
+  cursor: row-resize;
 }
 
 /* The arena mode: the line-up and the results take the left, the battle view the whole right. */
@@ -65,7 +90,7 @@ button {
     'results battle';
 }
 
-#app[data-screen='arena'] :is(#project, #editor, #inspector, #log, #watch, #project-name, #run, #reset, #debug),
+#app[data-screen='arena'] :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #project-name, #run, #reset, #debug),
 #app:not([data-screen='arena']) :is(#lineup, #results) {
   display: none;
 }

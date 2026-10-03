@@ -36,6 +36,7 @@ import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
 import { RobotWorkspace } from './robot_workspace';
+import { Splitters } from './splitters';
 import { Toolbar } from './toolbar';
 import { Transport } from './transport';
 import { WatchPanel } from './watch_panel';
@@ -197,6 +198,7 @@ class App {
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
     this.showGarage();
+    new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), openStorage());
     requestAnimationFrame(this.frame);
   }
 
@@ -700,6 +702,16 @@ function readPinnedSeed(): number | null {
 }
 
 /** null when the browser refuses access to localStorage (e.g. blocked site data). */
+/** The browser's storage, or null when it refuses access (e.g. blocked site data). */
+function openStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch (error) {
+    if (!(error instanceof DOMException)) throw error;
+    return null;
+  }
+}
+
 function openStore(): ProjectStore | null {
   try {
     return new ProjectStore(window.localStorage, DEFAULT_SOURCES);

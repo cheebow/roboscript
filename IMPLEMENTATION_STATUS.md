@@ -50,6 +50,7 @@ npm run dev        # 表示された URL をブラウザで開く
 - CODE EDITOR は入力を助ける: 入力候補（Enter / Tab で確定、`Ctrl+Space` で呼び出し）、語にカーソルを載せると説明、自動インデント、エラーの赤い波線、`Cmd / Ctrl + /` でコメント切り替え。
 - 構文エラーがあると、該当行が赤くなり、DEBUG LOG に ERROR が出て、試合は始まらない。
 - 両方のコードは編集のたびにブラウザの localStorage へ自動保存され、再読み込みしても残る。
+- **エディタの大きさ**: エディタと戦闘画面の境界をドラッグすると幅が、上段と下段（DEBUG LOG / INSPECTOR / WATCH）の境界をドラッグすると高さが変わる。境界のダブルクリックで既定に戻る。大きさは localStorage に残る（`roboscript/layout.json`）。
 - **ロボットの共有**: GARAGE の保存したロボットの行の ⇪ を押すと共有コードが出る（COPY で clipboard へ）。コードを GARAGE 下の欄に貼って IMPORT した人のガレージにそのロボットが入る（同名があれば `名前 (2)`）。受け取った側はプログラムを読めるし、ARENA で戦わせられる。作られたときとルールの版が違えば、その旨が上部バーに出る。
 - **試合の共有**: ARENA の RESULTS の各行（FIGHT も SERIES の 1 試合ずつも）の ⇪ で、その試合の共有コードが出る（2 台のロボット・マップ・seed・先の位置）。相手は ARENA の LINEUP 下の欄に貼って IMPORT すると、2 台がガレージに入って枠に選ばれ、マップが切り替わり、同じ seed で同じ試合が再生される。
 - 開始位置と弾のぶれは試合ごとの seed で決まり、RUN / DEBUG のたびに新しい seed を引く（上部バーに `seed 1234` と出る）。`?seed=数値` を URL に付けると、その seed に固定できる（例: `http://localhost:5173/?seed=7`。同じ試合でコードの違いを見比べるとき用）。待機中のロボットは、次の試合が始まる位置に置かれる。RESET でも引き直す。
@@ -137,6 +138,7 @@ src/
 │  ├─ app.ts               全体の配線（PROGRAM / ARENA の切り替え、試合の記録、RUN / DEBUG / RESET、描画ループ、保存）
 │  ├─ arena_mode.ts        ARENA（出場ロボットの選択、FIGHT、SERIES、結果の一覧）
 │  ├─ robot_preview.ts     ロボットの絵のプレビュー（config と ARENA で使う）
+│  ├─ splitters.ts        エディタの大きさを変える境界（ドラッグ、保存）
 │  ├─ toolbar.ts           上部バー
 │  ├─ transport.ts         再生操作（1行 / 1tick 移動、シークバー、速度、時刻）
 │  ├─ project_panel.ts     PROJECT ツリー
@@ -340,6 +342,18 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 ## 隠れ場所への道を RUN でも出す（2026-10-03）
 
 隠れ場所への点線と ◇ は DEBUG で INSPECTOR のロボットだけだったが、センサーの範囲の塗りに埋もれて見えにくかったのと、RUN で隠れようとしているのが分からなかったので、**プログラムが cover の語を使うロボットすべてに、RUN・DEBUG・ARENA で出す**ようにした（太く濃くもした）。`RenderOptions.coverRoutes`（ロボットごとの真偽）で指定し、PROGRAM では `features[i].cover`、ARENA では `Fight.features`（`prepareFight` がコンパイル時に集める）から決める。待機中は出ない。
+
+## エディタの大きさを変えられるように（2026-10-03）
+
+PROGRAM 画面のグリッドに 6px の境界（`#vsplit`: エディタと戦闘画面の間、`#hsplit`: 上段と下段の間）を足し、ドラッグで CSS 変数 `--editor-width` / `--bottom-height` を変える（`src/ui/splitters.ts`）。
+
+- 幅はエディタの最小 320px と戦闘画面の最小 300px、高さは下段の最小 120px と上段の最小 200px の間に収める（純粋な関数 `clampEditorWidth` / `clampBottomHeight`。起動時にも窓の大きさに合わせて収め直す）。
+- ダブルクリックで既定（今までの比率）に戻る。
+- `roboscript/layout.json` に `{ editorWidth, bottomHeight }`（px か null）で保存。壊れていれば既定。
+- 戦闘画面は枠に合わせて毎フレーム拡縮しているので、そのまま追従する。ARENA では境界を出さない（配置も変えない）。
+- pointer イベントで `setPointerCapture` して追う。`touch-action: none`。
+
+**確認**: テスト 677件（範囲の制限、保存形式の往復、壊れた保存データ）。ブラウザで、ドラッグで幅と高さが変わること、再読み込みで残ること、ダブルクリックで戻ること、ARENA で境界が出ないことを確認した。
 
 ## `true` / `false` と、関数の呼び出しを条件に（2026-10-03）
 

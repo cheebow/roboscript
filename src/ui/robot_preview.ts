@@ -19,3 +19,12 @@ export function drawRobotPreview(canvas: HTMLCanvasElement, loadout: Loadout, pa
   context.drawImage(hull, 0, 0);
   context.drawImage(turret, 0, 0);
 }
+
+/** A robot's picture and name, in the colours of the given palette: how the result boards name a robot. */
+export function createRobotTag(name: string, loadout: Loadout, palette: RobotPalette, small = false): HTMLElement {
+  const tag = createElement('span', small ? 'robot-tag small' : 'robot-tag');
+  const picture = createRobotPreview();
+  drawRobotPreview(picture, loadout, palette);
+  tag.append(picture, createElement('span', 'robot-tag-name', name));
+  return tag;
+}

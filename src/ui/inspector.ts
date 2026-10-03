@@ -1,6 +1,6 @@
 import type { Snapshot } from '../debug/snapshot';
 import { t } from '../i18n/messages';
-import { createElement } from './dom';
+import { createButton } from './dom';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber, formatSeconds } from './format';
 
@@ -29,9 +29,7 @@ export class Inspector {
   constructor(tabsContainer: HTMLElement, fieldsContainer: HTMLElement, robotIds: readonly string[]) {
     this.fields = new FieldList(fieldsContainer, fieldNames());
     this.tabs = robotIds.map((id, index) => {
-      const tab = createElement('button', 'tab', id);
-      tab.type = 'button';
-      tab.addEventListener('click', () => this.select(index));
+      const tab = createButton('tab', id, '', () => this.select(index));
       return tab;
     });
     tabsContainer.replaceChildren(...this.tabs);

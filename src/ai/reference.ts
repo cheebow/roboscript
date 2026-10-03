@@ -3,6 +3,7 @@ import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { currentLanguage } from '../i18n/language';
 import { t } from '../i18n/messages';
 import { DIRECTION_HIT_JA, WORDS_JA, type WordText } from '../i18n/words';
+import { withoutComment } from './lexer';
 import { isReservedWord } from './script_variables';
 
 /** What part a word plays in the language. */
@@ -400,7 +401,7 @@ export function enclosingFunction(source: string, position: number): ProgramFunc
 }
 
 /** How a function is written when it is called without its values: `approach(limit)`. */
-export function signatureOf({ name, params }: ProgramFunction): string {
+function signatureOf({ name, params }: ProgramFunction): string {
   return `${name}(${params.join(', ')})`;
 }
 
@@ -465,8 +466,3 @@ function describeOwn(source: string, position: number, word: string): WordRefere
   return variable === undefined ? undefined : describeVariable(variable);
 }
 
-/** The line up to its comment, if it has one. */
-export function withoutComment(text: string): string {
-  const start = text.indexOf('#');
-  return start < 0 ? text : text.slice(0, start);
-}

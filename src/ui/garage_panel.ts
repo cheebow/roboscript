@@ -1,7 +1,8 @@
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 import { t } from '../i18n/messages';
 import { acceptDrops, chooseFile } from '../share/file';
 import { RobotIntake } from './robot_intake';
+import { createShareBox } from './share_box';
 
 export interface GarageHandlers {
   /** Keep the robot at the given spawn index under the name as typed, which may not be a usable name. */
@@ -25,8 +26,9 @@ const SHARE_LABEL = '⇪';
 
 /**
  * The garage: a name to type and a button per robot to save it under that
- * name, then the saved robots, each with buttons to load it into either robot
- * and to delete it. Deleting takes two presses of its button.
+ * name, then the saved robots, each with buttons to load it into either
+ * robot, to share it (as a code or a file) and to delete it, and last a menu
+ * to take in a robot someone shared. Deleting takes two presses of its button.
  */
 export class GaragePanel {
   private readonly nameInput: HTMLInputElement;
@@ -54,10 +56,7 @@ export class GaragePanel {
 
     const saveButtons = createElement('div', 'garage-save-buttons');
     robotIds.forEach((robotId, robotIndex) => {
-      const button = createElement('button', 'tool-button', t('garage.save', { robot: robotId }));
-      button.type = 'button';
-      button.title = t('garage.save.title', { robot: robotId });
-      button.addEventListener('click', () => handlers.save(this.nameInput.value, robotIndex));
+      const button = createButton('tool-button', t('garage.save', { robot: robotId }), t('garage.save.title', { robot: robotId }), () => handlers.save(this.nameInput.value, robotIndex));
       saveButtons.append(button);
     });
     const save = createElement('div', 'garage-save');
@@ -68,7 +67,7 @@ export class GaragePanel {
       (code) => handlers.importCode(code),
       () => chooseFile((text) => handlers.importFile(text)),
     );
-    intake.setItems([{ id: 'file', label: t('garage.openFile') }]);
+    intake.setItems([{ id: 'file', label: t('garage.openFile'), title: t('garage.openFile.title') }]);
     intake.element.classList.add('garage-intake');
     container.replaceChildren(save, this.rows, intake.element);
     acceptDrops(container, (text) => handlers.importFile(text));
@@ -119,63 +118,30 @@ export class GaragePanel {
   }
 
   private shareBox(name: string, code: string): HTMLElement {
-    const field = createElement('input', 'garage-share-field');
-    field.type = 'text';
-    field.readOnly = true;
-    field.value = code;
-    field.setAttribute('aria-label', t('share.field'));
-    field.addEventListener('focus', () => field.select());
-    const copy = createElement('button', 'garage-action', t('garage.copy'));
-    copy.type = 'button';
-    copy.title = t('garage.copy.title');
-    copy.addEventListener('click', () => {
-      field.select();
-      navigator.clipboard?.writeText(code).catch(() => {
-        // Left selected: the player can copy it by hand.
-      });
-    });
-    const saveFile = createElement('button', 'garage-action', t('garage.saveFile'));
-    saveFile.type = 'button';
-    saveFile.title = t('garage.saveFile.title', { name });
-    saveFile.addEventListener('click', () => this.handlers.saveFile(name));
-    // The code on a line of its own, the buttons under it: the panel is narrow.
-    const line = createElement('div', 'garage-share-line');
-    line.append(field);
-    const actions = createElement('div', 'garage-share-line');
-    actions.append(copy, saveFile);
-    const box = createElement('div', 'garage-share');
-    box.append(line, actions);
-    return box;
+    const saveFile = createButton('garage-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
+    return createShareBox(code, 'garage-share', [saveFile]);
   }
+
 
   private rowOf(name: string): HTMLElement {
     const row = createElement('div', 'garage-row');
-    const label = createElement('button', 'garage-name', name);
-    label.type = 'button';
-    label.title = t('garage.name.title');
+    const label = createButton('garage-name', name, t('garage.name.title'));
     label.addEventListener('click', () => {
       this.nameInput.value = name;
     });
     row.append(label);
 
     this.robotIds.forEach((robotId, robotIndex) => {
-      const load = createElement('button', 'garage-action', robotId[0]);
-      load.type = 'button';
-      load.title = t('garage.load.title', { name, robot: robotId });
-      load.addEventListener('click', () => this.handlers.load(name, robotIndex));
+      const load = createButton('garage-action', robotId[0], t('garage.load.title', { name, robot: robotId }), () => this.handlers.load(name, robotIndex));
       row.append(load);
     });
 
-    const share = createElement('button', 'garage-action', SHARE_LABEL);
-    share.type = 'button';
-    share.title = t('garage.share.title', { name });
+    const share = createButton('garage-action', SHARE_LABEL, t('garage.share.title', { name }));
     share.addEventListener('click', () => {
       void this.toggleShare(name);
     });
     row.append(share);
-    const remove = createElement('button', 'garage-action', REMOVE_LABEL);
-    remove.type = 'button';
-    remove.title = t('garage.delete.title', { name });
+    const remove = createButton('garage-action', REMOVE_LABEL, t('garage.delete.title', { name }));
     remove.addEventListener('click', () => {
       if (this.armed === remove) {
         this.handlers.remove(name);

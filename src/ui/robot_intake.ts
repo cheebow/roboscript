@@ -1,5 +1,5 @@
 import { ActionMenu, type MenuItem } from './action_menu';
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 import { t } from '../i18n/messages';
 
 export interface IntakeTexts {
@@ -20,7 +20,7 @@ const CODE_ITEM = 'paste-code';
  */
 export class RobotIntake {
   readonly element = createElement('div', 'robot-intake');
-  private readonly menuHolder = createElement('div', 'menu panel-menu');
+  private readonly menuHolder: HTMLElement;
   private readonly menu: ActionMenu;
   private readonly codeRow = createElement('div', 'intake-code');
   private readonly input: HTMLInputElement;
@@ -33,25 +33,17 @@ export class RobotIntake {
     private readonly onCode: (code: string) => boolean | Promise<boolean>,
     onPick: (id: string) => void,
   ) {
-    const button = createElement('button', 'tool-button panel-menu-button', texts.label);
-    button.type = 'button';
-    button.title = texts.title;
-    this.menuHolder.append(button);
-    this.menu = new ActionMenu(this.menuHolder, button, [], (id) => (id === CODE_ITEM ? this.openCode() : onPick(id)));
+    const menu = ActionMenu.inPanel(texts.label, texts.title, (id) => (id === CODE_ITEM ? this.openCode() : onPick(id)));
+    this.menuHolder = menu.element;
+    this.menu = menu.menu;
 
     this.input = createElement('input', 'garage-name-input');
     this.input.type = 'text';
     this.input.placeholder = t('intake.code.placeholder');
     this.input.spellcheck = false;
     this.input.setAttribute('aria-label', t('intake.code.placeholder'));
-    const submit = createElement('button', 'tool-button', texts.submit);
-    submit.type = 'button';
-    submit.title = texts.submitTitle;
-    submit.addEventListener('click', () => void this.take());
-    const close = createElement('button', 'garage-action', '×');
-    close.type = 'button';
-    close.title = t('intake.close.title');
-    close.addEventListener('click', () => this.closeCode());
+    const submit = createButton('tool-button', texts.submit, texts.submitTitle, () => void this.take());
+    const close = createButton('garage-action', '×', t('intake.close.title'), () => this.closeCode());
     this.input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') void this.take();
       if (event.key === 'Escape') this.closeCode();

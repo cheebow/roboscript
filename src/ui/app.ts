@@ -11,7 +11,6 @@ import {
   EFFECT_LIFETIMES,
   MATCH_DEFAULTS,
   PLAYBACK_SPEEDS,
-  REPLAY_TAIL_TICKS,
   ROBOT_IDS,
 } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../data/parts';
@@ -21,21 +20,19 @@ import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
-import { Garage, MAX_NAME_LENGTH, type SavedRobot, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
-import { RULES_VERSION } from '../data/rules_version';
-import { decodeRobot, encodeRobot } from '../share/codec';
-import { downloadText, fileName, readSharedFile, robotFileText } from '../share/file';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
+import { createReplay } from './watched_match';
 import { ArenaMode } from './arena_mode';
 import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
 import { requireElement } from './dom';
-import { GaragePanel } from './garage_panel';
+import { GarageController } from './garage_controller';
+import { describeError } from './format';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
@@ -48,7 +45,11 @@ import { WatchPanel } from './watch_panel';
 /** RUN just plays the match; DEBUG also shows the programs running line by line and the full log, and lets a line be followed through the match. */
 type Mode = 'run' | 'debug';
 
-/** PROGRAM is where the code of ALPHA and BRAVO is written and debugged; ARENA is where saved robots fight and are watched. */
+/**
+ * PROGRAM is where the code of ALPHA and BRAVO is written and debugged; ARENA
+ * is where robots fight and are watched; CONTEST is where robots gathered from
+ * anywhere play a league or a tournament.
+ */
 const SCREENS = ['program', 'arena', 'contest'] as const;
 type Screen = (typeof SCREENS)[number];
 
@@ -90,17 +91,18 @@ class App {
   private readonly pinnedSeed = readPinnedSeed();
   /** The seed of the next RUN / DEBUG: where the robots start and how their shots scatter. */
   private seed = this.pinnedSeed ?? randomSeed();
-  private readonly store = openStore();
-  private readonly garage = openGarage();
-  private readonly garagePanel = new GaragePanel(requireElement('garage'), ROBOT_IDS, {
-    save: (name, robotIndex) => this.saveToGarage(name, robotIndex),
-    load: (name, robotIndex) => this.loadFromGarage(name, robotIndex),
-    remove: (name) => this.removeFromGarage(name),
-    share: (name) => this.shareRobot(name),
-    importCode: (text) => this.importRobot(text),
-    saveFile: (name) => this.saveRobotFile(name),
-    importFile: (text) => this.importRobotFile(text),
+  /** null when the browser refuses access to localStorage (e.g. blocked site data). */
+  private readonly storage = openStorage();
+  private readonly store = this.storage === null ? null : new ProjectStore(this.storage, DEFAULT_SOURCES);
+  private readonly garage = new GarageController(requireElement('garage'), ROBOT_IDS, this.storage, {
+    robot: (robotIndex) => ({ source: this.workspaces[robotIndex].source, loadout: this.loadouts[robotIndex] }),
+    load: (robotIndex, robot) => {
+      this.workspaces[robotIndex].load(robot.source);
+      this.setLoadout(robotIndex, { ...robot.loadout });
+      this.showFile(codeFileOf(robotIndex));
+    },
   });
+
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
@@ -141,7 +143,6 @@ class App {
   /** What could not be saved the last time it was, by what it is: shown next to the toolbar message until a save of it works. */
   private readonly saveProblems = new Map<string, string>();
   /** What the garage last did, or why it could not; shown next to the toolbar message until the next RUN, DEBUG or RESET. */
-  private garageNote: string | null = null;
   /** Per robot: what the program of the match being shown has to do with, which decides the marks drawn for it. */
   private features: ProgramFeatures[] = [];
   /** The line whose number was last clicked while debugging. */
@@ -182,92 +183,28 @@ class App {
     }
     this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
       arena: () => this.arena,
-      garage: () => this.garage?.list() ?? [],
+      garage: () => this.garage.list(),
       speed: () => this.speed,
       chooseArena: (id) => {
         this.selectArena(id);
         this.toolbar.setArena(id);
       },
-      keepRobots: (robots) => {
-        if (this.garage === null) throw new Error(t('garage.noStorage'));
-        const names = robots.map((robot) => this.garage?.importRobot(robot) ?? robot.name);
-        this.showGarage();
-        return names;
-      },
+      keepRobots: (robots) => this.garage.keep(robots),
     });
     this.contestMode = new ContestMode(requireElement('contest-body'), requireElement('board'), {
-      garage: () => this.garage?.list() ?? [],
+      garage: () => this.garage.list(),
       speed: () => this.speed,
       shown: () => this.screen === 'contest',
-      storage: openStorage(),
+      storage: this.storage,
     });
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
     }
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
-    this.showGarage();
-    new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), openStorage());
-    requireElement('language').addEventListener('click', () => switchLanguage(openStorage()));
+    new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
+    requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
     requestAnimationFrame(this.frame);
-  }
-
-  /** The share code of a saved robot. */
-  private async shareRobot(name: string): Promise<string | null> {
-    const saved = this.garage?.find(name);
-    return saved === undefined ? null : encodeRobot(saved);
-  }
-
-  /** Keeps the robot in a share code in the garage, and says so, or says what is wrong with the code. */
-  private async importRobot(code: string): Promise<boolean> {
-    if (this.garage === null) {
-      this.garageNote = t('garage.noStorage');
-      return false;
-    }
-    const decoded = await decodeRobot(code);
-    if (!decoded.ok) {
-      this.garageNote = t('garage.couldNotImport', { problem: decoded.problem });
-      return false;
-    }
-    return this.keepRobot(decoded.shared.robot, decoded.shared.rules);
-  }
-
-  /** Has the browser save a robot of the garage as a file. */
-  private saveRobotFile(name: string): void {
-    const saved = this.garage?.find(name);
-    if (saved === undefined) return;
-    downloadText(fileName(saved.name), robotFileText(saved));
-  }
-
-  /** Keeps the robot of a robot file in the garage, or says what is wrong with the file. */
-  private importRobotFile(text: string): void {
-    if (this.garage === null) {
-      this.garageNote = t('garage.noStorage');
-      return;
-    }
-    const read = readSharedFile(text);
-    if (!read.ok || read.file.kind !== 'robot') {
-      this.garageNote = t('file.couldNotOpen', { problem: read.ok ? t('file.notARobot') : read.problem });
-      return;
-    }
-    this.keepRobot(read.file.robot, read.file.rules);
-  }
-
-  /** Keeps the robot in the garage and says so; true when it was kept. */
-  private keepRobot(robot: SavedRobot, rules: string): boolean {
-    if (this.garage === null) return false;
-    let kept = false;
-    try {
-      const name = this.garage.importRobot(robot);
-      const received = name === robot.name ? t('garage.received', { name }) : t('garage.receivedAs', { name: robot.name, kept: name });
-      const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
-      this.garageNote = `${received}${otherRules}`;
-      kept = true;
-    } catch (error) {
-      this.garageNote = t('garage.couldNotKeep', { name: robot.name, reason: describeError(error) });
-    }
-    this.showGarage();
-    return kept;
   }
 
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */
@@ -316,7 +253,7 @@ class App {
       workspace.stale = false;
     }
     this.partsStale.fill(false);
-    this.garageNote = null;
+    this.garage.note = null;
 
     const brains: RobotBrain[] = [];
     const features: ProgramFeatures[] = [];
@@ -352,17 +289,13 @@ class App {
     this.matchLoadouts = [...this.loadouts];
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.drawSeed();
-    this.replay = new ReplayManager(recording, {
-      maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
-      tailTicks: REPLAY_TAIL_TICKS,
-      speed: this.speed,
-      focus: ROBOT_IDS[this.shownFile.robotIndex],
-    });
+    const replay = createReplay(recording, this.speed, ROBOT_IDS[this.shownFile.robotIndex]);
+    this.replay = replay;
     this.events =
       mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
-    this.replay.restart();
-    this.refollow(this.replay);
+    replay.restart();
+    this.refollow(replay);
   }
 
   /** Keeps following the same line in a new match, so that a change to the code can be compared with the run before. */
@@ -408,7 +341,7 @@ class App {
     this.followed = null;
     for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
-    this.garageNote = null;
+    this.garage.note = null;
     this.drawSeed();
   }
 
@@ -440,53 +373,6 @@ class App {
     } catch (error) {
       this.noteSave(`parts:${robotIndex}`, t('program.couldNotSaveParts', { robot: ROBOT_IDS[robotIndex], reason: describeError(error) }));
     }
-  }
-
-  /** Keeps the robot, its code and its parts as they are now, in the garage under the name typed. */
-  private saveToGarage(typedName: string, robotIndex: number): void {
-    const name = garageName(typedName);
-    const workspace = this.workspaces[robotIndex];
-    if (name === null) {
-      this.garageNote = t('garage.noName', { robot: workspace.robotId, max: MAX_NAME_LENGTH });
-      return;
-    }
-    if (this.garage === null) {
-      this.garageNote = t('garage.noStorage');
-      return;
-    }
-    try {
-      const replaced = this.garage.save({ name, source: workspace.source, loadout: this.loadouts[robotIndex] });
-      this.garageNote = t(replaced ? 'garage.savedInstead' : 'garage.saved', { robot: workspace.robotId, name });
-    } catch (error) {
-      this.garageNote = t('garage.couldNotSave', { name, reason: describeError(error) });
-    }
-    this.showGarage();
-  }
-
-  /** Puts a saved robot's code and parts in place of the robot's own. The code can be brought back by undoing in its editor. */
-  private loadFromGarage(name: string, robotIndex: number): void {
-    const saved = this.garage?.find(name);
-    if (saved === undefined) return;
-    const workspace = this.workspaces[robotIndex];
-    workspace.load(saved.source);
-    this.setLoadout(robotIndex, { ...saved.loadout });
-    this.showFile(codeFileOf(robotIndex));
-    this.garageNote = t('garage.loaded', { name, robot: workspace.robotId });
-  }
-
-  private removeFromGarage(name: string): void {
-    if (this.garage === null) return;
-    try {
-      this.garage.remove(name);
-      this.garageNote = t('garage.deleted', { name });
-    } catch (error) {
-      this.garageNote = t('garage.couldNotDelete', { name, reason: describeError(error) });
-    }
-    this.showGarage();
-  }
-
-  private showGarage(): void {
-    this.garagePanel.show(this.garage?.list().map((robot) => robot.name) ?? []);
   }
 
   /** Takes effect from the next RUN / DEBUG; shown at once while there is no match. */
@@ -711,7 +597,7 @@ class App {
     const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
     if (refitted.length > 0) parts.push(`[${t('program.partsNote', { robots: refitted.join(', ') })}]`);
     for (const problem of this.saveProblems.values()) parts.push(`[${problem}]`);
-    if (this.garageNote !== null) parts.push(`[${this.garageNote}]`);
+    if (this.garage.note !== null) parts.push(`[${this.garage.note}]`);
     return parts.join('   ');
   }
 
@@ -781,29 +667,6 @@ function openStorage(): Storage | null {
     if (!(error instanceof DOMException)) throw error;
     return null;
   }
-}
-
-function openStore(): ProjectStore | null {
-  try {
-    return new ProjectStore(window.localStorage, DEFAULT_SOURCES);
-  } catch (error) {
-    if (!(error instanceof DOMException)) throw error;
-    return null;
-  }
-}
-
-/** null when the browser refuses access to localStorage. */
-function openGarage(): Garage | null {
-  try {
-    return new Garage(window.localStorage);
-  } catch (error) {
-    if (!(error instanceof DOMException)) throw error;
-    return null;
-  }
-}
-
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function startApp(): void {

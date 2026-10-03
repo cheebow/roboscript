@@ -14,8 +14,10 @@ export interface Weapon {
   tick(): void;
   /** Puts off the moment the weapon can fire again by the given number of ticks. */
   delay(ticks: number): void;
-  /** Returns the fired bullet, or null while cooling down or out of ammo. */
-  /** `moving`: the hull drove this tick, which scatters the shot more. */
+  /**
+   * Returns the fired bullet, or null while cooling down or out of ammo.
+   * `moving`: the hull drove this tick, which scatters the shot more.
+   */
   fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng, moving: boolean): NewBullet | null;
 }
 

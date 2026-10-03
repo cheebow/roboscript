@@ -34,7 +34,7 @@ export function lex(source: string): LexResult {
   const errors: ScriptError[] = [];
 
   source.split(/\r?\n/).forEach((rawText, index) => {
-    const text = stripComment(rawText);
+    const text = withoutComment(rawText);
     if (text.trim() === '') return;
     const line = index + 1;
     const leading = LEADING_WHITESPACE.exec(text)?.[0] ?? '';
@@ -58,7 +58,8 @@ export function lex(source: string): LexResult {
 }
 
 /** Everything from `#` to the end of the line is a comment. */
-function stripComment(text: string): string {
+/** The line without its comment: everything from `#` on. */
+export function withoutComment(text: string): string {
   const start = text.indexOf(COMMENT_START);
   return start < 0 ? text : text.slice(0, start);
 }

@@ -1,15 +1,15 @@
-import { ARENAS, type ArenaDefinition } from '../data/arenas';
+import type { ArenaDefinition } from '../data/arenas';
 import type { MatchEndReason } from '../sim/simulation';
-import { Simulation } from '../sim/simulation';
 import { MatchRng } from '../sim/rng';
-import { type Entrant, type Refusal, prepareFight } from './match';
+import { type Entrant, type Refusal, playFixture } from './match';
+import { drawArena, drawSeed } from './seed';
 
 /** How many robots a league or a tournament takes. */
 export const LEAGUE_MIN = 3;
 export const LEAGUE_MAX = 8;
 /** Points for a win and a draw; a loss is worth nothing. */
-export const WIN_POINTS = 3;
-export const DRAW_POINTS = 1;
+const WIN_POINTS = 3;
+const DRAW_POINTS = 1;
 
 /** One match of a league: two of the entrants, by index, the first at the first spawn point. */
 export interface LeagueFixture {
@@ -56,8 +56,8 @@ export function leagueFixtures(count: number, seed: number): LeagueFixture[] {
     for (let a = 0; a < count; a++) {
       for (let b = a + 1; b < count; b++) {
         const [first, second] = leg === 0 ? [a, b] : [b, a];
-        const arena = ARENAS[Math.floor(rng.next() * ARENAS.length)];
-        fixtures.push({ first, second, arena, seed: 1 + Math.floor(rng.next() * 0x7ffffffe) });
+        const arena = drawArena(rng);
+        fixtures.push({ first, second, arena, seed: drawSeed(rng) });
       }
     }
   }
@@ -71,15 +71,9 @@ export function playLeague(
 ): { ok: true; matches: LeagueMatch[]; standings: Standing[] } | Refusal {
   const matches: LeagueMatch[] = [];
   for (const fixture of leagueFixtures(entrants.length, seed)) {
-    const prepared = prepareFight([entrants[fixture.first], entrants[fixture.second]], fixture.arena.arena, fixture.seed);
-    if (!prepared.ok) return prepared;
-    const simulation = new Simulation(prepared.fight.config);
-    while (simulation.result === null) simulation.step();
-    const { winnerId, reason } = simulation.result;
-    const [firstName] = prepared.fight.names;
-    const winner = winnerId === null ? null : winnerId === firstName ? fixture.first : fixture.second;
-    const [firstRobot, secondRobot] = simulation.robots;
-    matches.push({ ...fixture, winner, reason, ticks: simulation.tick, hpLeft: [firstRobot.hp, secondRobot.hp] });
+    const fought = playFixture(entrants, fixture.first, fixture.second, fixture.arena.arena, fixture.seed);
+    if (!fought.ok) return fought;
+    matches.push({ ...fixture, ...fought.played });
   }
   return { ok: true, matches, standings: standingsOf(entrants.length, matches) };
 }

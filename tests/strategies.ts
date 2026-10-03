@@ -168,15 +168,3 @@ export const EARLY_GUARD = `loop
     else
 ${fight('        ')}
 `;
-
-export const STRATEGIES = {
-  approach: APPROACH,
-  keep_distance: KEEP_DISTANCE,
-  turret: TURRET,
-  turret_lead: TURRET_LEAD,
-  rush: RUSH,
-  strafe: STRAFE,
-  dodge: DODGE,
-  guard: GUARD,
-  early_guard: EARLY_GUARD,
-} as const;

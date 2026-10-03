@@ -14,3 +14,12 @@ export function createElement<K extends keyof HTMLElementTagNameMap>(
   element.textContent = text;
   return element;
 }
+
+/** A button of the page (never one that submits a form), with its tooltip and what a press does. */
+export function createButton(className: string, label: string, title = '', onClick?: () => void): HTMLButtonElement {
+  const button = createElement('button', className, label);
+  button.type = 'button';
+  if (title !== '') button.title = title;
+  if (onClick !== undefined) button.addEventListener('click', onClick);
+  return button;
+}

@@ -1,8 +1,10 @@
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 
 export interface MenuItem {
   id: string;
   label: string;
+  /** Its tooltip: what picking it does, when the label does not say it all. */
+  title?: string;
   /** Shown but not to be picked. */
   disabled?: boolean;
   /** Items of a submenu, opened from this item; the item itself is not picked. */
@@ -36,18 +38,23 @@ export class ActionMenu {
     button.setAttribute('aria-haspopup', 'menu');
     button.setAttribute(OPEN_ATTRIBUTE, 'false');
     button.addEventListener('click', () => (this.list.hidden ? this.open() : this.close()));
-    // A click anywhere else, or Escape, puts the list away.
-    document.addEventListener('mousedown', (event) => {
-      if (event.target instanceof Node && !container.contains(event.target)) this.close();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') this.close();
-    });
+    listenOnce();
   }
 
   /** Puts these items in the list in place of the ones there. */
   setItems(items: readonly MenuItem[]): void {
     this.list.replaceChildren(...items.map((item) => this.entryOf(item)));
+  }
+
+  /**
+   * A menu in a panel: its button looks like the panel's other buttons, as wide
+   * as its place, and its list opens under it. `element` goes into the panel.
+   */
+  static inPanel(label: string, title: string, onPick: (id: string) => void): { element: HTMLElement; menu: ActionMenu } {
+    const element = createElement('div', 'menu panel-menu');
+    const button = createButton('tool-button panel-menu-button', label, title);
+    element.append(button);
+    return { element, menu: new ActionMenu(element, button, [], onPick) };
   }
 
   /** Shows or hides the whole menu, button and all. */
@@ -57,10 +64,10 @@ export class ActionMenu {
   }
 
   private entryOf(item: MenuItem): HTMLElement {
-    const entry = createElement('button', 'menu-item', item.label);
-    entry.type = 'button';
+    const entry = createButton('menu-item', item.label);
     entry.setAttribute('role', 'menuitem');
     entry.disabled = item.disabled === true;
+    if (item.title !== undefined) entry.title = item.title;
     if (item.items === undefined) {
       entry.addEventListener('click', () => {
         this.close();
@@ -82,10 +89,32 @@ export class ActionMenu {
   private open(): void {
     this.list.hidden = false;
     this.button.setAttribute(OPEN_ATTRIBUTE, 'true');
+    openMenus.add(this);
   }
 
   private close(): void {
     this.list.hidden = true;
     this.button.setAttribute(OPEN_ATTRIBUTE, 'false');
+    openMenus.delete(this);
   }
+
+  /** Puts the list away after a click outside the menu, or Escape. */
+  static closeOnOutside(event: Event): void {
+    for (const menu of [...openMenus]) {
+      const inside = event.target instanceof Node && menu.container.contains(event.target);
+      if (event instanceof KeyboardEvent ? event.key === 'Escape' : !inside) menu.close();
+    }
+  }
+}
+
+/** The menus with their list out. */
+const openMenus = new Set<ActionMenu>();
+let listening = false;
+
+/** One pair of listeners on the page serves every menu, however many are made. */
+function listenOnce(): void {
+  if (listening) return;
+  listening = true;
+  document.addEventListener('mousedown', (event) => ActionMenu.closeOnOutside(event));
+  document.addEventListener('keydown', (event) => ActionMenu.closeOnOutside(event));
 }

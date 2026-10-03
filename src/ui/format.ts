@@ -19,3 +19,8 @@ export function formatSeconds(seconds: number): string {
 export function formatTimestamp(seconds: number): string {
   return seconds.toFixed(TIMESTAMP_DECIMALS).padStart(TIMESTAMP_WIDTH, '0');
 }
+
+/** What went wrong, in words, for a message: the error's own message when it has one. */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

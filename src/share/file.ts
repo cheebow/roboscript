@@ -1,13 +1,12 @@
 import { type ContestRecord, type ReadRecord, readRecord } from '../arena/contest_record';
-import { readLoadout } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
-import type { SavedRobot } from '../project/garage';
+import { type SavedRobot, readSavedRobot } from '../project/garage';
 
 /** The name every RoboScript file carries, so that other JSON is not taken for one. */
-export const FILE_FORMAT = 'roboscript';
+const FILE_FORMAT = 'roboscript';
 /** The form of a file; raised when its layout changes. */
-export const FILE_VERSION = 1;
+const FILE_VERSION = 1;
 export const FILE_EXTENSION = '.roboscript.json';
 
 /** What a file holds, with the rules it was made under. */
@@ -46,11 +45,9 @@ export function readSharedFile(text: string): { ok: true; file: SharedFile } | {
   if (file.v !== FILE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(file.v) }) };
   const rules = typeof file.rules === 'string' ? file.rules : '';
   if (file.kind === 'robot') {
-    const robot = file.robot as Record<string, unknown> | null;
-    if (typeof robot !== 'object' || robot === null || typeof robot.name !== 'string' || typeof robot.source !== 'string') {
-      return { ok: false, problem: t('share.noRobot') };
-    }
-    return { ok: true, file: { kind: 'robot', rules, robot: { name: robot.name, source: robot.source, loadout: readLoadout(robot.loadout) } } };
+    const robot = readSavedRobot(file.robot);
+    if (robot === null) return { ok: false, problem: t('share.noRobot') };
+    return { ok: true, file: { kind: 'robot', rules, robot } };
   }
   if (file.kind === 'contest') {
     const contest = readRecord(file.contest);

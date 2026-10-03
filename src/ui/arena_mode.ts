@@ -1,6 +1,5 @@
 import {
   type Entrant,
-  type Fight,
   builtInEntrants,
   fightNames,
   garageEntrants,
@@ -13,24 +12,23 @@ import {
 import { type MessageKey, t } from '../i18n/messages';
 import { randomSeed } from '../arena/seed';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
-import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
-import { COST_LIMIT, type Loadout, SLOTS, costOf, partIn, statsOf } from '../data/parts';
-import type { RobotStats } from '../data/robot_defaults';
-import { recordMatch } from '../debug/recorder';
-import { ReplayManager } from '../debug/replay_manager';
-import { type Snapshot, captureSnapshot } from '../debug/snapshot';
-import type { SavedRobot } from '../project/garage';
+import { MATCH_DEFAULTS } from '../data/match_defaults';
+import { COST_LIMIT, SLOTS, costOf, partIn, statsOf } from '../data/parts';
+import type { ReplayManager } from '../debug/replay_manager';
+import { captureSnapshot } from '../debug/snapshot';
+import { type SavedRobot, copyRobot } from '../project/garage';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeMatch, encodeMatch } from '../share/codec';
 import { createIdleAction } from '../sim/ai_context';
 import type { MatchResult } from '../sim/simulation';
 import { Simulation } from '../sim/simulation';
-import type { Arena } from '../sim/types';
-import { formatOutcome, formatReason } from '../view/battle_view';
+import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
-import { createElement } from './dom';
-import { formatSeconds } from './format';
+import { createButton, createElement } from './dom';
+import { createShareBox } from './share_box';
+import { describeError, formatSeconds } from './format';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
+import { type ArenaScene, WatchedMatch } from './watched_match';
 
 /** What the arena mode needs to know of the rest of the app. */
 export interface ArenaSetting {
@@ -47,12 +45,6 @@ export interface ArenaSetting {
 }
 
 /** What the battle view shows of the arena mode. */
-export interface ArenaScene {
-  snapshot: Snapshot;
-  arena: Arena;
-  stats: readonly RobotStats[];
-  loadouts: readonly Loadout[];
-}
 
 /** A match that was fought, or is being shown: enough to fight it over again. */
 interface FoughtMatch {
@@ -65,7 +57,7 @@ interface FoughtMatch {
 const COUNTS = [2, 3, 4] as const;
 /** The matches of one series. */
 const SERIES_MATCHES = 20;
-/** The entrants the slots start with: the pair the program screen starts with. */
+/** The entrants the slots start with: the first two are the pair the program screen starts with. */
 const DEFAULT_ENTRANT_IDS = ['built-in:sample', 'built-in:dumb_bot', 'built-in:strafe_bot', 'built-in:sentry_bot'];
 const GROUPS: readonly { origin: Entrant['origin']; label: MessageKey }[] = [
   { origin: 'garage', label: 'arena.group.garage' },
@@ -85,13 +77,13 @@ interface SlotView {
 }
 
 /**
- * The arena mode: two robots picked from the garage and the built-in ones
- * fight, and the match is watched. No code is shown or edited here. Keeps the
+ * The arena mode: two to four robots picked from the garage and the built-in
+ * ones fight, and the match is watched. No code is shown or edited here. Keeps the
  * line-up, the match being shown and the list of results.
  */
 export class ArenaMode {
-  /** The match being shown; null until the first FIGHT. */
-  replay: ReplayManager | null = null;
+  /** The match being shown; none until the first FIGHT. */
+  private readonly watched = new WatchedMatch();
 
   private entrants: Entrant[] = [];
   /** The id of the entrant in each slot. */
@@ -104,8 +96,6 @@ export class ArenaMode {
   private readonly seriesButton: HTMLButtonElement;
   private readonly results: HTMLElement;
   private fights = 0;
-  /** The fight being shown. */
-  private fight: Fight | null = null;
   /** A match whose result goes on the list once it has been watched to its end. */
   private unannounced: FoughtMatch | null = null;
   /** The seed of the next FIGHT, drawn ahead so that the robots wait where that match will start. */
@@ -125,12 +115,12 @@ export class ArenaMode {
     const countRow = createElement('div', 'lineup-count');
     countRow.append(createElement('span', 'field-name', t('arena.count')));
     this.countButtons = COUNTS.map((count) => {
-      const button = this.createButton(`${count}`, t('arena.count.title', { count }), () => this.setCount(count));
+      const button = createButton('tool-button', `${count}`, t('arena.count.title', { count }), () => this.setCount(count));
       countRow.append(button);
       return button;
     });
-    const fight = this.createButton(t('arena.fight'), t('arena.fight.title'), () => this.startFight());
-    this.seriesButton = this.createButton(
+    const fight = createButton('tool-button', t('arena.fight'), t('arena.fight.title'), () => this.startFight());
+    this.seriesButton = createButton('tool-button', 
       t('arena.series', { count: SERIES_MATCHES }),
       t('arena.series.title', { count: SERIES_MATCHES }),
       () => this.playSeries(),
@@ -142,7 +132,7 @@ export class ArenaMode {
     importInput.placeholder = t('arena.import.placeholder');
     importInput.setAttribute('aria-label', t('arena.import.placeholder'));
     importInput.spellcheck = false;
-    const importButton = this.createButton(t('arena.import'), t('arena.import.title'), () => {
+    const importButton = createButton('tool-button', t('arena.import'), t('arena.import.title'), () => {
       void this.importMatch(importInput.value);
       importInput.value = '';
     });
@@ -208,25 +198,25 @@ export class ArenaMode {
 
   /** What to draw: the match being shown, or the picked robots where they would start. */
   scene(): ArenaScene {
-    const { replay, fight } = this;
-    if (replay === null || fight === null) return this.idle;
-    const { recording } = replay;
-    return { snapshot: replay.view, arena: recording.arena, stats: recording.stats, loadouts: fight.loadouts };
+    return this.watched.scene(this.idle);
+  }
+
+  /** The replay of the match being shown; null until the first FIGHT. */
+  get replay(): ReplayManager | null {
+    return this.watched.replay;
   }
 
   /** Per robot of the match being shown, whether its program has to do with cover: the way there is drawn for those. */
   coverRoutes(): readonly boolean[] {
-    const { replay, fight } = this;
-    return replay === null || fight === null ? [] : fight.features.map((features) => features.cover);
+    return this.watched.coverRoutes();
   }
 
   /** The line for the toolbar: who fights whom, and how it stands. */
   message(): string {
     const note = this.note === null ? '' : `   [${this.note}]`;
-    const { replay, fight } = this;
-    if (replay === null || fight === null) return `${t('arena.ready')}${note}`;
-    const { result } = replay.snapshot;
-    const status = result !== null ? formatOutcome(result) : replay.playing ? t('arena.playing') : t('arena.paused');
+    const { fight } = this.watched;
+    const status = this.watched.status();
+    if (status === null || fight === null) return `${t('arena.ready')}${note}`;
     const lineup = fight.names.length === 2 ? t('arena.vs', { first: fight.names[0], second: fight.names[1] }) : fight.names.join(' / ');
     return `${lineup}   ${status}${note}`;
   }
@@ -243,7 +233,7 @@ export class ArenaMode {
     try {
       names = this.setting.keepRobots(robots);
     } catch (error) {
-      this.note = t('arena.couldNotKeep', { reason: error instanceof Error ? error.message : String(error) });
+      this.note = t('arena.couldNotKeep', { reason: describeError(error) });
       return;
     }
     this.refresh();
@@ -268,9 +258,7 @@ export class ArenaMode {
   /** A result's entry with a share button beside it; pressing the button shows the match's share code under the row. */
   private shareableRow(entry: HTMLElement, match: FoughtMatch): HTMLElement {
     const row = createElement('div', 'result-row');
-    const share = createElement('button', 'garage-action', SHARE_LABEL);
-    share.type = 'button';
-    share.title = t('arena.share.title');
+    const share = createButton('garage-action', SHARE_LABEL, t('arena.share.title'));
     let box: HTMLElement | null = null;
     /** Set while the code is being made: a second press meanwhile is not a second request. */
     let making = false;
@@ -282,11 +270,11 @@ export class ArenaMode {
       }
       if (making) return;
       making = true;
-      const robots: [SavedRobot, SavedRobot] = [matchRobot(match.entrants[0]), matchRobot(match.entrants[1])];
+      const robots: [SavedRobot, SavedRobot] = [copyRobot(match.entrants[0]), copyRobot(match.entrants[1])];
       // Only a duel has a share code.
       encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed })
         .then((code) => {
-          box = shareBox(code);
+          box = createShareBox(code, 'garage-share result-share');
           row.after(box);
         })
         .catch(() => {
@@ -341,7 +329,7 @@ export class ArenaMode {
   /** The badge of the robot's place once the match being shown is over: gold, silver and bronze for the first three. */
   private showPlace(slot: SlotView, index: number): void {
     const result = this.replay?.snapshot.result ?? null;
-    const name = this.fight?.names[index];
+    const name = this.watched.fight?.names[index];
     const place = result === null || name === undefined ? null : (result.places[name] ?? null);
     const text = place === null ? '' : `${place}`;
     if (slot.badge.textContent === text) return;
@@ -364,14 +352,6 @@ export class ArenaMode {
     const element = createElement('div', 'lineup-slot');
     element.append(picture, details);
     return element;
-  }
-
-  private createButton(label: string, title: string, onClick: () => void): HTMLButtonElement {
-    const button = createElement('button', 'tool-button', label);
-    button.type = 'button';
-    button.title = title;
-    button.addEventListener('click', onClick);
-    return button;
   }
 
   private entrantIn(index: number): Entrant {
@@ -403,8 +383,7 @@ export class ArenaMode {
   /** Stops showing the match, as the line-up is no longer the one that fought it. Its result still goes on the list. */
   private leaveMatch(): void {
     if (this.unannounced !== null) this.announce();
-    this.replay = null;
-    this.fight = null;
+    this.watched.leave();
   }
 
   private captureIdle(): ArenaScene {
@@ -441,20 +420,14 @@ export class ArenaMode {
       this.addResult(createElement('div', 'result problem', prepared.problems.join('\n')));
       return false;
     }
-    this.fight = prepared.fight;
-    this.replay = new ReplayManager(recordMatch(prepared.fight.config, EFFECT_LIFETIMES), {
-      maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
-      tailTicks: REPLAY_TAIL_TICKS,
-      speed: this.setting.speed(),
-      focus: prepared.fight.names[0],
-    });
-    this.replay.restart();
+    this.watched.watch(prepared.fight, this.setting.speed());
     return true;
   }
 
   /** Puts the result of the match being shown on the list. Pressing the entry shows the match again. */
   private announce(): void {
-    const { unannounced: match, replay, fight } = this;
+    const { unannounced: match } = this;
+    const { replay, fight } = this.watched;
     this.unannounced = null;
     if (match === null || replay === null || fight === null) return;
     const { recording } = replay;
@@ -464,10 +437,7 @@ export class ArenaMode {
     this.fights++;
     const seconds = (recording.snapshots.length - 1) / recording.tickRate;
     const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
-    const entry = createElement('button', 'result fought', text);
-    entry.type = 'button';
-    entry.title = t('arena.showAgain.title');
-    entry.addEventListener('click', () => this.show(match));
+    const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
     this.addResult(match.entrants.length === 2 ? this.shareableRow(entry, match) : entry);
   }
 
@@ -495,9 +465,7 @@ export class ArenaMode {
       const reason = match.reason === 'destroyed' ? '' : t('arena.seriesReason', { reason: formatReason(match.reason) });
       const seconds = formatSeconds(match.ticks / MATCH_DEFAULTS.tickRate);
       const text = t('arena.seriesRow', { number: `${index + 1}`.padStart(2), outcome, reason, seconds, map: maps[index].name });
-      const entry = createElement('button', 'result fought', text);
-      entry.type = 'button';
-      entry.title = t('arena.show.title');
+      const entry = createButton('result fought', text, t('arena.show.title'));
       const { seed, first } = fixtures[index];
       const fought: FoughtMatch = { entrants: inOrder(entrants, first), arena: maps[index], seed };
       entry.addEventListener('click', () => this.show(fought));
@@ -517,34 +485,6 @@ export class ArenaMode {
 }
 
 /** The robot an entrant was in a match: what a share code carries. */
-function matchRobot(entrant: Entrant): SavedRobot {
-  return { name: entrant.name, source: entrant.source, loadout: { ...entrant.loadout } };
-}
-
-/** A share code in a field, with a button that copies it. */
-function shareBox(code: string): HTMLElement {
-  const field = createElement('input', 'garage-share-field');
-  field.type = 'text';
-  field.readOnly = true;
-  field.value = code;
-  field.setAttribute('aria-label', t('share.field'));
-  field.addEventListener('focus', () => field.select());
-  const copy = createElement('button', 'garage-action', t('garage.copy'));
-  copy.type = 'button';
-  copy.title = t('garage.copy.title');
-  copy.addEventListener('click', () => {
-    field.select();
-    navigator.clipboard?.writeText(code).catch(() => {
-      // Left selected: the player can copy it by hand.
-    });
-  });
-  const line = createElement('div', 'garage-share-line');
-  line.append(field, copy);
-  const box = createElement('div', 'garage-share result-share');
-  box.append(line);
-  return box;
-}
-
 /** The entrant that starts first in the match with the given number: they take turns. */
 function sideOf(match: number): 0 | 1 {
   return match % 2 === 0 ? 0 : 1;

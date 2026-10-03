@@ -369,7 +369,6 @@ function headerOrNull(tokens: Token[]): Header | null {
   }
 }
 
-/** "no values", "1 value", "2 values". */
 /** How many values a function takes, against how many a call gives it. */
 function takesMessage(name: string, count: number, given: number): string {
   if (count === 0) return t('parse.takesNone', { name, given });

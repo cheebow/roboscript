@@ -44,15 +44,19 @@ export interface CoverRoute {
   route: Vec2[];
 }
 
-/** Per arena: the cover map for each robot radius asked about so far. */
-const coverMaps = new WeakMap<Arena, Map<number, CoverMap>>();
+/**
+ * Per arena: the cover map for each robot radius asked about so far. Kept by
+ * the arena's obstacles, which every match in that arena shares, whatever its
+ * start positions: the map is worked out once for all of them.
+ */
+const coverMaps = new WeakMap<Arena['obstacles'], Map<number, CoverMap>>();
 
 /** The cover map of an arena for robots of the given radius. Kept, so asking again costs nothing. */
 export function coverMapOf(arena: Arena, radius: number): CoverMap {
-  let byRadius = coverMaps.get(arena);
+  let byRadius = coverMaps.get(arena.obstacles);
   if (byRadius === undefined) {
     byRadius = new Map();
-    coverMaps.set(arena, byRadius);
+    coverMaps.set(arena.obstacles, byRadius);
   }
   const known = byRadius.get(radius);
   if (known !== undefined) return known;

@@ -1,4 +1,4 @@
-import { createElement, requireElement } from './dom';
+import { createButton, requireElement } from './dom';
 import { t } from '../i18n/messages';
 import { formatTimestamp } from './format';
 
@@ -56,9 +56,7 @@ export class Transport {
     this.seekBar.addEventListener('input', () => handlers.seek(this.seekBar.valueAsNumber));
 
     const buttons = speeds.map((speed) => {
-      const button = createElement('button', 'tool-button speed', `${speed}x`);
-      button.type = 'button';
-      button.addEventListener('click', () => handlers.setSpeed(speed));
+      const button = createButton('tool-button speed', `${speed}x`, '', () => handlers.setSpeed(speed));
       this.speedButtons.set(speed, button);
       return button;
     });

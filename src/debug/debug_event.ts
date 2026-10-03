@@ -1,5 +1,4 @@
-export const DEBUG_EVENT_TYPES = ['sensor', 'target', 'ai', 'action', 'hit', 'warning', 'system', 'error'] as const;
-export type DebugEventType = (typeof DEBUG_EVENT_TYPES)[number];
+export type DebugEventType = 'sensor' | 'ai' | 'action' | 'hit' | 'warning' | 'system' | 'error';
 
 export interface DebugEvent {
   /** Number of ticks completed when the event happened; 0 = before the first tick. */

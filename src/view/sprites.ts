@@ -20,7 +20,7 @@ const GUN = '#b9c2c9';
 const SENSOR = '#e8f4ff';
 
 /** One palette per robot, in spawn order: the player first. */
-export const ROBOT_PALETTES: readonly RobotPalette[] = [
+const ROBOT_PALETTES: readonly RobotPalette[] = [
   {
     body: '#6fb7a8',
     shade: '#4d8a7d',

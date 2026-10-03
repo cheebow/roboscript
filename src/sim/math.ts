@@ -6,7 +6,7 @@ import type { Rect, Vec2 } from './types';
 const FULL_TURN = 360;
 const HALF_TURN = 180;
 
-export function degToRad(degrees: number): number {
+function degToRad(degrees: number): number {
   return (degrees * Math.PI) / HALF_TURN;
 }
 

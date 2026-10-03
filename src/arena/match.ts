@@ -142,6 +142,35 @@ export function prepareFight(
   };
 }
 
+/** How a match between two entrants went, by their places in the list. */
+export interface PlayedFixture {
+  /** The index of the entrant that won; null for a draw. */
+  winner: number | null;
+  reason: MatchEndReason;
+  ticks: number;
+  /** HP each had left at the end, the one that started first first. */
+  hpLeft: [number, number];
+}
+
+/** Plays one match, entrant `first` at the first spawn point. Refused when either cannot fight. */
+export function playFixture(
+  entrants: readonly Entrant[],
+  first: number,
+  second: number,
+  arena: Arena,
+  seed: number,
+): { ok: true; played: PlayedFixture } | Refusal {
+  const prepared = prepareFight([entrants[first], entrants[second]], arena, seed);
+  if (!prepared.ok) return prepared;
+  const simulation = new Simulation(prepared.fight.config);
+  while (simulation.result === null) simulation.step();
+  const { winnerId, reason } = simulation.result;
+  // Named as they fight, "Striker (2)": the robot at the first spawn point is the entrant `first`.
+  const winner = winnerId === null ? null : winnerId === prepared.fight.names[0] ? first : second;
+  const [firstRobot, secondRobot] = simulation.robots;
+  return { ok: true, played: { winner, reason, ticks: simulation.tick, hpLeft: [firstRobot.hp, secondRobot.hp] } };
+}
+
 /** One match of a series to be played. */
 export interface SeriesFixture {
   arena: Arena;
@@ -177,16 +206,11 @@ export function playArenaSeries(
     reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
   };
   for (const { arena, seed, first } of fixtures) {
-    const prepared = prepareFight(inOrder(entrants, first), arena, seed);
-    if (!prepared.ok) return prepared;
-    const simulation = new Simulation(prepared.fight.config);
-    while (simulation.result === null) simulation.step();
-
-    const { winnerId, reason } = simulation.result;
-    // The robot at the first spawn point is the entrant `first`; the other one is the other.
-    const startedFirst = winnerId === prepared.fight.names[0];
-    const winner = winnerId === null ? null : startedFirst ? first : other(first);
-    matches.push({ winner, reason, ticks: simulation.tick });
+    const fought = playFixture(entrants, first, other(first), arena, seed);
+    if (!fought.ok) return fought;
+    const { reason, ticks } = fought.played;
+    const winner = fought.played.winner as 0 | 1 | null;
+    matches.push({ winner, reason, ticks });
     result.matches++;
     result.reasons[reason]++;
     if (winner === null) result.draws++;

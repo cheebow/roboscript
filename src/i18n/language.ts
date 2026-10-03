@@ -1,7 +1,7 @@
 /** The languages the screen can be shown in. The programs, their words and the log stay in English. */
 export type Language = 'en' | 'ja';
 
-export const LANGUAGES: readonly Language[] = ['en', 'ja'];
+const LANGUAGES: readonly Language[] = ['en', 'ja'];
 export const LANGUAGE_KEY = 'roboscript/language';
 
 let current: Language = 'en';
@@ -22,7 +22,7 @@ export function detectLanguage(saved: string | null, browserLanguage: string | u
   return browser === 'ja' || browser.startsWith('ja-') ? 'ja' : 'en';
 }
 
-export function isLanguage(value: string): value is Language {
+function isLanguage(value: string): value is Language {
   return (LANGUAGES as readonly string[]).includes(value);
 }
 

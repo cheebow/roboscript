@@ -3,7 +3,7 @@ import type { RobotStats } from '../data/robot_defaults';
 import type { RobotPalette } from '../view/sprites';
 import { type MessageKey, t } from '../i18n/messages';
 import { partSummary } from '../i18n/parts';
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 
 /** One stat as the player reads it. */
@@ -68,9 +68,7 @@ export class PartsView {
     this.slotRows = SLOTS.map((slot) => {
       const row = createElement('div', 'part-slot');
       const options = partsOf(slot).map((part) => {
-        const button = createElement('button', 'part-option', part.name);
-        button.type = 'button';
-        button.title = partSummary(part);
+        const button = createButton('part-option', part.name, partSummary(part));
         button.append(createElement('span', 'part-cost', `${part.cost}`));
         button.addEventListener('click', () => onPick(slot, part.id));
         return { partId: part.id, button };

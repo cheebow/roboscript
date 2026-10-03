@@ -15,7 +15,7 @@ import {
   lineNumbers,
 } from '@codemirror/view';
 import { parse } from '../ai/parser';
-import { withoutComment } from '../ai/reference';
+import { withoutComment } from '../ai/lexer';
 import type { ScriptError } from '../ai/script_error';
 import { roboscriptAssist } from './roboscript_assist';
 import { roboscriptHighlight } from './roboscript_highlight';

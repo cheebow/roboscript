@@ -1,6 +1,5 @@
 import { ARENAS, type ArenaDefinition, DEFAULT_ARENA_DEFINITION } from '../data/arenas';
-import { readLoadout } from '../data/parts';
-import type { SavedRobot } from '../project/garage';
+import { type SavedRobot, copyRobot, readSavedRobot } from '../project/garage';
 import type { MatchEndReason } from '../sim/simulation';
 import { type LeagueMatch, type Standing, standingsOf } from './league';
 import { type Bracket, type Tie, type TieMatch, placesOf } from './tournament';
@@ -58,7 +57,7 @@ const REASONS: readonly MatchEndReason[] = ['destroyed', 'timeout', 'out of ammo
  */
 export function readRecord(value: unknown): ReadRecord | null {
   if (!isRecord(value) || !Array.isArray(value.robots)) return null;
-  const robots = value.robots.map(readRobot);
+  const robots = value.robots.map(readSavedRobot);
   if (robots.length < 2 || robots.some((robot) => robot === null)) return null;
   const seats = robots.length;
   const unknown = new Set<string>();
@@ -131,15 +130,6 @@ function isBracket(rounds: readonly Tie[][]): boolean {
     if (!met) return false;
   }
   return true;
-}
-
-function copyRobot(robot: SavedRobot): SavedRobot {
-  return { name: robot.name, source: robot.source, loadout: { ...robot.loadout } };
-}
-
-function readRobot(value: unknown): SavedRobot | null {
-  if (!isRecord(value) || typeof value.name !== 'string' || typeof value.source !== 'string') return null;
-  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

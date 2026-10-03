@@ -9,6 +9,19 @@ export interface SavedRobot {
   loadout: Loadout;
 }
 
+/** The robot in data read from elsewhere (storage, a share code, a file); null when there is none. Parts it does not know are the standard ones. */
+export function readSavedRobot(value: unknown): SavedRobot | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { name, source, loadout } = value as Record<string, unknown>;
+  if (typeof name !== 'string' || typeof source !== 'string') return null;
+  return { name, source, loadout: readLoadout(loadout) };
+}
+
+/** A copy of the robot that does not change when the robot does. */
+export function copyRobot(robot: SavedRobot): SavedRobot {
+  return { name: robot.name, source: robot.source, loadout: { ...robot.loadout } };
+}
+
 export const GARAGE_KEY = 'roboscript/garage.json';
 export const MAX_NAME_LENGTH = 16;
 const VERSION = 1;
@@ -53,7 +66,7 @@ export class Garage {
     if (garageName(robot.name) !== robot.name) throw new Error(`"${robot.name}" is not a name a robot can be kept under`);
     const others = this.list().filter((other) => other.name !== robot.name);
     const replaced = others.length < this.list().length;
-    this.write([...others, { name: robot.name, source: robot.source, loadout: { ...robot.loadout } }]);
+    this.write([...others, copyRobot(robot)]);
     return replaced;
   }
 
@@ -86,10 +99,10 @@ export class Garage {
   }
 }
 
+/** A robot kept in the garage: one under a name it could not be saved under is left out. */
 function readRobot(value: unknown): SavedRobot | null {
-  if (!isRecord(value) || typeof value.name !== 'string' || typeof value.source !== 'string') return null;
-  if (garageName(value.name) !== value.name) return null;
-  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout) };
+  const robot = readSavedRobot(value);
+  return robot !== null && garageName(robot.name) === robot.name ? robot : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,4 +1,4 @@
-import { type Token, lex } from './lexer';
+import { type Token, lex, withoutComment } from './lexer';
 import {
   type ProgramVariable,
   type WordReference,
@@ -12,7 +12,6 @@ import {
   programFunctions,
   programLabels,
   programVariables,
-  withoutComment,
 } from './reference';
 import {
   AIM_DIRECTIONS,

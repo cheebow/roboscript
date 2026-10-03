@@ -4,7 +4,7 @@ import { t } from '../i18n/messages';
 import { paletteOf } from '../view/sprites';
 import { createElement } from './dom';
 import { createMedal } from './medal';
-import { createRobotPreview, drawRobotPreview } from './robot_preview';
+import { createRobotTag } from './robot_preview';
 
 // Sizes of the drawing, in CSS pixels.
 const TIE_WIDTH = 190;
@@ -84,11 +84,7 @@ function roundName(round: number, rounds: number): string {
 }
 
 function robotTag(entrant: Entrant, index: number): HTMLElement {
-  const tag = createElement('span', 'robot-tag');
-  const picture = createRobotPreview();
-  drawRobotPreview(picture, entrant.loadout, paletteOf(index));
-  tag.append(picture, createElement('span', 'robot-tag-name', entrant.name));
-  return tag;
+  return createRobotTag(entrant.name, entrant.loadout, paletteOf(index));
 }
 
 function tieBox(entrants: readonly Entrant[], tie: Tie, bracket: Bracket, onPlay: (match: TieMatch) => void): HTMLElement {

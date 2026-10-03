@@ -1,4 +1,4 @@
-import { withoutComment } from './reference';
+import { withoutComment } from './lexer';
 
 /** Statements whose following lines are indented one step further. */
 const BLOCK_OPENERS = new Set(['if', 'else', 'loop', 'while', 'def']);

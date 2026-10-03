@@ -372,11 +372,6 @@ button {
   min-width: 0;
 }
 
-.garage-import .tool-button {
-  padding: 1px 6px;
-  font-size: 11px;
-}
-
 .garage-share {
   display: grid;
   gap: 3px;
@@ -1074,35 +1069,7 @@ button {
   color: var(--error);
 }
 
-/* Contests: the robots to tick under the line-up, and the board of the result over the battle view. */
-
-.contest {
-  margin-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
-.contest-title {
-  padding: 6px 10px 2px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.contest-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 8px;
-  padding: 4px 10px;
-}
-
-.contest-pick {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
+/* The board of a contest's result, over the battle view. */
 
 #board {
   position: absolute;
@@ -1512,11 +1479,3 @@ button {
   outline-offset: -4px;
 }
 
-.contest-add-select {
-  min-width: 0;
-  padding: 2px;
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--text);
-  font: inherit;
-}

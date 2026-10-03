@@ -1,8 +1,8 @@
-import { ARENAS, type ArenaDefinition } from '../data/arenas';
+import type { ArenaDefinition } from '../data/arenas';
 import type { MatchEndReason } from '../sim/simulation';
-import { Simulation } from '../sim/simulation';
 import { MatchRng } from '../sim/rng';
-import { type Entrant, type Refusal, prepareFight } from './match';
+import { type Entrant, type Refusal, playFixture } from './match';
+import { drawArena, drawSeed } from './seed';
 
 /** Wins that take a robot through a tie. */
 export const WINS_NEEDED = 2;
@@ -111,20 +111,16 @@ function playTie(entrants: readonly Entrant[], a: number, b: number, rng: MatchR
   const hp: [number, number] = [0, 0];
   while (score[0] < WINS_NEEDED && score[1] < WINS_NEEDED && matches.length < MOST_MATCHES) {
     const [first, second] = matches.length % 2 === 0 ? [a, b] : [b, a];
-    const arena = ARENAS[Math.floor(rng.next() * ARENAS.length)];
-    const seed = 1 + Math.floor(rng.next() * 0x7ffffffe);
-    const prepared = prepareFight([entrants[first], entrants[second]], arena.arena, seed);
-    if (!prepared.ok) return prepared;
-    const simulation = new Simulation(prepared.fight.config);
-    while (simulation.result === null) simulation.step();
-    const { winnerId, reason } = simulation.result;
-    const winner = winnerId === null ? null : winnerId === prepared.fight.names[0] ? first : second;
-    const [firstRobot, secondRobot] = simulation.robots;
-    matches.push({ first, second, arena, seed, winner, reason, hpLeft: [firstRobot.hp, secondRobot.hp] });
+    const arena = drawArena(rng);
+    const seed = drawSeed(rng);
+    const fought = playFixture(entrants, first, second, arena.arena, seed);
+    if (!fought.ok) return fought;
+    const { winner, reason, hpLeft } = fought.played;
+    matches.push({ first, second, arena, seed, winner, reason, hpLeft });
     if (winner === a) score[0]++;
     if (winner === b) score[1]++;
-    hp[first === a ? 0 : 1] += firstRobot.hp;
-    hp[first === a ? 1 : 0] += secondRobot.hp;
+    hp[first === a ? 0 : 1] += hpLeft[0];
+    hp[first === a ? 1 : 0] += hpLeft[1];
   }
   // Not settled in the most matches: more wins, then more HP left, then the one drawn first.
   const winner = score[0] !== score[1] ? (score[0] > score[1] ? a : b) : hp[0] >= hp[1] ? a : b;

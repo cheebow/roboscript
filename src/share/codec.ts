@@ -1,7 +1,6 @@
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
-import { readLoadout } from '../data/parts';
-import type { SavedRobot } from '../project/garage';
+import { type SavedRobot, readSavedRobot } from '../project/garage';
 
 /** The form of a share code; raised when the layout of the JSON inside changes. */
 export const CODE_VERSION = 1;
@@ -44,7 +43,7 @@ export async function decodeRobot(code: string): Promise<Decoded> {
   if (json === null) return { ok: false, problem: t('share.notACode') };
   if (!isRecord(json) || json.kind !== 'robot') return { ok: false, problem: t('share.notARobot') };
   if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
-  const robot = readRobot(json);
+  const robot = readSavedRobot(json);
   if (robot === null) return { ok: false, problem: t('share.noRobot') };
   return { ok: true, shared: { robot, rules: rulesOf(json) } };
 }
@@ -68,7 +67,7 @@ export async function decodeMatch(code: string): Promise<DecodedMatch> {
   if (json === null) return { ok: false, problem: t('share.notACode') };
   if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: t('share.notAMatch') };
   if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
-  const robots = Array.isArray(json.robots) ? json.robots.map(readRobot) : [];
+  const robots = Array.isArray(json.robots) ? json.robots.map(readSavedRobot) : [];
   const [first, second] = robots;
   if (robots.length !== 2 || first === null || second === null) return { ok: false, problem: t('share.notTwoRobots') };
   if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
@@ -85,11 +84,6 @@ async function decodePayload(code: string): Promise<unknown> {
   } catch {
     return null;
   }
-}
-
-function readRobot(value: unknown): SavedRobot | null {
-  if (!isRecord(value) || typeof value.name !== 'string' || typeof value.source !== 'string') return null;
-  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout) };
 }
 
 function rulesOf(json: Record<string, unknown>): string {

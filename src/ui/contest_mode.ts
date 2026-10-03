@@ -1,27 +1,25 @@
 import { type ContestRecord, recordLeague, recordTournament } from '../arena/contest_record';
-import { LEAGUE_MAX, LEAGUE_MIN, playLeague } from '../arena/league';
-import { type Entrant, type Fight, builtInEntrants, fightNames, prepareFight } from '../arena/match';
+import { LEAGUE_MAX, LEAGUE_MIN, type LeagueMatch, type Standing, playLeague } from '../arena/league';
+import { type Entrant, builtInEntrants, fightNames, prepareFight } from '../arena/match';
 import { randomSeed } from '../arena/seed';
-import { playTournament } from '../arena/tournament';
+import { type Bracket, playTournament } from '../arena/tournament';
 import { type ArenaDefinition, DEFAULT_ARENA } from '../data/arenas';
-import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
-import { recordMatch } from '../debug/recorder';
-import { ReplayManager } from '../debug/replay_manager';
+import { MATCH_DEFAULTS } from '../data/match_defaults';
+import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
 import { t } from '../i18n/messages';
 import { type ContestEntry, type ContestOrigin, CONTEST_KEY, addEntry, readContest, removeEntry, writeContest } from '../project/contest_store';
-import type { SavedRobot } from '../project/garage';
+import { type SavedRobot, copyRobot } from '../project/garage';
 import type { KeyValueStorage } from '../project/project_store';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeRobot } from '../share/codec';
 import { type SharedFile, acceptDrops, chooseFile, contestFileText, downloadText, fileName, readSharedFile } from '../share/file';
 import { Simulation } from '../sim/simulation';
-import { formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
-import type { ArenaScene } from './arena_mode';
+import { type ArenaScene, WatchedMatch } from './watched_match';
 import { ActionMenu, type MenuItem } from './action_menu';
 import { RobotIntake } from './robot_intake';
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 import { createLeagueBoard } from './league_board';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 import { createTournamentBoard } from './tournament_board';
@@ -38,6 +36,11 @@ export interface ContestSetting {
 }
 
 type Format = 'league' | 'tournament';
+
+/** A finished contest: the robots, and how its matches went. */
+type PlayedContest =
+  | { format: 'league'; robots: readonly SavedRobot[]; matches: LeagueMatch[]; standings: Standing[] }
+  | { format: 'tournament'; robots: readonly SavedRobot[]; bracket: Bracket };
 
 /** A board over the battle view: its title, its picture, and what it was drawn from. */
 interface ShownBoard {
@@ -61,15 +64,14 @@ const EMPTY_SCENE: ArenaScene = {
 };
 
 /**
- * The contest screen: a list of robots, gathered from share codes, the
- * built-in ones and the garage, plays a league or a tournament; the result is
+ * The contest screen: a list of robots, gathered from the built-in ones, the
+ * garage, share codes and files, plays a league or a tournament; the result is
  * shown as a board over the battle view, and any of its matches can be
- * watched there.
+ * watched there. Results can be saved to a file and opened from one.
  */
 export class ContestMode {
-  /** The match of the contest being watched; null while the board is shown or before any. */
-  replay: ReplayManager | null = null;
-  private fight: Fight | null = null;
+  /** The match of the contest being watched; none while the board is shown or before any. */
+  private readonly watched = new WatchedMatch();
   private entries: ContestEntry[];
   private format: Format = 'league';
   /** The board of the last contest of each format, played here or opened from a file. */
@@ -93,10 +95,7 @@ export class ContestMode {
 
     const formats = createElement('div', 'contest-formats');
     this.formatButtons = FORMATS.map((format) => {
-      const button = createElement('button', 'contest-format', t(`contest.format.${format}`));
-      button.type = 'button';
-      button.title = t(`contest.format.${format}.title`);
-      button.addEventListener('click', () => this.setFormat(format));
+      const button = createButton('contest-format', t(`contest.format.${format}`), t(`contest.format.${format}.title`), () => this.setFormat(format));
       formats.append(button);
       return button;
     });
@@ -110,11 +109,11 @@ export class ContestMode {
       (id) => this.pickAdd(id),
     );
 
-    this.startButton = this.button('', '', () => this.start());
-    const [resultHolder, resultButton] = this.menuButton(t('contest.resultMenu'), t('contest.resultMenu.title'));
-    this.resultMenu = new ActionMenu(resultHolder, resultButton, [], (id) => this.pickResult(id));
+    this.startButton = createButton('tool-button', '', '', () => this.start());
+    const results = ActionMenu.inPanel(t('contest.resultMenu'), t('contest.resultMenu.title'), (id) => this.pickResult(id));
+    this.resultMenu = results.menu;
     const buttons = createElement('div', 'lineup-buttons');
-    buttons.append(this.startButton, resultHolder);
+    buttons.append(this.startButton, results.element);
 
     panel.replaceChildren(formats, heading, this.list, this.addMenu.element, buttons);
     // A robot file dropped on the panel joins the list; a result file shows its board.
@@ -144,23 +143,24 @@ export class ContestMode {
 
   /** What to draw: the match being watched, or an empty arena. */
   scene(): ArenaScene {
-    const { replay, fight } = this;
-    if (replay === null || fight === null) return EMPTY_SCENE;
-    const { recording } = replay;
-    return { snapshot: replay.view, arena: recording.arena, stats: recording.stats, loadouts: fight.loadouts };
+    return this.watched.scene(EMPTY_SCENE);
+  }
+
+  /** The replay of the match being watched; null while there is none. */
+  get replay(): ReplayManager | null {
+    return this.watched.replay;
   }
 
   coverRoutes(): readonly boolean[] {
-    return this.fight === null ? [] : this.fight.features.map((features) => features.cover);
+    return this.watched.coverRoutes();
   }
 
   /** The line for the toolbar. */
   message(): string {
     const note = this.note === null ? '' : `   [${this.note}]`;
-    const { replay, fight } = this;
-    if (replay === null || fight === null) return `${t('contest.ready', { min: LEAGUE_MIN, max: LEAGUE_MAX })}${note}`;
-    const { result } = replay.snapshot;
-    const status = result !== null ? formatOutcome(result) : replay.playing ? t('arena.playing') : t('arena.paused');
+    const { fight } = this.watched;
+    const status = this.watched.status();
+    if (status === null || fight === null) return `${t('contest.ready', { min: LEAGUE_MIN, max: LEAGUE_MAX })}${note}`;
     return `${t('arena.vs', { first: fight.names[0], second: fight.names[1] })}   ${status}${note}`;
   }
 
@@ -168,24 +168,6 @@ export class ContestMode {
   shown(): void {
     this.refresh();
     if (this.replay === null) this.showBoard();
-  }
-
-  private button(label: string, title: string, onClick: () => void): HTMLButtonElement {
-    const button = createElement('button', 'tool-button', label);
-    button.type = 'button';
-    button.title = title;
-    button.addEventListener('click', onClick);
-    return button;
-  }
-
-  /** A menu's holder and its button, which looks like the other buttons of the panel. */
-  private menuButton(label: string, title: string): [HTMLElement, HTMLButtonElement] {
-    const holder = createElement('div', 'menu panel-menu');
-    const button = createElement('button', 'tool-button panel-menu-button', label);
-    button.type = 'button';
-    button.title = title;
-    holder.append(button);
-    return [holder, button];
   }
 
   private pickAdd(id: string): void {
@@ -257,10 +239,7 @@ export class ContestMode {
         drawRobotPreview(picture, entrant.loadout, paletteOf(index));
         const name = createElement('span', 'contest-entry-name', entrant.name);
         const origin = createElement('span', 'contest-entry-origin', t(`contest.origin.${this.entries[index].origin}`));
-        const remove = createElement('button', 'garage-action', '×');
-        remove.type = 'button';
-        remove.title = t('contest.remove.title', { name: entrant.name });
-        remove.addEventListener('click', () => this.setEntries(removeEntry(this.entries, index)));
+        const remove = createButton('garage-action', '×', t('contest.remove.title', { name: entrant.name }), () => this.setEntries(removeEntry(this.entries, index)));
         row.append(picture, name, origin, remove);
         return row;
       }),
@@ -308,29 +287,13 @@ export class ContestMode {
       this.note = t('contest.pickCount', { min: LEAGUE_MIN, max: LEAGUE_MAX, count: entrants.length });
       return;
     }
-    const play = (first: number, second: number, arena: ArenaDefinition, seed: number) => this.watch(entrants, first, second, arena, seed);
-    if (this.format === 'league') {
-      const played = playLeague(entrants, randomSeed());
-      if (!played.ok) {
-        this.note = played.problems.join(' / ');
-        return;
-      }
-      const { matches, standings } = played;
-      const record = recordLeague(this.entries.map(({ robot }) => robot), matches, standings);
-      const content = createLeagueBoard({ entrants, matches, standings }, (match) => play(match.first, match.second, match.arena, match.seed));
-      this.boards.set('league', { title: t('league.title', { count: entrants.length, matches: matches.length }), content, record, opened: null });
-    } else {
-      const played = playTournament(entrants, randomSeed());
-      if (!played.ok) {
-        this.note = played.problems.join(' / ');
-        return;
-      }
-      const { bracket } = played;
-      const record = recordTournament(this.entries.map(({ robot }) => robot), bracket);
-      const content = createTournamentBoard(entrants, bracket, (match) => play(match.first, match.second, match.arena, match.seed));
-      const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
-      this.boards.set('tournament', { title: t('tournament.title', { count: entrants.length, matches }), content, record, opened: null });
+    const robots = this.entries.map(({ robot }) => robot);
+    const played = this.format === 'league' ? playLeague(entrants, randomSeed()) : playTournament(entrants, randomSeed());
+    if (!played.ok) {
+      this.note = played.problems.join(' / ');
+      return;
     }
+    this.setBoard('bracket' in played ? { format: 'tournament', robots, bracket: played.bracket } : { format: 'league', robots, ...played }, null);
     this.leaveMatch();
     this.showFormat();
     this.showBoard();
@@ -344,10 +307,10 @@ export class ContestMode {
       return;
     }
     const header = createElement('div', 'board-header');
-    const close = this.button(t('contest.close'), t('contest.close.title'), () => {
+    const close = createButton('tool-button', t('contest.close'), t('contest.close.title'), () => {
       this.board.hidden = true;
     });
-    const save = this.button(t('contest.saveResult'), t('contest.saveResult.title'), () => this.saveResult(shown));
+    const save = createButton('tool-button', t('contest.saveResult'), t('contest.saveResult.title'), () => this.saveResult(shown));
     const title = createElement('span', 'board-title', shown.title);
     const actions = createElement('span', 'board-actions');
     if (shown.opened !== null) {
@@ -355,7 +318,7 @@ export class ContestMode {
       const saved = Number.isNaN(when.getTime()) ? '?' : when.toLocaleString();
       const otherRules = shown.opened.rules === RULES_VERSION ? '' : t('contest.otherRules', { rules: shown.opened.rules || t('share.unknown'), now: RULES_VERSION });
       title.append(createElement('span', 'board-note', `${t('contest.openedNote', { saved })}${otherRules}`));
-      actions.append(this.button(t('contest.useEntrants'), t('contest.useEntrants.title'), () => this.useEntrants(shown)));
+      actions.append(createButton('tool-button', t('contest.useEntrants'), t('contest.useEntrants.title'), () => this.useEntrants(shown)));
     }
     actions.append(save, close);
     header.append(title, actions);
@@ -388,21 +351,7 @@ export class ContestMode {
       return;
     }
     const { contest } = file;
-    const entrants = entrantsOf(contest.robots);
-    const play = (first: number, second: number, arena: ArenaDefinition, seed: number) => this.watch(entrants, first, second, arena, seed);
-    const opened = { savedAt: file.savedAt, rules: file.rules };
-    if (contest.format === 'league') {
-      const { matches, standings } = contest;
-      const content = createLeagueBoard({ entrants, matches, standings }, (match) => play(match.first, match.second, match.arena, match.seed));
-      const record = recordLeague(contest.robots, matches, standings);
-      this.boards.set('league', { title: t('league.title', { count: entrants.length, matches: matches.length }), content, record, opened });
-    } else {
-      const { bracket } = contest;
-      const content = createTournamentBoard(entrants, bracket, (match) => play(match.first, match.second, match.arena, match.seed));
-      const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
-      const record = recordTournament(contest.robots, bracket);
-      this.boards.set('tournament', { title: t('tournament.title', { count: entrants.length, matches }), content, record, opened });
-    }
+    this.setBoard(contest, { savedAt: file.savedAt, rules: file.rules });
     this.format = contest.format;
     this.note = contest.unknownArenas.length === 0 ? t('contest.resultOpened') : t('contest.unknownArenas', { arenas: contest.unknownArenas.join(', ') });
     this.leaveMatch();
@@ -410,10 +359,35 @@ export class ContestMode {
     this.showBoard();
   }
 
+  /** Keeps the board of a contest, played here or opened from a file (`opened`), as the board of its format. */
+  private setBoard(contest: PlayedContest, opened: ShownBoard['opened']): void {
+    const entrants = entrantsOf(contest.robots);
+    const play = (match: { first: number; second: number; arena: ArenaDefinition; seed: number }) =>
+      this.watch(entrants, match.first, match.second, match.arena, match.seed);
+    if (contest.format === 'league') {
+      const { matches, standings } = contest;
+      this.boards.set('league', {
+        title: t('league.title', { count: entrants.length, matches: matches.length }),
+        content: createLeagueBoard({ entrants, matches, standings }, play),
+        record: recordLeague(contest.robots, matches, standings),
+        opened,
+      });
+    } else {
+      const { bracket } = contest;
+      const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
+      this.boards.set('tournament', {
+        title: t('tournament.title', { count: entrants.length, matches }),
+        content: createTournamentBoard(entrants, bracket, play),
+        record: recordTournament(contest.robots, bracket),
+        opened,
+      });
+    }
+  }
+
   /** Puts the robots of an opened contest on the list, in place of the robots there. */
   private useEntrants(shown: ShownBoard): void {
     const robots = shown.record.robots.slice(0, LEAGUE_MAX);
-    this.setEntries(robots.map((robot) => ({ robot: { ...robot, loadout: { ...robot.loadout } }, origin: 'file' })));
+    this.setEntries(robots.map((robot) => ({ robot: copyRobot(robot), origin: 'file' })));
     this.note = t('contest.entrantsUsed', { count: robots.length });
   }
 
@@ -426,19 +400,11 @@ export class ContestMode {
       return;
     }
     this.board.hidden = true;
-    this.fight = prepared.fight;
-    this.replay = new ReplayManager(recordMatch(prepared.fight.config, EFFECT_LIFETIMES), {
-      maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
-      tailTicks: REPLAY_TAIL_TICKS,
-      speed: this.setting.speed(),
-      focus: prepared.fight.names[0],
-    });
-    this.replay.restart();
+    this.watched.watch(prepared.fight, this.setting.speed());
   }
 
   private leaveMatch(): void {
-    this.replay = null;
-    this.fight = null;
+    this.watched.leave();
   }
 }
 

@@ -8,7 +8,7 @@ export interface Layout {
   bottomHeight: number | null;
 }
 
-export const LAYOUT_KEY = 'roboscript/layout.json';
+const LAYOUT_KEY = 'roboscript/layout.json';
 /** Widths of the fixed parts of the grid (src/style.css): the project column, the toolbar row, a splitter. */
 const PROJECT_WIDTH = 180;
 const TOOLBAR_HEIGHT = 34;

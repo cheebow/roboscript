@@ -1,4 +1,4 @@
-import { createElement } from './dom';
+import { createButton, createElement } from './dom';
 
 /** The files every robot has in the project tree. */
 export const ROBOT_FILES = ['main.bot', 'config'] as const;
@@ -25,9 +25,7 @@ export class ProjectPanel {
       ROBOT_FILES.forEach((name, index) => {
         const file: ProjectFile = { robotIndex, file: name };
         const branch = index === ROBOT_FILES.length - 1 ? LAST_BRANCH : BRANCH;
-        const element = createElement('button', 'tree-file', `${branch}${name}`);
-        element.type = 'button';
-        element.addEventListener('click', () => onSelect(file));
+        const element = createButton('tree-file', `${branch}${name}`, '', () => onSelect(file));
         this.entries.push({ file, element });
         nodes.push(element);
       });

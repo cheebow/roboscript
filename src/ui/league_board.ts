@@ -4,7 +4,7 @@ import { t } from '../i18n/messages';
 import { paletteOf } from '../view/sprites';
 import { createElement } from './dom';
 import { createMedal } from './medal';
-import { createRobotPreview, drawRobotPreview } from './robot_preview';
+import { createRobotTag } from './robot_preview';
 
 /** What the board needs to show a league: who took part, every match, and the table. */
 export interface LeagueOutcome {
@@ -26,11 +26,7 @@ export function createLeagueBoard(league: LeagueOutcome, onPlay: (match: LeagueM
 
 /** A robot's picture and name, in the colour it has on the board. */
 function robotTag(entrant: Entrant, index: number, small = false): HTMLElement {
-  const tag = createElement('span', small ? 'robot-tag small' : 'robot-tag');
-  const picture = createRobotPreview();
-  drawRobotPreview(picture, entrant.loadout, paletteOf(index));
-  tag.append(picture, createElement('span', 'robot-tag-name', entrant.name));
-  return tag;
+  return createRobotTag(entrant.name, entrant.loadout, paletteOf(index), small);
 }
 
 function colorOf(index: number): string {

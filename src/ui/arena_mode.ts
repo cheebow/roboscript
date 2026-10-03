@@ -13,6 +13,7 @@ import {
 import { type MessageKey, t } from '../i18n/messages';
 import { LEAGUE_MAX, LEAGUE_MIN, playLeague } from '../arena/league';
 import { randomSeed } from '../arena/seed';
+import { playTournament } from '../arena/tournament';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, SLOTS, costOf, partIn, statsOf } from '../data/parts';
@@ -32,6 +33,7 @@ import { paletteOf } from '../view/sprites';
 import { createElement } from './dom';
 import { formatSeconds } from './format';
 import { createLeagueBoard } from './league_board';
+import { createTournamentBoard } from './tournament_board';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 
 /** What the arena mode needs to know of the rest of the app. */
@@ -175,9 +177,10 @@ export class ArenaMode {
     this.contestList = createElement('div', 'contest-list');
     const buttons = createElement('div', 'lineup-buttons');
     const league = this.createButton(t('contest.league'), t('contest.league.title'), () => this.playLeague());
+    const tournament = this.createButton(t('contest.tournament'), t('contest.tournament.title'), () => this.playTournament());
     this.boardButton = this.createButton(t('contest.board'), t('contest.board.title'), () => this.showBoard());
     this.boardButton.disabled = true;
-    buttons.append(league, this.boardButton);
+    buttons.append(league, tournament, this.boardButton);
     section.append(this.contestList, buttons);
     return section;
   }
@@ -203,14 +206,57 @@ export class ArenaMode {
     );
   }
 
-  /** Plays a league between the ticked robots and shows its board. */
-  private playLeague(): void {
+  /** The robots ticked for a contest, or null (with the reason in the toolbar) when there are too few or too many. */
+  private contestEntrants(): Entrant[] | null {
     this.note = null;
     const entrants = this.entrants.filter((entrant) => this.contestPicks.has(entrant.id));
     if (entrants.length < LEAGUE_MIN || entrants.length > LEAGUE_MAX) {
       this.note = t('contest.pickCount', { min: LEAGUE_MIN, max: LEAGUE_MAX, count: entrants.length });
+      return null;
+    }
+    return entrants;
+  }
+
+  /** Puts a board over the battle view, with its title and a button to put it away. */
+  private putOnBoard(title: string, content: HTMLElement): void {
+    const header = createElement('div', 'board-header');
+    const close = this.createButton(t('contest.close'), t('contest.close.title'), () => {
+      this.board.hidden = true;
+    });
+    header.append(createElement('span', 'board-title', title), close);
+    this.board.replaceChildren(header, content);
+    this.showBoard();
+  }
+
+  /** Plays a match of a contest in the battle view, putting the board away. */
+  private playFromBoard(entrants: readonly Entrant[], first: number, second: number, arena: ArenaDefinition, seed: number): void {
+    this.board.hidden = true;
+    this.show({ entrants: [entrants[first], entrants[second]], arena, seed });
+  }
+
+  /** Plays a tournament between the ticked robots and shows its bracket. */
+  private playTournament(): void {
+    const entrants = this.contestEntrants();
+    if (entrants === null) return;
+    const played = playTournament(entrants, randomSeed());
+    if (!played.ok) {
+      this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
       return;
     }
+    this.leaveMatch();
+    const { bracket } = played;
+    const board = createTournamentBoard(entrants, bracket, (match) =>
+      this.playFromBoard(entrants, match.first, match.second, match.arena, match.seed),
+    );
+    const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
+    this.putOnBoard(t('tournament.title', { count: entrants.length, matches }), board);
+    this.addResult(createElement('div', 'result series-title', t('tournament.summary', { count: entrants.length, winner: entrants[bracket.champion].name })));
+  }
+
+  /** Plays a league between the ticked robots and shows its board. */
+  private playLeague(): void {
+    const entrants = this.contestEntrants();
+    if (entrants === null) return;
     const played = playLeague(entrants, randomSeed());
     if (!played.ok) {
       this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
@@ -218,18 +264,10 @@ export class ArenaMode {
     }
     this.leaveMatch();
     const { matches, standings } = played;
-    const board = createLeagueBoard({ entrants, matches, standings }, (match) => {
-      const fought: FoughtMatch = { entrants: [entrants[match.first], entrants[match.second]], arena: match.arena, seed: match.seed };
-      this.board.hidden = true;
-      this.show(fought);
-    });
-    const header = createElement('div', 'board-header');
-    const close = this.createButton(t('contest.close'), t('contest.close.title'), () => {
-      this.board.hidden = true;
-    });
-    header.append(createElement('span', 'board-title', t('league.title', { count: entrants.length, matches: matches.length })), close);
-    this.board.replaceChildren(header, board);
-    this.showBoard();
+    const board = createLeagueBoard({ entrants, matches, standings }, (match) =>
+      this.playFromBoard(entrants, match.first, match.second, match.arena, match.seed),
+    );
+    this.putOnBoard(t('league.title', { count: entrants.length, matches: matches.length }), board);
     const winner = entrants[standings[0].entrant].name;
     this.addResult(createElement('div', 'result series-title', t('league.summary', { count: entrants.length, winner })));
   }

@@ -141,6 +141,8 @@ export const PART_PATTERNS: Record<Slot, Record<string, Pattern>> = {
     ]),
   },
   gun: {
+    // A short barrel.
+    pistol: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, '......dddd......', '......dccdggg...']),
     // Two thin barrels.
     rapid: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, '......ddddgggg..', '......dccd......']),
     standard: mirrored([NONE, NONE, NONE, NONE, NONE, NONE, '......dddd......', '......dccdggggg.']),

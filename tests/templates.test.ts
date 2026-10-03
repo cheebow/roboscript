@@ -326,7 +326,12 @@ describe('templates that shoot from as far as their gun reaches', () => {
   /** How far a robot can get in the tick between reading the distance and the shot leaving its gun. */
   const ONE_STEP = 10;
 
-  /** The distance to a waiting enemy at which the template, with the given gun, fires its first shot. */
+  /**
+   * The distance to a waiting enemy at which the template, with the given gun,
+   * fires its first shot: the distance at the start of the tick it fires in.
+   * Where it ends up after that tick may differ, as CowardBot backs away while
+   * it fires when its gun reaches no farther than the distance it keeps.
+   */
   function firstShotDistance(templateId: string, gun: string): number {
     const stats = statsOf({ ...STANDARD_LOADOUT, gun });
     const brains: [RobotBrain, RobotBrain] = [
@@ -341,8 +346,12 @@ describe('templates that shoot from as far as their gun reaches', () => {
       ],
     });
     const [alpha, bravo] = simulation.robots;
-    while (alpha.weapon.ammo === stats.maxAmmo && simulation.result === null) simulation.step();
-    return distance(alpha.position, bravo.position);
+    let before = distance(alpha.position, bravo.position);
+    while (alpha.weapon.ammo === stats.maxAmmo && simulation.result === null) {
+      before = distance(alpha.position, bravo.position);
+      simulation.step();
+    }
+    return before;
   }
 
   for (const templateId of ['aggressive_bot', 'coward_bot']) {

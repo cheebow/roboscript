@@ -18,6 +18,8 @@ export interface RobotStats {
   shotCooldown: number;
   /** deg, max deviation to either side */
   shotSpread: number;
+  /** deg, max deviation to either side of a shot fired on the move: the hull drove during the tick. */
+  movingShotSpread: number;
   maxAmmo: number;
   radius: number;
   bulletRadius: number;
@@ -50,6 +52,8 @@ export const ROBOT_DEFAULTS: RobotStats = {
   shotSpeed: 400,
   shotCooldown: 0.8,
   shotSpread: 2,
+  // Five times the spread of a shot from standing still: a robot that shoots on the move hits far less.
+  movingShotSpread: 10,
   maxAmmo: 50,
   radius: 16,
   bulletRadius: 3,

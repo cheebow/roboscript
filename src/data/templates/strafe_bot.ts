@@ -65,11 +65,25 @@ def search()
     label SEARCH
     drive forward
     if blocked
-        turn left
+        if other_way == 1
+            turn right
+        else
+            turn left
     else
         wait
 
+# Two robots that go round obstacles the same way can chase each other for good.
+set other_way = 0  # 1 while it goes round obstacles on the other side
+set lost = 0       # ticks since it last saw the enemy
 loop
+    if enemy_visible
+        set lost = 0
+    else
+        # Ten seconds without a sight of the enemy: try going round the other way.
+        set lost = lost + 1
+        if lost > 300
+            set lost = 0
+            set other_way = 1 - other_way
     turn_back_at_walls()
 
     if enemy_visible

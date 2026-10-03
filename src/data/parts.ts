@@ -39,6 +39,7 @@ const {
   shotSpeed,
   shotCooldown,
   shotSpread,
+  movingShotSpread,
   maxAmmo,
 } = ROBOT_DEFAULTS;
 
@@ -95,6 +96,7 @@ export const PARTS: readonly Part[] = [
       shotSpeed: 400,
       weaponRange: 300,
       shotSpread: 3,
+      movingShotSpread: 15,
       maxAmmo: 40,
       turretSpeed: 270,
     },
@@ -111,6 +113,7 @@ export const PARTS: readonly Part[] = [
       shotSpeed: 450,
       weaponRange: 400,
       shotSpread: 3,
+      movingShotSpread: 15,
       maxAmmo: 120,
       turretSpeed: 360,
     },
@@ -121,7 +124,7 @@ export const PARTS: readonly Part[] = [
     name: 'Standard',
     cost: 3,
     summary: 'Balanced.',
-    stats: { shotDamage, shotCooldown, shotSpeed, weaponRange, shotSpread, maxAmmo, turretSpeed },
+    stats: { shotDamage, shotCooldown, shotSpeed, weaponRange, shotSpread, movingShotSpread, maxAmmo, turretSpeed },
   },
   {
     id: 'cannon',
@@ -135,6 +138,7 @@ export const PARTS: readonly Part[] = [
       shotSpeed: 300,
       weaponRange: 520,
       shotSpread: 1,
+      movingShotSpread: 5,
       maxAmmo: 20,
       turretSpeed: 150,
     },

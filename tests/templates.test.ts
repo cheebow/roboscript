@@ -122,6 +122,25 @@ describe('the side a template goes round obstacles', () => {
   });
 });
 
+describe('going round obstacles the other way when the enemy stays out of sight', () => {
+  const turnsAtObstacles = (templateId: string, ticks: number) => {
+    const brain = compileBrain(enemySource(templateId));
+    const actions = Array.from({ length: ticks }, () => brain.decide({ ...QUIET_CONTEXT, blocked: true }));
+    return [...new Set(actions.map((action) => action.turn).filter((turn) => turn !== null))];
+  };
+
+  for (const templateId of ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'strafe_bot', 'sentry_bot']) {
+    it(`${templateId} turns left at obstacles, and right after ten seconds without a sight of the enemy`, () => {
+      expect(turnsAtObstacles(templateId, 300)).toEqual(['left']);
+      expect(turnsAtObstacles(templateId, 320)).toEqual(['left', 'right']);
+    });
+  }
+
+  it('the sample does not: it is the first program a player reads', () => {
+    expect(turnsAtObstacles('sample', 320)).toEqual(['left']);
+  });
+});
+
 describe('AggressiveBot', () => {
   const inRange = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 200 };
 
@@ -303,15 +322,15 @@ describe('strategies against the enemies', () => {
     return tally;
   }
 
-  it('the sample AI loses to every enemy', () => {
-    for (const enemyId of ['dumb_bot', 'coward_bot', 'guard_bot', 'strafe_bot']) {
+  it('the sample AI loses to every enemy that stops to shoot', () => {
+    for (const enemyId of ['dumb_bot', 'coward_bot', 'guard_bot', 'strafe_bot', 'sentry_bot']) {
       expect(tally(APPROACH, enemyId).losses, enemyId).toBeGreaterThanOrEqual(MOST);
     }
-    // AggressiveBot and CoverBot it beats from some places.
-    for (const enemyId of ['aggressive_bot', 'cover_bot']) {
-      const { wins, losses } = tally(APPROACH, enemyId);
-      expect(losses, enemyId).toBeGreaterThan(wins);
-    }
+    // CoverBot it meets about evenly: the hider gets run down from some places, recovers and wins from others.
+    const { wins, losses } = tally(APPROACH, 'cover_bot');
+    expect(Math.abs(losses - wins)).toBeLessThanOrEqual(6);
+    // AggressiveBot only ever shoots on the move, and its shots scatter: even the sample beats it.
+    expect(tally(APPROACH, 'aggressive_bot').wins).toBeGreaterThanOrEqual(MOST);
   });
 
   it('the sample AI beats DumbBot and GuardBot once it fires from further away', () => {
@@ -331,12 +350,13 @@ describe('strategies against the enemies', () => {
     expect(draws).toBeGreaterThan(losses);
   });
 
-  it('rushing in beats the enemies that stop to shoot, but ends in a draw with the ones that keep moving', () => {
-    expect(tally(RUSH, 'dumb_bot').wins).toBeGreaterThanOrEqual(MOST);
-    expect(tally(RUSH, 'guard_bot').wins).toBeGreaterThanOrEqual(MOST);
-    // Each shoots the other down: both are destroyed on the same tick.
-    expect(tally(RUSH, 'aggressive_bot').draws).toBeGreaterThanOrEqual(MOST);
-    expect(tally(RUSH, 'strafe_bot').losses).toBeGreaterThanOrEqual(MOST);
+  it('rushing in, shooting on the move, loses to the enemies that stop to shoot', () => {
+    // A shot fired while driving scatters five times as much.
+    for (const enemyId of ['dumb_bot', 'guard_bot', 'coward_bot', 'strafe_bot', 'sentry_bot']) {
+      expect(tally(RUSH, enemyId).losses, enemyId).toBeGreaterThanOrEqual(MOST);
+    }
+    // CoverBot hides from it and gets run down.
+    expect(tally(RUSH, 'cover_bot').wins).toBeGreaterThanOrEqual(MOST);
   });
 
   it('bracing on the very tick each bullet hits beats the enemies that stand still to shoot', () => {
@@ -347,9 +367,10 @@ describe('strategies against the enemies', () => {
   });
 
   it('bracing a tick or two early wastes the guards and the time to shoot', () => {
-    // With the guard on the right tick, this AI beats AggressiveBot and GuardBot (see above).
-    expect(tally(EARLY_GUARD, 'aggressive_bot').losses).toBeGreaterThanOrEqual(MOST);
-    expect(tally(EARLY_GUARD, 'guard_bot').losses).toBeGreaterThanOrEqual(MOST);
+    // With the guard on the right tick, this AI beats GuardBot (see above); a tick early, it mostly loses to it.
+    const early = tally(EARLY_GUARD, 'guard_bot');
+    expect(early.losses).toBeGreaterThan(early.wins);
+    expect(early.wins).toBeLessThan(tally(GUARD, 'guard_bot').wins);
     expect(tally(EARLY_GUARD, 'dumb_bot').wins).toBeGreaterThanOrEqual(MOST);
   });
 
@@ -364,10 +385,13 @@ describe('strategies against the enemies', () => {
     expect(timeouts).toBeLessThanOrEqual(ENEMY_IDS.length);
   });
 
-  it('and would never meet if the robots started on the middle line', () => {
-    // They then stay half a turn apart, on opposite sides of the block, until time runs out.
+  it('and would stay half a turn apart from the middle line, until DumbBot goes round the other way', () => {
+    // On the middle line the two stay on opposite sides of the block; after ten seconds without a
+    // sight of the sample, DumbBot turns the other way at the next obstacle, and they meet.
     const onTheLine = { ...DEFAULT_ARENA, spawns: DEFAULT_ARENA.spawns.map((spawn) => ({ ...spawn, y: DEFAULT_ARENA.height / 2 })) };
-    expect(duel(APPROACH, enemySource('dumb_bot'), 1, onTheLine)).toEqual({ winner: 'DRAW', reason: 'timeout' });
+    expect(duel(APPROACH, enemySource('dumb_bot'), 1, onTheLine)).toEqual({ winner: 'BRAVO', reason: 'destroyed' });
+    // Two samples, neither of which does, never meet.
+    expect(duel(APPROACH, APPROACH, 1, onTheLine)).toEqual({ winner: 'DRAW', reason: 'timeout' });
   });
 
   it('plays out the same way for the same seed', () => {
@@ -383,11 +407,12 @@ describe('standing still against driving', () => {
     expect(winnersAgainst(TURRET, APPROACH)).toEqual(['ALPHA']);
   });
 
-  it('but loses, on all maps but two, to one that drives across its line of fire', () => {
-    // In Cross the arms of the cross leave too little room to drive across. In Center Block the one standing still wins as well.
-    const standingWins = ['cross', 'center_block'];
+  it('and, now that shots fired on the move scatter, beats one that drives across its line of fire on most maps', () => {
+    // On the open ground of Bare Ground and Corridor the one driving across still wins; Zigzag goes either way.
+    const drivingWins = ['bare_ground', 'corridor'];
     for (const { id, name, arena } of ARENAS) {
-      const winner = standingWins.includes(id) ? 'BRAVO' : 'ALPHA';
+      if (id === 'zigzag') continue;
+      const winner = drivingWins.includes(id) ? 'ALPHA' : 'BRAVO';
       expect(winnersAgainst(STRAFE, TURRET, arena), name).toEqual([winner]);
     }
   });

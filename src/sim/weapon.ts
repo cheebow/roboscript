@@ -15,7 +15,8 @@ export interface Weapon {
   /** Puts off the moment the weapon can fire again by the given number of ticks. */
   delay(ticks: number): void;
   /** Returns the fired bullet, or null while cooling down or out of ammo. */
-  fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng): NewBullet | null;
+  /** `moving`: the hull drove this tick, which scatters the shot more. */
+  fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng, moving: boolean): NewBullet | null;
 }
 
 export class Gun implements Weapon {
@@ -47,13 +48,14 @@ export class Gun implements Weapon {
     this.remainingCooldown += ticks;
   }
 
-  fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng): NewBullet | null {
+  fire(ownerId: string, position: Vec2, rotation: number, rng: MatchRng, moving: boolean): NewBullet | null {
     if (this.remainingCooldown > 0 || this.remainingAmmo <= 0) return null;
     this.remainingAmmo--;
     this.remainingCooldown = this.cooldownLength;
 
-    const { shotSpread, radius, bulletRadius } = this.stats;
-    const direction = headingVector(rotation + rng.range(-shotSpread, shotSpread));
+    const { shotSpread, movingShotSpread, radius, bulletRadius } = this.stats;
+    const spread = moving ? movingShotSpread : shotSpread;
+    const direction = headingVector(rotation + rng.range(-spread, spread));
     const muzzleOffset = radius + bulletRadius;
     return {
       ownerId,

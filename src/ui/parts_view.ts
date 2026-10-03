@@ -27,6 +27,7 @@ const STAT_ROWS: readonly StatRow[] = [
   { name: 'SHOT_SPEED', value: (stats) => stats.shotSpeed, unit: ' units/sec', moreIsBetter: true },
   { name: 'SHOT_COOLDOWN', value: (stats) => stats.shotCooldown, unit: ' sec', moreIsBetter: false },
   { name: 'SHOT_SPREAD', value: (stats) => stats.shotSpread, prefix: '±', unit: ' deg', moreIsBetter: false },
+  { name: 'MOVING_SPREAD', value: (stats) => stats.movingShotSpread, prefix: '±', unit: ' deg', moreIsBetter: false },
   { name: 'AMMO', value: (stats) => stats.maxAmmo, unit: '', moreIsBetter: true },
   { name: 'GUARDS', value: (stats) => stats.maxGuards, unit: '', moreIsBetter: true },
 ];

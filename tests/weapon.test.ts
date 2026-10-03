@@ -14,7 +14,7 @@ const ORIGIN = { x: 100, y: 100 };
 function createGun(stats = NO_SPREAD_STATS) {
   const gun = new Gun(stats, tickRate);
   const rng = new MatchRng(MATCH_DEFAULTS.seed);
-  return { gun, fire: () => gun.fire('ALPHA', ORIGIN, 0, rng) };
+  return { gun, fire: () => gun.fire('ALPHA', ORIGIN, 0, rng, false) };
 }
 
 function createBullet(overrides: Partial<Bullet> = {}): Bullet {
@@ -63,6 +63,19 @@ describe('Gun', () => {
     }
     expect(gun.ammo).toBe(0);
     expect(fire()).toBeNull();
+  });
+
+  it('scatters a shot fired on the move more, by the moving spread', () => {
+    const stats = { ...NO_SPREAD_STATS, shotSpread: 2, movingShotSpread: 10, shotCooldown: 0, maxAmmo: 1000 };
+    const gun = new Gun(stats, tickRate);
+    const rng = new MatchRng(MATCH_DEFAULTS.seed);
+    const deviations = (moving: boolean) =>
+      Array.from({ length: 200 }, () => gun.fire('ALPHA', ORIGIN, 0, rng, moving)?.direction.y ?? 0).map(Math.abs);
+    const still = deviations(false);
+    const onTheMove = deviations(true);
+    expect(Math.max(...still)).toBeLessThanOrEqual(Math.sin((2 * Math.PI) / 180) + 1e-9);
+    expect(Math.max(...onTheMove)).toBeGreaterThan(Math.sin((2 * Math.PI) / 180));
+    expect(Math.max(...onTheMove)).toBeLessThanOrEqual(Math.sin((10 * Math.PI) / 180) + 1e-9);
   });
 
   it('keeps shots within the spread', () => {

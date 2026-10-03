@@ -244,7 +244,7 @@ export class Simulation {
   }
 
   private fire(robot: RobotController, sourceLine: number | null): void {
-    const bullet = robot.weapon.fire(robot.id, robot.position, robot.gunHeading, this.rng);
+    const bullet = robot.weapon.fire(robot.id, robot.position, robot.gunHeading, this.rng, robot.moved);
     if (bullet !== null) {
       this.bullets.push({ ...bullet, id: this.nextBulletId++ });
       this.tickEvents.push({ kind: 'shot', ...bullet.position });

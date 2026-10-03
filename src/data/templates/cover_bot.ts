@@ -40,9 +40,10 @@ loop
         if enemy_visible
             set searching = 0
         else
-            # Still no enemy after ten seconds: it may be going round the same way. Try the other.
+            # Still no enemy after eight seconds: it may be going round the same way. Try the other.
+            # (Sooner than the other templates, so that the two do not switch in step and stay apart.)
             set searching = searching + 1
-            if searching > 300
+            if searching > 240
                 set searching = 0
                 set other_way = 1 - other_way
 

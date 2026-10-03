@@ -19,7 +19,9 @@ const SEARCH_LINES = [25, 26, 28, 29, 31, 32, 21, 22, 23];
 /** Round the loop into `attack`, as far as its `turn enemy`. */
 const SIGHTED_LINES = [25, 26, 28, 29, 30, 10];
 /** `fire` in DumbBot (BRAVO's program). */
-const BRAVO_FIRE_LINE = 12;
+const BRAVO_FIRE_LINE = 26;
+/** The first line of DumbBot that runs: `set other_way = 0`, after a comment. */
+const BRAVO_FIRST_LINE = 2;
 
 /** The real game setup: the sample AI against DumbBot. */
 function matchConfig(seed = 1): SimulationConfig {
@@ -352,13 +354,14 @@ describe('ReplayManager: stepping by line', () => {
     const replay = createReplay();
     replay.stepLine();
     replay.stepLine();
-    expect(replay.currentLine('BRAVO')).toBe(1);
+    expect(replay.currentLine('BRAVO')).toBe(BRAVO_FIRST_LINE);
     expect(replay.linesSoFar('BRAVO')).toEqual([]);
 
     replay.focusOn('BRAVO');
     expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
     replay.stepLine();
-    expect(replay.currentLine('BRAVO')).toBe(2);
+    // One line on: the second `set` of DumbBot's preamble.
+    expect(replay.currentLine('BRAVO')).toBe(BRAVO_FIRST_LINE + 1);
     expect(replay.currentLine('ALPHA')).toBe(SEARCH_LINES[0]);
   });
 

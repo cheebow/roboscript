@@ -102,7 +102,7 @@ const LANGUAGE: readonly WordReference[] = [
     word: 'fire',
     kind: 'command',
     hint: 'shoot, 1 tick',
-    summary: 'Fires the gun the way the turret points. Takes one tick; nothing is fired while the gun cools down or when out of ammo.',
+    summary: 'Fires the gun the way the turret points. Takes one tick; nothing is fired while the gun cools down or when out of ammo. A shot fired while the hull drives scatters five times as much as one from standing still.',
   },
   {
     word: 'guard',

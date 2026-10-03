@@ -53,6 +53,8 @@ export class RobotController {
   guardsLeft: number;
   /** The enemy's sensor did not see the robot on the latest tick. */
   hidden = false;
+  /** The hull drove somewhere on the latest tick. */
+  moved = false;
   /** Regaining hp on the latest tick: still and out of the enemy's sight for long enough, and hurt. */
   recovering = false;
   /** Ticks in a row that the robot has been still and out of the enemy's sight. */
@@ -240,9 +242,12 @@ export class RobotController {
 
   /** Drives one tick's worth as set, or stays put if anything is in the way. */
   drive(tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
+    this.moved = false;
     if (this.driving === 'stop') return;
     const target = this.stepTarget(this.driving, tickDuration);
-    if (!isBlocked(target)) this.position = target;
+    if (isBlocked(target)) return;
+    this.position = target;
+    this.moved = true;
   }
 
   /** Turns the turret on the hull. Aiming at the enemy goes by where the robot is now, after driving. */

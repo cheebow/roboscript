@@ -13,9 +13,10 @@ const TARGET_FRAME_MARGIN = 13;
 const TARGET_CORNER_LENGTH = 8;
 const LAST_SEEN_MARK_SIZE = 7;
 const COVER_MARK_SIZE = 6;
-const COVER_LINE_ALPHA = 0.45;
+/** Strong enough to show over the tint of the sensor fields, which is in the same colour. */
+const COVER_LINE_ALPHA = 0.85;
 /** Screen pixels: dash and gap of the line to the cover. */
-const COVER_DASH_PX = 4;
+const COVER_DASH_PX = 5;
 const BULLET_RING_RADIUS = 7;
 const LEAD_MARK_SIZE = 5;
 /** Line width of the marks, in screen pixels. */
@@ -97,7 +98,7 @@ export function drawCoverMark(ctx: CanvasRenderingContext2D, robot: RobotSnapsho
   const { x, y } = cover.position;
   ctx.strokeStyle = color;
 
-  ctx.lineWidth = pixel;
+  ctx.lineWidth = MARK_LINE_PX * pixel;
   ctx.globalAlpha = COVER_LINE_ALPHA;
   ctx.setLineDash([COVER_DASH_PX * pixel, COVER_DASH_PX * pixel]);
   ctx.beginPath();

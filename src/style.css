@@ -452,9 +452,6 @@ button {
   height: 22px;
   border-radius: 50%;
   background: var(--medal-face);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -2px 2px rgba(0, 0, 0, 0.35);
   color: var(--medal-ink);
   font-weight: bold;
   font-size: 13px;

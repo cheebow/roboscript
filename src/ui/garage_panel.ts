@@ -125,7 +125,8 @@ export class GaragePanel {
       field.value = text;
       field.setAttribute('aria-label', `Share ${label}`);
       field.addEventListener('focus', () => field.select());
-      const copy = createElement('button', 'garage-action', `COPY ${label}`);
+      // The panel is narrow: the button says only COPY, and the field beside it shows what.
+      const copy = createElement('button', 'garage-action', 'COPY');
       copy.type = 'button';
       copy.title = `Copy the ${label} to the clipboard`;
       copy.addEventListener('click', () => {

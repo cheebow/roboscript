@@ -6,7 +6,7 @@
  * it changes the side on which it goes round obstacles, so that the two do
  * not chase each other's tail.
  */
-export const COVER_BOT = `# Whenever it is hurt, it hides behind an obstacle and recovers there until the enemy comes.
+export const COVER_BOT = `# CoverBot: fights from a distance and, whenever it is hurt, hides behind an obstacle and recovers there until the enemy comes.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set searching = 0  # ticks since it last saw the enemy
 loop

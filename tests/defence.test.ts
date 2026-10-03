@@ -246,12 +246,12 @@ describe('findCover', () => {
   it('finds a place behind the obstacle, straight ahead when the way is free', () => {
     const position = { x: 400, y: 150 };
     const cover = coverFor(position);
-    expect(isHiddenFrom(arena, threat, cover.position)).toBe(true);
+    expect(isHiddenFrom(arena, threat, cover.position, radius)).toBe(true);
     expect(cover.route).toHaveLength(1);
     expectDrivable(position, cover);
     // No other hiding place in straight reach is nearer.
     const others = coverMapOf(arena, radius).spots.filter(
-      (spot) => isHiddenFrom(arena, threat, spot) && canDrive(position, spot),
+      (spot) => isHiddenFrom(arena, threat, spot, radius) && canDrive(position, spot),
     );
     expect(Math.min(...others.map((spot) => distance(position, spot)))).toBeCloseTo(cover.distance);
   });
@@ -260,7 +260,7 @@ describe('findCover', () => {
     // Between the threat and the block: every hiding place is on the far side.
     const position = { x: 700, y: 300 };
     const cover = coverFor(position);
-    expect(isHiddenFrom(arena, threat, cover.position)).toBe(true);
+    expect(isHiddenFrom(arena, threat, cover.position, radius)).toBe(true);
     expect(cover.route.length).toBeGreaterThan(1);
     expectDrivable(position, cover);
     expect(cover.distance).toBeGreaterThan(distance(position, cover.position));
@@ -307,7 +307,7 @@ describe('cover sensors', () => {
     const [alpha, bravo] = simulation.robots;
     const cover = alpha.surroundings.cover;
     if (cover === null) throw new Error('Expected cover');
-    expect(isHiddenFrom(OPEN_FIELD, bravo.position, cover.position)).toBe(true);
+    expect(isHiddenFrom(OPEN_FIELD, bravo.position, cover.position, alpha.stats.radius)).toBe(true);
     expect(probe.contexts[0].coverVisible).toBe(true);
     expect(probe.contexts[0].coverDistance).toBe(cover.distance);
     expect(cover.distance).toBeGreaterThanOrEqual(distance(alpha.position, cover.position) - 1e-9);
@@ -330,7 +330,7 @@ describe('cover sensors', () => {
 
       runTicks(simulation, 30 * MATCH_DEFAULTS.tickRate - 2);
       expect(alpha.sensorReading.enemyVisible, name).toBe(false);
-      expect(isHiddenFrom(inView, bravo.position, alpha.position), name).toBe(true);
+      expect(isHiddenFrom(inView, bravo.position, alpha.position, alpha.stats.radius), name).toBe(true);
       expect(alpha.surroundings.cover, name).toMatchObject({ distance: 0, angle: 0, route: [] });
     }
   });

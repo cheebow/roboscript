@@ -9,6 +9,8 @@ const SPOT_SPACING = 20;
 const CORNER_MARGIN = 6;
 /** Lets a robot that exactly touches an obstacle drive along it. */
 const TOUCH_TOLERANCE = 1e-6;
+/** How far beyond the body's edge a hiding place keeps out of view, so that an enemy that moves a little does not see it at once. */
+const HIDE_MARGIN = 8;
 
 /** A stretch a robot can drive in a straight line, to the corner point with the given index. */
 interface Link {
@@ -112,9 +114,22 @@ function canDrive(arena: Arena, radius: number, from: Vec2, to: Vec2): boolean {
   return arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
 }
 
-/** Whether an obstacle stands on the straight line between the two points. */
-export function isHiddenFrom(arena: Arena, viewer: Vec2, position: Vec2): boolean {
-  return arena.obstacles.some((obstacle) => segmentRectHit(viewer, position, obstacle) !== null);
+/**
+ * Whether a robot of the given radius at the position is wholly behind an
+ * obstacle as seen from the viewer: the straight lines from the viewer to the
+ * robot's centre and to either edge of its body all run into an obstacle.
+ * Stricter than the sensor, which loses sight of a robot sooner: a hiding
+ * place is somewhere the whole body is out of view, not only the centre.
+ */
+export function isHiddenFrom(arena: Arena, viewer: Vec2, position: Vec2, radius: number): boolean {
+  const dx = position.x - viewer.x;
+  const dy = position.y - viewer.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return false;
+  const reach = radius + HIDE_MARGIN;
+  const across = { x: (-dy / length) * reach, y: (dx / length) * reach };
+  const points = [position, { x: position.x + across.x, y: position.y + across.y }, { x: position.x - across.x, y: position.y - across.y }];
+  return points.every((point) => arena.obstacles.some((obstacle) => segmentRectHit(viewer, point, obstacle) !== null));
 }
 
 /**
@@ -125,14 +140,14 @@ export function isHiddenFrom(arena: Arena, viewer: Vec2, position: Vec2): boolea
  * to hide.
  */
 export function findCover(arena: Arena, radius: number, position: Vec2, threat: Vec2): CoverRoute | null {
-  if (isHiddenFrom(arena, threat, position)) return { position: { ...position }, distance: 0, route: [] };
+  if (isHiddenFrom(arena, threat, position, radius)) return { position: { ...position }, distance: 0, route: [] };
 
   const map = coverMapOf(arena, radius);
   const { length, previous } = distancesToCorners(map, arena, position);
 
   let best: { spot: number; distance: number; lastCorner: number | null } | null = null;
   map.spots.forEach((spot, index) => {
-    if (!isHiddenFrom(arena, threat, spot)) return;
+    if (!isHiddenFrom(arena, threat, spot, radius)) return;
     for (const link of map.spotLinks[index]) {
       const total = length[link.corner] + link.length;
       if (best === null || total < best.distance) best = { spot: index, distance: total, lastCorner: link.corner };

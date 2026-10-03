@@ -6,7 +6,7 @@
  * fires, which is why it loses to it as shipped. Each thing it does is a
  * function, and the loop at the end only chooses between them.
  */
-export const SAMPLE_AI = `# "drive" keeps the hull going. Each turn, aim or fire takes one tick.
+export const SAMPLE_AI = `# Sample: drives up to the enemy and shoots from close by. "drive" keeps the hull going; each turn, aim or fire takes one tick.
 
 # Goes round whatever is in the way.
 def avoid()

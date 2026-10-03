@@ -4,7 +4,7 @@
  * hit as well as one that stands still. Shot from somewhere it cannot see, it
  * turns to face the shooter.
  */
-export const SENTRY_BOT = `# Stops within weapon range and shoots at where the enemy will be.
+export const SENTRY_BOT = `# SentryBot: closes in to weapon range, then stands still and shoots at where the enemy will be.
 # Two robots that go round obstacles the same way can chase each other for good.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set lost = 0       # ticks since it last saw the enemy

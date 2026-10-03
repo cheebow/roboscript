@@ -5,7 +5,8 @@
  * looks for the bullet before every action, and only braces on the tick of
  * the hit. The check is a function, so that it is written once and asked twice.
  */
-export const GUARD_BOT = `# guard halves the damage of a bullet that hits on that tick.
+export const GUARD_BOT = `# GuardBot: DumbBot with a defence: it braces (guard) on the very tick a bullet hits, and faces a shooter it cannot see.
+# guard halves the damage of a bullet that hits on that tick.
 # There are only a few guards per match, and each puts off the next shot:
 # use them on the very tick of the hit.
 def about_to_be_hit()

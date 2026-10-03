@@ -3,7 +3,7 @@
  * Backs away when the enemy gets close, and shoots while keeping its distance
  * (SPEC §30). With its back against an obstacle or a wall it stands and fights.
  */
-export const COWARD_BOT = `# Two robots that go round obstacles the same way can chase each other for good.
+export const COWARD_BOT = `# CowardBot: keeps its distance, backing away from a close enemy while it shoots; with its back to a wall it stands and fights.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set lost = 0       # ticks since it last saw the enemy
 loop

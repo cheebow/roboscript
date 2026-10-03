@@ -6,7 +6,7 @@
  * It turns back at walls, and when an obstacle comes between it and the enemy.
  * Each of these is a function of its own, and the loop at the end puts them together.
  */
-export const STRAFE_BOT = `# Drives across the enemy's line of fire, and shoots where the enemy will be.
+export const STRAFE_BOT = `# StrafeBot: drives across the enemy's line of fire, and shoots where the enemy will be.
 set forward = 1   # which way it is crossing: 1 forward, 0 backward
 set crossing = 0  # 1 once it is close enough to cross and shoot
 set lost = 0      # ticks since it lost sight of the enemy while crossing

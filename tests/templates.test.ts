@@ -93,6 +93,12 @@ describe('template list', () => {
     }
   });
 
+  it('says which template it is on the first line of each, so that a loaded one can be told apart', () => {
+    for (const template of TEMPLATES) {
+      expect(template.source.split('\n')[0]).toMatch(new RegExp(`^# ${template.name}: `));
+    }
+  });
+
   it('finds a template by id', () => {
     expect(findTemplate('coward_bot')?.name).toBe('CowardBot');
     expect(findTemplate('no_such_bot')).toBeUndefined();
@@ -326,9 +332,8 @@ describe('strategies against the enemies', () => {
     for (const enemyId of ['dumb_bot', 'coward_bot', 'guard_bot', 'strafe_bot', 'sentry_bot']) {
       expect(tally(APPROACH, enemyId).losses, enemyId).toBeGreaterThanOrEqual(MOST);
     }
-    // CoverBot it meets about evenly: the hider gets run down from some places, recovers and wins from others.
-    const { wins, losses } = tally(APPROACH, 'cover_bot');
-    expect(Math.abs(losses - wins)).toBeLessThanOrEqual(6);
+    // CoverBot hides deep whenever it is hurt, and the sample, which keeps coming, runs it down there.
+    expect(tally(APPROACH, 'cover_bot').wins).toBeGreaterThanOrEqual(MOST);
     // AggressiveBot only ever shoots on the move, and its shots scatter: even the sample beats it.
     expect(tally(APPROACH, 'aggressive_bot').wins).toBeGreaterThanOrEqual(MOST);
   });

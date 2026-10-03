@@ -3,7 +3,7 @@
  * range (SPEC §30). Once it has driven right up against the enemy it stops
  * pushing and just shoots.
  */
-export const AGGRESSIVE_BOT = `# Two robots that go round obstacles the same way can chase each other for good.
+export const AGGRESSIVE_BOT = `# AggressiveBot: never stops; drives at the enemy and fires on the move, stopping only when right up against it.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set lost = 0       # ticks since it last saw the enemy
 loop

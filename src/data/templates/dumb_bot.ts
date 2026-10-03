@@ -1,6 +1,6 @@
 
 /** Drives up to the enemy and shoots once close; goes looking for it when it is hidden (SPEC §30). */
-export const DUMB_BOT = `# Two robots that go round obstacles the same way can chase each other for good.
+export const DUMB_BOT = `# DumbBot: drives up to the enemy and shoots from close by; goes round the other way when the enemy stays out of sight.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set lost = 0       # ticks since it last saw the enemy
 loop

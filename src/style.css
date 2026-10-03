@@ -426,6 +426,54 @@ button {
   color: var(--error);
 }
 
+/* The robot's picture, with its place on it once the match is over. */
+.lineup-picture {
+  position: relative;
+}
+
+.place-badge {
+  position: absolute;
+  top: 4px;
+  left: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: 2px solid var(--badge-edge, #6f7a85);
+  border-radius: 11px;
+  background: var(--badge-face, #3a444d);
+  color: #14181b;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.place-badge[hidden] {
+  display: none;
+}
+
+.place-badge[data-place='1'] {
+  --badge-face: #e8c547;
+  --badge-edge: #fff1a8;
+}
+
+.place-badge[data-place='2'] {
+  --badge-face: #c3ccd4;
+  --badge-edge: #f1f5f8;
+}
+
+.place-badge[data-place='3'] {
+  --badge-face: #c9824a;
+  --badge-edge: #ecb48a;
+}
+
+.place-badge[data-place='4'] {
+  --badge-face: #4a5158;
+  --badge-edge: #6f7a85;
+  color: #c5ccd3;
+}
+
 .lineup-slot[hidden] {
   display: none;
 }

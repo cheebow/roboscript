@@ -80,6 +80,8 @@ interface SlotView {
   cost: HTMLElement;
   /** HP and ammo in the match being shown. */
   status: HTMLElement;
+  /** The robot's place, on its picture, once the match being shown is over. */
+  badge: HTMLElement;
 }
 
 /**
@@ -299,6 +301,7 @@ export class ArenaMode {
           ? ''
           : t('arena.status', { hp: robot.hp, maxHp: stats[index].maxHp, ammo: robot.ammo });
       if (slot.status.textContent !== text) slot.status.textContent = text;
+      this.showPlace(slot, index);
     });
     const result = this.replay?.snapshot.result ?? null;
     if (this.unannounced !== null && result !== null) this.announce();
@@ -320,7 +323,21 @@ export class ArenaMode {
       parts: createElement('div', 'lineup-parts'),
       cost: createElement('span', 'lineup-cost'),
       status: createElement('span', 'lineup-status'),
+      badge: createElement('span', 'place-badge'),
     };
+  }
+
+  /** The badge of the robot's place once the match being shown is over: gold, silver and bronze for the first three. */
+  private showPlace(slot: SlotView, index: number): void {
+    const result = this.replay?.snapshot.result ?? null;
+    const name = this.fight?.names[index];
+    const place = result === null || name === undefined ? null : (result.places[name] ?? null);
+    const text = place === null ? '' : `${place}`;
+    if (slot.badge.textContent === text) return;
+    slot.badge.textContent = text;
+    slot.badge.hidden = place === null;
+    slot.badge.dataset.place = place === null ? '' : `${Math.min(place, 4)}`;
+    slot.badge.title = place === null ? '' : t('arena.place', { place, name: name ?? '' });
   }
 
   private slotElement(slot: SlotView, index: number): HTMLElement {
@@ -330,8 +347,11 @@ export class ArenaMode {
     const figures = createElement('div', 'lineup-figures');
     figures.append(slot.cost, slot.status);
     details.append(choice, slot.parts, figures);
+    const picture = createElement('div', 'lineup-picture');
+    slot.badge.hidden = true;
+    picture.append(slot.preview, slot.badge);
     const element = createElement('div', 'lineup-slot');
-    element.append(slot.preview, details);
+    element.append(picture, details);
     return element;
   }
 

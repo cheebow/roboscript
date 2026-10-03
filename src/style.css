@@ -104,7 +104,7 @@ button {
   border-right: 1px solid var(--border);
 }
 
-#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #project-name, #run, #reset, #debug),
+#app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug),
 #app[data-screen='contest'] .picker,
 #app:not([data-screen='arena']) :is(#lineup, #results),
 #app:not([data-screen='contest']) #contest {
@@ -120,10 +120,6 @@ button {
   gap: 16px;
   padding: 0 10px;
   background: var(--panel);
-}
-
-#project-name {
-  letter-spacing: 0.08em;
 }
 
 #screens .tab {

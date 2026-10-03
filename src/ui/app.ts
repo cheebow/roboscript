@@ -156,7 +156,6 @@ class App {
       },
       { options: ARENAS, selectedId: this.arena.id },
     );
-    this.toolbar.setProjectName(this.store?.loadInfo().name ?? ROBOT_IDS[PLAYER_INDEX]);
     this.transport = new Transport(PLAYBACK_SPEEDS, {
       playPause: () => this.togglePlay(),
       step: () => this.step(),

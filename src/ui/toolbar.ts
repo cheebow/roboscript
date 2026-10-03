@@ -24,7 +24,6 @@ export interface Choices {
 }
 
 export class Toolbar {
-  private readonly projectName = requireElement('project-name');
   private readonly message = requireElement('message');
   private readonly pauseButton = requireElement<HTMLButtonElement>('pause');
 
@@ -40,10 +39,6 @@ export class Toolbar {
   /** Shows the given arena as the one picked, as when a shared match brings its own. */
   setArena(id: string): void {
     requireElement<HTMLSelectElement>('arena').value = id;
-  }
-
-  setProjectName(name: string): void {
-    this.projectName.textContent = name;
   }
 
   setMessage(text: string): void {

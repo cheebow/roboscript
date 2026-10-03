@@ -41,6 +41,27 @@ export const ROBOT_PALETTES: readonly RobotPalette[] = [
     treadLight: TREAD_LIGHT,
     sensor: SENSOR,
   },
+  // The third and fourth robots of a battle royale.
+  {
+    body: '#9a8fd6',
+    shade: '#7166ad',
+    light: '#c3bbef',
+    gun: GUN,
+    hatch: '#221e33',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#d6c86a',
+    shade: '#a99c45',
+    light: '#eee39c',
+    gun: GUN,
+    hatch: '#2e2a14',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
 ];
 
 export const WRECK_PALETTE: RobotPalette = {

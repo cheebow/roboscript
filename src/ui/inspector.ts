@@ -45,7 +45,7 @@ export class Inspector {
 
   update(snapshot: Snapshot): void {
     const robot = snapshot.robots[this.selectedIndex];
-    const enemy = snapshot.robots.find((other) => other !== robot);
+    const enemy = snapshot.robots.find((other) => other.id === robot.targetId);
     this.fields.set([
       robot.id,
       String(robot.hp),

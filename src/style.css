@@ -426,6 +426,27 @@ button {
   color: var(--error);
 }
 
+.lineup-slot[hidden] {
+  display: none;
+}
+
+.lineup-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.lineup-count .tool-button {
+  min-width: 0;
+  padding: 1px 10px;
+}
+
+.lineup-count .tool-button.selected {
+  border-color: var(--text);
+  color: var(--text);
+}
+
 .lineup-buttons {
   display: flex;
   gap: 6px;

@@ -43,7 +43,7 @@ export const WORDS_JA: Record<string, WordText> = {
   lead: { hint: '敵の動く先', summary: '今撃った弾が届くころに敵がいる場所（今の動きを続けた場合）。そこを狙った弾は、動きを変える敵には外れる。' },
   ahead: { hint: '車体の正面', summary: '車体の正面。' },
   cover: { hint: '隠れ場所の方へ', summary: '敵から隠れられる最寄りの場所の方へ（cover_visible を参照）。' },
-  enemy_visible: { hint: '敵が見えている', summary: '敵がセンサーの範囲内にいて、障害物の陰に隠れていないとき真。見えている敵には、まっすぐ走って行けるし、まっすぐ撃てる。' },
+  enemy_visible: { hint: '敵が見えている', summary: '敵がセンサーの範囲内にいて、障害物の陰に隠れていないとき真。見えている敵には、まっすぐ走って行けるし、まっすぐ撃てる。敵が複数いるとき（バトルロイヤル）は、enemy_ の語と向き enemy はすべて「見えている敵のうち一番近い 1 台」（誰も見えなければ最後に見た敵）のこと。' },
   blocked: { hint: 'すぐ前に壁か障害物', summary: `すぐ前に壁か障害物があって前進できないとき真。${NOT_THE_ENEMY}` },
   blocked_behind: { hint: 'すぐ後ろに壁か障害物', summary: `すぐ後ろに壁か障害物があって後退できないとき真。${NOT_THE_ENEMY}` },
   bullet_incoming: { hint: '弾が当たりそう', summary: '今いる場所にいると当たるコースの敵の弾があるとき真。コースから出れば避けられる。当たる tick に guard すればダメージが半分になる。' },

@@ -97,7 +97,7 @@ export class BattleView {
     const pixel = 1 / this.scale;
     const debug = options.sensorOf !== null;
     const watcher = options.sensorOf === null ? undefined : snapshot.robots[options.sensorOf];
-    const watched = snapshot.robots.find((robot) => robot !== watcher);
+    const watched = snapshot.robots.find((robot) => robot.id === watcher?.targetId) ?? snapshot.robots.find((robot) => robot !== watcher);
     const watcherColor = options.sensorOf === null ? '' : this.colorOf(options.sensorOf);
 
     ctx.fillStyle = COLORS.background;

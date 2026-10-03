@@ -88,7 +88,7 @@ describe('recordMatch', () => {
   });
 
   it('ends with the snapshot that holds the result', () => {
-    expect(snapshots.at(-1)?.result).toEqual({ winnerId: 'BRAVO', reason: 'destroyed' });
+    expect(snapshots.at(-1)?.result).toMatchObject({ winnerId: 'BRAVO', reason: 'destroyed' });
     expect(snapshots.slice(0, -1).every((snapshot) => snapshot.result === null)).toBe(true);
   });
 

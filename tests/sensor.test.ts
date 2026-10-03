@@ -77,6 +77,8 @@ describe('ConeSensor', () => {
       enemyAngle: 0,
       lastSeen: null,
       enemyVelocity: { x: 0, y: 0 },
+      targetId: null,
+      visibleIds: [],
     });
   });
 
@@ -101,5 +103,42 @@ describe('ConeSensor', () => {
     expect(reading.enemyVisible).toBe(false);
     expect(reading.lastSeen).toEqual(seenAt);
     expect(reading.enemyDistance).toBeCloseTo(100);
+  });
+});
+
+describe('ConeSensor with several enemies', () => {
+  const near = { id: 'NEAR', position: pointAt(100, 0) };
+  const far = { id: 'FAR', position: pointAt(300, 30) };
+
+  it('reads the nearest enemy in sight, and lists every one in sight', () => {
+    const reading = createSensor().scanAll(ORIGIN, FACING_RIGHT, [far, near]);
+    expect(reading.targetId).toBe('NEAR');
+    expect(reading.enemyDistance).toBeCloseTo(100);
+    expect([...reading.visibleIds].sort()).toEqual(['FAR', 'NEAR']);
+  });
+
+  it('passes over a nearer enemy hidden behind something', () => {
+    const sensor = new ConeSensor(sensorRange, sensorAngle, (_, to) => to !== near.position);
+    const reading = sensor.scanAll(ORIGIN, FACING_RIGHT, [far, near]);
+    expect(reading.targetId).toBe('FAR');
+    expect(reading.visibleIds).toEqual(['FAR']);
+  });
+
+  it('keeps to the enemy seen last once none is in sight, and forgets it once it is out of the match', () => {
+    const sensor = createSensor();
+    sensor.scanAll(ORIGIN, FACING_RIGHT, [near]);
+    const gone = { id: 'NEAR', position: pointAt(sensorRange + 200, 0) };
+    const remembered = sensor.scanAll(ORIGIN, FACING_RIGHT, [gone]);
+    expect(remembered).toMatchObject({ enemyVisible: false, targetId: 'NEAR' });
+    expect(remembered.enemyDistance).toBeCloseTo(100);
+    expect(sensor.scanAll(ORIGIN, FACING_RIGHT, [])).toMatchObject({ targetId: null, lastSeen: null, enemyDistance: 0 });
+  });
+
+  it('starts the velocity over when it switches to another enemy', () => {
+    const sensor = createSensor();
+    sensor.scanAll(ORIGIN, FACING_RIGHT, [far]);
+    const switched = sensor.scanAll(ORIGIN, FACING_RIGHT, [far, near]);
+    expect(switched.targetId).toBe('NEAR');
+    expect(switched.enemyVelocity).toEqual({ x: 0, y: 0 });
   });
 });

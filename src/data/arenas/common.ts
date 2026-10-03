@@ -22,6 +22,17 @@ export const SPAWNS: SpawnPoint[] = [
   { x: 120, y: SPAWN_Y, rotation: 0 },
 ];
 
+/**
+ * Where the robots of a battle royale start: in the four corners, facing the
+ * middle of the arena across it. Clear of the obstacles of every arena.
+ */
+export const CORNER_SPAWNS: SpawnPoint[] = [
+  { x: 920, y: 70, rotation: 180 },
+  { x: 80, y: 530, rotation: 0 },
+  { x: 80, y: 70, rotation: 0 },
+  { x: 920, y: 530, rotation: 180 },
+];
+
 /** Four blocks towards the corners: cover for a robot that backs away from the middle. */
 export const CORNER_BLOCKS: Rect[] = [
   { x: 180, y: 120, width: 80, height: 80 },

@@ -11,7 +11,7 @@ import type {
 import { INITIAL_LABEL } from './ai_context';
 import { leadPoint } from './aiming';
 import { clamp, headingVector, normalizeAngle } from './math';
-import { EMPTY_READING, type Sensor, type SensorReading, measure } from './sensor';
+import { EMPTY_READING, type SensedRobot, type Sensor, type SensorReading, measure } from './sensor';
 import { OPEN_SURROUNDINGS, type Surroundings } from './surroundings';
 import type { SpawnPoint, Vec2 } from './types';
 import type { Weapon } from './weapon';
@@ -126,8 +126,9 @@ export class RobotController {
     return this.sensed;
   }
 
-  sense(enemyPosition: Vec2, tickDuration: number): void {
-    this.reading = this.sensor.scan(this.position, this.rotation, enemyPosition);
+  /** Looks for the enemies still in the match. */
+  sense(enemies: readonly SensedRobot[], tickDuration: number): void {
+    this.reading = this.sensor.scanAll(this.position, this.rotation, enemies);
     const { lastSeen, enemyVisible, enemyVelocity } = this.reading;
     if (lastSeen === null) {
       this.sensed = { ...NO_GUN_READING, gunAngle: this.gunRotation };

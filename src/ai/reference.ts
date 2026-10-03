@@ -154,7 +154,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'enemy_visible',
     kind: 'sensor',
     hint: 'the enemy is in sight',
-    summary: 'True when the enemy is in sensor range and not hidden behind an obstacle. A visible enemy can be driven to and shot at in a straight line.',
+    summary: 'True when the enemy is in sensor range and not hidden behind an obstacle. A visible enemy can be driven to and shot at in a straight line. With more than one enemy (a battle royale), every enemy_ word and "enemy" direction is about the nearest enemy in sight, else the one seen last.',
   },
   {
     word: 'blocked',

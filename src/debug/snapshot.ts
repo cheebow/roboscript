@@ -27,6 +27,8 @@ export interface RobotSnapshot {
   guardAge: number | null;
   // What the sensor reported at the start of the tick, i.e. what the AI decided on.
   enemyVisible: boolean;
+  /** The enemy the sensor reading is about (the nearest in sight, else the one seen last); null if none. */
+  targetId: string | null;
   enemyDistance: number;
   enemyAngle: number;
   lastSeen: Vec2 | null;
@@ -95,7 +97,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
     tick: simulation.tick,
     time: simulation.time,
     robots: simulation.robots.map((robot) => {
-      const { enemyVisible, enemyDistance, enemyAngle, lastSeen } = robot.sensorReading;
+      const { enemyVisible, enemyDistance, enemyAngle, lastSeen, targetId } = robot.sensorReading;
       const { wallAhead, wallBehind, wallLeft, wallRight, incomingBullet, cover, touchingEnemy } = robot.surroundings;
       const { hit, hitAngle } = robot.hitReading;
       const { aimAngle, leadAngle, gunAngle, lead } = robot.gunReading;
@@ -114,6 +116,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         cooldown: robot.weapon.cooldownTicks / simulation.tickRate,
         guardAge: robot.guardedAt === null ? null : simulation.tick - robot.guardedAt,
         enemyVisible,
+        targetId,
         enemyDistance,
         enemyAngle,
         lastSeen: lastSeen === null ? null : { ...lastSeen },

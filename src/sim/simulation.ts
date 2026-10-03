@@ -25,7 +25,8 @@ export interface SimulationConfig {
   /** sec */
   maxMatchTime: number;
   seed: number;
-  robots: [RobotSetup, RobotSetup];
+  /** Two robots for a duel; up to four for a battle royale. The arena needs a spawn point for each. */
+  robots: readonly RobotSetup[];
   /** Receives debug events. The match plays the same with or without it. */
   logger?: DebugEventSink;
 }
@@ -62,6 +63,12 @@ export interface MatchResult {
   /** null means DRAW. */
   winnerId: string | null;
   reason: MatchEndReason;
+  /**
+   * Each robot's place, 1 for the best, by id. The last one standing comes
+   * first, then the others by how long they lasted; robots standing when the
+   * match runs out go by their HP. Robots that cannot be told apart share a place.
+   */
+  places: Record<string, number>;
 }
 
 /**
@@ -87,6 +94,8 @@ export class Simulation {
   /** Per robot: ticks by which each tick of guarding puts off its next shot. */
   private readonly guardRecoveryTicks: number[];
   private nextBulletId = 0;
+  /** The tick on which each robot was destroyed, by id. */
+  private readonly destroyedAt = new Map<string, number>();
 
   constructor(config: SimulationConfig) {
     if (config.arena.spawns.length < config.robots.length) {
@@ -127,10 +136,10 @@ export class Simulation {
     this.tickEvents = [];
     this.reporter?.beginTick(this.tick);
 
-    // Both robots sense and decide on the same snapshot, so update order
-    // gives neither an information advantage.
+    // Every robot senses and decides on the same snapshot, so update order
+    // gives none an information advantage.
     for (const robot of this.robots) this.sense(robot);
-    // Both sensors have been read: each robot now learns whether the other's missed it.
+    // Every sensor has been read: each robot now learns whether the others' missed it.
     for (const robot of this.robots) this.recover(robot);
     const actions = this.robots.map((robot) => this.think(robot));
 
@@ -158,21 +167,29 @@ export class Simulation {
   }
 
   private sense(robot: RobotController): void {
-    const enemy = this.enemyOf(robot);
-    const wasVisible = robot.sensorReading.enemyVisible;
-    robot.sense(enemy.position, this.tickDuration);
-    const visible = robot.sensorReading.enemyVisible;
+    const before = robot.sensorReading;
+    robot.sense(
+      this.enemiesOf(robot).map((enemy) => ({ id: enemy.id, position: enemy.position })),
+      this.tickDuration,
+    );
+    const after = robot.sensorReading;
+    const visible = after.enemyVisible;
+    const wasVisible = before.enemyVisible;
     robot.noteSurroundings(this.surroundingsOf(robot));
-    if (visible !== wasVisible) this.reporter?.sensorChanged(robot.id, enemy.id, visible);
+    if (visible !== wasVisible || (visible && after.targetId !== before.targetId)) {
+      const enemyId = (visible ? after.targetId : before.targetId) ?? '';
+      this.reporter?.sensorChanged(robot.id, enemyId, visible);
+    }
     if (visible && !wasVisible) {
       this.tickEvents.push({ kind: 'detected', ...robot.position, robot: this.robots.indexOf(robot) });
     }
   }
 
-  /** Hp comes back to a robot the enemy's sensor misses for long enough. Reported when it starts and stops. */
+  /** Hp comes back to a robot every enemy's sensor misses for long enough. Reported when it starts and stops. */
   private recover(robot: RobotController): void {
     const wasRecovering = robot.recovering;
-    robot.noteHidden(!this.enemyOf(robot).sensorReading.enemyVisible, this.tickRate);
+    const seen = this.enemiesOf(robot).some((enemy) => enemy.sensorReading.visibleIds.includes(robot.id));
+    robot.noteHidden(!seen, this.tickRate);
     if (robot.recovering !== wasRecovering) this.reporter?.recoveryChanged(robot.id, robot.recovering);
   }
 
@@ -267,8 +284,9 @@ export class Simulation {
     return this.arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
   }
 
-  private enemyOf(robot: RobotController): RobotController {
-    return this.robots[0] === robot ? this.robots[1] : this.robots[0];
+  /** The other robots still in the match. */
+  private enemiesOf(robot: RobotController): RobotController[] {
+    return this.robots.filter((other) => other !== robot && other.alive);
   }
 
   /** Whether a robot of the given radius at the given position would overlap a wall or an obstacle. */
@@ -311,22 +329,37 @@ export class Simulation {
     // It came from the way opposite to the one it flew.
     target.noteHit(radToDeg(Math.atan2(-bullet.direction.y, -bullet.direction.x)));
     if (target.guarding) this.tickEvents.push({ kind: 'deflected', ...target.position });
-    if (wasAlive && !target.alive) this.tickEvents.push({ kind: 'destroyed', ...target.position });
+    if (wasAlive && !target.alive) {
+      this.tickEvents.push({ kind: 'destroyed', ...target.position });
+      this.destroyedAt.set(target.id, this.tick);
+    }
     this.reporter?.hit(bullet.ownerId, target.id, damage, target.hp, target.guarding);
   }
 
   private judge(): MatchResult | null {
     const survivors = this.robots.filter((robot) => robot.alive);
-    if (survivors.length < this.robots.length) {
-      return { winnerId: survivors.length === 1 ? survivors[0].id : null, reason: 'destroyed' };
+    if (survivors.length <= 1) {
+      const places = this.places((robot) => (robot.alive ? Number.POSITIVE_INFINITY : (this.destroyedAt.get(robot.id) ?? 0)));
+      return { winnerId: survivors.length === 1 ? survivors[0].id : null, reason: 'destroyed', places };
     }
-    const spent = this.bullets.length === 0 && this.robots.every((robot) => robot.weapon.ammo === 0);
+    const spent = this.bullets.length === 0 && survivors.every((robot) => robot.weapon.ammo === 0);
     if (!spent && this.tick < this.maxTicks) return null;
 
-    // Nothing more will happen, or time is up: whoever has more HP left wins.
+    // Nothing more will happen, or time is up: whoever has the most HP left wins.
+    // Those still standing come before those destroyed, by their HP.
     const reason = spent ? 'out of ammo' : 'timeout';
-    const [first, second] = this.robots;
-    if (first.hp === second.hp) return { winnerId: null, reason };
-    return { winnerId: first.hp > second.hp ? first.id : second.id, reason };
+    const places = this.places((robot) =>
+      robot.alive ? this.maxTicks + 1 + robot.hp : (this.destroyedAt.get(robot.id) ?? 0),
+    );
+    const firsts = this.robots.filter((robot) => places[robot.id] === 1);
+    return { winnerId: firsts.length === 1 ? firsts[0].id : null, reason, places };
+  }
+
+  /** Places from a score for each robot, the highest first; equal scores share a place. */
+  private places(score: (robot: RobotController) => number): Record<string, number> {
+    const scores = this.robots.map((robot) => ({ id: robot.id, score: score(robot) }));
+    const places: Record<string, number> = {};
+    for (const { id, score: own } of scores) places[id] = 1 + scores.filter((other) => other.score > own).length;
+    return places;
   }
 }

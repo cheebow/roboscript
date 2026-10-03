@@ -10,7 +10,12 @@ import type { RobotBrain } from '../sim/ai_context';
 import type { SeriesResult } from '../sim/series';
 import { type MatchEndReason, Simulation, type SimulationConfig } from '../sim/simulation';
 import type { Arena } from '../sim/types';
+import { CORNER_SPAWNS } from '../data/arenas/common';
+import { MatchRng } from '../sim/rng';
 import { scatterSpawns } from './spawns';
+
+/** Keeps the corners a battle royale starts in from following the same numbers as its shots. */
+const CORNER_SALT = 0xc0e4;
 
 /** A robot that can be sent into the arena. */
 export interface Entrant {
@@ -48,10 +53,10 @@ export function garageEntrants(robots: readonly SavedRobot[]): Entrant[] {
 /** A match between two entrants, ready to be played. */
 export interface Fight {
   /** What the robots are called in the match, in spawn order. */
-  names: [string, string];
-  loadouts: [Loadout, Loadout];
+  names: string[];
+  loadouts: Loadout[];
   /** What each program has to do with, in spawn order: which marks to draw for it. */
-  features: [ProgramFeatures, ProgramFeatures];
+  features: ProgramFeatures[];
   config: Omit<SimulationConfig, 'logger'>;
 }
 
@@ -61,19 +66,44 @@ export interface Refusal {
   problems: string[];
 }
 
-/** The names two entrants fight under: an entrant that meets itself is told apart from itself. */
-export function fightNames([first, second]: readonly [Entrant, Entrant]): [string, string] {
-  return [first.name, first.name === second.name ? `${second.name} (2)` : second.name];
+/** The most robots a battle royale takes: one in each corner. */
+export const MAX_ENTRANTS = CORNER_SPAWNS.length;
+
+/** The names the entrants fight under: entrants of the same name are numbered from the second on, "Striker (2)". */
+export function fightNames(entrants: readonly Entrant[]): string[] {
+  const seen = new Map<string, number>();
+  return entrants.map(({ name }) => {
+    const count = (seen.get(name) ?? 0) + 1;
+    seen.set(name, count);
+    return count === 1 ? name : `${name} (${count})`;
+  });
 }
 
 /**
- * Sets up a match between the two entrants, the first at the first spawn
- * point. Where in the arena they start goes by the seed, so that matches with
- * different seeds are different matches. Refused when a program does not
- * compile or a robot's parts cost more than the limit.
+ * The arena as a match of that many robots uses it: two start where the
+ * arena puts them, moved by the seed (scatterSpawns); more start in corners,
+ * which the seed picks and hands out.
+ */
+export function arenaFor(arena: Arena, seed: number, count: number): Arena {
+  if (count <= 2) return scatterSpawns(arena, seed);
+  const rng = new MatchRng(seed ^ CORNER_SALT);
+  const corners = [...CORNER_SPAWNS];
+  for (let index = corners.length - 1; index > 0; index--) {
+    const other = Math.floor(rng.next() * (index + 1));
+    [corners[index], corners[other]] = [corners[other], corners[index]];
+  }
+  return { ...arena, spawns: corners.slice(0, count) };
+}
+
+/**
+ * Sets up a match between the entrants (two, or up to four for a battle
+ * royale), the first at the first spawn point. Where in the arena they start
+ * goes by the seed, so that matches with different seeds are different
+ * matches. Refused when a program does not compile or a robot's parts cost
+ * more than the limit.
  */
 export function prepareFight(
-  entrants: readonly [Entrant, Entrant],
+  entrants: readonly Entrant[],
   arena: Arena,
   seed: number,
 ): { ok: true; fight: Fight } | Refusal {
@@ -94,22 +124,19 @@ export function prepareFight(
   });
   if (problems.length > 0) return { ok: false, problems };
 
-  const loadouts: [Loadout, Loadout] = [entrants[0].loadout, entrants[1].loadout];
+  const loadouts = entrants.map((entrant) => entrant.loadout);
   return {
     ok: true,
     fight: {
       names,
       loadouts,
-      features: [features[0], features[1]],
+      features,
       config: {
-        arena: scatterSpawns(arena, seed),
+        arena: arenaFor(arena, seed, entrants.length),
         tickRate: MATCH_DEFAULTS.tickRate,
         maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
         seed,
-        robots: [
-          { id: names[0], brain: brains[0], stats: statsOf(loadouts[0]) },
-          { id: names[1], brain: brains[1], stats: statsOf(loadouts[1]) },
-        ],
+        robots: names.map((id, index) => ({ id, brain: brains[index], stats: statsOf(loadouts[index]) })),
       },
     },
   };
@@ -165,7 +192,8 @@ export function playArenaSeries(
     if (winner === null) result.draws++;
     else result.wins[winner]++;
   }
-  return { ok: true, names: fightNames(entrants), matches, result };
+  const [firstName, secondName] = fightNames(entrants);
+  return { ok: true, names: [firstName, secondName], matches, result };
 }
 
 /** The two entrants with the given one first. */

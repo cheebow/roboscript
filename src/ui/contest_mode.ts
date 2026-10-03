@@ -1,3 +1,4 @@
+import { type ContestRecord, recordLeague, recordTournament } from '../arena/contest_record';
 import { LEAGUE_MAX, LEAGUE_MIN, playLeague } from '../arena/league';
 import { type Entrant, type Fight, builtInEntrants, fightNames, prepareFight } from '../arena/match';
 import { randomSeed } from '../arena/seed';
@@ -11,11 +12,14 @@ import { t } from '../i18n/messages';
 import { type ContestEntry, type ContestOrigin, CONTEST_KEY, addEntry, readContest, removeEntry, writeContest } from '../project/contest_store';
 import type { SavedRobot } from '../project/garage';
 import type { KeyValueStorage } from '../project/project_store';
+import { RULES_VERSION } from '../data/rules_version';
 import { decodeRobot } from '../share/codec';
+import { type SharedFile, acceptDrops, chooseFile, contestFileText, downloadText, fileName, readSharedFile } from '../share/file';
 import { Simulation } from '../sim/simulation';
 import { formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import type { ArenaScene } from './arena_mode';
+import { ActionMenu, type MenuItem } from './action_menu';
 import { createElement } from './dom';
 import { createLeagueBoard } from './league_board';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
@@ -31,6 +35,16 @@ export interface ContestSetting {
 }
 
 type Format = 'league' | 'tournament';
+
+/** A board over the battle view: its title, its picture, and what it was drawn from. */
+interface ShownBoard {
+  title: string;
+  content: HTMLElement;
+  /** The contest as it is written to a file. */
+  record: ContestRecord;
+  /** Set when the board was opened from a file: when that was saved, and the rules it was played under. */
+  opened: { savedAt: string; rules: string } | null;
+}
 const FORMATS: readonly Format[] = ['league', 'tournament'];
 
 /** The empty arena the battle view shows before any match of the contest is watched. */
@@ -55,18 +69,19 @@ export class ContestMode {
   private fight: Fight | null = null;
   private entries: ContestEntry[];
   private format: Format = 'league';
-  /** The board of the last contest of each format: its title and its picture. */
-  private readonly boards = new Map<Format, { title: string; content: HTMLElement }>();
+  /** The board of the last contest of each format, played here or opened from a file. */
+  private readonly boards = new Map<Format, ShownBoard>();
   private note: string | null = null;
 
   private readonly formatButtons: HTMLButtonElement[];
   private readonly countLabel = createElement('span', 'contest-count');
   private readonly list = createElement('div', 'contest-entries');
   private readonly codeInput: HTMLInputElement;
-  private readonly builtInSelect = createElement('select', 'contest-add-select');
-  private readonly garageSelect = createElement('select', 'contest-add-select');
+  /** The line to paste a share code in, shown when that is picked from the menu. */
+  private readonly codeRow = createElement('div', 'lineup-import');
+  private readonly addMenu: ActionMenu;
+  private readonly resultMenu: ActionMenu;
   private readonly startButton: HTMLButtonElement;
-  private readonly boardButton: HTMLButtonElement;
 
   constructor(
     panel: HTMLElement,
@@ -96,29 +111,39 @@ export class ContestMode {
     const addCode = this.button(t('contest.add'), t('contest.code.title'), () => void this.addFromCode());
     this.codeInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') addCode.click();
+      if (event.key === 'Escape') this.codeRow.hidden = true;
     });
-    const codeRow = createElement('div', 'lineup-import');
-    codeRow.append(this.codeInput, addCode);
+    this.codeRow.append(this.codeInput, addCode);
+    this.codeRow.hidden = true;
 
-    this.builtInSelect.addEventListener('change', () => this.addFromSelect(this.builtInSelect, 'built-in'));
-    this.garageSelect.addEventListener('change', () => this.addFromSelect(this.garageSelect, 'garage'));
-    const selects = createElement('div', 'contest-selects');
-    selects.append(this.builtInSelect, this.garageSelect);
+    const [addHolder, addButton] = this.menuButton(t('contest.addMenu'), t('contest.addMenu.title'));
+    this.addMenu = new ActionMenu(addHolder, addButton, [], (id) => this.pickAdd(id));
 
     this.startButton = this.button('', '', () => this.start());
-    this.boardButton = this.button(t('contest.board'), t('contest.board.title'), () => this.showBoard());
+    const [resultHolder, resultButton] = this.menuButton(t('contest.resultMenu'), t('contest.resultMenu.title'));
+    this.resultMenu = new ActionMenu(resultHolder, resultButton, [], (id) => this.pickResult(id));
     const buttons = createElement('div', 'lineup-buttons');
-    buttons.append(this.startButton, this.boardButton);
+    buttons.append(this.startButton, resultHolder);
 
-    panel.replaceChildren(formats, heading, this.list, codeRow, selects, buttons);
+    panel.replaceChildren(formats, heading, this.list, addHolder, this.codeRow, buttons);
+    // A robot file dropped on the panel joins the list; a result file shows its board.
+    acceptDrops(panel, (text) => this.openFile(text));
+    acceptDrops(board.parentElement ?? board, (text) => this.openFile(text));
     this.refresh();
   }
 
   /** Reads the garage again and shows the list, the format and what can be done. */
   refresh(): void {
-    this.fillSelect(this.builtInSelect, t('contest.addBuiltIn'), builtInEntrants().map((entrant) => entrant.name));
-    this.fillSelect(this.garageSelect, t('contest.addGarage'), this.setting.garage().map((robot) => robot.name));
-    this.garageSelect.disabled = this.setting.garage().length === 0;
+    const garage = this.setting.garage();
+    const items: MenuItem[] = [
+      { id: 'built-in', label: t('contest.add.builtIn'), items: builtInEntrants().map((entrant, index) => ({ id: `built-in:${index}`, label: entrant.name })) },
+      garage.length === 0
+        ? { id: 'garage', label: t('contest.add.garageEmpty'), disabled: true }
+        : { id: 'garage', label: t('contest.add.garage'), items: garage.map((robot, index) => ({ id: `garage:${index}`, label: robot.name })) },
+      { id: 'code', label: t('contest.add.code') },
+      { id: 'file', label: t('contest.add.file') },
+    ];
+    this.addMenu.setItems(items);
     this.showList();
     this.showFormat();
   }
@@ -159,11 +184,38 @@ export class ContestMode {
     return button;
   }
 
-  private fillSelect(select: HTMLSelectElement, prompt: string, names: readonly string[]): void {
-    const first = new Option(prompt, '');
-    first.disabled = true;
-    select.replaceChildren(first, ...names.map((name, index) => new Option(name, `${index}`)));
-    select.value = '';
+  /** A menu's holder and its button, which looks like the other buttons of the panel. */
+  private menuButton(label: string, title: string): [HTMLElement, HTMLButtonElement] {
+    const holder = createElement('div', 'menu panel-menu');
+    const button = createElement('button', 'tool-button panel-menu-button', label);
+    button.type = 'button';
+    button.title = title;
+    holder.append(button);
+    return [holder, button];
+  }
+
+  private pickAdd(id: string): void {
+    const [kind, at] = id.split(':');
+    const index = Number(at);
+    if (kind === 'built-in') {
+      const entrant = builtInEntrants()[index];
+      if (entrant !== undefined) this.add({ name: entrant.name, source: entrant.source, loadout: entrant.loadout }, 'built-in');
+    } else if (kind === 'garage') {
+      const robot = this.setting.garage()[index];
+      if (robot !== undefined) this.add(robot, 'garage');
+    } else if (kind === 'code') {
+      this.codeRow.hidden = false;
+      this.codeInput.focus();
+    } else if (kind === 'file') {
+      chooseFile((text) => this.openFile(text));
+    }
+  }
+
+  private pickResult(id: string): void {
+    const shown = this.boards.get(this.format);
+    if (id === 'board') this.showBoard();
+    else if (id === 'save' && shown !== undefined) this.saveResult(shown);
+    else if (id === 'open') chooseFile((text) => this.openFile(text));
   }
 
   private setFormat(format: Format): void {
@@ -180,19 +232,17 @@ export class ContestMode {
     this.startButton.textContent = t(`contest.start.${this.format}`);
     this.startButton.title = t(`contest.format.${this.format}.title`);
     this.startButton.disabled = this.entries.length < LEAGUE_MIN;
-    this.boardButton.disabled = !this.boards.has(this.format);
+    const noBoard = !this.boards.has(this.format);
+    this.resultMenu.setItems([
+      { id: 'board', label: t('contest.result.board'), disabled: noBoard },
+      { id: 'save', label: t('contest.result.save'), disabled: noBoard },
+      { id: 'open', label: t('contest.result.open') },
+    ]);
   }
 
-  /** The robots on the list as they fight: robots of the same name numbered, "Striker (2)". */
+  /** The robots on the list as they fight. */
   private entrants(): Entrant[] {
-    const names = fightNames(this.entries.map(({ robot }) => ({ id: '', name: robot.name, origin: 'garage', loadout: robot.loadout, source: robot.source })));
-    return this.entries.map(({ robot }, index) => ({
-      id: `contest:${index}`,
-      name: names[index],
-      origin: 'garage',
-      loadout: robot.loadout,
-      source: robot.source,
-    }));
+    return entrantsOf(this.entries.map(({ robot }) => robot));
   }
 
   private showList(): void {
@@ -248,19 +298,8 @@ export class ContestMode {
       return;
     }
     this.codeInput.value = '';
+    this.codeRow.hidden = true;
     this.add(decoded.shared.robot, 'code');
-  }
-
-  private addFromSelect(select: HTMLSelectElement, origin: 'built-in' | 'garage'): void {
-    const index = Number(select.value);
-    select.value = '';
-    if (origin === 'built-in') {
-      const entrant = builtInEntrants()[index];
-      if (entrant !== undefined) this.add({ name: entrant.name, source: entrant.source, loadout: entrant.loadout }, origin);
-    } else {
-      const robot = this.setting.garage()[index];
-      if (robot !== undefined) this.add(robot, origin);
-    }
   }
 
   /** Plays the contest of the chosen format between the robots on the list, and shows its board. */
@@ -279,8 +318,9 @@ export class ContestMode {
         return;
       }
       const { matches, standings } = played;
+      const record = recordLeague(this.entries.map(({ robot }) => robot), matches, standings);
       const content = createLeagueBoard({ entrants, matches, standings }, (match) => play(match.first, match.second, match.arena, match.seed));
-      this.boards.set('league', { title: t('league.title', { count: entrants.length, matches: matches.length }), content });
+      this.boards.set('league', { title: t('league.title', { count: entrants.length, matches: matches.length }), content, record, opened: null });
     } else {
       const played = playTournament(entrants, randomSeed());
       if (!played.ok) {
@@ -288,9 +328,10 @@ export class ContestMode {
         return;
       }
       const { bracket } = played;
+      const record = recordTournament(this.entries.map(({ robot }) => robot), bracket);
       const content = createTournamentBoard(entrants, bracket, (match) => play(match.first, match.second, match.arena, match.seed));
       const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
-      this.boards.set('tournament', { title: t('tournament.title', { count: entrants.length, matches }), content });
+      this.boards.set('tournament', { title: t('tournament.title', { count: entrants.length, matches }), content, record, opened: null });
     }
     this.leaveMatch();
     this.showFormat();
@@ -308,9 +349,74 @@ export class ContestMode {
     const close = this.button(t('contest.close'), t('contest.close.title'), () => {
       this.board.hidden = true;
     });
-    header.append(createElement('span', 'board-title', shown.title), close);
+    const save = this.button(t('contest.saveResult'), t('contest.saveResult.title'), () => this.saveResult(shown));
+    const title = createElement('span', 'board-title', shown.title);
+    const actions = createElement('span', 'board-actions');
+    if (shown.opened !== null) {
+      const when = new Date(shown.opened.savedAt);
+      const saved = Number.isNaN(when.getTime()) ? '?' : when.toLocaleString();
+      const otherRules = shown.opened.rules === RULES_VERSION ? '' : t('contest.otherRules', { rules: shown.opened.rules || t('share.unknown'), now: RULES_VERSION });
+      title.append(createElement('span', 'board-note', `${t('contest.openedNote', { saved })}${otherRules}`));
+      actions.append(this.button(t('contest.useEntrants'), t('contest.useEntrants.title'), () => this.useEntrants(shown)));
+    }
+    actions.append(save, close);
+    header.append(title, actions);
     this.board.replaceChildren(header, shown.content);
     this.board.hidden = false;
+  }
+
+  /** Has the browser save the board's contest as a file. */
+  private saveResult(shown: ShownBoard): void {
+    const { record } = shown;
+    const date = new Date();
+    const stamp = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
+    downloadText(fileName(`${t(`contest.format.${record.format}`)}-${stamp}`), contestFileText(record, date));
+    this.note = t('contest.resultSaved');
+  }
+
+  /** A robot file adds its robot to the list; a result file shows its board. */
+  private openFile(text: string): void {
+    const read = readSharedFile(text);
+    if (!read.ok) {
+      this.note = t('file.couldNotOpen', { problem: read.problem });
+      return;
+    }
+    this.openShared(read.file);
+  }
+
+  private openShared(file: SharedFile): void {
+    if (file.kind === 'robot') {
+      this.add(file.robot, 'file');
+      return;
+    }
+    const { contest } = file;
+    const entrants = entrantsOf(contest.robots);
+    const play = (first: number, second: number, arena: ArenaDefinition, seed: number) => this.watch(entrants, first, second, arena, seed);
+    const opened = { savedAt: file.savedAt, rules: file.rules };
+    if (contest.format === 'league') {
+      const { matches, standings } = contest;
+      const content = createLeagueBoard({ entrants, matches, standings }, (match) => play(match.first, match.second, match.arena, match.seed));
+      const record = recordLeague(contest.robots, matches, standings);
+      this.boards.set('league', { title: t('league.title', { count: entrants.length, matches: matches.length }), content, record, opened });
+    } else {
+      const { bracket } = contest;
+      const content = createTournamentBoard(entrants, bracket, (match) => play(match.first, match.second, match.arena, match.seed));
+      const matches = bracket.rounds.flat().reduce((sum, tie) => sum + tie.matches.length, 0);
+      const record = recordTournament(contest.robots, bracket);
+      this.boards.set('tournament', { title: t('tournament.title', { count: entrants.length, matches }), content, record, opened });
+    }
+    this.format = contest.format;
+    this.note = contest.unknownArenas.length === 0 ? t('contest.resultOpened') : t('contest.unknownArenas', { arenas: contest.unknownArenas.join(', ') });
+    this.leaveMatch();
+    this.showFormat();
+    this.showBoard();
+  }
+
+  /** Puts the robots of an opened contest on the list, in place of the robots there. */
+  private useEntrants(shown: ShownBoard): void {
+    const robots = shown.record.robots.slice(0, LEAGUE_MAX);
+    this.setEntries(robots.map((robot) => ({ robot: { ...robot, loadout: { ...robot.loadout } }, origin: 'file' })));
+    this.note = t('contest.entrantsUsed', { count: robots.length });
   }
 
   /** Plays a match of the contest in the battle view, putting the board away. */
@@ -334,3 +440,15 @@ export class ContestMode {
   }
 }
 
+
+/** The robots as they fight: robots of the same name numbered, "Striker (2)". */
+function entrantsOf(robots: readonly SavedRobot[]): Entrant[] {
+  const names = fightNames(robots.map((robot) => ({ id: '', name: robot.name, origin: 'garage', loadout: robot.loadout, source: robot.source })));
+  return robots.map((robot, index) => ({
+    id: `contest:${index}`,
+    name: names[index],
+    origin: 'garage',
+    loadout: robot.loadout,
+    source: robot.source,
+  }));
+}

@@ -4,8 +4,8 @@ import type { SavedRobot } from './garage';
 
 export const CONTEST_KEY = 'roboscript/contest.json';
 
-/** Where a robot on the contest's list came from: a share code, the built-in ones, or the player's garage. */
-export type ContestOrigin = 'code' | 'built-in' | 'garage';
+/** Where a robot on the contest's list came from: a share code, a file, the built-in ones, or the player's garage. */
+export type ContestOrigin = 'code' | 'file' | 'built-in' | 'garage';
 
 /** A robot on the list of a contest: a copy of it as it was added, so that it fights as it was even if its source changes. */
 export interface ContestEntry {
@@ -13,7 +13,7 @@ export interface ContestEntry {
   origin: ContestOrigin;
 }
 
-const ORIGINS: readonly ContestOrigin[] = ['code', 'built-in', 'garage'];
+const ORIGINS: readonly ContestOrigin[] = ['code', 'file', 'built-in', 'garage'];
 
 /** The list kept in storage; whatever of it cannot be read is left out. */
 export function readContest(text: string | null): ContestEntry[] {

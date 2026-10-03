@@ -1,5 +1,6 @@
 import { createElement } from './dom';
 import { t } from '../i18n/messages';
+import { acceptDrops, chooseFile } from '../share/file';
 
 export interface GarageHandlers {
   /** Keep the robot at the given spawn index under the name as typed, which may not be a usable name. */
@@ -11,6 +12,10 @@ export interface GarageHandlers {
   share(name: string): Promise<string | null>;
   /** Keep the robot in the pasted share code. */
   importCode(text: string): void;
+  /** Save the robot kept under the name as a file. */
+  saveFile(name: string): void;
+  /** Keep the robot in the text of a robot file. */
+  importFile(text: string): void;
 }
 
 const REMOVE_LABEL = '×';
@@ -72,7 +77,14 @@ export class GaragePanel {
     });
     const importRow = createElement('div', 'garage-import');
     importRow.append(this.importInput, importButton);
-    container.replaceChildren(save, this.rows, importRow);
+    const openFile = createElement('button', 'tool-button', t('garage.openFile'));
+    openFile.type = 'button';
+    openFile.title = t('garage.openFile.title');
+    openFile.addEventListener('click', () => chooseFile((text) => handlers.importFile(text)));
+    const fileRow = createElement('div', 'garage-import');
+    fileRow.append(openFile);
+    container.replaceChildren(save, this.rows, importRow, fileRow);
+    acceptDrops(container, (text) => handlers.importFile(text));
 
     // A press anywhere but on the waiting delete button calls the deletion off.
     document.addEventListener('mousedown', (event) => {
@@ -89,7 +101,7 @@ export class GaragePanel {
     }
     if (this.sharing !== null && !names.includes(this.sharing)) this.closeShare();
     this.rows.replaceChildren(
-      ...names.flatMap((name) => (name === this.sharing && this.shared !== null ? [this.rowOf(name), this.shareBox(this.shared)] : [this.rowOf(name)])),
+      ...names.flatMap((name) => (name === this.sharing && this.shared !== null ? [this.rowOf(name), this.shareBox(name, this.shared)] : [this.rowOf(name)])),
     );
   }
 
@@ -111,7 +123,7 @@ export class GaragePanel {
     this.shared = null;
   }
 
-  private shareBox(code: string): HTMLElement {
+  private shareBox(name: string, code: string): HTMLElement {
     const field = createElement('input', 'garage-share-field');
     field.type = 'text';
     field.readOnly = true;
@@ -127,10 +139,17 @@ export class GaragePanel {
         // Left selected: the player can copy it by hand.
       });
     });
+    const saveFile = createElement('button', 'garage-action', t('garage.saveFile'));
+    saveFile.type = 'button';
+    saveFile.title = t('garage.saveFile.title', { name });
+    saveFile.addEventListener('click', () => this.handlers.saveFile(name));
+    // The code on a line of its own, the buttons under it: the panel is narrow.
     const line = createElement('div', 'garage-share-line');
-    line.append(field, copy);
+    line.append(field);
+    const actions = createElement('div', 'garage-share-line');
+    actions.append(copy, saveFile);
     const box = createElement('div', 'garage-share');
-    box.append(line);
+    box.append(line, actions);
     return box;
   }
 

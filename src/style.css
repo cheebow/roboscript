@@ -371,6 +371,10 @@ button {
   min-width: 0;
 }
 
+.garage-share-line > .garage-action {
+  white-space: nowrap;
+}
+
 .garage-share-field {
   flex: 1 1 0;
   width: 0;
@@ -777,6 +781,73 @@ button {
   background: var(--selection);
 }
 
+.menu-item:disabled {
+  color: var(--muted);
+  background: none;
+  cursor: default;
+}
+
+/* An item that opens a submenu beside it, while the pointer or the focus is on either. */
+.menu-sub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-parent::after {
+  content: '▸';
+  float: right;
+  margin-left: 16px;
+  color: var(--muted);
+}
+
+.menu-sublist {
+  display: none;
+  top: -5px;
+  left: 100%;
+  right: auto;
+  min-width: 0;
+}
+
+.menu-sub:hover > .menu-sublist,
+.menu-sub:focus-within > .menu-sublist {
+  display: flex;
+}
+
+.menu-sub:hover > .menu-parent {
+  background: var(--selection);
+}
+
+/* A menu in a panel: a button as wide as its place, its list opening under it from the left. */
+.panel-menu {
+  padding: 6px 10px 0;
+}
+
+.lineup-buttons .panel-menu {
+  flex: 1;
+  padding: 0;
+  display: flex;
+}
+
+.panel-menu-button {
+  width: 100%;
+}
+
+.panel-menu-button::after {
+  content: ' ▾';
+}
+
+.panel-menu > .menu-list {
+  left: 10px;
+  right: auto;
+  min-width: 60%;
+}
+
+.lineup-buttons .panel-menu > .menu-list {
+  left: 0;
+  min-width: 100%;
+}
+
 /* The program's own variables sit above the sensor values, set apart by a rule,
    so that they stay in view without scrolling. */
 .watch-variables:not(:empty) {
@@ -1036,6 +1107,20 @@ button {
   color: var(--syntax-value);
   font-size: 14px;
   letter-spacing: 0.06em;
+}
+
+.board-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.board-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .league-board {
@@ -1400,11 +1485,10 @@ button {
   font-size: 10px;
 }
 
-.contest-selects {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 6px 10px 0;
+/* A panel a file is being dragged over: dropping it there opens it. */
+.drop-target {
+  outline: 2px dashed var(--syntax-value);
+  outline-offset: -4px;
 }
 
 .contest-add-select {

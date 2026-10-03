@@ -21,10 +21,11 @@ import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
-import { Garage, MAX_NAME_LENGTH, garageName } from '../project/garage';
+import { Garage, MAX_NAME_LENGTH, type SavedRobot, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeRobot, encodeRobot } from '../share/codec';
+import { downloadText, fileName, readSharedFile, robotFileText } from '../share/file';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
@@ -97,6 +98,8 @@ class App {
     remove: (name) => this.removeFromGarage(name),
     share: (name) => this.shareRobot(name),
     importCode: (text) => void this.importRobot(text),
+    saveFile: (name) => this.saveRobotFile(name),
+    importFile: (text) => this.importRobotFile(text),
   });
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
@@ -225,7 +228,32 @@ class App {
       this.garageNote = t('garage.couldNotImport', { problem: decoded.problem });
       return;
     }
-    const { robot, rules } = decoded.shared;
+    this.keepRobot(decoded.shared.robot, decoded.shared.rules);
+  }
+
+  /** Has the browser save a robot of the garage as a file. */
+  private saveRobotFile(name: string): void {
+    const saved = this.garage?.find(name);
+    if (saved === undefined) return;
+    downloadText(fileName(saved.name), robotFileText(saved));
+  }
+
+  /** Keeps the robot of a robot file in the garage, or says what is wrong with the file. */
+  private importRobotFile(text: string): void {
+    if (this.garage === null) {
+      this.garageNote = t('garage.noStorage');
+      return;
+    }
+    const read = readSharedFile(text);
+    if (!read.ok || read.file.kind !== 'robot') {
+      this.garageNote = t('file.couldNotOpen', { problem: read.ok ? t('file.notARobot') : read.problem });
+      return;
+    }
+    this.keepRobot(read.file.robot, read.file.rules);
+  }
+
+  private keepRobot(robot: SavedRobot, rules: string): void {
+    if (this.garage === null) return;
     try {
       const name = this.garage.importRobot(robot);
       const received = name === robot.name ? t('garage.received', { name }) : t('garage.receivedAs', { name: robot.name, kept: name });

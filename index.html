@@ -10,24 +10,25 @@
     <div id="app">
       <header id="toolbar">
         <span id="screens">
-          <button id="screen-program" class="tab" type="button" title="Write and debug the programs of ALPHA and BRAVO">PROGRAM</button>
-          <button id="screen-arena" class="tab" type="button" title="Pick robots from the garage and watch them fight">ARENA</button>
+          <button id="screen-program" class="tab" type="button" data-i18n="tab.program" data-i18n-title="tab.program.title" title="Write and debug the programs of ALPHA and BRAVO">PROGRAM</button>
+          <button id="screen-arena" class="tab" type="button" data-i18n="tab.arena" data-i18n-title="tab.arena.title" title="Pick robots from the garage and watch them fight">ARENA</button>
         </span>
         <span id="project-name"></span>
         <span id="message"></span>
         <div id="controls">
-          <label class="picker">MAP <select id="arena"></select></label>
-          <button id="run" class="tool-button" type="button">RUN</button>
+          <label class="picker"><span data-i18n="toolbar.map">MAP</span> <select id="arena"></select></label>
+          <button id="run" class="tool-button" type="button" data-i18n="toolbar.run">RUN</button>
           <button id="pause" class="tool-button" type="button">PAUSE</button>
-          <button id="reset" class="tool-button" type="button">RESET</button>
-          <button id="debug" class="tool-button" type="button">DEBUG</button>
+          <button id="reset" class="tool-button" type="button" data-i18n="toolbar.reset">RESET</button>
+          <button id="debug" class="tool-button" type="button" data-i18n="toolbar.debug">DEBUG</button>
+          <button id="language" class="tool-button" type="button" data-i18n="toolbar.language" data-i18n-title="toolbar.language.title" title="Show the screen in Japanese">日本語</button>
         </div>
       </header>
 
       <section id="project" class="panel">
-        <h2>PROJECT</h2>
+        <h2 data-i18n="panel.project">PROJECT</h2>
         <div id="project-tree" class="panel-body"></div>
-        <h2>GARAGE</h2>
+        <h2 data-i18n="panel.garage">GARAGE</h2>
         <div id="garage" class="panel-body"></div>
       </section>
 
@@ -35,7 +36,7 @@
         <h2>
           <span id="editor-title"></span>
           <span id="template-menu" class="menu">
-            <button id="load-template" class="menu-button" type="button" title="Replace the code with a template (undo with Cmd/Ctrl+Z)">LOAD TEMPLATE</button>
+            <button id="load-template" class="menu-button" type="button" data-i18n="editor.loadTemplate" data-i18n-title="editor.loadTemplate.title" title="Replace the code with a template (undo with Cmd/Ctrl+Z)">LOAD TEMPLATE</button>
           </span>
         </h2>
         <div id="code" class="panel-body"></div>
@@ -43,38 +44,38 @@
         <div id="enemy-code" class="panel-body" hidden></div>
       </section>
 
-      <div id="vsplit" class="splitter splitter-v" title="Drag to change the width of the editor; double-click to reset"></div>
-      <div id="hsplit" class="splitter splitter-h" title="Drag to change the height of the editor; double-click to reset"></div>
+      <div id="vsplit" class="splitter splitter-v" data-i18n-title="splitter.vertical.title" title="Drag to change the width of the editor; double-click to reset"></div>
+      <div id="hsplit" class="splitter splitter-h" data-i18n-title="splitter.horizontal.title" title="Drag to change the height of the editor; double-click to reset"></div>
 
       <section id="inspector" class="panel">
         <h2>
-          <span>INSPECTOR</span>
+          <span data-i18n="panel.inspector">INSPECTOR</span>
           <span id="inspector-tabs"></span>
         </h2>
         <div id="inspector-fields" class="panel-body"></div>
       </section>
 
       <section id="lineup" class="panel">
-        <h2>LINEUP</h2>
+        <h2 data-i18n="panel.lineup">LINEUP</h2>
         <div id="lineup-slots" class="panel-body"></div>
       </section>
 
       <section id="results" class="panel">
-        <h2>RESULTS</h2>
+        <h2 data-i18n="panel.results">RESULTS</h2>
         <div id="result-rows" class="panel-body"></div>
       </section>
 
       <section id="battle" class="panel">
-        <h2>BATTLE VIEW</h2>
+        <h2 data-i18n="panel.battle">BATTLE VIEW</h2>
         <div id="battle-frame">
           <canvas id="battle-canvas"></canvas>
         </div>
         <div id="transport">
           <button id="transport-play" class="tool-button" type="button">PLAY</button>
-          <button id="step-back" class="tool-button" type="button" title="Step back: one line in DEBUG, one tick in RUN">◀1</button>
-          <button id="step" class="tool-button" type="button" title="Step: one line in DEBUG, one tick in RUN">1▶</button>
-          <button id="previous-run" class="tool-button" type="button" title="Back to the time before that the marked line runs">◀◆</button>
-          <button id="next-run" class="tool-button" type="button" title="On to the next time the marked line runs">◆▶</button>
+          <button id="step-back" class="tool-button" type="button" data-i18n-title="transport.stepBack.title" title="Step back: one line in DEBUG, one tick in RUN">◀1</button>
+          <button id="step" class="tool-button" type="button" data-i18n-title="transport.step.title" title="Step: one line in DEBUG, one tick in RUN">1▶</button>
+          <button id="previous-run" class="tool-button" type="button" data-i18n-title="transport.previousRun.title" title="Back to the time before that the marked line runs">◀◆</button>
+          <button id="next-run" class="tool-button" type="button" data-i18n-title="transport.nextRun.title" title="On to the next time the marked line runs">◆▶</button>
           <span id="seek-track">
             <canvas id="seek-marks"></canvas>
             <input id="seek" type="range" min="0" max="0" step="1" value="0" aria-label="Seek" />
@@ -85,13 +86,13 @@
       </section>
 
       <section id="log" class="panel">
-        <h2>DEBUG LOG</h2>
+        <h2 data-i18n="panel.log">DEBUG LOG</h2>
         <div id="log-rows" class="panel-body"></div>
       </section>
 
       <section id="watch" class="panel">
         <h2>
-          <span>WATCH</span>
+          <span data-i18n="panel.watch">WATCH</span>
           <span id="watch-robot"></span>
         </h2>
         <div id="watch-fields" class="panel-body"></div>

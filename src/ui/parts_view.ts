@@ -1,35 +1,39 @@
 import { COST_LIMIT, type Loadout, SLOTS, STANDARD_LOADOUT, type Slot, costOf, partIn, partsOf, statsOf } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
 import type { RobotPalette } from '../view/sprites';
+import { type MessageKey, t } from '../i18n/messages';
+import { partSummary } from '../i18n/parts';
 import { createElement } from './dom';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 
 /** One stat as the player reads it. */
 interface StatRow {
-  name: string;
+  /** The key of the row's label. */
+  name: MessageKey;
   value: (stats: RobotStats) => number;
   /** Written before the value, e.g. the sign of a deviation to either side. */
   prefix?: string;
-  unit: string;
+  /** The key of the unit written after the value, or '' for none. */
+  unit: MessageKey | '';
   /** Whether a robot is better off with more of it. */
   moreIsBetter: boolean;
 }
 
 const STAT_ROWS: readonly StatRow[] = [
-  { name: 'HP', value: (stats) => stats.maxHp, unit: '', moreIsBetter: true },
-  { name: 'MOVE_SPEED', value: (stats) => stats.moveSpeed, unit: ' units/sec', moreIsBetter: true },
-  { name: 'ROTATE_SPEED', value: (stats) => stats.rotateSpeed, unit: ' deg/sec', moreIsBetter: true },
-  { name: 'TURRET_SPEED', value: (stats) => stats.turretSpeed, unit: ' deg/sec', moreIsBetter: true },
-  { name: 'SENSOR_RANGE', value: (stats) => stats.sensorRange, unit: '', moreIsBetter: true },
-  { name: 'SENSOR_ANGLE', value: (stats) => stats.sensorAngle, unit: ' deg', moreIsBetter: true },
-  { name: 'WEAPON_RANGE', value: (stats) => stats.weaponRange, unit: '', moreIsBetter: true },
-  { name: 'SHOT_DAMAGE', value: (stats) => stats.shotDamage, unit: '', moreIsBetter: true },
-  { name: 'SHOT_SPEED', value: (stats) => stats.shotSpeed, unit: ' units/sec', moreIsBetter: true },
-  { name: 'SHOT_COOLDOWN', value: (stats) => stats.shotCooldown, unit: ' sec', moreIsBetter: false },
-  { name: 'SHOT_SPREAD', value: (stats) => stats.shotSpread, prefix: '±', unit: ' deg', moreIsBetter: false },
-  { name: 'MOVING_SPREAD', value: (stats) => stats.movingShotSpread, prefix: '±', unit: ' deg', moreIsBetter: false },
-  { name: 'AMMO', value: (stats) => stats.maxAmmo, unit: '', moreIsBetter: true },
-  { name: 'GUARDS', value: (stats) => stats.maxGuards, unit: '', moreIsBetter: true },
+  { name: 'stat.HP', value: (stats) => stats.maxHp, unit: '', moreIsBetter: true },
+  { name: 'stat.MOVE_SPEED', value: (stats) => stats.moveSpeed, unit: 'unit.unitsPerSecond', moreIsBetter: true },
+  { name: 'stat.ROTATE_SPEED', value: (stats) => stats.rotateSpeed, unit: 'unit.degreesPerSecond', moreIsBetter: true },
+  { name: 'stat.TURRET_SPEED', value: (stats) => stats.turretSpeed, unit: 'unit.degreesPerSecond', moreIsBetter: true },
+  { name: 'stat.SENSOR_RANGE', value: (stats) => stats.sensorRange, unit: '', moreIsBetter: true },
+  { name: 'stat.SENSOR_ANGLE', value: (stats) => stats.sensorAngle, unit: 'unit.degrees', moreIsBetter: true },
+  { name: 'stat.WEAPON_RANGE', value: (stats) => stats.weaponRange, unit: '', moreIsBetter: true },
+  { name: 'stat.SHOT_DAMAGE', value: (stats) => stats.shotDamage, unit: '', moreIsBetter: true },
+  { name: 'stat.SHOT_SPEED', value: (stats) => stats.shotSpeed, unit: 'unit.unitsPerSecond', moreIsBetter: true },
+  { name: 'stat.SHOT_COOLDOWN', value: (stats) => stats.shotCooldown, unit: 'unit.seconds', moreIsBetter: false },
+  { name: 'stat.SHOT_SPREAD', value: (stats) => stats.shotSpread, prefix: '±', unit: 'unit.degrees', moreIsBetter: false },
+  { name: 'stat.MOVING_SPREAD', value: (stats) => stats.movingShotSpread, prefix: '±', unit: 'unit.degrees', moreIsBetter: false },
+  { name: 'stat.AMMO', value: (stats) => stats.maxAmmo, unit: '', moreIsBetter: true },
+  { name: 'stat.GUARDS', value: (stats) => stats.maxGuards, unit: '', moreIsBetter: true },
 ];
 
 /** Stats come out of multiplications; this many decimals are shown. */
@@ -56,7 +60,7 @@ export class PartsView {
   /** `onPick` is called with the part the player clicked; the view changes only when `show` is called. */
   constructor(container: HTMLElement, onPick: (slot: Slot, partId: string) => void) {
     const identity = createElement('div', 'field-list');
-    this.identity = ['ID', 'AI'].map((name) => addField(identity, name));
+    this.identity = [t('config.id'), t('config.ai')].map((name) => addField(identity, name));
     const card = createElement('div', 'robot-card');
     card.append(this.preview, identity);
 
@@ -66,7 +70,7 @@ export class PartsView {
       const options = partsOf(slot).map((part) => {
         const button = createElement('button', 'part-option', part.name);
         button.type = 'button';
-        button.title = part.summary;
+        button.title = partSummary(part);
         button.append(createElement('span', 'part-cost', `${part.cost}`));
         button.addEventListener('click', () => onPick(slot, part.id));
         return { partId: part.id, button };
@@ -74,15 +78,15 @@ export class PartsView {
       const choice = createElement('div', 'part-options');
       choice.append(...options.map((option) => option.button));
       const summary = createElement('div', 'part-summary');
-      row.append(createElement('span', 'field-name', slot.toUpperCase()), choice, summary);
+      row.append(createElement('span', 'field-name', t(`slot.${slot}`)), choice, summary);
       parts.append(row);
       return { slot, options, summary };
     });
     const total = createElement('div', 'field-list');
-    this.cost = addField(total, 'COST');
+    this.cost = addField(total, t('config.cost'));
 
     const stats = createElement('div', 'field-list');
-    this.stats = STAT_ROWS.map((row) => addField(stats, row.name));
+    this.stats = STAT_ROWS.map((row) => addField(stats, t(row.name)));
 
     container.replaceChildren(card, parts, total, stats);
   }
@@ -99,7 +103,7 @@ export class PartsView {
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', `${selected}`);
       }
-      summary.textContent = partIn(loadout, slot).summary;
+      summary.textContent = partSummary(partIn(loadout, slot));
     }
 
     const cost = costOf(loadout);
@@ -114,7 +118,7 @@ export class PartsView {
       const difference = value - row.value(standard);
       const changed = Math.abs(difference) >= 10 ** -DECIMALS / 2;
       const note = changed ? `  (${difference > 0 ? '+' : '−'}${format(Math.abs(difference))})` : '';
-      cell.textContent = `${row.prefix ?? ''}${format(value)}${row.unit}${note}`;
+      cell.textContent = `${row.prefix ?? ''}${format(value)}${row.unit === '' ? '' : t(row.unit)}${note}`;
       cell.classList.toggle('better', changed && difference > 0 === row.moreIsBetter);
       cell.classList.toggle('worse', changed && difference > 0 !== row.moreIsBetter);
     });

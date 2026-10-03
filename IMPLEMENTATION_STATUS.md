@@ -50,6 +50,7 @@ npm run dev        # 表示された URL をブラウザで開く
 - CODE EDITOR は入力を助ける: 入力候補（Enter / Tab で確定、`Ctrl+Space` で呼び出し）、語にカーソルを載せると説明、自動インデント、エラーの赤い波線、`Cmd / Ctrl + /` でコメント切り替え。
 - 構文エラーがあると、該当行が赤くなり、DEBUG LOG に ERROR が出て、試合は始まらない。
 - 両方のコードは編集のたびにブラウザの localStorage へ自動保存され、再読み込みしても残る。
+- **言語**: 上部バー右端の **日本語 / English** で画面の言語を切り替える（再読み込みされる。選んだ言語は localStorage に残り、初回はブラウザの言語に従う）。訳されるのは画面のラベル・ボタン・ツールチップ・メッセージ・語の説明・パーツの説明・構文エラー。**プログラムの語、テンプレートのコメント、DEBUG LOG の文は英語のまま**。
 - **エディタの大きさ**: エディタと戦闘画面の境界をドラッグすると幅が、上段と下段（DEBUG LOG / INSPECTOR / WATCH）の境界をドラッグすると高さが変わる。境界のダブルクリックで既定に戻る。大きさは localStorage に残る（`roboscript/layout.json`）。
 - **ロボットの共有**: GARAGE の保存したロボットの行の ⇪ を押すと共有コードが出る（COPY で clipboard へ）。コードを GARAGE 下の欄に貼って IMPORT した人のガレージにそのロボットが入る（同名があれば `名前 (2)`）。受け取った側はプログラムを読めるし、ARENA で戦わせられる。作られたときとルールの版が違えば、その旨が上部バーに出る。
 - **試合の共有**: ARENA の RESULTS の各行（FIGHT も SERIES の 1 試合ずつも）の ⇪ で、その試合の共有コードが出る（2 台のロボット・マップ・seed・先の位置）。相手は ARENA の LINEUP 下の欄に貼って IMPORT すると、2 台がガレージに入って枠に選ばれ、マップが切り替わり、同じ seed で同じ試合が再生される。
@@ -88,6 +89,12 @@ src/
 │     ├─ cover_bot.ts
 │     ├─ strafe_bot.ts
 │     └─ sentry_bot.ts
+├─ i18n/
+│  ├─ language.ts          今の言語、初期値、保存キー
+│  ├─ messages.ts          画面の文の辞書（en / ja）と t()
+│  ├─ words.ts             RoboScript の語の説明の日本語
+│  ├─ parts.ts             パーツの説明の日本語
+│  └─ static.ts            index.html の固定の文の差し替え
 ├─ share/
 │  └─ codec.ts             ロボットと試合の共有コード（JSON → deflate → base64url）
 ├─ arena/
@@ -183,6 +190,7 @@ tests/                     lexer / parser / runtime / reference / completion / i
 | 11B | 試合の共有: 共有コードで同じ試合を再生 | RESULTS に ⇪、LINEUP に IMPORT | 完了 |
 | 12 | 3台以上（バトルロイヤル） | アリーナモードで3〜4台 | 未着手 |
 | 13 | トーナメント／リーグ | 総当たりと順位表 | 未着手 |
+| 14 | 日本語化（画面の言語切り替え） | 上部バーの 日本語 / English | 完了 |
 
 決めたこと:
 
@@ -342,6 +350,24 @@ seed が効くのは弾のぶれだけなので、開始位置が固定だと、
 ## 隠れ場所への道を RUN でも出す（2026-10-03）
 
 隠れ場所への点線と ◇ は DEBUG で INSPECTOR のロボットだけだったが、センサーの範囲の塗りに埋もれて見えにくかったのと、RUN で隠れようとしているのが分からなかったので、**プログラムが cover の語を使うロボットすべてに、RUN・DEBUG・ARENA で出す**ようにした（太く濃くもした）。`RenderOptions.coverRoutes`（ロボットごとの真偽）で指定し、PROGRAM では `features[i].cover`、ARENA では `Fight.features`（`prepareFight` がコンパイル時に集める）から決める。待機中は出ない。
+
+## Phase 14: 日本語化（2026-10-03）
+
+画面を英語と日本語で切り替えられるようにした。
+
+**仕組み**（`src/i18n/`）
+
+- `language.ts`: 今の言語（`en` / `ja`）、保存キー `roboscript/language`、初期値の決め方（保存 → ブラウザの `navigator.language` が `ja` なら日本語 → 英語）。
+- `messages.ts`: 画面の文の辞書 `en` / `ja`（約 200 キー。`{name}` の穴あき）。`t(key, params)` で引く。キーは型で揃え、片方にしかないキーはコンパイルエラー。
+- `words.ts`: RoboScript の語 56 個の説明（ヒントと文）の日本語。英語は `src/ai/reference.ts` のまま。`describeWord` / `describeDirection` が今の言語で返す（入力候補のヒント、ホバーの説明に効く）。
+- `parts.ts`: パーツ 13 個の説明の日本語。`config` の項目名・単位・スロット名は辞書に。
+- `static.ts`: `index.html` の固定の文（`data-i18n` / `data-i18n-title` 属性）を起動時に差し替える。英語は HTML に書いたまま。
+- 構文エラーは `parser.ts` の 51 か所を辞書のキーにした（`formatError` の「Line N:」も）。
+- 切り替えは上部バーの **日本語 / English** ボタン。言語を保存して**再読み込み**する（画面の文は起動時に作るものが多いので、再読み込みがいちばん単純で確実。計画では「再読み込みなし」としていたが変えた）。
+
+**訳さないもの**: プログラムの語そのもの、テンプレートのコメント、DEBUG LOG の文（`enemy detected`、`label SEARCH -> ATTACK` など。プログラムの語と対応し、ログの文字列で検索・テストしている）、パーツ名（Light / Heavy …）、WATCH の語、INSPECTOR の値（`STOP` など）。
+
+**確認**: テスト 686件（辞書の往復、両言語のキーと穴あきの一致、初期値の決め方、語とパーツの日本語がすべて揃っていること、日本語のエラー文）。ブラウザで、日本語 → 再読み込みで上部バー・パネル名・ガレージ・`config`・構文エラー・アリーナの文が日本語になること、English で戻ることを確認した。
 
 ## エディタの大きさを変えられるように（2026-10-03）
 

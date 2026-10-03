@@ -1,23 +1,24 @@
 import type { Snapshot } from '../debug/snapshot';
+import { t } from '../i18n/messages';
 import { createElement } from './dom';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber, formatSeconds } from './format';
 
-const FIELD_NAMES = [
-  'ID',
-  'HP',
-  'X',
-  'Y',
-  'ROTATION',
-  'GUN',
-  'DRIVE',
-  'LABEL',
-  'TARGET',
-  'TARGET_DISTANCE',
-  'AMMO',
-  'GUARDS',
-  'COOLDOWN',
-] as const;
+const fieldNames = () => [
+  t('inspector.id'),
+  t('inspector.hp'),
+  t('inspector.x'),
+  t('inspector.y'),
+  t('inspector.rotation'),
+  t('inspector.gun'),
+  t('inspector.drive'),
+  t('inspector.label'),
+  t('inspector.target'),
+  t('inspector.targetDistance'),
+  t('inspector.ammo'),
+  t('inspector.guards'),
+  t('inspector.cooldown'),
+];
 
 /** Shows the state of one robot at the displayed tick; the tabs choose which. */
 export class Inspector {
@@ -26,7 +27,7 @@ export class Inspector {
   private readonly tabs: HTMLButtonElement[];
 
   constructor(tabsContainer: HTMLElement, fieldsContainer: HTMLElement, robotIds: readonly string[]) {
-    this.fields = new FieldList(fieldsContainer, FIELD_NAMES);
+    this.fields = new FieldList(fieldsContainer, fieldNames());
     this.tabs = robotIds.map((id, index) => {
       const tab = createElement('button', 'tab', id);
       tab.type = 'button';

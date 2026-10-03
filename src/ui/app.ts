@@ -1,4 +1,6 @@
 import type { ProgramFeatures } from '../ai/features';
+import { LANGUAGE_KEY, currentLanguage, otherLanguage } from '../i18n/language';
+import { t } from '../i18n/messages';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
 import { randomSeed } from '../arena/seed';
@@ -50,9 +52,6 @@ type Screen = (typeof SCREENS)[number];
 
 const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
-const READY_MESSAGE = 'Edit the code and press RUN.';
-const STALE_NOTE = 'code edited since this run';
-const PARTS_NOTE = 'parts changed since this run';
 /** What a robot's config shows as its AI: every robot runs the program in its own main.bot. */
 const AI_LABEL = 'main.bot';
 /** The element that holds each robot's code editor, in spawn order. */
@@ -175,7 +174,7 @@ class App {
     this.workspaces = ROBOT_IDS.map((robotId, robotIndex) => this.createWorkspace(robotId, robotIndex));
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
     if (this.store === null) {
-      this.events = [appEvent('warning', 'storage is unavailable: code will not be saved')];
+      this.events = [appEvent('warning', t('program.storageUnavailable'))];
     }
     this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
       arena: () => this.arena,
@@ -186,7 +185,7 @@ class App {
         this.toolbar.setArena(id);
       },
       keepRobots: (robots) => {
-        if (this.garage === null) throw new Error('storage is unavailable: the garage cannot keep robots');
+        if (this.garage === null) throw new Error(t('garage.noStorage'));
         const names = robots.map((robot) => this.garage?.importRobot(robot) ?? robot.name);
         this.showGarage();
         return names;
@@ -199,6 +198,7 @@ class App {
     this.showFile(this.shownFile);
     this.showGarage();
     new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), openStorage());
+    requireElement('language').addEventListener('click', () => switchLanguage(openStorage()));
     requestAnimationFrame(this.frame);
   }
 
@@ -211,22 +211,22 @@ class App {
   /** Keeps the robot in a share code in the garage, and says so, or says what is wrong with the code. */
   private async importRobot(code: string): Promise<void> {
     if (this.garage === null) {
-      this.garageNote = 'storage is unavailable: the garage cannot keep robots';
+      this.garageNote = t('garage.noStorage');
       return;
     }
     const decoded = await decodeRobot(code);
     if (!decoded.ok) {
-      this.garageNote = `could not import: ${decoded.problem}`;
+      this.garageNote = t('garage.couldNotImport', { problem: decoded.problem });
       return;
     }
     const { robot, rules } = decoded.shared;
     try {
       const name = this.garage.importRobot(robot);
-      const renamed = name === robot.name ? '' : ` (as ${name})`;
-      const otherRules = rules === RULES_VERSION ? '' : `. It was made under other rules (${rules || 'unknown'}, now ${RULES_VERSION}): it may not play out the same`;
-      this.garageNote = `${robot.name} received into the garage${renamed}${otherRules}`;
+      const received = name === robot.name ? t('garage.received', { name }) : t('garage.receivedAs', { name: robot.name, kept: name });
+      const otherRules = rules === RULES_VERSION ? '' : t('garage.otherRules', { rules: rules || t('share.unknown'), now: RULES_VERSION });
+      this.garageNote = `${received}${otherRules}`;
     } catch (error) {
-      this.garageNote = `could not keep ${robot.name}: ${describeError(error)}`;
+      this.garageNote = t('garage.couldNotKeep', { name: robot.name, reason: describeError(error) });
     }
     this.showGarage();
   }
@@ -284,7 +284,7 @@ class App {
     this.loadouts.forEach((loadout, robotIndex) => {
       const cost = costOf(loadout);
       if (cost <= COST_LIMIT) return;
-      const message = `parts cost ${cost}, over the limit of ${COST_LIMIT}`;
+      const message = t('program.costOverLimit', { cost, limit: COST_LIMIT });
       faults.push({
         file: { robotIndex, file: 'config' },
         events: [appEvent('error', message, null, ROBOT_IDS[robotIndex])],
@@ -336,7 +336,7 @@ class App {
   private showFaults(faults: readonly Fault[]): void {
     this.replay = null;
     this.events = faults.flatMap((fault) => fault.events);
-    this.notice = `${this.events.length} error(s). Fix them and press RUN.`;
+    this.notice = t('program.errors', { count: this.events.length });
     // Bring a faulty file into view, unless one is already shown.
     const { robotIndex, file } = this.shownFile;
     const shownIsFaulty = faults.some((fault) => fault.file.robotIndex === robotIndex && fault.file.file === file);
@@ -395,7 +395,7 @@ class App {
     try {
       this.store?.saveLoadout(robotIndex, loadout);
     } catch (error) {
-      this.saveProblem = `could not save the parts of ${ROBOT_IDS[robotIndex]}: ${describeError(error)}`;
+      this.saveProblem = t('program.couldNotSaveParts', { robot: ROBOT_IDS[robotIndex], reason: describeError(error) });
     }
   }
 
@@ -404,19 +404,18 @@ class App {
     const name = garageName(typedName);
     const workspace = this.workspaces[robotIndex];
     if (name === null) {
-      this.garageNote = `to save ${workspace.robotId}, give it a name of up to ${MAX_NAME_LENGTH} characters`;
+      this.garageNote = t('garage.noName', { robot: workspace.robotId, max: MAX_NAME_LENGTH });
       return;
     }
     if (this.garage === null) {
-      this.garageNote = 'storage is unavailable: the garage cannot keep robots';
+      this.garageNote = t('garage.noStorage');
       return;
     }
     try {
       const replaced = this.garage.save({ name, source: workspace.source, loadout: this.loadouts[robotIndex] });
-      const instead = replaced ? ', in place of the robot kept under that name' : '';
-      this.garageNote = `${workspace.robotId} saved to the garage as ${name}${instead}`;
+      this.garageNote = t(replaced ? 'garage.savedInstead' : 'garage.saved', { robot: workspace.robotId, name });
     } catch (error) {
-      this.garageNote = `could not save ${name}: ${describeError(error)}`;
+      this.garageNote = t('garage.couldNotSave', { name, reason: describeError(error) });
     }
     this.showGarage();
   }
@@ -429,16 +428,16 @@ class App {
     workspace.load(saved.source);
     this.setLoadout(robotIndex, { ...saved.loadout });
     this.showFile(codeFileOf(robotIndex));
-    this.garageNote = `${name} loaded into ${workspace.robotId}`;
+    this.garageNote = t('garage.loaded', { name, robot: workspace.robotId });
   }
 
   private removeFromGarage(name: string): void {
     if (this.garage === null) return;
     try {
       this.garage.remove(name);
-      this.garageNote = `${name} deleted from the garage`;
+      this.garageNote = t('garage.deleted', { name });
     } catch (error) {
-      this.garageNote = `could not delete ${name}: ${describeError(error)}`;
+      this.garageNote = t('garage.couldNotDelete', { name, reason: describeError(error) });
     }
     this.showGarage();
   }
@@ -455,7 +454,7 @@ class App {
     try {
       this.store?.saveArena(this.arena.id);
     } catch (error) {
-      this.saveProblem = `could not save the map choice: ${describeError(error)}`;
+      this.saveProblem = t('program.couldNotSaveMap', { reason: describeError(error) });
     }
   }
 
@@ -553,7 +552,7 @@ class App {
     this.templateMenu.hidden = !isCode;
     if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
 
-    requireElement('editor-title').textContent = `${robotId} / ${file.file}`;
+    requireElement('editor-title').textContent = t('program.editorTitle', { robot: robotId, file: file.file });
     this.projectPanel.markSelected(file);
     // Line-by-line stepping follows the program in view.
     this.replay?.focusOn(robotId);
@@ -646,17 +645,17 @@ class App {
   private message(): string {
     const parts = [this.notice ?? this.replayStatus()];
     const edited = this.workspaces.filter((workspace) => workspace.stale).map((workspace) => workspace.robotId);
-    if (edited.length > 0) parts.push(`[${edited.join(', ')} ${STALE_NOTE}]`);
+    if (edited.length > 0) parts.push(`[${t('program.staleNote', { robots: edited.join(', ') })}]`);
     const refitted = ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
-    if (refitted.length > 0) parts.push(`[${refitted.join(', ')} ${PARTS_NOTE}]`);
+    if (refitted.length > 0) parts.push(`[${t('program.partsNote', { robots: refitted.join(', ') })}]`);
     if (this.saveProblem !== null) parts.push(`[${this.saveProblem}]`);
     if (this.garageNote !== null) parts.push(`[${this.garageNote}]`);
     return parts.join('   ');
   }
 
   private replayStatus(): string {
-    if (this.replay === null) return `${READY_MESSAGE}   seed ${this.seed}`;
-    const parts = [this.mode.toUpperCase(), playbackStatus(this.replay), `seed ${this.replay.recording.seed}`];
+    if (this.replay === null) return `${t('program.ready')}   ${t('program.seed', { seed: this.seed })}`;
+    const parts = [t(this.mode === 'run' ? 'program.mode.run' : 'program.mode.debug'), playbackStatus(this.replay), t('program.seed', { seed: this.replay.recording.seed })];
     const followed = this.followedNow();
     if (followed !== null) parts.push(this.describeFollowed(followed));
     return parts.join('   ');
@@ -665,17 +664,18 @@ class App {
   /** Which of its runs the followed line is at, e.g. "ALPHA line 13: run 2 of 5". */
   private describeFollowed({ robotIndex, line, replay, marks }: FollowedLine): string {
     const robotId = ROBOT_IDS[robotIndex];
-    const name = `${robotId} line ${line}`;
-    if (marks.length === 0) return `${name} never runs in this match`;
+    if (marks.length === 0) return t('program.followed.never', { robot: robotId, line });
     const run = replay.runAt(robotId, line);
-    return run === null ? `${name}: runs ${marks.length} times` : `${name}: run ${run + 1} of ${marks.length}`;
+    return run === null
+      ? t('program.followed.runs', { robot: robotId, line, count: marks.length })
+      : t('program.followed.run', { robot: robotId, line, run: run + 1, count: marks.length });
   }
 }
 
 function playbackStatus(replay: ReplayManager): string {
   const { result } = replay.snapshot;
-  if (result !== null) return `${formatResult(result)} (${result.reason})`;
-  return replay.playing ? 'PLAYING' : 'PAUSED';
+  if (result !== null) return t('program.result', { result: formatResult(result), reason: result.reason });
+  return replay.playing ? t('program.playing') : t('program.paused');
 }
 
 function codeFileOf(robotIndex: number): ProjectFile {
@@ -702,6 +702,16 @@ function readPinnedSeed(): number | null {
 }
 
 /** null when the browser refuses access to localStorage (e.g. blocked site data). */
+/** Keeps the other language and starts the page again in it: every text is made at start-up. */
+function switchLanguage(storage: Storage | null): void {
+  try {
+    storage?.setItem(LANGUAGE_KEY, otherLanguage(currentLanguage()));
+  } catch {
+    // Storage may be full or blocked: the language then falls back to the browser's at the next start.
+  }
+  window.location.reload();
+}
+
 /** The browser's storage, or null when it refuses access (e.g. blocked site data). */
 function openStorage(): Storage | null {
   try {

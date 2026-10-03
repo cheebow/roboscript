@@ -1,4 +1,5 @@
 import { createElement, requireElement } from './dom';
+import { t } from '../i18n/messages';
 import { formatTimestamp } from './format';
 
 export interface TransportHandlers {
@@ -27,8 +28,6 @@ export interface TransportState {
 }
 
 const SELECTED_CLASS = 'selected';
-const PAUSE_LABEL = 'PAUSE';
-const PLAY_LABEL = 'PLAY';
 /** Half the width of the seek bar's thumb, in CSS pixels: the thumb's middle stops this far short of either end. */
 const SEEK_THUMB_HALF_PX = 4.5;
 const MARK_WIDTH_PX = 1;
@@ -70,7 +69,7 @@ export class Transport {
     const tick = state?.tick ?? 0;
     const lastTick = state?.lastTick ?? 0;
 
-    const playLabel = state?.playing ? PAUSE_LABEL : PLAY_LABEL;
+    const playLabel = state?.playing ? t('transport.pause') : t('transport.play');
     if (this.playButton.textContent !== playLabel) this.playButton.textContent = playLabel;
     this.playButton.disabled = state === null;
     this.stepBackButton.disabled = state === null || !state.canStepBack;

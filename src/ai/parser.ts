@@ -9,6 +9,7 @@ import {
   type StatementNode,
   parameterVariable,
 } from './ast';
+import { t } from '../i18n/messages';
 import { checkFunctions } from './functions';
 import { type LexedLine, type Token, lex } from './lexer';
 import type { ScriptError } from './script_error';
@@ -188,9 +189,9 @@ class Parser {
     const header = parseHeader(line.tokens);
     const first = this.signatures.get(header.name);
     if (first !== undefined && first.line !== line.line) {
-      throw new LineError(`"${header.name}" is already defined on line ${first.line}`);
+      throw new LineError(t('parse.alreadyDefined', { name: header.name, line: first.line }));
     }
-    if (this.variables.has(header.name)) throw new LineError(`"${header.name}" is already a variable`);
+    if (this.variables.has(header.name)) throw new LineError(t('parse.alreadyVariable', { name: header.name }));
     return header;
   }
 
@@ -216,46 +217,46 @@ class Parser {
 
     switch (head.text) {
       case 'drive': {
-        if (argument === undefined) throw new LineError('Expected "forward", "backward" or "stop" after "drive"');
+        if (argument === undefined) throw new LineError(t('parse.expectDriveSetting'));
         if (isSideways(argument.text)) {
-          throw new LineError(`Robots cannot drive sideways: use "turn ${argument.text}" and "drive forward"`);
+          throw new LineError(t('parse.noSideways', { direction: argument.text }));
         }
-        if (!isDriveSetting(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
+        if (!isDriveSetting(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
         expectEnd(rest, `drive ${argument.text}`);
         return { kind: 'drive', line: lineNumber, setting: argument.text };
       }
       case 'move':
         // The command of earlier versions, which drove for one tick only.
-        throw new LineError('"move" is now "drive": use "drive forward" (the robot keeps driving until "drive stop")');
+        throw new LineError(t('parse.moveIsDrive'));
       case 'aim': {
-        if (argument === undefined) throw new LineError('Expected direction after "aim"');
-        if (!isAimDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
+        if (argument === undefined) throw new LineError(t('parse.expectDirectionAfter', { command: 'aim' }));
+        if (!isAimDirection(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
         expectEnd(rest, `aim ${argument.text}`);
         return { kind: 'aim', line: lineNumber, direction: argument.text };
       }
       case 'turn': {
-        if (argument === undefined) throw new LineError('Expected direction after "turn"');
-        if (!isTurnDirection(argument.text)) throw new LineError(`Unknown direction "${argument.text}"`);
+        if (argument === undefined) throw new LineError(t('parse.expectDirectionAfter', { command: 'turn' }));
+        if (!isTurnDirection(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
         expectEnd(rest, `turn ${argument.text}`);
         return { kind: 'turn', line: lineNumber, direction: argument.text };
       }
       case 'face': {
-        if (argument === undefined) throw new LineError('Expected what to face after "face": enemy, cover or hit');
+        if (argument === undefined) throw new LineError(t('parse.expectFaceTarget'));
         if (!isFaceTarget(argument.text)) {
-          throw new LineError(`"face ${argument.text}" is not a thing to face: use face enemy, face cover or face hit (or "turn ${argument.text}")`);
+          throw new LineError(t('parse.notAFaceTarget', { direction: argument.text }));
         }
         expectEnd(rest, `face ${argument.text}`);
         return { kind: 'face', line: lineNumber, target: argument.text };
       }
       case 'label': {
-        if (argument === undefined) throw new LineError('Expected a name after "label"');
-        if (argument.type !== 'word') throw new LineError(`A label is a single word, such as HIDING: "${argument.text}" is not`);
+        if (argument === undefined) throw new LineError(t('parse.expectNameAfter', { command: 'label' }));
+        if (argument.type !== 'word') throw new LineError(t('parse.labelOneWord', { text: argument.text }));
         expectEnd(rest, `label ${argument.text}`);
         return { kind: 'label', line: lineNumber, label: argument.text };
       }
       case 'state':
         // The command of earlier versions, which only knew five names.
-        throw new LineError(`"state" is now "label": use "label ${argument?.text ?? 'NAME'}" (any name will do)`);
+        throw new LineError(t('parse.stateIsLabel', { name: argument?.text ?? 'NAME' }));
       case 'fire':
       case 'guard':
       case 'wait':
@@ -264,7 +265,7 @@ class Parser {
       case 'set':
         return this.parseSet(line);
       case 'return': {
-        if (this.owner === null) throw new LineError('"return" only works inside a function');
+        if (this.owner === null) throw new LineError(t('parse.returnOutside'));
         const value = line.tokens.slice(1);
         return {
           kind: 'return',
@@ -280,24 +281,24 @@ class Parser {
   /** A line that calls a function, such as `approach(350)`. */
   private parseCall(line: LexedLine): StatementNode {
     const [head, next] = line.tokens;
-    if (head.type !== 'word') throw new LineError(`Unexpected "${head.text}"`);
+    if (head.type !== 'word') throw new LineError(t('parse.unexpected', { text: head.text }));
     if (!isSymbol(next, '(')) {
-      if (this.signatures.has(head.text)) throw new LineError(`Expected "(" after "${head.text}"`);
-      throw new LineError(`Unknown command "${head.text}"`);
+      if (this.signatures.has(head.text)) throw new LineError(t('parse.expectParenAfter', { name: head.text }));
+      throw new LineError(t('parse.unknownCommand', { name: head.text }));
     }
     const call = new ExpressionParser(line.tokens, this.scope).parseWholeExpression();
     // Something like `approach(350) + 1`: a calculation whose result goes nowhere.
-    if (call.kind !== 'call') throw new LineError('Only a call can stand on a line of its own');
+    if (call.kind !== 'call') throw new LineError(t('parse.onlyCallAlone'));
     return { kind: 'call', line: line.line, name: call.name, args: call.args };
   }
 
   private parseSet(line: LexedLine): StatementNode {
     const [, name, equals, ...value] = line.tokens;
-    if (name === undefined || name.type !== 'word') throw new LineError('Expected variable name after "set"');
-    if (isReservedWord(name.text)) throw new LineError(`"${name.text}" cannot be used as a variable name`);
-    if (this.signatures.has(name.text)) throw new LineError(`"${name.text}" is a function`);
-    if (equals === undefined || equals.text !== '=') throw new LineError(`Expected "=" after "${name.text}"`);
-    if (value.length === 0) throw new LineError('Expected value after "="');
+    if (name === undefined || name.type !== 'word') throw new LineError(t('parse.expectVariableName'));
+    if (isReservedWord(name.text)) throw new LineError(t('parse.reservedVariable', { name: name.text }));
+    if (this.signatures.has(name.text)) throw new LineError(t('parse.isFunction', { name: name.text }));
+    if (equals === undefined || equals.text !== '=') throw new LineError(t('parse.expectEquals', { name: name.text }));
+    if (value.length === 0) throw new LineError(t('parse.expectValueAfterEquals'));
     return {
       kind: 'set',
       line: line.line,
@@ -335,27 +336,27 @@ function variableIn(scope: Scope, name: string): string {
 /** Reads a `def` line: `def name(first, second)`. */
 function parseHeader(tokens: Token[]): Header {
   const [, name, open, ...rest] = tokens;
-  if (name === undefined || name.type !== 'word') throw new LineError('Expected a name after "def"');
-  if (isReservedWord(name.text)) throw new LineError(`"${name.text}" cannot be used as a function name`);
-  if (!isSymbol(open, '(')) throw new LineError(`Expected "(" after "${name.text}"`);
+  if (name === undefined || name.type !== 'word') throw new LineError(t('parse.expectNameAfter', { command: 'def' }));
+  if (isReservedWord(name.text)) throw new LineError(t('parse.reservedFunction', { name: name.text }));
+  if (!isSymbol(open, '(')) throw new LineError(t('parse.expectParenAfter', { name: name.text }));
 
   const params: string[] = [];
   let position = 0;
   while (!isSymbol(rest[position], ')')) {
     const param = rest[position];
-    if (param === undefined) throw new LineError('Expected ")"');
-    if (param.type !== 'word') throw new LineError(`Unexpected "${param.text}"`);
-    if (isReservedWord(param.text)) throw new LineError(`"${param.text}" cannot be used as a parameter name`);
-    if (params.includes(param.text)) throw new LineError(`"${param.text}" is listed twice`);
+    if (param === undefined) throw new LineError(t('parse.expectCloseParen'));
+    if (param.type !== 'word') throw new LineError(t('parse.unexpected', { text: param.text }));
+    if (isReservedWord(param.text)) throw new LineError(t('parse.reservedParameter', { name: param.text }));
+    if (params.includes(param.text)) throw new LineError(t('parse.listedTwice', { name: param.text }));
     params.push(param.text);
     position++;
 
     const separator = rest[position];
     if (isSymbol(separator, ',')) position++;
-    else if (!isSymbol(separator, ')')) throw new LineError(separator === undefined ? 'Expected ")"' : `Unexpected "${separator.text}"`);
+    else if (!isSymbol(separator, ')')) throw new LineError(separator === undefined ? t('parse.expectCloseParen') : t('parse.unexpected', { text: separator.text }));
   }
   const after = rest[position + 1];
-  if (after !== undefined) throw new LineError(`Unexpected "${after.text}"`);
+  if (after !== undefined) throw new LineError(t('parse.unexpected', { text: after.text }));
   return { name: name.text, params };
 }
 
@@ -369,9 +370,11 @@ function headerOrNull(tokens: Token[]): Header | null {
 }
 
 /** "no values", "1 value", "2 values". */
-function countOfValues(count: number): string {
-  if (count === 0) return 'no values';
-  return count === 1 ? '1 value' : `${count} values`;
+/** How many values a function takes, against how many a call gives it. */
+function takesMessage(name: string, count: number, given: number): string {
+  if (count === 0) return t('parse.takesNone', { name, given });
+  if (count === 1) return t('parse.takesOne', { name, given });
+  return t('parse.takesMany', { name, count, given });
 }
 
 function isWord(token: Token | undefined, text: string): boolean {
@@ -388,7 +391,7 @@ function isSideways(direction: string): boolean {
 }
 
 function expectEnd(rest: Token[], command: string): void {
-  if (rest.length > 0) throw new LineError(`Unexpected "${rest[0].text}" after "${command}"`);
+  if (rest.length > 0) throw new LineError(t('parse.unexpectedAfter', { text: rest[0].text, command }));
 }
 
 /**
@@ -407,7 +410,7 @@ class ExpressionParser {
   ) {}
 
   parseWholeCondition(): ConditionNode {
-    if (this.tokens.length === 0) throw new LineError('Expected condition');
+    if (this.tokens.length === 0) throw new LineError(t('parse.expectCondition'));
     const condition = this.parseOr();
     this.expectEnd();
     return condition;
@@ -421,7 +424,7 @@ class ExpressionParser {
 
   private expectEnd(): void {
     const token = this.peek();
-    if (token !== undefined) throw new LineError(`Unexpected "${token.text}"`);
+    if (token !== undefined) throw new LineError(t('parse.unexpected', { text: token.text }));
   }
 
   private peek(): Token | undefined {
@@ -458,7 +461,7 @@ class ExpressionParser {
   private parseTruth(): ConditionNode {
     const first = this.peek();
     if (first === undefined || isLogicalWord(first) || isSymbol(first, ')') || isComparison(first)) {
-      throw new LineError('Expected condition');
+      throw new LineError(t('parse.expectCondition'));
     }
     if (first.type === 'word' && isBooleanVariable(first.text) && !isComparison(this.tokens[this.position + 1])) {
       this.position++;
@@ -474,7 +477,7 @@ class ExpressionParser {
       if (!(error instanceof LineError)) throw error;
       this.position = start + 1;
       const condition = this.parseOr();
-      if (!isSymbol(this.peek(), ')')) throw new LineError('Expected ")"');
+      if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
       this.position++;
       return condition;
     }
@@ -488,12 +491,12 @@ class ExpressionParser {
       // A function's result or a variable stands as a condition on its own: it holds when it is not 0.
       const standsAlone = operator === undefined || isLogicalWord(operator) || isSymbol(operator, ')');
       if (standsAlone && (left.kind === 'call' || left.kind === 'variable')) return { kind: 'truthy', value: left };
-      throw new LineError(`Expected comparison after "${describeEnd(this.tokens, this.position, start)}"`);
+      throw new LineError(t('parse.expectComparison', { text: describeEnd(this.tokens, this.position, start) }));
     }
     this.position++;
     const next = this.peek();
     if (next === undefined || isLogicalWord(next) || isComparison(next) || isSymbol(next, ')')) {
-      throw new LineError(`Expected value after "${operator.text}"`);
+      throw new LineError(t('parse.expectValueAfter', { text: operator.text }));
     }
     const right = this.parseSum();
     return { kind: 'comparison', operator: operator.text as ComparisonOperator, left, right };
@@ -529,49 +532,49 @@ class ExpressionParser {
 
   private parseValue(): Expression {
     const token = this.peek();
-    if (token === undefined) throw new LineError('Expected value');
+    if (token === undefined) throw new LineError(t('parse.expectValue'));
     this.position++;
 
     if (token.type === 'number') return { kind: 'number', value: token.value };
     if (isSymbol(token, '(')) {
       const inner = this.parseSum();
-      if (!isSymbol(this.peek(), ')')) throw new LineError('Expected ")"');
+      if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
       this.position++;
       return inner;
     }
-    if (token.type !== 'word') throw new LineError(`Unexpected "${token.text}"`);
+    if (token.type !== 'word') throw new LineError(t('parse.unexpected', { text: token.text }));
     // true and false are the numbers 1 and 0, so that a function can return a yes or a no.
     if (token.text === 'true') return { kind: 'number', value: 1 };
     if (token.text === 'false') return { kind: 'number', value: 0 };
     if (isSymbol(this.peek(), '(')) return this.parseCall(token.text);
     if (isNumberVariable(token.text)) return { kind: 'sensor', name: token.text };
-    if (isBooleanVariable(token.text)) throw new LineError(`${token.text} is not a number`);
+    if (isBooleanVariable(token.text)) throw new LineError(t('parse.notANumber', { name: token.text }));
 
     const { variables, functions, owner } = this.scope;
     if (owner?.params.includes(token.text) || variables.has(token.text)) {
       return { kind: 'variable', name: variableIn(this.scope, token.text) };
     }
-    if (functions.has(token.text)) throw new LineError(`Expected "(" after "${token.text}"`);
-    throw new LineError(`Unknown variable "${token.text}"`);
+    if (functions.has(token.text)) throw new LineError(t('parse.expectParenAfter', { name: token.text }));
+    throw new LineError(t('parse.unknownVariable', { name: token.text }));
   }
 
   /** The values in parentheses after the name of a function, which has just been read. */
   private parseCall(name: string): Expression {
     const signature = this.scope.functions.get(name);
-    if (signature === undefined) throw new LineError(`Unknown function "${name}"`);
+    if (signature === undefined) throw new LineError(t('parse.unknownFunction', { name }));
     this.position++;
 
     const args: Expression[] = [];
     while (!isSymbol(this.peek(), ')')) {
-      if (this.peek() === undefined) throw new LineError('Expected ")"');
+      if (this.peek() === undefined) throw new LineError(t('parse.expectCloseParen'));
       args.push(this.parseSum());
       if (isSymbol(this.peek(), ',')) this.position++;
-      else if (!isSymbol(this.peek(), ')')) throw new LineError('Expected ")"');
+      else if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
     }
     this.position++;
 
     if (args.length !== signature.params.length) {
-      throw new LineError(`"${name}" takes ${countOfValues(signature.params.length)}, not ${args.length}`);
+      throw new LineError(takesMessage(name, signature.params.length, args.length));
     }
     return { kind: 'call', name, args };
   }

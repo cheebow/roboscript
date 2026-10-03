@@ -1,4 +1,5 @@
 import type { ProgramFeatures } from '../ai/features';
+import { t } from '../i18n/messages';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
@@ -82,13 +83,13 @@ export function prepareFight(
   const features: ProgramFeatures[] = [];
   entrants.forEach((entrant, spawnIndex) => {
     const cost = costOf(entrant.loadout);
-    if (cost > COST_LIMIT) problems.push(`${names[spawnIndex]}: parts cost ${cost}, over the limit of ${COST_LIMIT}`);
+    if (cost > COST_LIMIT) problems.push(t('arena.costOverLimit', { robot: names[spawnIndex], cost, limit: COST_LIMIT }));
     const compiled = compileScript(entrant.source);
     if (compiled.ok) {
       brains.push(compiled.brain);
       features.push(compiled.features);
     } else {
-      problems.push(...compiled.errors.map((error) => `${names[spawnIndex]}: ${formatError(error)}`));
+      problems.push(...compiled.errors.map((error) => t('arena.problem', { robot: names[spawnIndex], problem: formatError(error) })));
     }
   });
   if (problems.length > 0) return { ok: false, problems };

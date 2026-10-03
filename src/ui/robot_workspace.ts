@@ -1,4 +1,5 @@
 import { CodeEditor } from './code_editor';
+import { t } from '../i18n/messages';
 
 const SAVE_DELAY_MS = 400;
 
@@ -66,7 +67,7 @@ export class RobotWorkspace {
       this.callbacks.saveProblem(null);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      this.callbacks.saveProblem(`could not save the code of ${this.robotId}: ${reason}`);
+      this.callbacks.saveProblem(t('program.couldNotSaveCode', { robot: this.robotId, reason }));
     }
   }
 }

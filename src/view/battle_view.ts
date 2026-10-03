@@ -1,4 +1,5 @@
 import type { ProgramFeatures } from '../ai/features';
+import { t } from '../i18n/messages';
 import { type Loadout, SLOTS } from '../data/parts';
 import type { RobotStats } from '../data/robot_defaults';
 import type { EffectLifetimes } from '../debug/effects';
@@ -341,5 +342,5 @@ export function centreInside(x: number, halfWidth: number, width: number): numbe
 }
 
 export function formatResult(result: MatchResult): string {
-  return result.winnerId === null ? 'DRAW' : `WINNER: ${result.winnerId}`;
+  return result.winnerId === null ? t('battle.draw') : t('battle.winner', { name: result.winnerId });
 }

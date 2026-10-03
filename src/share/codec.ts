@@ -1,4 +1,5 @@
 import { RULES_VERSION } from '../data/rules_version';
+import { t } from '../i18n/messages';
 import { readLoadout } from '../data/parts';
 import type { SavedRobot } from '../project/garage';
 
@@ -40,11 +41,11 @@ export async function encodeRobot(robot: SavedRobot): Promise<string> {
 /** The robot in a share code, or what is wrong with the code. */
 export async function decodeRobot(code: string): Promise<Decoded> {
   const json = await decodePayload(code);
-  if (json === null) return { ok: false, problem: 'not a RoboScript share code' };
-  if (!isRecord(json) || json.kind !== 'robot') return { ok: false, problem: 'not a share code for a robot' };
-  if (json.v !== CODE_VERSION) return { ok: false, problem: `a share code of another version (${String(json.v)})` };
+  if (json === null) return { ok: false, problem: t('share.notACode') };
+  if (!isRecord(json) || json.kind !== 'robot') return { ok: false, problem: t('share.notARobot') };
+  if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
   const robot = readRobot(json);
-  if (robot === null) return { ok: false, problem: 'a share code with no robot in it' };
+  if (robot === null) return { ok: false, problem: t('share.noRobot') };
   return { ok: true, shared: { robot, rules: rulesOf(json) } };
 }
 
@@ -64,13 +65,13 @@ export async function encodeMatch(match: { robots: readonly [SavedRobot, SavedRo
 /** The match in a share code, or what is wrong with the code. */
 export async function decodeMatch(code: string): Promise<DecodedMatch> {
   const json = await decodePayload(code);
-  if (json === null) return { ok: false, problem: 'not a RoboScript share code' };
-  if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: 'not a share code for a match' };
-  if (json.v !== CODE_VERSION) return { ok: false, problem: `a share code of another version (${String(json.v)})` };
+  if (json === null) return { ok: false, problem: t('share.notACode') };
+  if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: t('share.notAMatch') };
+  if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
   const robots = Array.isArray(json.robots) ? json.robots.map(readRobot) : [];
   const [first, second] = robots;
-  if (robots.length !== 2 || first === null || second === null) return { ok: false, problem: 'a share code without two robots in it' };
-  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: 'a share code with no arena or seed in it' };
+  if (robots.length !== 2 || first === null || second === null) return { ok: false, problem: t('share.notTwoRobots') };
+  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
   return {
     ok: true,
     shared: { robots: [first, second], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },

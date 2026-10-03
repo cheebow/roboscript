@@ -1,5 +1,8 @@
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
+import { currentLanguage } from '../i18n/language';
+import { t } from '../i18n/messages';
+import { DIRECTION_HIT_JA, WORDS_JA, type WordText } from '../i18n/words';
 import { isReservedWord } from './script_variables';
 
 /** What part a word plays in the language. */
@@ -22,7 +25,7 @@ const BULLET_STEP = Math.round(ROBOT_DEFAULTS.shotSpeed / MATCH_DEFAULTS.tickRat
 const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
 const GUARD_RECOVERY = `${ROBOT_DEFAULTS.guardRecovery} s`;
 
-const LANGUAGE: readonly WordReference[] = [
+export const LANGUAGE: readonly WordReference[] = [
   {
     word: 'if',
     kind: 'control',
@@ -314,12 +317,20 @@ const BEFORE_DIRECTION = /\b(?:turn|aim)\s+$/;
 
 /** What a word of the language means; undefined for anything else, such as a program's own variables. */
 export function describeWord(word: string): WordReference | undefined {
-  return BY_WORD.get(word);
+  const reference = BY_WORD.get(word);
+  return reference === undefined ? undefined : inLanguage(reference, WORDS_JA[word]);
 }
 
 /** What a word means as the direction of a turn or of the aim. */
 export function describeDirection(word: string): WordReference | undefined {
-  return AS_DIRECTION.get(word) ?? describeWord(word);
+  const asDirection = AS_DIRECTION.get(word);
+  return asDirection === undefined ? describeWord(word) : inLanguage(asDirection, DIRECTION_HIT_JA);
+}
+
+/** The reference with its hint and summary in the current language, where there is a translation. */
+function inLanguage(reference: WordReference, japanese: WordText | undefined): WordReference {
+  if (currentLanguage() !== 'ja' || japanese === undefined) return reference;
+  return { ...reference, hint: japanese.hint, summary: japanese.summary };
 }
 
 /** A variable of the program's own, with the 1-based line that first sets it. */
@@ -353,7 +364,7 @@ export function programLabels(source: string): string[] {
 }
 
 export function describeLabel(label: string): WordReference {
-  return { word: label, kind: 'label', hint: 'label', summary: 'A label this program uses elsewhere.' };
+  return { word: label, kind: 'label', hint: t('word.label.hint'), summary: t('word.label.summary') };
 }
 
 /** A function of the program's own, with the 1-based line of its `def`. */

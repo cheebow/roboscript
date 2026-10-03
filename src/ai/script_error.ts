@@ -1,3 +1,5 @@
+import { t } from '../i18n/messages';
+
 export interface ScriptError {
   /** 1-based source line. */
   line: number;
@@ -5,5 +7,5 @@ export interface ScriptError {
 }
 
 export function formatError(error: ScriptError): string {
-  return `Line ${error.line}: ${error.message}`;
+  return t('error.line', { line: error.line, message: error.message });
 }

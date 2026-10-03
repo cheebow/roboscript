@@ -1,3 +1,4 @@
+import { t } from '../i18n/messages';
 import { requireElement } from './dom';
 
 export interface ToolbarHandlers {
@@ -21,9 +22,6 @@ export interface Choices {
   options: readonly Choice[];
   selectedId: string;
 }
-
-const PAUSE_LABEL = 'PAUSE';
-const PLAY_LABEL = 'PLAY';
 
 export class Toolbar {
   private readonly projectName = requireElement('project-name');
@@ -54,7 +52,7 @@ export class Toolbar {
 
   /** `available` is false when there is no match to play. */
   setPlayback(available: boolean, playing: boolean): void {
-    const label = playing ? PAUSE_LABEL : PLAY_LABEL;
+    const label = playing ? t('toolbar.pause') : t('toolbar.play');
     if (this.pauseButton.textContent !== label) this.pauseButton.textContent = label;
     this.pauseButton.disabled = !available;
   }

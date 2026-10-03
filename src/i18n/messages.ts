@@ -521,7 +521,7 @@ export const ja: Record<MessageKey, string> = {
   'commentary.firstHit.2': '{shooter} の弾が {victim} に初命中！',
   'commentary.firstHit.3': '最初の一撃は {shooter}！ {victim} の HP は {hp}！',
   'commentary.bigHit.1': '{shooter} の強烈な一撃！ {victim} に {damage}！',
-  'commentary.bigHit.2': 'ドーン！ {shooter} の砲撃が {victim} をとらえた！',
+  'commentary.bigHit.2': 'ドーン！ {shooter} の砲撃が {victim} に {damage}！',
   'commentary.bigHit.3': 'これは効いた！ {shooter} の一撃に {victim} がよろめく！',
   'commentary.streak.1': '{shooter} の連続命中！ {victim} に 3 発続けて当てた！',
   'commentary.streak.2': '{shooter} が止まらない！ {victim} を撃ち続ける！',

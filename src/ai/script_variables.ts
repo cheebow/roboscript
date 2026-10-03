@@ -36,6 +36,9 @@ export const NUMBER_VARIABLES = {
   lead_angle: (context: AIContext) => context.leadAngle,
   gun_angle: (context: AIContext) => context.gunAngle,
   weapon_range: (context: AIContext) => context.weaponRange,
+  enemy_speed: (context: AIContext) => context.enemySpeed,
+  enemy_heading: (context: AIContext) => context.enemyHeading,
+  reload: (context: AIContext) => context.reload,
   hit_angle: (context: AIContext) => context.hitAngle,
 };
 

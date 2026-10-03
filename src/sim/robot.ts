@@ -55,6 +55,8 @@ export class RobotController {
   hidden = false;
   /** The hull drove somewhere on the latest tick. */
   moved = false;
+  /** sec, the length of a tick, as the robot last sensed. */
+  private tickDuration = 0;
   /** Regaining hp on the latest tick: still and out of the enemy's sight for long enough, and hurt. */
   recovering = false;
   /** Ticks in a row that the robot has been still and out of the enemy's sight. */
@@ -128,6 +130,7 @@ export class RobotController {
 
   /** Looks for the enemies still in the match. */
   sense(enemies: readonly SensedRobot[], tickDuration: number): void {
+    this.tickDuration = tickDuration;
     this.reading = this.sensor.scanAll(this.position, this.rotation, enemies);
     const { lastSeen, enemyVisible, enemyVelocity } = this.reading;
     if (lastSeen === null) {
@@ -303,6 +306,15 @@ export class RobotController {
     }
   }
 
+  /** How the enemy in sight is moving: how fast, and which way from the way the hull faces. Nothing while none is in sight. */
+  enemyMotion(): { enemySpeed: number; enemyHeading: number } {
+    const { enemyVisible, enemyVelocity } = this.reading;
+    const perTick = Math.hypot(enemyVelocity.x, enemyVelocity.y);
+    if (!enemyVisible || perTick === 0 || this.tickDuration === 0) return { enemySpeed: 0, enemyHeading: 0 };
+    const course = (Math.atan2(enemyVelocity.y, enemyVelocity.x) * 180) / Math.PI;
+    return { enemySpeed: perTick / this.tickDuration, enemyHeading: normalizeAngle(course - this.rotation) };
+  }
+
   /** `onHitRead` is called when the brain looks at `hit`. */
   private buildContext(onHitRead: () => void): AIContext {
     const around = this.around;
@@ -342,6 +354,8 @@ export class RobotController {
       leadAngle: this.sensed.leadAngle,
       gunAngle: this.sensed.gunAngle,
       weaponRange: this.stats.weaponRange,
+      ...this.enemyMotion(),
+      reload: this.weapon.cooldownTicks * this.tickDuration,
       hidden: this.hidden,
       get hit() {
         onHitRead();

@@ -145,6 +145,9 @@ export class Simulation {
     for (const robot of standing) this.recover(robot);
     const actions = this.robots.map((robot) => (robot.alive ? this.think(robot) : null));
 
+    // Every robot moves at once: each makes room by where the others stood at the start of the tick,
+    // so that none has the way first by its place in the list.
+    const starts = new Map(this.robots.map((robot) => [robot, { ...robot.position }]));
     this.robots.forEach((robot, index) => {
       const action = actions[index];
       if (action === null) return;
@@ -152,8 +155,9 @@ export class Simulation {
       if (action.guard && !robot.guarding) this.reporter?.outOfGuards(robot.id, action.sourceLines.guard);
       robot.setDrive(action.drive);
       robot.turn(action.turn, this.tickDuration);
-      robot.drive(this.tickDuration, (position) => this.isBlocked(robot, position));
+      robot.drive(this.tickDuration, (position) => this.isBlocked(robot, position, starts));
     });
+    this.undoClashes(starts);
     // Turrets turn once every robot is where it will be when the shots are fired.
     this.robots.forEach((robot, index) => {
       const action = actions[index];
@@ -253,9 +257,10 @@ export class Simulation {
    * Whether two robots stand against each other: the gap between them is less
    * than the faster of them drives in a tick, so driving cannot close it further.
    */
+  /** Close enough that neither could drive into the gap: moving at once, two robots that meet stop short by up to both steps. */
   private areTouching(a: RobotController, b: RobotController): boolean {
     const gap = distance(a.position, b.position) - a.stats.radius - b.stats.radius;
-    return gap < Math.max(a.stats.moveSpeed, b.stats.moveSpeed) * this.tickDuration;
+    return gap < (a.stats.moveSpeed + b.stats.moveSpeed) * this.tickDuration;
   }
 
   private think(robot: RobotController) {
@@ -305,13 +310,36 @@ export class Simulation {
     return obstacles.some((obstacle) => circleIntersectsRect(position, radius, obstacle));
   }
 
-  /** Whether the robot cannot be at the given position: terrain or another robot is there. */
-  private isBlocked(robot: RobotController, position: Vec2): boolean {
+  /** Whether the robot cannot be at the given position: terrain is there, or another robot where it stood (`at`, else where it is). */
+  private isBlocked(robot: RobotController, position: Vec2, at?: ReadonlyMap<RobotController, Vec2>): boolean {
     const { radius } = robot.stats;
     if (this.hitsTerrain(position, radius)) return true;
     return this.robots.some(
-      (other) => other !== robot && other.alive && distance(position, other.position) < radius + other.stats.radius,
+      (other) => other !== robot && other.alive && distance(position, at?.get(other) ?? other.position) < radius + other.stats.radius,
     );
+  }
+
+  /**
+   * Two robots that drove into the same room on the same tick both stay where
+   * they were. Going back can put a robot in the way of one that moved next
+   * to it, so this goes on until no two overlap.
+   */
+  private undoClashes(starts: ReadonlyMap<RobotController, Vec2>): void {
+    const standing = this.robots.filter((robot) => robot.alive);
+    for (let changed = true; changed; ) {
+      changed = false;
+      for (const robot of standing) {
+        for (const other of standing) {
+          if (other === robot || distance(robot.position, other.position) >= robot.stats.radius + other.stats.radius) continue;
+          for (const each of [robot, other]) {
+            if (!each.moved) continue;
+            each.position = { ...(starts.get(each) ?? each.position) };
+            each.moved = false;
+            changed = true;
+          }
+        }
+      }
+    }
   }
 
   private stepBullets(): void {

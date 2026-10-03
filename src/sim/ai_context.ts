@@ -55,6 +55,12 @@ export interface AIContext {
   readonly gunAngle: number;
   /** How far the robot's own gun shoots. */
   readonly weaponRange: number;
+  /** Units a second the enemy in sight is moving; 0 while none is in sight. */
+  readonly enemySpeed: number;
+  /** deg from the way the hull faces to the way the enemy in sight is moving (-180..180, positive = to the right); 0 while none is in sight or it stands still. */
+  readonly enemyHeading: number;
+  /** Seconds until the gun can fire again; 0 when it can. */
+  readonly reload: number;
   /**
    * An enemy bullet has hit the robot since its AI last looked at this. Looking
    * uses it up: it is false again from the next tick, until the next hit.

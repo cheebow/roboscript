@@ -23,6 +23,9 @@ export interface RobotSnapshot {
   guards: number;
   /** Seconds until the weapon can fire again. */
   cooldown: number;
+  /** How the enemy in sight moves, as the robot's program reads it (enemy_speed, enemy_heading). */
+  enemySpeed: number;
+  enemyHeading: number;
   /** Ticks since the robot last guarded: 0 on a tick it guards, null if it never has. */
   guardAge: number | null;
   // What the sensor reported at the start of the tick, i.e. what the AI decided on.
@@ -114,6 +117,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         ammo: robot.weapon.ammo,
         guards: robot.guardsLeft,
         cooldown: robot.weapon.cooldownTicks / simulation.tickRate,
+        ...robot.enemyMotion(),
         guardAge: robot.guardedAt === null ? null : simulation.tick - robot.guardedAt,
         enemyVisible,
         targetId,

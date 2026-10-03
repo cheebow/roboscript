@@ -280,6 +280,24 @@ export const LANGUAGE: readonly WordReference[] = [
     summary: `How far this robot's own gun shoots: ${ROBOT_DEFAULTS.weaponRange} with a standard gun. A bullet fired at an enemy further away than this falls short.`,
   },
   {
+    word: 'enemy_speed',
+    kind: 'sensor',
+    hint: 'how fast the enemy moves',
+    summary: `How fast the enemy in sight is moving, in units a second (${ROBOT_DEFAULTS.moveSpeed} for standard legs at full speed). 0 while no enemy is in sight.`,
+  },
+  {
+    word: 'enemy_heading',
+    kind: 'sensor',
+    hint: 'which way the enemy moves',
+    summary: `Angle from the way the hull faces to the way the enemy in sight is moving, ${ANGLE}. 0 while no enemy is in sight, or while it stands still. With enemy_speed, a program can work out where to shoot by itself.`,
+  },
+  {
+    word: 'reload',
+    kind: 'sensor',
+    hint: 'seconds until the gun can fire',
+    summary: 'Seconds until the gun can fire again: 0 when it can. A fire before then does nothing.',
+  },
+  {
     word: 'hit',
     kind: 'sensor',
     hint: 'a bullet has hit the robot',

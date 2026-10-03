@@ -142,3 +142,24 @@ describe('ConeSensor with several enemies', () => {
     expect(switched.enemyVelocity).toEqual({ x: 0, y: 0 });
   });
 });
+
+describe('a robot reading how the enemy moves', () => {
+  it('gives the speed in units a second and the heading from its hull, and nothing for an enemy out of sight', async () => {
+    const { createSimulation, FixedBrain, runTicks } = await import('./helpers');
+    const seen: { speed: number; heading: number; reload: number }[] = [];
+    const watcher = {
+      decide(context: import('../src/sim/ai_context').AIContext) {
+        seen.push({ speed: context.enemySpeed, heading: context.enemyHeading, reload: context.reload });
+        return new FixedBrain({ fire: seen.length === 3 }).decide();
+      },
+    };
+    const simulation = createSimulation([watcher, new FixedBrain({ drive: 'forward' })]);
+    runTicks(simulation, 6);
+    const later = seen[5];
+    expect(later.speed).toBeCloseTo(100, 0);
+    // ALPHA faces BRAVO, which drives towards it: it comes straight at ALPHA, from ahead.
+    expect(Math.abs(later.heading)).toBeCloseTo(180, 0);
+    expect(seen[3].reload).toBeGreaterThan(0);
+    expect(seen[0].reload).toBe(0);
+  });
+});

@@ -5,4 +5,4 @@
  * file made under other rules can say so. It is the date of the change, with
  * ".2", ".3" ... for a second, third change on the same day.
  */
-export const RULES_VERSION = '2026-10-03.2';
+export const RULES_VERSION = '2026-10-04';

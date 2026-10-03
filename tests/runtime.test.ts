@@ -386,3 +386,10 @@ fire`;
     expect(runTicks(source, 2).map(describe1)).toEqual(['turn right', 'fire']);
   });
 });
+
+describe('runtime: how the enemy moves, and the gun', () => {
+  it('reads the enemy speed and heading, and how long until the gun can fire', () => {
+    const [action] = runTicks('set s = enemy_speed\nset h = enemy_heading\nset r = reload\nwait', 1, { enemySpeed: 100, enemyHeading: -90, reload: 0.5 });
+    expect(action.assignments.map((assignment) => assignment.value)).toEqual([100, -90, 0.5]);
+  });
+});

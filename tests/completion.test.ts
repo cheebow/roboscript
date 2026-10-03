@@ -27,6 +27,9 @@ const NUMBERS = [
   'lead_angle',
   'gun_angle',
   'weapon_range',
+  'enemy_speed',
+  'enemy_heading',
+  'reload',
   'hit_angle',
 ];
 const SENSORS = [
@@ -123,7 +126,7 @@ describe('completionsAt: conditions', () => {
     expect(offered('if |')).toEqual([...SENSORS, 'not']);
     expect(offered('set shots = 0\nwhile |')).toEqual([...SENSORS, 'not', 'shots']);
     expect(offered('if blocked and |')).toEqual([...SENSORS, 'not']);
-    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle']);
+    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
   });
 
   it('waits for a letter after an opening parenthesis', () => {
@@ -209,7 +212,7 @@ describe('completionsAt: functions', () => {
 
   it('offers values between the parentheses of a call, after each comma too', () => {
     expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'approach', 'abs', 'stop']);
-    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle']);
+    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
     expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });
 

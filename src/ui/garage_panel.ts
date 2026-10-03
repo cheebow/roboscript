@@ -136,7 +136,7 @@ export class GaragePanel {
         });
       });
       const line = createElement('div', 'garage-share-line');
-      line.append(field, copy);
+      line.append(createElement('span', 'garage-share-label', label), field, copy);
       box.append(line);
     }
     return box;

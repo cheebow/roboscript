@@ -334,6 +334,12 @@ button {
   min-width: 0;
 }
 
+.garage-share-label {
+  width: 4ch;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .garage-share-field {
   flex: 1 1 0;
   width: 0;

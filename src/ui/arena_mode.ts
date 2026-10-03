@@ -334,7 +334,7 @@ export class ArenaMode {
     const place = result === null || name === undefined ? null : (result.places[name] ?? null);
     const text = place === null ? '' : `${place}`;
     if (slot.badge.textContent === text) return;
-    slot.badge.textContent = text;
+    slot.badge.replaceChildren(createElement('span', 'place-number', text));
     slot.badge.hidden = place === null;
     slot.badge.dataset.place = place === null ? '' : `${Math.min(place, 4)}`;
     slot.badge.title = place === null ? '' : t('arena.place', { place, name: name ?? '' });

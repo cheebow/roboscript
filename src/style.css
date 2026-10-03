@@ -433,20 +433,34 @@ button {
 
 .place-badge {
   position: absolute;
-  top: 4px;
-  left: -4px;
-  min-width: 22px;
+  top: 0;
+  left: -8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A serrated rim, like the edge of a medal or a rosette. */
+  clip-path: polygon(50.0% 0.0%, 58.0% 9.8%, 69.1% 3.8%, 72.8% 15.9%, 85.4% 14.6%, 84.1% 27.2%, 96.2% 30.9%, 90.2% 42.0%, 100.0% 50.0%, 90.2% 58.0%, 96.2% 69.1%, 84.1% 72.8%, 85.4% 85.4%, 72.8% 84.1%, 69.1% 96.2%, 58.0% 90.2%, 50.0% 100.0%, 42.0% 90.2%, 30.9% 96.2%, 27.2% 84.1%, 14.6% 85.4%, 15.9% 72.8%, 3.8% 69.1%, 9.8% 58.0%, 0.0% 50.0%, 9.8% 42.0%, 3.8% 30.9%, 15.9% 27.2%, 14.6% 14.6%, 27.2% 15.9%, 30.9% 3.8%, 42.0% 9.8%);
+  background: var(--medal-rim);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+}
+
+/* The face of the medal, polished, with the place on it. */
+.place-badge .place-number {
+  width: 22px;
   height: 22px;
-  padding: 0 4px;
-  border: 2px solid var(--badge-edge, #6f7a85);
-  border-radius: 11px;
-  background: var(--badge-face, #3a444d);
-  color: #14181b;
+  border-radius: 50%;
+  background: var(--medal-face);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.35);
+  color: var(--medal-ink);
   font-weight: bold;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 13px;
+  line-height: 22px;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .place-badge[hidden] {
@@ -454,24 +468,27 @@ button {
 }
 
 .place-badge[data-place='1'] {
-  --badge-face: #e8c547;
-  --badge-edge: #fff1a8;
+  --medal-rim: linear-gradient(135deg, #fff3b0, #d4a017 45%, #8a6400);
+  --medal-face: radial-gradient(circle at 35% 30%, #fff6c4, #f2c230 45%, #b8860b);
+  --medal-ink: #5a3d00;
 }
 
 .place-badge[data-place='2'] {
-  --badge-face: #c3ccd4;
-  --badge-edge: #f1f5f8;
+  --medal-rim: linear-gradient(135deg, #ffffff, #a9b3bc 45%, #5f6870);
+  --medal-face: radial-gradient(circle at 35% 30%, #ffffff, #d3d9de 45%, #8e979f);
+  --medal-ink: #33393f;
 }
 
 .place-badge[data-place='3'] {
-  --badge-face: #c9824a;
-  --badge-edge: #ecb48a;
+  --medal-rim: linear-gradient(135deg, #ffd2a8, #b8692e 45%, #6b3510);
+  --medal-face: radial-gradient(circle at 35% 30%, #ffdcb8, #d4874a 45%, #8f4a1c);
+  --medal-ink: #4a2208;
 }
 
 .place-badge[data-place='4'] {
-  --badge-face: #4a5158;
-  --badge-edge: #6f7a85;
-  color: #c5ccd3;
+  --medal-rim: linear-gradient(135deg, #6f7a85, #3a444d);
+  --medal-face: radial-gradient(circle at 35% 30%, #8a949e, #4a5158);
+  --medal-ink: #e0e5ea;
 }
 
 .lineup-slot[hidden] {

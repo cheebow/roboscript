@@ -1,0 +1,132 @@
+import type { Arena } from '../sim/types';
+import type { Stage } from './types';
+
+// The training grounds of the tutorial. Each puts ALPHA and the training
+// robot where the step needs them; the matches start exactly there.
+
+const WIDTH = 1000;
+const HEIGHT = 600;
+
+function field(spawns: Arena['spawns'], obstacles: Arena['obstacles'] = []): Arena {
+  return { width: WIDTH, height: HEIGHT, obstacles, spawns };
+}
+
+/** Does nothing at all: something to aim at. */
+export const TARGET_BOT = `# The target: it stays where it is and never shoots.
+loop
+    wait
+`;
+
+/** Drives about, turning at walls: something moving to aim at. */
+export const MOVER_BOT = `# The moving target: it drives about and never shoots.
+loop
+    drive forward
+    if blocked
+        turn left
+    wait
+`;
+
+/** Looks for ALPHA and shoots at it, slowly: a first opponent. */
+export const SPARRING_BOT = `# The sparring partner: it aims and shoots, but slowly.
+loop
+    if enemy_visible
+        aim enemy
+        wait
+        fire
+    else
+        turn left
+    wait
+`;
+
+/** The target straight ahead of ALPHA, within the reach of its gun. */
+export const RANGE: Stage = {
+  arena: field([
+    { x: 650, y: 300, rotation: 180 },
+    { x: 300, y: 300, rotation: 0 },
+  ]),
+  bot: TARGET_BOT,
+  seed: 11,
+};
+
+/** A goal straight ahead across open ground; the target is out of the way. */
+export const TRACK: Stage = {
+  arena: field([
+    { x: 150, y: 300, rotation: 0 },
+    { x: 920, y: 540, rotation: 180 },
+  ]),
+  bot: TARGET_BOT,
+  goal: { x: 820, y: 300, radius: 50 },
+  seed: 13,
+};
+
+/** A goal up and to the right of ALPHA, at 30 degrees: five turns of 6 degrees, then straight on. */
+export const ANGLE: Stage = {
+  arena: field([
+    { x: 150, y: 450, rotation: 0 },
+    { x: 920, y: 540, rotation: 180 },
+  ]),
+  bot: TARGET_BOT,
+  goal: { x: 670, y: 150, radius: 60 },
+  seed: 19,
+};
+
+/** ALPHA facing the top wall; the goal in the top right corner: turn along the wall to get there. */
+export const CORNER: Stage = {
+  arena: field([
+    { x: 150, y: 480, rotation: 270 },
+    { x: 880, y: 520, rotation: 180 },
+  ]),
+  bot: TARGET_BOT,
+  goal: { x: 860, y: 70, radius: 70 },
+  seed: 14,
+};
+
+/** The target behind ALPHA: ALPHA has to turn round to it. */
+export const BEHIND: Stage = {
+  arena: field([
+    { x: 600, y: 300, rotation: 0 },
+    { x: 300, y: 300, rotation: 0 },
+  ]),
+  bot: TARGET_BOT,
+  seed: 15,
+};
+
+/** A target that drives about. */
+export const MOVING: Stage = {
+  arena: field([
+    { x: 750, y: 300, rotation: 180 },
+    { x: 350, y: 120, rotation: 90 },
+  ]),
+  bot: MOVER_BOT,
+  seed: 16,
+};
+
+/** The target hidden behind a block: ALPHA has to drive along it until it can see the target. */
+export const HIDDEN: Stage = {
+  arena: field(
+    [
+      { x: 880, y: 480, rotation: 180 },
+      { x: 250, y: 200, rotation: 0 },
+    ],
+    [{ x: 450, y: 100, width: 200, height: 300 }],
+  ),
+  bot: TARGET_BOT,
+  seed: 17,
+};
+
+/**
+ * A first real match, against the sparring partner with a cheap gun: close
+ * enough for the guns to reach, a block between them to look round.
+ */
+export const DUEL: Stage = {
+  arena: field(
+    [
+      { x: 720, y: 300, rotation: 180 },
+      { x: 280, y: 300, rotation: 0 },
+    ],
+    [{ x: 450, y: 210, width: 100, height: 180 }],
+  ),
+  bot: SPARRING_BOT,
+  botLoadout: { gun: 'pistol' },
+  seed: 18,
+};

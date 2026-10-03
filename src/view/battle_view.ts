@@ -30,6 +30,8 @@ const COLORS = {
   bulletTail: '#8c8873',
   text: '#c5ccd3',
   mutedText: '#6f7a85',
+  goal: '#d4b77a',
+  goalFill: 'rgba(212, 183, 122, 0.10)',
 };
 
 const FONT_FAMILY = 'ui-monospace, Menlo, Consolas, monospace';
@@ -65,6 +67,8 @@ export interface RenderOptions {
   coverRoutes: readonly boolean[];
   /** Ticks played past the snapshot; ages its effects further. */
   overrun: number;
+  /** A ring on the field for a robot to drive to, as a tutorial step sets one. */
+  goal?: { x: number; y: number; radius: number };
 }
 
 /** Draws one snapshot of a match onto a canvas, in a dot-art style. */
@@ -110,6 +114,8 @@ export class BattleView {
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
       ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
+
+    if (options.goal !== undefined) this.drawGoal(options.goal);
 
     snapshot.robots.forEach((robot, index) => {
       if (!robot.alive) return;
@@ -287,6 +293,28 @@ export class BattleView {
     ctx.translate(x, y);
     ctx.rotate((heading * Math.PI) / 180);
     ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+
+  /** A dashed ring with GOAL over it. */
+  private drawGoal(goal: { x: number; y: number; radius: number }): void {
+    const ctx = this.context;
+    const pixel = 1 / this.scale;
+    ctx.save();
+    ctx.strokeStyle = COLORS.goal;
+    ctx.fillStyle = COLORS.goalFill;
+    ctx.lineWidth = 2 * pixel;
+    ctx.setLineDash([6 * pixel, 4 * pixel]);
+    ctx.beginPath();
+    ctx.arc(goal.x, goal.y, goal.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = COLORS.goal;
+    ctx.font = this.font(LABEL_LINE_PX);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GOAL', goal.x, goal.y);
     ctx.restore();
   }
 

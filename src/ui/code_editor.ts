@@ -2,7 +2,7 @@ import { acceptCompletion, closeBracketsKeymap, completionStatus } from '@codemi
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { indentUnit } from '@codemirror/language';
 import { type Diagnostic, forEachDiagnostic, setDiagnostics } from '@codemirror/lint';
-import { EditorState, RangeSet, StateEffect, StateField } from '@codemirror/state';
+import { EditorState, RangeSet, StateEffect, StateField, Transaction } from '@codemirror/state';
 import {
   type BlockInfo,
   Decoration,
@@ -217,6 +217,14 @@ export class CodeEditor {
   setSource(source: string): void {
     this.view.dispatch({ changes: { from: 0, to: this.view.state.doc.length, insert: source } });
     this.view.focus();
+  }
+
+  /** Puts in another program altogether, as a step of the tutorial does: undoing does not bring back the one before. */
+  replaceSource(source: string): void {
+    this.view.dispatch({
+      changes: { from: 0, to: this.view.state.doc.length, insert: source },
+      annotations: Transaction.addToHistory.of(false),
+    });
   }
 
   /**

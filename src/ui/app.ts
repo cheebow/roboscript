@@ -27,6 +27,9 @@ import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { type BootChoice, BootScreen } from './boot_screen';
+import { TutorialPanel } from './tutorial_panel';
+import { tutorialMatch } from '../tutorial/match';
+import { trimmed } from '../tutorial';
 import { createReplay } from './watched_match';
 import { ArenaMode } from './arena_mode';
 import { ContestMode } from './contest_mode';
@@ -52,7 +55,8 @@ type Mode = 'run' | 'debug';
  * anywhere play a league or a tournament.
  */
 const SCREENS = ['program', 'arena', 'contest'] as const;
-type Screen = (typeof SCREENS)[number];
+/** The screens: the three of the tabs, and the tutorial, reached from the start menu. */
+type Screen = (typeof SCREENS)[number] | 'tutorial';
 
 const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
@@ -68,6 +72,9 @@ const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'wa
 const NO_MARKS: readonly number[] = [];
 const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
 const NO_COVER_ROUTES: readonly boolean[] = [];
+/** The tutorial's robots while no match is shown: standard parts, as its matches use. */
+const TUTORIAL_IDLE_LOADOUTS: readonly Loadout[] = ROBOT_IDS.map(() => STANDARD_LOADOUT);
+const TUTORIAL_IDLE_STATS: readonly RobotStats[] = TUTORIAL_IDLE_LOADOUTS.map((loadout) => statsOf(loadout));
 
 /** What keeps a match from starting: errors in a robot's code, or parts that cost too much. */
 interface Fault {
@@ -96,9 +103,9 @@ class App {
   private readonly storage = openStorage();
   private readonly store = this.storage === null ? null : new ProjectStore(this.storage, DEFAULT_SOURCES);
   private readonly garage = new GarageController(requireElement('garage'), ROBOT_IDS, this.storage, {
-    robot: (robotIndex) => ({ source: this.workspaces[robotIndex].source, loadout: this.loadouts[robotIndex] }),
+    robot: (robotIndex) => ({ source: this.ownWorkspaces[robotIndex].source, loadout: this.loadouts[robotIndex] }),
     load: (robotIndex, robot) => {
-      this.workspaces[robotIndex].load(robot.source);
+      this.ownWorkspaces[robotIndex].load(robot.source);
       this.setLoadout(robotIndex, { ...robot.loadout });
       this.showFile(codeFileOf(robotIndex));
     },
@@ -108,13 +115,19 @@ class App {
   private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
   /** One per robot, in spawn order: the player's first. */
-  private readonly workspaces: RobotWorkspace[];
+  /** The two programs a match is played with, in spawn order: the player's own, or in the tutorial its editor and BRAVO's. */
+  private workspaces: RobotWorkspace[];
+  /** The player's ALPHA and BRAVO. */
+  private readonly ownWorkspaces: RobotWorkspace[];
+  /** The tutorial's own editor: its code is kept apart from the player's. */
+  private readonly tutorialWorkspace: RobotWorkspace;
+  private readonly tutorial: TutorialPanel;
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly seedLabel = requireElement('battle-seed');
-  /** The start-up screen and its menu: shown first, and again from the ⏻ button. The tutorial comes in Phase 18. */
-  private readonly boot = new BootScreen(this.storage, (choice) => this.bootInto(choice), new Set(['tutorial']));
+  /** The start-up screen and its menu: shown first, and again from the ⏻ button. */
+  private readonly boot = new BootScreen(this.storage, (choice) => this.bootInto(choice));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   private readonly templateMenu: ActionMenu;
   private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
@@ -181,6 +194,19 @@ class App {
     );
     this.projectPanel = new ProjectPanel(requireElement('project-tree'), ROBOT_IDS, (file) => this.showFile(file));
     this.workspaces = ROBOT_IDS.map((robotId, robotIndex) => this.createWorkspace(robotId, robotIndex));
+    this.ownWorkspaces = this.workspaces;
+    this.tutorial = new TutorialPanel(requireElement('tutorial-body'), this.storage, {
+      code: () => this.tutorialWorkspace.source,
+      setCode: (code, undoable) => this.setTutorialCode(code, undoable),
+      stepChanged: () => this.tutorialStepChanged(),
+      exit: () => this.boot.show(),
+    });
+    this.tutorialWorkspace = new RobotWorkspace(ROBOT_IDS[0], requireElement('tutorial-code'), '', {
+      save: (code) => this.tutorial.codeEdited(code),
+      edited: (workspace) => this.codeEdited(workspace),
+      saveProblem: () => {},
+      lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
+    });
     this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
     if (this.store === null) {
       this.events = [appEvent('warning', t('program.storageUnavailable'))];
@@ -216,18 +242,94 @@ class App {
   /** What the start menu starts. */
   private bootInto(choice: BootChoice): void {
     if (choice === 'language') switchLanguage(this.storage);
-    else if (choice !== 'tutorial') this.showScreen(choice);
+    else this.showScreen(choice);
   }
 
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */
   private showScreen(screen: Screen): void {
     this.shownReplay()?.pause();
+    const wasTutorial = this.screen === 'tutorial';
     this.screen = screen;
+    // The tutorial and the program screen show the same panels with other programs: neither's match is the other's.
+    if (wasTutorial !== (screen === 'tutorial')) {
+      this.leaveMatch();
+      this.workspaces = screen === 'tutorial' ? [this.tutorialWorkspace, this.ownWorkspaces[1]] : this.ownWorkspaces;
+      if (screen === 'tutorial') {
+        this.tutorial.open();
+      } else {
+        this.tutorial.close();
+        this.idleSnapshot = this.captureIdle();
+      }
+      this.showFile(codeFileOf(PLAYER_INDEX));
+    }
     requireElement('app').dataset.screen = screen;
     for (const each of SCREENS) requireElement(`screen-${each}`).classList.toggle('selected', each === screen);
     // Robots may have been saved or deleted since the arena was last shown.
     if (screen === 'arena') this.arenaMode.refresh();
     if (screen === 'contest') this.contestMode.shown();
+  }
+
+  /** Puts the match of the program screen (or the tutorial) away, back to the robots waiting. */
+  private leaveMatch(): void {
+    this.replay = null;
+    this.events = [];
+    this.notice = null;
+    this.followed = null;
+    for (const workspace of this.workspaces) workspace.stale = false;
+  }
+
+  /** The tutorial went to another step: its field and robots are shown waiting, with its code. */
+  private tutorialStepChanged(): void {
+    this.leaveMatch();
+    this.idleSnapshot = this.captureTutorialIdle();
+  }
+
+  private setTutorialCode(code: string, undoable: boolean): void {
+    if (undoable) this.tutorialWorkspace.load(code);
+    else this.tutorialWorkspace.editor.replaceSource(code);
+    this.tutorialWorkspace.editor.showErrorLines([]);
+  }
+
+  /** Plays the tutorial step's match: the tutorial's program against its training robot, where the step puts them. */
+  private startTutorial(mode: Mode): void {
+    const { stage } = this.tutorial;
+    if (stage === undefined) return;
+    this.mode = mode;
+    const workspace = this.tutorialWorkspace;
+    workspace.flush();
+    workspace.stale = false;
+    const built = tutorialMatch(stage, workspace.source);
+    if (!built.ok) {
+      workspace.editor.showErrorLines(built.errors.map((error) => error.line));
+      this.showFaults([{ file: codeFileOf(PLAYER_INDEX), events: built.errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)) }]);
+      this.tutorial.matchRefused();
+      return;
+    }
+    workspace.editor.showErrorLines([]);
+    const { config, loadouts, features } = built.match;
+    this.features = features;
+    this.matchLoadouts = loadouts;
+    const played = recordMatch(config, EFFECT_LIFETIMES);
+    const outcome = this.tutorial.judge(played);
+    const recording = trimmed(played, outcome);
+    const replay = createReplay(recording, this.speed, ROBOT_IDS[PLAYER_INDEX]);
+    this.replay = replay;
+    this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
+    this.notice = null;
+    replay.restart();
+    this.refollow(replay);
+    this.tutorial.matchPlayed(outcome, replay);
+    if (mode === 'debug') this.tutorial.acted('debug');
+  }
+
+  /** The tutorial step's robots where its match starts them. */
+  private captureTutorialIdle(): Snapshot {
+    const { stage } = this.tutorial;
+    if (stage === undefined) return this.captureIdle();
+    const built = tutorialMatch(stage, 'wait');
+    if (!built.ok) return this.captureIdle();
+    const config = built.match.config;
+    return captureSnapshot(new Simulation({ ...config, robots: config.robots.map((robot) => ({ ...robot, brain: IDLE_BRAIN })) }));
   }
 
   /** The replay of the screen being shown: the one the transport and PAUSE act on. */
@@ -259,6 +361,10 @@ class App {
    * plays it back, unless some code has errors or some robot's parts cost too much.
    */
   private start(mode: Mode): void {
+    if (this.screen === 'tutorial') {
+      this.startTutorial(mode);
+      return;
+    }
     this.mode = mode;
     for (const workspace of this.workspaces) {
       workspace.flush();
@@ -329,13 +435,21 @@ class App {
 
   /** One line of the program in view while debugging; otherwise one tick. */
   private step(): void {
-    if (this.screen === 'program' && this.mode === 'debug') this.replay?.stepLine();
+    if (this.coding && this.mode === 'debug') {
+      this.replay?.stepLine();
+      if (this.screen === 'tutorial') this.tutorial.acted('stepLine');
+    }
     else this.shownReplay()?.step();
   }
 
   private stepBack(): void {
-    if (this.screen === 'program' && this.mode === 'debug') this.replay?.stepLineBack();
+    if (this.coding && this.mode === 'debug') this.replay?.stepLineBack();
     else this.shownReplay()?.stepBack();
+  }
+
+  /** Whether the screen is one where code is written and debugged: the program screen or the tutorial. */
+  private get coding(): boolean {
+    return this.screen === 'program' || this.screen === 'tutorial';
   }
 
   private togglePlay(): void {
@@ -352,7 +466,8 @@ class App {
     this.followed = null;
     for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
-    this.drawSeed();
+    if (this.screen === 'tutorial') this.idleSnapshot = this.captureTutorialIdle();
+    else this.drawSeed();
   }
 
   /** Gives the next match a seed of its own, and puts the waiting robots where it will start them. Unless the URL pins the seed. */
@@ -443,6 +558,7 @@ class App {
     replay.seekToNextRun(workspace.robotId, line);
     const marks = replay.runsOf(workspace.robotId, line).map((run) => run.tick);
     this.followed = { robotIndex, line, replay, marks };
+    if (this.screen === 'tutorial') this.tutorial.acted('mark');
   }
 
   /** Goes to the next or the previous time the marked line runs, and shows its program. */
@@ -492,14 +608,16 @@ class App {
     const isCode = file.file === 'main.bot';
     const robotId = ROBOT_IDS[file.robotIndex];
 
+    const tutorial = this.screen === 'tutorial';
     EDITOR_ELEMENT_IDS.forEach((elementId, robotIndex) => {
-      requireElement(elementId).hidden = !(isCode && robotIndex === file.robotIndex);
+      requireElement(elementId).hidden = tutorial || !(isCode && robotIndex === file.robotIndex);
     });
+    requireElement('tutorial-code').hidden = !tutorial;
     requireElement('config').hidden = isCode;
-    this.templateMenu.hidden = !isCode;
+    this.templateMenu.hidden = !isCode || tutorial;
     if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
 
-    requireElement('editor-title').textContent = t('program.editorTitle', { robot: robotId, file: file.file });
+    requireElement('editor-title').textContent = tutorial ? t('tutorial.editorTitle') : t('program.editorTitle', { robot: robotId, file: file.file });
     this.projectPanel.markSelected(file);
     // Line-by-line stepping follows the program in view.
     this.replay?.focusOn(robotId);
@@ -508,6 +626,7 @@ class App {
   private frame = (now: number): void => {
     const elapsed = (now - this.lastFrame) / MS_PER_SECOND;
     this.lastFrame = now;
+    if (this.screen === 'tutorial') this.tutorial.update();
     if (this.screen === 'arena') this.showArena(elapsed);
     else if (this.screen === 'contest') this.showContest(elapsed);
     else this.showProgram(elapsed);
@@ -564,9 +683,14 @@ class App {
 
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
-    const stats = replay?.recording.stats ?? this.stats;
-    const loadouts = replay === null ? this.loadouts : this.matchLoadouts;
-    this.battleView.render(view, replay?.recording.arena ?? this.arena.arena, stats, loadouts, {
+    const stage = this.screen === 'tutorial' ? this.tutorial.stage : undefined;
+    const idleArena = stage?.arena ?? this.arena.arena;
+    const idleStats = stage === undefined ? this.stats : TUTORIAL_IDLE_STATS;
+    const idleLoadouts = stage === undefined ? this.loadouts : TUTORIAL_IDLE_LOADOUTS;
+    const stats = replay?.recording.stats ?? idleStats;
+    const loadouts = replay === null ? idleLoadouts : this.matchLoadouts;
+    this.battleView.render(view, replay?.recording.arena ?? idleArena, stats, loadouts, {
+      goal: stage?.goal,
       sensorOf: debugging ? this.inspector.selected : null,
       marks: (debugging ? this.features[this.inspector.selected] : undefined) ?? NO_FEATURES,
       // The way to cover is shown for any robot whose program has to do with cover, in RUN as well.
@@ -586,7 +710,7 @@ class App {
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
     this.toolbar.setMessage(this.message());
     this.toolbar.setMode(replay === null ? null : this.mode);
-    this.showSeed(replay?.recording.seed ?? this.seed);
+    this.showSeed(replay?.recording.seed ?? stage?.seed ?? this.seed);
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null

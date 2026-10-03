@@ -99,6 +99,21 @@ button {
     'contest battle';
 }
 
+/* The tutorial: the program screen, with the tutorial down the whole left side. */
+#app[data-screen='tutorial'] {
+  grid-template-columns: minmax(320px, 26%) var(--editor-width, minmax(300px, 3fr)) 6px minmax(0, 3.5fr) minmax(0, 3.5fr);
+  grid-template-areas:
+    'toolbar toolbar toolbar toolbar toolbar'
+    'tutorial editor vsplit battle battle'
+    'tutorial hsplit hsplit hsplit hsplit'
+    'tutorial log log inspector watch';
+}
+
+#tutorial {
+  grid-area: tutorial;
+  border-right: 1px solid var(--border);
+}
+
 #contest {
   grid-area: contest;
   border-right: 1px solid var(--border);
@@ -107,7 +122,9 @@ button {
 #app:is([data-screen='arena'], [data-screen='contest']) :is(#project, #editor, #inspector, #log, #watch, #vsplit, #hsplit, #run, #reset, #debug, #previous-run, #next-run),
 #app[data-screen='contest'] .picker,
 #app:not([data-screen='arena']) :is(#lineup, #results),
-#app:not([data-screen='contest']) #contest {
+#app:not([data-screen='contest']) #contest,
+#app:not([data-screen='tutorial']) #tutorial,
+#app[data-screen='tutorial'] :is(#project, .picker) {
   display: none;
 }
 
@@ -1713,4 +1730,190 @@ button {
 
 #boot-button {
   margin-right: 14px;
+}
+
+/* The tutorial panel (see TutorialPanel). */
+#tutorial-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tutorial-top {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  padding: 8px 12px 0;
+}
+
+.tutorial-top .panel-menu {
+  flex: 1;
+  padding: 0;
+}
+
+.tutorial-top .panel-menu > .menu-list {
+  left: 0;
+  min-width: 100%;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.tutorial-top .menu-sublist {
+  position: static;
+  border: 0;
+  padding: 0 0 4px 12px;
+}
+
+.tutorial-header {
+  padding: 10px 14px 4px;
+}
+
+.tutorial-chapter {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tutorial-title {
+  margin: 4px 0 0;
+  color: var(--syntax-value);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.tutorial-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 14px 12px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.markup-paragraph {
+  margin: 8px 0;
+}
+
+.markup-list {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.markup-list li {
+  margin: 3px 0;
+}
+
+.markup-inline {
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--selected);
+  color: var(--syntax-command);
+}
+
+.markup-code {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.markup strong {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.tutorial-task {
+  margin: 14px 0 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--syntax-value);
+  border-radius: 3px;
+}
+
+.tutorial-task-label {
+  margin-top: 4px;
+  color: var(--syntax-value);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.tutorial-help {
+  margin-top: 8px;
+}
+
+.tutorial-hint {
+  margin: 6px 0;
+  padding: 2px 10px;
+  border-left: 2px solid var(--syntax-command);
+}
+
+.tutorial-hint-label {
+  color: var(--syntax-command);
+  font-size: 11px;
+}
+
+.tutorial-help-buttons {
+  margin-top: 8px;
+}
+
+.tutorial-answer summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tutorial-status {
+  margin: 0 12px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.tutorial-status[hidden] {
+  display: none;
+}
+
+.tutorial-status[data-kind='done'] {
+  background: rgba(143, 199, 166, 0.15);
+  color: var(--syntax-variable);
+}
+
+.tutorial-status[data-kind='problem'] {
+  background: var(--error-line);
+  color: var(--error);
+}
+
+.tutorial-status[data-kind='waiting'] {
+  color: var(--muted);
+}
+
+.tutorial-nav {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 12px;
+}
+
+.tutorial-nav .tool-button {
+  flex: 1;
+}
+
+.tutorial-next:not(:disabled) {
+  border-color: var(--syntax-variable);
+  color: var(--syntax-variable);
+}
+
+/* A part of the screen a tutorial step points at. */
+.tutorial-glow {
+  outline: 2px solid var(--syntax-value);
+  outline-offset: -2px;
+  animation: tutorial-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes tutorial-glow {
+  50% {
+    outline-color: rgba(212, 183, 122, 0.25);
+  }
 }

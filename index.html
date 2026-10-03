@@ -18,7 +18,7 @@
         <span id="message"></span>
         <div id="controls">
           <label class="picker"><span data-i18n="toolbar.map">MAP</span> <select id="arena"></select></label>
-          <button id="run" class="tool-button" type="button" data-i18n="toolbar.run">RUN</button>
+          <button id="run" class="tool-button" type="button" data-i18n="toolbar.run" data-i18n-title="toolbar.run.title" title="Run a match with the code (Cmd/Ctrl+Enter)">RUN</button>
           <button id="pause" class="tool-button" type="button">PAUSE</button>
           <button id="reset" class="tool-button" type="button" data-i18n="toolbar.reset">RESET</button>
           <button id="debug" class="tool-button" type="button" data-i18n="toolbar.debug">DEBUG</button>
@@ -87,7 +87,7 @@
           <div id="board" hidden></div>
         </div>
         <div id="transport">
-          <button id="transport-play" class="tool-button" type="button">PLAY</button>
+          <button id="transport-play" class="tool-button" type="button" data-i18n-title="transport.play.title" title="Play / pause (Space)">PLAY</button>
           <button id="step-back" class="tool-button" type="button" data-i18n-title="transport.stepBack.title" title="Step back: one line in DEBUG, one tick in RUN">◀1</button>
           <button id="step" class="tool-button" type="button" data-i18n-title="transport.step.title" title="Step: one line in DEBUG, one tick in RUN">1▶</button>
           <button id="step-over" class="tool-button" type="button" data-i18n-title="transport.stepOver.title" title="Step over: on to the next line, running through any function the line calls (DEBUG)">1▷</button>

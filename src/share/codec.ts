@@ -16,7 +16,8 @@ export type Decoded = { ok: true; shared: SharedRobot } | { ok: false; problem: 
 
 /** A match read from a share code: the two robots in spawn order, the arena and the seed, with the rules it was made under. */
 export interface SharedMatch {
-  robots: [SavedRobot, SavedRobot];
+  /** 2 to 4 robots, in the order they start. */
+  robots: SavedRobot[];
   arenaId: string;
   seed: number;
   rules: string;
@@ -49,7 +50,7 @@ export async function decodeRobot(code: string): Promise<Decoded> {
 }
 
 /** A match as a share code: both robots as they fought, the arena and the seed. */
-export async function encodeMatch(match: { robots: readonly [SavedRobot, SavedRobot]; arenaId: string; seed: number }): Promise<string> {
+export async function encodeMatch(match: { robots: readonly SavedRobot[]; arenaId: string; seed: number }): Promise<string> {
   const json = JSON.stringify({
     v: CODE_VERSION,
     kind: 'match',
@@ -68,12 +69,12 @@ export async function decodeMatch(code: string): Promise<DecodedMatch> {
   if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: t('share.notAMatch') };
   if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
   const robots = Array.isArray(json.robots) ? json.robots.map(readSavedRobot) : [];
-  const [first, second] = robots;
-  if (robots.length !== 2 || first === null || second === null) return { ok: false, problem: t('share.notTwoRobots') };
+  // A duel, or a battle royale of up to four.
+  if (robots.length < 2 || robots.length > 4 || robots.some((robot) => robot === null)) return { ok: false, problem: t('share.notTwoRobots') };
   if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
   return {
     ok: true,
-    shared: { robots: [first, second], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },
+    shared: { robots: robots as SavedRobot[], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },
   };
 }
 

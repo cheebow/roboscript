@@ -224,6 +224,7 @@ class App {
         this.toolbar.setArena(id);
       },
       keepRobots: (robots) => this.garage.keep(robots),
+      storage: this.storage,
     });
     this.contestMode = new ContestMode(requireElement('contest-body'), requireElement('board'), {
       garage: () => this.garage.list(),
@@ -239,8 +240,31 @@ class App {
     new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
+    document.addEventListener('keydown', (event) => this.onShortcut(event));
     requestAnimationFrame(this.frame);
     this.boot.show();
+  }
+
+  /**
+   * The keys of the screen: Space plays and pauses, ← and → step back and on,
+   * Cmd/Ctrl+Enter runs the code. While typing (in the editor or a field) only
+   * Cmd/Ctrl+Enter counts: the other keys are the text's.
+   */
+  private onShortcut(event: KeyboardEvent): void {
+    if (this.boot.shown || event.altKey) return;
+    const run = event.key === 'Enter' && (event.metaKey || event.ctrlKey);
+    if (run) {
+      if (!this.coding) return;
+      event.preventDefault();
+      this.start('run');
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || isTyping(event.target)) return;
+    if (event.key === ' ') this.togglePlay();
+    else if (event.key === 'ArrowRight') this.step();
+    else if (event.key === 'ArrowLeft') this.stepBack();
+    else return;
+    event.preventDefault();
   }
 
   /** What the start menu starts. */
@@ -853,6 +877,12 @@ function readPinnedSeed(): number | null {
 }
 
 const MARK_KEY = 'roboscript/mark.json';
+
+/** Whether a key goes to something being typed in: a field, a list, or the code editor. */
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
 
 /** The marked line kept from before, if there is a usable one. */
 function readMark(storage: Storage | null): { robotIndex: number; line: number } | null {

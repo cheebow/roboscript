@@ -68,6 +68,15 @@ describe('share codes for matches', () => {
     expect(decoded).toEqual({ ok: true, shared: { ...MATCH, rules: RULES_VERSION } });
   });
 
+  it('carry a battle royale of three or four robots too, and no more', async () => {
+    const four = { ...MATCH, robots: [ROBOT, OTHER, OTHER, ROBOT] };
+    expect(await decodeMatch(await encodeMatch(four))).toEqual({ ok: true, shared: { ...four, rules: RULES_VERSION } });
+    expect(await decodeMatch(await encodeMatch({ ...MATCH, robots: [ROBOT, OTHER, OTHER, ROBOT, OTHER] }))).toEqual({
+      ok: false,
+      problem: 'a match without 2 to 4 robots in it',
+    });
+  });
+
   it('are not read as robot codes, nor robot codes as match codes', async () => {
     expect(await decodeRobot(await encodeMatch(MATCH))).toEqual({ ok: false, problem: 'not a share code for a robot' });
     expect(await decodeMatch(await encodeRobot(ROBOT))).toEqual({ ok: false, problem: 'not a share code for a match' });

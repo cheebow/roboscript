@@ -220,6 +220,39 @@ export function playArenaSeries(
   return { ok: true, names: [firstName, secondName], matches, result };
 }
 
+/** How a battle royale series went: each match's places by entrant, and how often each entrant came in each place. */
+export interface RoyaleSeriesResult {
+  names: string[];
+  /** Per match: each entrant's place (1 the winner), by the entrant's index. */
+  places: number[][];
+  ticks: number[];
+  /** Per entrant: how many times it came first, second, and so on. */
+  counts: number[][];
+}
+
+/** Plays three or four entrants against each other match after match, in each fixture's arena with its seed. */
+export function playRoyaleSeries(
+  entrants: readonly Entrant[],
+  fixtures: readonly { arena: Arena; seed: number }[],
+): ({ ok: true } & RoyaleSeriesResult) | Refusal {
+  const names = fightNames(entrants);
+  const places: number[][] = [];
+  const ticks: number[] = [];
+  const counts = entrants.map(() => entrants.map(() => 0));
+  for (const { arena, seed } of fixtures) {
+    const prepared = prepareFight(entrants, arena, seed);
+    if (!prepared.ok) return prepared;
+    const simulation = new Simulation(prepared.fight.config);
+    while (simulation.result === null) simulation.step();
+    const { result } = simulation;
+    const placed = prepared.fight.names.map((name) => result.places[name] ?? entrants.length);
+    placed.forEach((place, index) => counts[index][place - 1]++);
+    places.push(placed);
+    ticks.push(simulation.tick);
+  }
+  return { ok: true, names, places, ticks, counts };
+}
+
 /** The two entrants with the given one first. */
 export function inOrder(entrants: readonly [Entrant, Entrant], first: 0 | 1): [Entrant, Entrant] {
   return [entrants[first], entrants[other(first)]];

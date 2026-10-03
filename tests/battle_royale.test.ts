@@ -169,6 +169,19 @@ describe('entrants of a battle royale', () => {
     expect(prepared.fight.config.arena.spawns).toHaveLength(4);
   });
 
+  it('play as a series, counting how often each came in each place', async () => {
+    const { playRoyaleSeries } = await import('../src/arena/match');
+    const entrants = builtInEntrants().slice(0, 3);
+    const fixtures = ARENAS.slice(0, 4).map(({ arena }, index) => ({ arena, seed: index + 5 }));
+    const played = playRoyaleSeries(entrants, fixtures);
+    if (!played.ok) throw new Error(played.problems.join());
+    expect(played.places).toHaveLength(4);
+    for (const placed of played.places) expect([...placed].sort()).toEqual([1, 2, 3]);
+    // Every match gives out each place once.
+    for (let place = 0; place < 3; place++) expect(played.counts.reduce((sum, counts) => sum + counts[place], 0)).toBe(4);
+    expect(playRoyaleSeries(entrants, fixtures)).toEqual(played);
+  });
+
   it('fight to a finish in every arena, the templates four at a time', () => {
     let timeouts = 0;
     let matches = 0;

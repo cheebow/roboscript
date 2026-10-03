@@ -7,6 +7,7 @@ import {
   MAX_ENTRANTS,
   arenaFor,
   playArenaSeries,
+  playRoyaleSeries,
   prepareFight,
 } from '../arena/match';
 import { type MessageKey, t } from '../i18n/messages';
@@ -17,6 +18,7 @@ import { COST_LIMIT, SLOTS, costOf, partIn, statsOf } from '../data/parts';
 import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
 import { type SavedRobot, copyRobot } from '../project/garage';
+import type { KeyValueStorage } from '../project/project_store';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeMatch, encodeMatch } from '../share/codec';
 import { type SharedMatch, acceptDrops, chooseFile, downloadText, fileName, matchFileText, readSharedFile } from '../share/file';
@@ -44,7 +46,11 @@ export interface ArenaSetting {
   chooseArena(id: string): void;
   /** Keeps the robots in the garage and returns the names they are kept under. Throws when it cannot. */
   keepRobots(robots: readonly SavedRobot[]): string[];
+  /** Where the line-up is kept; null when storage is unavailable. */
+  storage: KeyValueStorage | null;
 }
+
+const LINEUP_KEY = 'roboscript/arena.json';
 
 /** What the battle view shows of the arena mode. */
 
@@ -153,6 +159,7 @@ export class ArenaMode {
 
     this.results = results;
     results.dataset.empty = t('arena.results.empty');
+    this.readLineup();
     this.refresh();
     this.idle = this.captureIdle();
     this.showCount();
@@ -166,6 +173,30 @@ export class ArenaMode {
     this.leaveMatch();
     this.idle = this.captureIdle();
     this.showCount();
+    this.saveLineup();
+  }
+
+  /** The line-up kept from before: how many robots, and which in each slot. Robots no longer there are put right by refresh. */
+  private readLineup(): void {
+    try {
+      const value: unknown = JSON.parse(this.setting.storage?.getItem(LINEUP_KEY) ?? 'null');
+      if (typeof value !== 'object' || value === null) return;
+      const { count, picked } = value as Record<string, unknown>;
+      if ((COUNTS as readonly number[]).includes(count as number)) this.count = count as number;
+      if (Array.isArray(picked)) {
+        this.picked = this.picked.map((id, index) => (typeof picked[index] === 'string' ? (picked[index] as string) : id));
+      }
+    } catch {
+      // Nothing usable kept: the line-up starts as it always did.
+    }
+  }
+
+  private saveLineup(): void {
+    try {
+      this.setting.storage?.setItem(LINEUP_KEY, JSON.stringify({ version: 1, count: this.count, picked: this.picked }));
+    } catch {
+      // Storage may be full or blocked: the line-up is then kept until the page is left.
+    }
   }
 
   /** Shows the slots that take part, and what only a duel can do. */
@@ -174,10 +205,7 @@ export class ArenaMode {
       element.hidden = index >= this.count;
     });
     this.countButtons.forEach((button, index) => button.classList.toggle('selected', COUNTS[index] === this.count));
-    // A series, and the share codes of matches, are for duels.
-    this.seriesButton.disabled = this.count !== 2;
-    // A disabled button says why it is.
-    this.seriesButton.title = this.count === 2 ? t('arena.series.title', { count: SERIES_MATCHES }) : t('arena.series.duelsOnly');
+    this.seriesButton.title = t(this.count === 2 ? 'arena.series.title' : 'arena.royaleSeries.title', { count: SERIES_MATCHES });
   }
 
   /** Reads the garage again: robots saved or deleted since show up in, or go from, the line-up. */
@@ -284,6 +312,7 @@ export class ArenaMode {
     if (keepProblem === null) {
       this.picked = [...ids, ...this.picked.slice(ids.length)];
       this.count = robots.length;
+      this.saveLineup();
       this.showCount();
       this.slots.forEach((slot, index) => {
         slot.select.value = this.picked[index];
@@ -318,8 +347,7 @@ export class ArenaMode {
       }
       if (making) return;
       making = true;
-      const robots: [SavedRobot, SavedRobot] = [copyRobot(match.entrants[0]), copyRobot(match.entrants[1])];
-      // Only a duel has a share code.
+      const robots = match.entrants.map((entrant) => copyRobot(entrant));
       encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed })
         .then((code) => {
           const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
@@ -363,6 +391,7 @@ export class ArenaMode {
     select.addEventListener('change', () => {
       this.notice.clear();
       this.picked[index] = select.value;
+      this.saveLineup();
       this.showEntrant(index);
       this.leaveMatch();
       this.idle = this.captureIdle();
@@ -416,6 +445,41 @@ export class ArenaMode {
   }
 
   /** The two entrants of a duel. */
+  /** A series of three or four: every map in turn, each match with a seed (and so corners) of its own; places are counted. */
+  private playRoyaleSeries(): void {
+    const order = shuffled(ARENAS);
+    const maps = Array.from({ length: SERIES_MATCHES }, (_, match) => order[match % order.length]);
+    const fixtures = maps.map(({ arena }) => ({ arena, seed: randomSeed() }));
+    const entrants = this.pickedEntrants();
+    const played = playRoyaleSeries(entrants, fixtures);
+    if (!played.ok) {
+      this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
+      return;
+    }
+    const { names, places, ticks, counts } = played;
+    const series = createElement('div', 'series');
+    series.append(createElement('div', 'result series-title', t('arena.royaleSeriesTitle', { count: places.length, names: names.join(' / ') })));
+    places.forEach((placed, index) => {
+      const order = names.map((name, at) => ({ name, place: placed[at] })).sort((a, b) => a.place - b.place);
+      const outcome = order.map(({ name, place }) => t('arena.place', { place, name })).join('  ');
+      const seconds = formatSeconds(ticks[index] / MATCH_DEFAULTS.tickRate);
+      const text = t('arena.seriesRow', { number: `${index + 1}`.padStart(2), outcome, reason: '', seconds, map: maps[index].name });
+      const fought: FoughtMatch = { entrants, arena: maps[index], seed: fixtures[index].seed };
+      const entry = createButton('result fought', text, t('arena.show.title'), () => this.show(fought));
+      series.append(this.shareableRow(entry, fought));
+    });
+    // The robots by how often they won, then came second, and so on.
+    const standing = names.map((name, at) => ({ name, counts: counts[at] })).sort((a, b) => {
+      for (let place = 0; place < a.counts.length; place++) if (a.counts[place] !== b.counts[place]) return b.counts[place] - a.counts[place];
+      return 0;
+    });
+    for (const { name, counts: placesOf } of standing) {
+      const line = placesOf.map((count, place) => t('arena.placeCount', { place: place + 1, count })).join('  ');
+      series.append(createElement('div', 'result series-total', `${name}  ${line}`));
+    }
+    this.addResult(series);
+  }
+
   private pickedPair(): [Entrant, Entrant] {
     return [this.entrantIn(0), this.entrantIn(1)];
   }
@@ -489,13 +553,16 @@ export class ArenaMode {
     const seconds = (recording.snapshots.length - 1) / recording.tickRate;
     const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
     // Only a duel has a share code; the entry of a battle royale says so.
-    const title = match.entrants.length === 2 ? t('arena.showAgain.title') : `${t('arena.showAgain.title')}\n${t('arena.share.duelsOnly')}`;
-    const entry = createButton('result fought', text, title, () => this.show(match));
-    this.addResult(match.entrants.length === 2 ? this.shareableRow(entry, match) : entry);
+    const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
+    this.addResult(this.shareableRow(entry, match));
   }
 
   /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
   private playSeries(): void {
+    if (this.count > 2) {
+      this.playRoyaleSeries();
+      return;
+    }
     // Two matches a map, one from each side; every map comes up before any comes up again,
     // in an order of its own each time. Each match has a seed, and so starting places, of its own.
     const order = shuffled(ARENAS);

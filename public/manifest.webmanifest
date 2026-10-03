@@ -1,0 +1,11 @@
+{
+  "name": "RoboScript",
+  "short_name": "RoboScript",
+  "description": "Write the program of a robot, send it into battle, and debug it.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d0f",
+  "theme_color": "#0b0d0f",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

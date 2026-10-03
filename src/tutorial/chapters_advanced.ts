@@ -655,6 +655,30 @@ Each is explained with comments (\`#\`). Put the cursor on a word this tutorial 
     check: { kind: 'read' },
   },
   {
+    id: 'search',
+    title: { en: `Finding a hidden enemy`, ja: `見えない敵を探す工夫` },
+    body: { en: `On a map with many obstacles, the enemy can be hard to find. In particular, **two robots that search by turning the same way** can chase each other round an obstacle and never meet.
+
+How to search is up to your program. For example:
+
+- **If the enemy is not found for a while, turn the other way.** Count the time without a sighting in a variable, and swap \`turn left\` for \`turn right\` (DumbBot and GuardBot do this).
+- **Head for where it was last seen.** While the enemy cannot be seen, \`turn enemy\` and \`enemy_distance\` point to **where it was last seen**. Lost it? Go there.
+- **Face where the shots come from.** When \`hit\` is true, an enemy you cannot see has shot you. \`face hit\` turns you towards it, and you may find it.
+- **Follow a wall.** Watch \`wall_left\` or \`wall_right\`, and drive so as not to stray from the wall: it takes you deep into maze-like maps.
+
+The rules do not tell you where the enemy is. How to look for it is for your program, and for you, to show what it can do.`, ja: `障害物の多いマップでは、敵がなかなか見つからないことがあります。とくに、**同じ向きに回って探す 2 台** は、障害物のまわりを追いかけっこして、いつまでも出会えないことがあります。
+
+探し方は、プログラムの工夫しだいです。たとえば
+
+- **しばらく見つからなければ、回る向きを変える。** 変数で見つからない時間を数えて、\`turn left\` と \`turn right\` を入れかえます（DumbBot や GuardBot がこうしています）。
+- **最後に見た場所へ向かう。** \`turn enemy\` と \`enemy_distance\` は、見えていない間は **最後に見た位置** を指します。見失ったら、そこへ向かってみましょう。
+- **撃たれた方を向く。** \`hit\` が正しければ、見えない敵に撃たれています。\`face hit\` でそちらを向けば、見つかることがあります。
+- **壁に沿って走る。** \`wall_left\` や \`wall_right\` で壁までの距離を見て、壁から離れすぎないように走ると、迷路のようなマップでも奥まで行けます。
+
+ルールで敵の場所を教えることはしません。どう探すかも、プログラムを書くあなたの腕の見せどころです。` },
+    check: { kind: 'read' },
+  },
+  {
     id: 'garage',
     title: { en: `Keep your robot`, ja: `ロボットを保存する` },
     body: { en: `On the program screen, **PROJECT** holds ALPHA and BRAVO, each with a \`main.bot\` (program) and a \`config\` (parts). **BRAVO's program can be changed too**, so you can set two robots of your own against each other.

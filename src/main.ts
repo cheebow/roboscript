@@ -16,3 +16,13 @@ useLanguage(language);
 document.documentElement.lang = language;
 translateStatic(document);
 startApp();
+
+// Installable and playable offline: a built game keeps its files with a service worker.
+// Not while developing, where the files change at every save.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Without a service worker the game still works: only online.
+    });
+  });
+}

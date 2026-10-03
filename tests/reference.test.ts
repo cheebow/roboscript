@@ -120,6 +120,14 @@ describe('describeAt', () => {
     expect(at('left')?.kind).toBe('direction');
   });
 
+  it('describes a word after turn, aim or face as a direction, not as the sensor of that name', () => {
+    for (const command of ['turn', 'face']) {
+      const line = `${command} hit`;
+      expect(describeAt(line, line.length - 1)?.kind).toBe('direction');
+    }
+    expect(describeAt('if hit', 4)?.kind).toBe('sensor');
+  });
+
   it('describes a variable of the program by where it is first set', () => {
     expect(at('n < 3', 0)).toMatchObject({ word: 'n', kind: 'variable' });
     expect(at('n < 3', 0)?.summary).toContain('line 1');

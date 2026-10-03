@@ -36,9 +36,13 @@ const SENSOR_NAMES = [
   'wall_right',
 ] as const;
 
+/** Shown with the values a program reads, but not words of RoboScript: a program cannot read them. */
+const NOT_WORDS: ReadonlySet<string> = new Set(['label', 'last_seen_x', 'last_seen_y']);
+
 /**
  * Shows what one robot's program can read at the displayed moment, under the
- * names used in RoboScript: the program's own variables, then the sensor values.
+ * names used in RoboScript: the program's own variables, then the sensor
+ * values, with the robot's label and where it last saw the enemy besides.
  */
 export class WatchPanel {
   private readonly sensors: FieldList;
@@ -56,7 +60,7 @@ export class WatchPanel {
     // In Japanese the labels are short translations; the word itself is the tooltip, so the program's word can still be found.
     this.sensors = new FieldList(
       sensorsContainer,
-      SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: word })),
+      SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: NOT_WORDS.has(word) ? t('watch.notAWord') : word })),
     );
   }
 

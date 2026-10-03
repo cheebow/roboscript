@@ -43,7 +43,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'loop',
     kind: 'control',
     hint: 'repeat forever',
-    summary: 'Repeats the indented lines below forever. Without a loop, the program runs once and the robot stops.',
+    summary: 'Repeats the indented lines below forever. Without a loop, the program runs once and then does nothing more: the hull keeps driving as it was last set (drive stop stops it).',
   },
   {
     word: 'while',
@@ -100,7 +100,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'turn',
     kind: 'command',
     hint: 'turn the hull, 1 tick',
-    summary: 'Turns the hull left, right, towards the enemy or towards cover for one tick. The turret turns with it.',
+    summary: 'Turns the hull for one tick: left, right, towards the enemy, towards cover, or towards where the last hit came from (hit). The turret turns with it.',
   },
   {
     word: 'face',
@@ -149,7 +149,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'cover',
     kind: 'direction',
     hint: 'towards the hiding place',
-    summary: 'Towards the nearest place hidden from the enemy (see cover_visible).',
+    summary: 'Along the shortest way to a place hidden from the enemy: towards the next point of that way, round the corners of obstacles (see cover_visible).',
   },
   {
     word: 'enemy_visible',
@@ -179,7 +179,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'cover_visible',
     kind: 'sensor',
     hint: 'a hiding place is in reach',
-    summary: 'True when a place hidden from the enemy (or from where it was last seen) can be driven to in a straight line. False until the enemy has been seen.',
+    summary: 'True when there is a place hidden from the enemy (or from where it was last seen) that the robot can drive to, going round obstacles if need be. False until the enemy has been seen.',
   },
   {
     word: 'enemy_distance',
@@ -216,8 +216,8 @@ export const LANGUAGE: readonly WordReference[] = [
   {
     word: 'cover_distance',
     kind: 'sensor',
-    hint: 'distance to the hiding place',
-    summary: 'Distance to the nearest hiding place. 0 when the robot is already hidden, or when there is none.',
+    hint: 'way to the hiding place',
+    summary: 'How far the robot has to drive to the nearest hiding place, round obstacles. 0 when the robot is already hidden, or when there is none.',
   },
   {
     word: 'cover_angle',
@@ -314,7 +314,8 @@ const AS_DIRECTION = new Map<string, WordReference>([
   ],
 ]);
 /** What comes before a direction on its line. */
-const BEFORE_DIRECTION = /\b(?:turn|aim)\s+$/;
+/** A word right after one of these is a direction, not a sensor: "turn cover", "face hit". */
+const BEFORE_DIRECTION = /\b(?:turn|aim|face)\s+$/;
 
 /** What a word of the language means; undefined for anything else, such as a program's own variables. */
 export function describeWord(word: string): WordReference | undefined {

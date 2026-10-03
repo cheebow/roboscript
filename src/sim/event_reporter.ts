@@ -66,7 +66,7 @@ export class EventReporter {
     if (status === (this.lastStatus.get(robotId) ?? 'running')) return;
     this.lastStatus.set(robotId, status);
     if (status === 'finished') {
-      this.emit('warning', robotId, 'program finished: the robot stops (use loop to keep it going)');
+      this.emit('warning', robotId, 'program finished: the robot does nothing more and keeps driving as it was set (use loop to keep it going)');
     } else if (status === 'stalled') {
       this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs turn, aim, fire, guard or wait)');
     }

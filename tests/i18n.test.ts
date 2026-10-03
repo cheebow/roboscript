@@ -75,11 +75,13 @@ describe('Japanese for the words and the parts', () => {
   });
 
   it('has a watch label for every word the watch panel shows', () => {
-    const shown = ['enemy_visible', 'hp', 'wall_right', 'cover_angle', 'last_seen_x'];
+    const shown = ['enemy_visible', 'hp', 'wall_right', 'cover_angle'];
     for (const word of shown) {
       expect(en[`watch.${word}` as MessageKey]).toBe(word);
       expect(ja[`watch.${word}` as MessageKey]).toBeTruthy();
     }
+    // What a program cannot read is not shown under a name that looks like a word of the language.
+    expect(en['watch.last_seen_x']).toBe('(enemy last seen x)');
   });
 
   it('covers every part', () => {

@@ -1579,3 +1579,138 @@ button {
   outline-offset: -4px;
 }
 
+
+/* The start-up screen: a computer's start-up check, then the start menu (see BootScreen). */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 32px 40px;
+  overflow: auto;
+  background: #000;
+  color: #b8bec4;
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+}
+
+.boot-log {
+  max-width: 720px;
+}
+
+.boot-line {
+  display: flex;
+  gap: 6px;
+  white-space: pre;
+}
+
+.boot-line.blank {
+  height: 1.6em;
+}
+
+.boot-heading {
+  color: var(--syntax-command);
+  letter-spacing: 0.08em;
+}
+
+.boot-dots {
+  flex: 1;
+  min-width: 24px;
+  overflow: hidden;
+  color: #4a5158;
+}
+
+.boot-dots::before {
+  content: '................................................................................';
+}
+
+.boot-ok {
+  color: var(--syntax-variable);
+}
+
+.boot-log:has(+ .boot-menu) .boot-line:last-child::after {
+  content: none;
+}
+
+/* A block cursor after the last line while the lines are still coming. */
+.boot-log .boot-line:last-child::after {
+  content: '█';
+  margin-left: 4px;
+  animation: boot-blink 1s steps(1) infinite;
+}
+
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.boot-menu {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  padding: 8px 0;
+  border: 1px solid #6f7a85;
+  animation: notice-in 0.2s ease-out;
+}
+
+.boot-menu-title {
+  margin: -20px 0 6px 14px;
+  padding: 0 6px;
+  align-self: flex-start;
+  background: #000;
+  color: var(--syntax-value);
+  letter-spacing: 0.08em;
+}
+
+.boot-item {
+  display: grid;
+  grid-template-columns: 2ch 16ch 1fr;
+  gap: 8px;
+  padding: 2px 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.boot-item-mark {
+  visibility: hidden;
+}
+
+.boot-item-what {
+  color: #6f7a85;
+}
+
+.boot-item.current {
+  background: #b8bec4;
+  color: #000;
+}
+
+.boot-item.current .boot-item-mark {
+  visibility: visible;
+}
+
+.boot-item.current .boot-item-what {
+  color: #2c333a;
+}
+
+.boot-item:disabled {
+  color: #4a5158;
+  cursor: default;
+}
+
+.boot-help {
+  color: #6f7a85;
+  font-size: 12px;
+}
+
+#boot-button {
+  margin-right: 14px;
+}

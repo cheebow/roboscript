@@ -26,6 +26,7 @@ import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
+import { type BootChoice, BootScreen } from './boot_screen';
 import { createReplay } from './watched_match';
 import { ArenaMode } from './arena_mode';
 import { ContestMode } from './contest_mode';
@@ -112,6 +113,8 @@ class App {
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   private readonly seedLabel = requireElement('battle-seed');
+  /** The start-up screen and its menu: shown first, and again from the ⏻ button. The tutorial comes in Phase 18. */
+  private readonly boot = new BootScreen(this.storage, (choice) => this.bootInto(choice), new Set(['tutorial']));
   private readonly battleView = new BattleView(requireElement<HTMLCanvasElement>('battle-canvas'), EFFECT_LIFETIMES);
   private readonly templateMenu: ActionMenu;
   private readonly partsView = new PartsView(requireElement('config'), (slot, partId) => this.pickPart(slot, partId));
@@ -205,7 +208,15 @@ class App {
     this.showFile(this.shownFile);
     new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
+    requireElement('boot-button').addEventListener('click', () => this.boot.show());
     requestAnimationFrame(this.frame);
+    this.boot.show();
+  }
+
+  /** What the start menu starts. */
+  private bootInto(choice: BootChoice): void {
+    if (choice === 'language') switchLanguage(this.storage);
+    else if (choice !== 'tutorial') this.showScreen(choice);
   }
 
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */

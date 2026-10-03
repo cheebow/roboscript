@@ -1,6 +1,8 @@
 import type { ProgramFeatures } from '../ai/features';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
+import { randomSeed } from '../arena/seed';
+import { scatterSpawns } from '../arena/spawns';
 import { ARENAS, findArena } from '../data/arenas';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -79,7 +81,10 @@ interface FollowedLine {
 
 /** Wires the panels to a recorded match: records matches, runs the frame loop, keeps the robots' code and parts. */
 class App {
-  private readonly seed = readSeed();
+  /** The seed every match gets when the URL names one, so that the same match can be watched again; null otherwise. */
+  private readonly pinnedSeed = readPinnedSeed();
+  /** The seed of the next RUN / DEBUG: where the robots start and how their shots scatter. */
+  private seed = this.pinnedSeed ?? randomSeed();
   private readonly store = openStore();
   private readonly garage = openGarage();
   private readonly garagePanel = new GaragePanel(requireElement('garage'), ROBOT_IDS, {
@@ -113,7 +118,7 @@ class App {
   /** The parts the robots carry in the match being shown. */
   private matchLoadouts: readonly Loadout[] = [];
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
-  /** The starting positions in the chosen arena, shown while there is no match. */
+  /** The robots where the next RUN / DEBUG will start them, shown while there is no match. */
   private idleSnapshot = this.captureIdle();
 
   /** null while no match has been recorded. */
@@ -261,6 +266,7 @@ class App {
     this.features = features;
     this.matchLoadouts = [...this.loadouts];
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
+    this.drawSeed();
     this.replay = new ReplayManager(recording, {
       maxFrameTime: MATCH_DEFAULTS.maxFrameTime,
       tailTicks: REPLAY_TAIL_TICKS,
@@ -316,6 +322,14 @@ class App {
     this.notice = null;
     this.partsStale.fill(false);
     this.garageNote = null;
+    this.drawSeed();
+  }
+
+  /** Gives the next match a seed of its own, and puts the waiting robots where it will start them. Unless the URL pins the seed. */
+  private drawSeed(): void {
+    if (this.pinnedSeed !== null) return;
+    this.seed = randomSeed();
+    this.idleSnapshot = this.captureIdle();
   }
 
   /** Puts the part into the slot of the robot whose config is shown. Takes effect from the next RUN / DEBUG. */
@@ -468,9 +482,10 @@ class App {
     if (this.replay !== null || this.events.length > 0) workspace.stale = true;
   }
 
+  /** The next match: in the chosen arena, from where its seed starts the robots. */
   private matchConfig(brains: readonly RobotBrain[]): SimulationConfig {
     return {
-      arena: this.arena.arena,
+      arena: scatterSpawns(this.arena.arena, this.seed),
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
       seed: this.seed,
@@ -592,8 +607,8 @@ class App {
   }
 
   private replayStatus(): string {
-    if (this.replay === null) return READY_MESSAGE;
-    const parts = [this.mode.toUpperCase(), playbackStatus(this.replay)];
+    if (this.replay === null) return `${READY_MESSAGE}   seed ${this.seed}`;
+    const parts = [this.mode.toUpperCase(), playbackStatus(this.replay), `seed ${this.replay.recording.seed}`];
     const followed = this.followedNow();
     if (followed !== null) parts.push(this.describeFollowed(followed));
     return parts.join('   ');
@@ -629,9 +644,10 @@ function appEvent(
   return { tick: 0, timestamp: 0, robotId, type, message, sourceLine };
 }
 
-function readSeed(): number {
+/** The seed named in the URL (`?seed=7`), to watch the same match again; null when none is. */
+function readPinnedSeed(): number | null {
   const value = new URLSearchParams(window.location.search).get('seed');
-  if (value === null) return MATCH_DEFAULTS.seed;
+  if (value === null) return null;
   const seed = Number.parseInt(value, 10);
   if (Number.isNaN(seed)) throw new Error(`Invalid seed: "${value}"`);
   return seed;

@@ -8,6 +8,8 @@ import {
   playArenaSeries,
   prepareFight,
 } from '../arena/match';
+import { randomSeed } from '../arena/seed';
+import { scatterSpawns } from '../arena/spawns';
 import { ARENAS, type ArenaDefinition } from '../data/arenas';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
 import { COST_LIMIT, type Loadout, SLOTS, costOf, partIn, statsOf } from '../data/parts';
@@ -54,7 +56,6 @@ interface FoughtMatch {
 const SLOT_COUNT = 2;
 /** The matches of one series. */
 const SERIES_MATCHES = 20;
-const MAX_SEED = 0x7fffffff;
 /** The entrants the slots start with: the pair the program screen starts with. */
 const DEFAULT_ENTRANT_IDS = ['built-in:sample', 'built-in:dumb_bot'];
 const GROUPS: readonly { origin: Entrant['origin']; label: string }[] = [
@@ -91,7 +92,9 @@ export class ArenaMode {
   private fight: Fight | null = null;
   /** A match whose result goes on the list once it has been watched to its end. */
   private unannounced: FoughtMatch | null = null;
-  /** The starting positions of the picked robots, shown while there is no match. */
+  /** The seed of the next FIGHT, drawn ahead so that the robots wait where that match will start. */
+  private nextSeed = randomSeed();
+  /** The picked robots where the next FIGHT will start them, shown while there is no match. */
   private idle: ArenaScene;
 
   constructor(
@@ -240,14 +243,14 @@ export class ArenaMode {
   private captureIdle(): ArenaScene {
     const entrants = this.pickedEntrants();
     const names = fightNames(entrants);
-    const { arena } = this.setting.arena();
+    const arena = scatterSpawns(this.setting.arena().arena, this.nextSeed);
     const loadouts = entrants.map((entrant) => entrant.loadout);
     const stats = loadouts.map((loadout) => statsOf(loadout));
     const simulation = new Simulation({
       arena,
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-      seed: MATCH_DEFAULTS.seed,
+      seed: this.nextSeed,
       robots: [
         { id: names[0], brain: { decide: createIdleAction }, stats: stats[0] },
         { id: names[1], brain: { decide: createIdleAction }, stats: stats[1] },
@@ -256,9 +259,11 @@ export class ArenaMode {
     return { snapshot: captureSnapshot(simulation), arena, stats, loadouts };
   }
 
-  /** A match between the picked robots in the chosen arena, with a seed of its own. */
+  /** A match between the picked robots in the chosen arena, from where they were waiting. The next one gets a seed of its own. */
   private startFight(): void {
-    const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed: randomSeed() };
+    const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed: this.nextSeed };
+    this.nextSeed = randomSeed();
+    this.idle = this.captureIdle();
     if (this.show(match)) this.unannounced = match;
   }
 
@@ -349,10 +354,6 @@ export class ArenaMode {
 /** The entrant that starts first in the match with the given number: they take turns. */
 function sideOf(match: number): 0 | 1 {
   return match % 2 === 0 ? 0 : 1;
-}
-
-function randomSeed(): number {
-  return 1 + Math.floor(Math.random() * MAX_SEED);
 }
 
 /** The items in a random order. */

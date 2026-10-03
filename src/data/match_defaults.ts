@@ -3,6 +3,7 @@ export const MATCH_DEFAULTS = {
   tickRate: 30,
   /** sec */
   maxMatchTime: 120,
+  /** The seed the tests play with; in the app every match draws a seed of its own (`randomSeed`). */
   seed: 1,
   /** sec, upper bound on real time consumed per frame (e.g. after the tab was in the background) */
   maxFrameTime: 0.25,

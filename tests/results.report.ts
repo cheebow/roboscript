@@ -170,13 +170,38 @@ it('templates: every template against every other, in every arena', () => {
   print(lines);
 });
 
-it('default: the match the player first sees, the sample against DumbBot', () => {
+it('default: the first match, the sample against DumbBot, from the positions each seed gives', () => {
+  const lines: string[] = [];
+  const play = (source: string, seed: number) => {
+    const simulation = createSimulation([compileBrain(source), compileBrain(enemySource('dumb_bot'))], {
+      arena: scatterSpawns(DEFAULT_ARENA, seed),
+      stats: ROBOT_DEFAULTS,
+      seed,
+    });
+    runToEnd(simulation);
+    return simulation;
+  };
+  const seeds = Array.from({ length: 100 }, (_, index) => index + 1);
+  lines.push('Center Block、Sample 対 DumbBot、seed 1〜100（開始位置は seed でばらつく）:');
+  for (const distance of [250, 350]) {
+    const source = SAMPLE_AI.replace('attack(250)', `attack(${distance})`);
+    const wins = { ALPHA: 0, BRAVO: 0, draw: 0 };
+    let ticks = 0;
+    for (const seed of seeds) {
+      const simulation = play(source, seed);
+      wins[simulation.result?.winnerId === 'ALPHA' ? 'ALPHA' : simulation.result?.winnerId === 'BRAVO' ? 'BRAVO' : 'draw']++;
+      ticks += simulation.tick;
+    }
+    lines.push(`  attack(${distance}): ALPHA ${wins.ALPHA}勝、BRAVO ${wins.BRAVO}勝、引き分け ${wins.draw}、平均 ${(ticks / seeds.length / tickRate).toFixed(1)}秒`);
+  }
+
+  const seed = 2;
   const recording = recordMatch(
     {
-      arena: DEFAULT_ARENA,
+      arena: scatterSpawns(DEFAULT_ARENA, seed),
       tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-      seed: MATCH_DEFAULTS.seed,
+      seed,
       robots: [
         { id: 'ALPHA', brain: compileBrain(SAMPLE_AI), stats: ROBOT_DEFAULTS },
         { id: 'BRAVO', brain: compileBrain(enemySource('dumb_bot')), stats: ROBOT_DEFAULTS },
@@ -184,7 +209,8 @@ it('default: the match the player first sees, the sample against DumbBot', () =>
     },
     EFFECT_LIFETIMES,
   );
-  const lines = ['Center Block、Sample 対 DumbBot、seed 1（時刻、出来事、その tick に ALPHA が実行した行、HP）:'];
+  const [alphaStart, bravoStart] = recording.arena.spawns;
+  lines.push('', `例: seed ${seed}（ALPHA (${alphaStart.x}, ${alphaStart.y})、BRAVO (${bravoStart.x}, ${bravoStart.y}) から。時刻、出来事、その tick に ALPHA が実行した行、HP）:`);
   const seen = new Set<string>();
   for (const event of recording.events) {
     if (event.type === 'hit') continue;

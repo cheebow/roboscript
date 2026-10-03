@@ -36,6 +36,20 @@ export function judge(goal: Goal, recording: Recording, stage: Stage | undefined
       for (let tick = 0; tick <= last; tick++) if (!snapshots[tick].robots[1].alive) return { done: true, tick };
       return { done: false, why: { en: 'The target is still standing.', ja: '的がまだ残っています。' } };
     }
+    case 'guard': {
+      for (let tick = 1; tick <= last; tick++) {
+        const before = snapshots[tick - 1].robots[0];
+        const now = snapshots[tick].robots[0];
+        if (now.hp < before.hp && now.guardAge === 0) return { done: true, tick };
+      }
+      return { done: false, why: { en: 'No hit came while ALPHA was guarding.', ja: 'ALPHA が身構えている（guard の）ときに、弾が当たりませんでした。' } };
+    }
+    case 'recover': {
+      for (let tick = 1; tick <= last; tick++) {
+        if (snapshots[tick].robots[0].hp > snapshots[tick - 1].robots[0].hp) return { done: true, tick };
+      }
+      return { done: false, why: { en: 'ALPHA did not get any HP back.', ja: 'ALPHA の HP が回復しませんでした。' } };
+    }
     case 'win': {
       const result = snapshots[last].result;
       if (result?.winnerId === 'ALPHA') return { done: true, tick: last };

@@ -1,3 +1,4 @@
+import { ADVANCED_CHAPTERS } from './chapters_advanced';
 import { BASIC_CHAPTERS } from './chapters_basic';
 import { judge, missingWord, type Outcome } from './checks';
 import { recordMatch } from '../debug/recorder';
@@ -5,9 +6,10 @@ import { EFFECT_LIFETIMES } from '../data/match_defaults';
 import type { Recording } from '../debug/recorder';
 import { tutorialMatch } from './match';
 import type { Chapter, Step } from './types';
+import { type Loadout, STANDARD_LOADOUT } from '../data/parts';
 
 /** Every chapter of the tutorial, in order. */
-export const CHAPTERS: readonly Chapter[] = [...BASIC_CHAPTERS];
+export const CHAPTERS: readonly Chapter[] = [...BASIC_CHAPTERS, ...ADVANCED_CHAPTERS];
 
 /** Every step, in order, with the chapter it is in. */
 export const STEPS: readonly { chapter: Chapter; step: Step }[] = CHAPTERS.flatMap((chapter) => chapter.steps.map((step) => ({ chapter, step })));
@@ -39,9 +41,9 @@ export function trimmed(recording: Recording, outcome: Outcome): Recording {
 }
 
 /** Plays the step's match with the source and judges it: for the tests, which play every answer. */
-export function playStep(step: Step, source: string): Outcome | { errors: string[] } {
+export function playStep(step: Step, source: string, parts: Partial<Loadout> = {}): Outcome | { errors: string[] } {
   if (step.stage === undefined) throw new Error(`Step ${step.id} has no stage`);
-  const built = tutorialMatch(step.stage, source);
+  const built = tutorialMatch(step.stage, source, { ...STANDARD_LOADOUT, ...parts });
   if (!built.ok) return { errors: built.errors.map((error) => error.message) };
   return judgeStep(step, source, recordMatch(built.match.config, EFFECT_LIFETIMES));
 }

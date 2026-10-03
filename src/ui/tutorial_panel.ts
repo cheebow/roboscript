@@ -8,6 +8,7 @@ import type { Outcome } from '../tutorial/checks';
 import { TUTORIAL_KEY, readProgress, writeProgress, type Progress } from '../tutorial/progress';
 import type { Stage, Step, Text, TutorialAction } from '../tutorial/types';
 import { ActionMenu } from './action_menu';
+import { type Loadout, PARTS, STANDARD_LOADOUT } from '../data/parts';
 import { createButton, createElement } from './dom';
 import { renderMarkup } from './markup';
 
@@ -21,6 +22,8 @@ export interface TutorialHooks {
   stepChanged(step: Step): void;
   /** Leave the tutorial. */
   exit(): void;
+  /** Shows ALPHA's parts (true) or the code (false) where the editor is. */
+  showParts(shown: boolean): void;
 }
 
 const GLOW_CLASS = 'tutorial-glow';
@@ -89,6 +92,18 @@ export class TutorialPanel {
   /** How the match went for this step; for a step whose check is a match. */
   judge(recording: Recording): Outcome {
     return judgeStep(this.step, this.hooks.code(), recording);
+  }
+
+  /** ALPHA's parts for this step: those chosen, for a step about parts; standard parts elsewhere. */
+  get loadout(): Loadout {
+    return this.step.parts === true ? this.progress.loadout : STANDARD_LOADOUT;
+  }
+
+  /** The parts chosen in a step about parts: kept, and counted as the step's action. */
+  setLoadout(loadout: Loadout): void {
+    this.progress.loadout = { ...loadout };
+    this.save();
+    this.acted('part');
   }
 
   /** The code the step starts with: kept from before, its own, or what the step before ended with. */
@@ -173,7 +188,16 @@ export class TutorialPanel {
       createElement('h3', 'tutorial-title', local(step.title)),
     );
 
-    const parts: HTMLElement[] = [renderMarkup(local(step.body))];
+    const parts: HTMLElement[] = [];
+    if (step.parts === true) {
+      // Where the editor is: the code, or ALPHA's parts.
+      const views = createElement('div', 'tutorial-views');
+      const code = createButton('tool-button', t('tutorial.showCode'), '', () => this.hooks.showParts(false));
+      const partsButton = createButton('tool-button', t('tutorial.showParts'), '', () => this.hooks.showParts(true));
+      views.append(code, partsButton);
+      parts.push(views);
+    }
+    parts.push(renderMarkup(local(step.body)));
     if (step.task !== undefined) {
       const task = createElement('div', 'tutorial-task');
       task.append(createElement('div', 'tutorial-task-label', t('tutorial.task')), renderMarkup(local(step.task)));
@@ -195,10 +219,16 @@ export class TutorialPanel {
         }));
       } else if (step.answer !== undefined) {
         const answer = step.answer;
+        const answerParts = step.answerParts;
         const details = createElement('details', 'tutorial-answer');
         const summary = createElement('summary', '', t('tutorial.answer'));
-        const use = createButton('tool-button', t('tutorial.useAnswer'), t('tutorial.useAnswer.title'), () => this.hooks.setCode(answer, true));
-        details.append(summary, createElement('pre', 'markup-code', answer), use);
+        const use = createButton('tool-button', t('tutorial.useAnswer'), t('tutorial.useAnswer.title'), () => {
+          this.hooks.setCode(answer, true);
+          if (answerParts !== undefined) this.setLoadout({ ...STANDARD_LOADOUT, ...answerParts });
+        });
+        details.append(summary);
+        if (answerParts !== undefined) details.append(createElement('div', 'tutorial-answer-parts', t('tutorial.answerParts', { parts: describeParts(answerParts) })));
+        details.append(createElement('pre', 'markup-code', answer), use);
         buttons.append(details);
       }
       help.append(buttons);
@@ -253,4 +283,11 @@ export class TutorialPanel {
   private save(): void {
     writeProgress(this.storage, this.progress);
   }
+}
+
+/** "GUN Cannon, SENSOR Scope": the parts of an answer that are not standard. */
+function describeParts(parts: Partial<Loadout>): string {
+  return Object.entries(parts)
+    .map(([slot, id]) => `${slot.toUpperCase()} ${PARTS.find((part) => part.slot === slot && part.id === id)?.name ?? id}`)
+    .join(', ');
 }

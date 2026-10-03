@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STANDARD_LOADOUT } from '../src/data/parts';
 import { STEPS, playStep } from '../src/tutorial';
 
 /** The code a step starts with: its own, or the answer of the step before (what a player who did it has). */
@@ -32,7 +33,7 @@ describe('the tutorial', () => {
     it(`step ${step.id}: the answer clears it`, () => {
       const answer = step.answer ?? step.start;
       expect(answer, 'a match step needs an answer or working start code').toBeDefined();
-      expect(playStep(step, answer ?? '')).toMatchObject({ done: true });
+      expect(playStep(step, answer ?? '', step.answerParts)).toMatchObject({ done: true });
     });
     if (step.check.goal.kind === 'run') return;
     it(`step ${step.id}: the code it starts with does not clear it`, () => {
@@ -48,9 +49,10 @@ describe('tutorial progress', () => {
       current: 'loop',
       cleared: ['fire'],
       code: { fire: 'fire\n' },
+      loadout: STANDARD_LOADOUT,
     });
-    expect(readProgress('not json')).toEqual({ current: null, cleared: [], code: {} });
-    expect(readProgress(null)).toEqual({ current: null, cleared: [], code: {} });
+    expect(readProgress('not json')).toEqual({ current: null, cleared: [], code: {}, loadout: STANDARD_LOADOUT });
+    expect(readProgress(null)).toEqual({ current: null, cleared: [], code: {}, loadout: STANDARD_LOADOUT });
   });
 });
 

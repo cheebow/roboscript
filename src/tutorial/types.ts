@@ -25,7 +25,11 @@ export type Goal =
   | { kind: 'hits'; count: number }
   | { kind: 'reach' }
   | { kind: 'destroy' }
-  | { kind: 'win' };
+  | { kind: 'win' }
+  /** ALPHA takes a hit while guarding. */
+  | { kind: 'guard' }
+  /** ALPHA gets HP back. */
+  | { kind: 'recover' };
 
 export type Check =
   /** Read and go on. */
@@ -36,7 +40,7 @@ export type Check =
   | { kind: 'action'; action: TutorialAction };
 
 /** What the player can do on the screen that a step may ask for. */
-export type TutorialAction = 'debug' | 'stepLine' | 'mark';
+export type TutorialAction = 'debug' | 'stepLine' | 'mark' | 'part';
 
 export interface Step {
   id: string;
@@ -49,10 +53,14 @@ export interface Step {
   hints?: readonly Text[];
   /** A program that does the task: offered once every hint has been seen. */
   answer?: string;
+  /** For a step with parts: the parts that go with the answer. */
+  answerParts?: Partial<Loadout>;
   /** The code the step starts with; without it, the code the step before ended with. */
   start?: string;
   stage?: Stage;
   check: Check;
+  /** ALPHA's parts can be chosen in this step, and its matches use them; elsewhere ALPHA has standard parts. */
+  parts?: boolean;
   /** Ids of elements of the screen to point at while the step is shown. */
   highlight?: readonly string[];
 }

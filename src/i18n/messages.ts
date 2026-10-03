@@ -37,6 +37,10 @@ export const en = {
   'tutorial.watching': 'Watching the match…',
   'tutorial.fixErrors': 'The program has a mistake: see the red line and the log.',
   'tutorial.editorTitle': 'TUTORIAL / main.bot',
+  'tutorial.partsTitle': 'TUTORIAL / config',
+  'tutorial.showCode': 'CODE',
+  'tutorial.showParts': 'PARTS',
+  'tutorial.answerParts': 'Parts: {parts}',
   // Boot screen
   'boot.title': 'Start-up',
   'boot.menu': 'START MENU',
@@ -439,6 +443,10 @@ export const ja: Record<MessageKey, string> = {
   'tutorial.watching': '試合を見ています…',
   'tutorial.fixErrors': 'プログラムに間違いがあります。赤い行とログを見てください。',
   'tutorial.editorTitle': 'チュートリアル / main.bot',
+  'tutorial.partsTitle': 'チュートリアル / config',
+  'tutorial.showCode': 'コード',
+  'tutorial.showParts': 'パーツ',
+  'tutorial.answerParts': 'パーツ: {parts}',
   // 起動画面
   'boot.title': '起動',
   'boot.menu': '起動メニュー',

@@ -72,9 +72,6 @@ const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'wa
 const NO_MARKS: readonly number[] = [];
 const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
 const NO_COVER_ROUTES: readonly boolean[] = [];
-/** The tutorial's robots while no match is shown: standard parts, as its matches use. */
-const TUTORIAL_IDLE_LOADOUTS: readonly Loadout[] = ROBOT_IDS.map(() => STANDARD_LOADOUT);
-const TUTORIAL_IDLE_STATS: readonly RobotStats[] = TUTORIAL_IDLE_LOADOUTS.map((loadout) => statsOf(loadout));
 
 /** What keeps a match from starting: errors in a robot's code, or parts that cost too much. */
 interface Fault {
@@ -200,6 +197,7 @@ class App {
       setCode: (code, undoable) => this.setTutorialCode(code, undoable),
       stepChanged: () => this.tutorialStepChanged(),
       exit: () => this.boot.show(),
+      showParts: (shown) => this.showFile({ robotIndex: PLAYER_INDEX, file: shown ? 'config' : 'main.bot' }),
     });
     this.tutorialWorkspace = new RobotWorkspace(ROBOT_IDS[0], requireElement('tutorial-code'), '', {
       save: (code) => this.tutorial.codeEdited(code),
@@ -282,6 +280,7 @@ class App {
   private tutorialStepChanged(): void {
     this.leaveMatch();
     this.idleSnapshot = this.captureTutorialIdle();
+    this.showFile(codeFileOf(PLAYER_INDEX));
   }
 
   private setTutorialCode(code: string, undoable: boolean): void {
@@ -298,7 +297,14 @@ class App {
     const workspace = this.tutorialWorkspace;
     workspace.flush();
     workspace.stale = false;
-    const built = tutorialMatch(stage, workspace.source);
+    const loadout = this.tutorial.loadout;
+    const cost = costOf(loadout);
+    if (cost > COST_LIMIT) {
+      this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: [appEvent('error', t('program.costOverLimit', { cost, limit: COST_LIMIT }), null, workspace.robotId)] }]);
+      this.tutorial.matchRefused();
+      return;
+    }
+    const built = tutorialMatch(stage, workspace.source, loadout);
     if (!built.ok) {
       workspace.editor.showErrorLines(built.errors.map((error) => error.line));
       this.showFaults([{ file: codeFileOf(PLAYER_INDEX), events: built.errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)) }]);
@@ -326,7 +332,7 @@ class App {
   private captureTutorialIdle(): Snapshot {
     const { stage } = this.tutorial;
     if (stage === undefined) return this.captureIdle();
-    const built = tutorialMatch(stage, 'wait');
+    const built = tutorialMatch(stage, 'wait', this.tutorial.loadout);
     if (!built.ok) return this.captureIdle();
     const config = built.match.config;
     return captureSnapshot(new Simulation({ ...config, robots: config.robots.map((robot) => ({ ...robot, brain: IDLE_BRAIN })) }));
@@ -479,6 +485,13 @@ class App {
 
   /** Puts the part into the slot of the robot whose config is shown. Takes effect from the next RUN / DEBUG. */
   private pickPart(slot: Slot, partId: string): void {
+    if (this.screen === 'tutorial') {
+      const loadout = { ...this.tutorial.loadout, [slot]: partId };
+      this.tutorial.setLoadout(loadout);
+      this.partsView.show(ROBOT_IDS[PLAYER_INDEX], AI_LABEL, loadout, paletteOf(PLAYER_INDEX));
+      this.idleSnapshot = this.captureTutorialIdle();
+      return;
+    }
     const { robotIndex } = this.shownFile;
     this.setLoadout(robotIndex, { ...this.loadouts[robotIndex], [slot]: partId });
   }
@@ -612,12 +625,14 @@ class App {
     EDITOR_ELEMENT_IDS.forEach((elementId, robotIndex) => {
       requireElement(elementId).hidden = tutorial || !(isCode && robotIndex === file.robotIndex);
     });
-    requireElement('tutorial-code').hidden = !tutorial;
+    requireElement('tutorial-code').hidden = !tutorial || !isCode;
     requireElement('config').hidden = isCode;
     this.templateMenu.hidden = !isCode || tutorial;
-    if (!isCode) this.partsView.show(robotId, AI_LABEL, this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
+    if (!isCode) this.partsView.show(robotId, AI_LABEL, tutorial ? this.tutorial.loadout : this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
 
-    requireElement('editor-title').textContent = tutorial ? t('tutorial.editorTitle') : t('program.editorTitle', { robot: robotId, file: file.file });
+    requireElement('editor-title').textContent = tutorial
+      ? t(isCode ? 'tutorial.editorTitle' : 'tutorial.partsTitle')
+      : t('program.editorTitle', { robot: robotId, file: file.file });
     this.projectPanel.markSelected(file);
     // Line-by-line stepping follows the program in view.
     this.replay?.focusOn(robotId);
@@ -685,8 +700,8 @@ class App {
     const debugging = this.mode === 'debug' && replay !== null;
     const stage = this.screen === 'tutorial' ? this.tutorial.stage : undefined;
     const idleArena = stage?.arena ?? this.arena.arena;
-    const idleStats = stage === undefined ? this.stats : TUTORIAL_IDLE_STATS;
-    const idleLoadouts = stage === undefined ? this.loadouts : TUTORIAL_IDLE_LOADOUTS;
+    const idleLoadouts = stage === undefined ? this.loadouts : [this.tutorial.loadout, STANDARD_LOADOUT];
+    const idleStats = stage === undefined ? this.stats : idleLoadouts.map((loadout) => statsOf(loadout));
     const stats = replay?.recording.stats ?? idleStats;
     const loadouts = replay === null ? idleLoadouts : this.matchLoadouts;
     this.battleView.render(view, replay?.recording.arena ?? idleArena, stats, loadouts, {

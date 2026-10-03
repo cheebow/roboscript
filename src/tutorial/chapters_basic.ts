@@ -106,7 +106,7 @@ ALPHA starts out facing the target, so \`fire\` alone will hit it.
 
 A line in the editor that starts with \`#\` is a **comment**: a note for people to read. It does nothing in the program, and you may delete it.`, ja: `プログラムは「**命令**」を並べて作ります。命令とは、ロボットにしてほしいことを表す決まった言葉です。
 
-最初の命令は **\`fire\`**（ファイア、「撃て」）です。\`fire\` と書くと、ALPHA は砲塔（ロボットの上の大砲）が向いている方へ弾を 1 発撃ちます。
+最初の命令は **\`fire\`**（ファイア、「撃て」）です。\`fire\` と書くと、ALPHA は砲塔（ロボットの上の銃）が向いている方へ弾を 1 発撃ちます。
 
 ALPHA は最初から的の方を向いているので、\`fire\` だけで当たります。
 
@@ -144,7 +144,7 @@ If you are curious, go back a step and try it. In the next step we learn how to 
 
 試合の時間は「**tick**（ティック）」という短い区切りで進みます。1 tick は 1/30 秒です。ロボットは **1 tick に 1 つだけ行動** できます。\`fire\` も 1 つの行動なので、\`fire\` の行を実行すると 1 tick たちます。
 
-ここで 1 つ注意があります。大砲は、1 発撃つと次に撃てるまで **0.8 秒** かかります。だから
+ここで 1 つ注意があります。銃は、1 発撃つと次に撃てるまで **0.8 秒** かかります。だから
 
 \`\`\`
 fire
@@ -152,7 +152,7 @@ fire
 fire
 \`\`\`
 
-と 3 行並べても、弾は 1 発しか出ません。3 行は 3 tick（0.1 秒）で終わってしまい、そのあいだに大砲の準備ができないからです。
+と 3 行並べても、弾は 1 発しか出ません。3 行は 3 tick（0.1 秒）で終わってしまい、そのあいだに銃の準備ができないからです。
 
 気になったら、前のステップに戻って試してみてください。次のステップで、これを解決する方法を学びます。` },
     check: { kind: 'read' },
@@ -180,7 +180,7 @@ loop
 
 \`loop\` の下に、**行の先頭を空けて**書いた行が、繰り返す中身です。この行の先頭の空白を「**字下げ**（インデント）」といいます。字下げは半角の空白 4 つです。エディタで \`loop\` と書いて Enter を押すと、自動で字下げされます。
 
-このプログラムは「撃つ」をずっと繰り返します。大砲の準備ができていない間の \`fire\` は何も起きませんが、準備ができたとたんに撃つので、0.8 秒ごとに 1 発ずつ撃ち続けます。
+このプログラムは「撃つ」をずっと繰り返します。銃の準備ができていない間の \`fire\` は何も起きませんが、準備ができたとたんに撃つので、0.8 秒ごとに 1 発ずつ撃ち続けます。
 
 的には体力（**HP**）が 200 あり、1 発で 20 減ります。10 発当てると的は壊れます。` },
     task: { en: `Use \`loop\` to keep firing, and destroy the target.`, ja: `\`loop\` を使って撃ち続け、的を壊しましょう。` },
@@ -400,7 +400,7 @@ Running \`turn enemy\` and \`fire\` one after the other in a \`loop\`, the robot
 
 The turret turns faster than the body (270 degrees a second). And the body keeps facing the way it did, so a robot can drive one way and shoot another.
 
-This time the target **moves**. Try aiming with \`aim enemy\` instead of \`turn enemy\`.`, ja: `ロボットの上の大砲（**砲塔**）は、車体とは別に回すことができます。砲塔を回す命令は **\`aim\`**（エイム、「狙う」）です。
+This time the target **moves**. Try aiming with \`aim enemy\` instead of \`turn enemy\`.`, ja: `ロボットの上の銃（**砲塔**）は、車体とは別に回すことができます。砲塔を回す命令は **\`aim\`**（エイム、「狙う」）です。
 
 - \`aim enemy\` … 砲塔を敵の方へ回す
 - \`aim left\` / \`aim right\` … 砲塔を左 / 右へ回す

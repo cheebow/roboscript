@@ -1919,3 +1919,19 @@ button {
     outline-color: rgba(212, 183, 122, 0.25);
   }
 }
+
+/* In a step about parts: the code or ALPHA's parts where the editor is. */
+.tutorial-views {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.tutorial-views .tool-button {
+  flex: 1;
+}
+
+.tutorial-answer-parts {
+  margin: 6px 0 0;
+  color: var(--syntax-value);
+}

@@ -12,7 +12,7 @@ export type AimDirection = 'left' | 'right' | 'enemy' | 'lead' | 'ahead';
 
 /**
  * Everything an AI is allowed to know on one tick. The AI never touches the
- * robot itself (the first spec (docs/SPEC_v0.1.md) §35).
+ * robot itself.
  */
 export interface AIContext {
   /** The enemy is in sensor range and not hidden behind an obstacle. */

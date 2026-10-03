@@ -4,7 +4,6 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 
 この文書は **今のゲームの決まり** をまとめたものです。
 
-- 最初の実装指示書（Godot 向けの v0.1）は `docs/SPEC_v0.1.md` に、そのまま残してあります。
 - どう作ったか、経緯、残課題は `IMPLEMENTATION_STATUS.md` にあります。
 - 数値はコードの定義に合わせてあります（`src/data/robot_defaults.ts`、`src/data/match_defaults.ts`、`src/data/parts.ts`）。食い違ったときはコードが正です。
 

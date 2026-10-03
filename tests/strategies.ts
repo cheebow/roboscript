@@ -1,7 +1,7 @@
 import { SAMPLE_AI } from '../src/data/templates/sample';
 import { STRAFE_BOT } from '../src/data/templates/strafe_bot';
 
-// Ways a player might write their AI (the first spec (docs/SPEC_v0.1.md) §32), used to check that the choice
+// Ways a player might write their AI (as the first spec asked), used to check that the choice
 // of strategy changes who wins. They go round obstacles on the left, like the
 // sample AI, so they meet the enemy on the same side.
 

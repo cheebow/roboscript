@@ -1,6 +1,6 @@
 /**
  * Never stops: keeps driving at the enemy and fires as soon as it is in weapon
- * range (the first spec (docs/SPEC_v0.1.md) §30). Once it has driven right up against the enemy it stops
+ * range. Once it has driven right up against the enemy it stops
  * pushing and just shoots.
  */
 export const AGGRESSIVE_BOT = `# AggressiveBot: never stops; drives at the enemy and fires on the move, stopping only when right up against it.

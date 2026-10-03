@@ -1,4 +1,4 @@
-// Base stats shared by every robot in the MVP (the first spec (docs/SPEC_v0.1.md) §9).
+// Base stats shared by every robot in the MVP.
 export interface RobotStats {
   maxHp: number;
   /** units/sec */
@@ -40,10 +40,10 @@ export const ROBOT_DEFAULTS: RobotStats = {
   moveSpeed: 100,
   rotateSpeed: 180,
   turretSpeed: 270,
-  // the first spec (docs/SPEC_v0.1.md) §9 says 300, but that is shorter than the spawn distance, so robots
+  // The first spec said 300, but that is shorter than the spawn distance, so robots
   // that search by turning on the spot would never find each other.
   sensorRange: 1200,
-  // the first spec (docs/SPEC_v0.1.md) §9 says 90, but robots drive like tanks: one that turns away to get
+  // The first spec said 90, but robots drive like tanks: one that turns away to get
   // around an obstacle would lose the enemy. The sensor sees all around
   // instead, and obstacles hide what is behind them.
   sensorAngle: 360,

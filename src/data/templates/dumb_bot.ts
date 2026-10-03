@@ -1,5 +1,5 @@
 
-/** Drives up to the enemy and shoots once close; goes looking for it when it is hidden (the first spec (docs/SPEC_v0.1.md) §30). */
+/** Drives up to the enemy and shoots once close; goes looking for it when it is hidden. */
 export const DUMB_BOT = `# DumbBot: drives up to the enemy and shoots from close by; goes round the other way when the enemy stays out of sight.
 set other_way = 0  # 1 while it goes round obstacles on the other side
 set lost = 0       # ticks since it last saw the enemy

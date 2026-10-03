@@ -300,7 +300,7 @@ describe('StrafeBot', () => {
   });
 });
 
-// the first spec (docs/SPEC_v0.1.md) §32: the way the AI is written must clearly change who wins. Played in
+// As the first spec asked: the way the AI is written must clearly change who wins. Played in
 // the default arena from the starting places the seeds give, as the game
 // plays it: a lesson holds when it holds from most of them.
 describe('strategies against the enemies', () => {

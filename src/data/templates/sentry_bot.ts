@@ -7,9 +7,12 @@
 export const SENTRY_BOT = `# Stops within weapon range and shoots at where the enemy will be.
 loop
     if hit and not enemy_visible
-        # Shot from somewhere it cannot see: face the shooter.
+        # Shot from somewhere it cannot see: turn until it faces the shooter, then head that way.
+        # Each turn hit is one tick of turning; hit_angle follows the hull round.
         label SEARCH
-        turn hit
+        while hit_angle > 5 or hit_angle < -5
+            turn hit
+        drive forward
     else
         if enemy_visible
             if enemy_distance < weapon_range

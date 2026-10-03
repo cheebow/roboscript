@@ -164,7 +164,12 @@ describe('CowardBot', () => {
 describe('GuardBot', () => {
   it('turns to face a shooter it cannot see, and only then', () => {
     const firstTick = (context: typeof QUIET_CONTEXT) => compileBrain(enemySource('guard_bot')).decide(context);
-    expect(firstTick({ ...QUIET_CONTEXT, hit: true })).toMatchObject({ turn: 'hit', label: 'SEARCH' });
+    expect(firstTick({ ...QUIET_CONTEXT, hit: true, hitAngle: 90 })).toMatchObject({ turn: 'hit', label: 'SEARCH' });
+    // It keeps turning until it faces the shooter, one tick at a time, then heads that way.
+    const guardBot = compileBrain(enemySource('guard_bot'));
+    expect(guardBot.decide({ ...QUIET_CONTEXT, hit: true, hitAngle: 90 })).toMatchObject({ turn: 'hit' });
+    expect(guardBot.decide({ ...QUIET_CONTEXT, hitAngle: 40 })).toMatchObject({ turn: 'hit' });
+    expect(guardBot.decide({ ...QUIET_CONTEXT, hitAngle: 2 })).toMatchObject({ turn: null, drive: 'forward' });
     expect(firstTick({ ...QUIET_CONTEXT, hit: true, enemyVisible: true, enemyDistance: 200 })).toMatchObject({ turn: 'enemy' });
     expect(firstTick(QUIET_CONTEXT)).toMatchObject({ drive: 'forward', turn: null });
   });
@@ -236,7 +241,9 @@ describe('SentryBot', () => {
 
   it('turns to face a shooter it cannot see', () => {
     const sentry = compileBrain(enemySource('sentry_bot'));
-    expect(sentry.decide({ ...QUIET_CONTEXT, hit: true })).toMatchObject({ turn: 'hit' });
+    expect(sentry.decide({ ...QUIET_CONTEXT, hit: true, hitAngle: 90 })).toMatchObject({ turn: 'hit' });
+    expect(sentry.decide({ ...QUIET_CONTEXT, hitAngle: 30 })).toMatchObject({ turn: 'hit' });
+    expect(sentry.decide({ ...QUIET_CONTEXT, hitAngle: 0 })).toMatchObject({ turn: null, drive: 'forward' });
   });
 
   it('hits an enemy that drives across its line of fire, from standing still', () => {

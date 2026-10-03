@@ -84,9 +84,10 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
 
   it('lets every pair of different templates fight to a finish, without running out the clock', () => {
     // Two robots running the same program can stay half a turn apart and never meet; that is left to the player.
+    // CoverBot hides and recovers whenever it is hurt, which can run out the clock: see the next test.
     for (const player of TEMPLATES) {
       for (const enemy of TEMPLATES) {
-        if (enemy === player) continue;
+        if (enemy === player || player.id === 'cover_bot' || enemy.id === 'cover_bot') continue;
         for (const seed of SEEDS) {
           const simulation = createSimulation(
             [compileBrain(player.source), compileBrain(enemy.source)],
@@ -99,4 +100,29 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
       }
     }
   });
+});
+
+describe('CoverBot against the clock', () => {
+  it('runs out the clock in some matches, by hiding and recovering whenever it is hurt, but in few', () => {
+    const coverBot = TEMPLATES.find((template) => template.id === 'cover_bot');
+    if (coverBot === undefined) throw new Error('Expected CoverBot');
+    let timeouts = 0;
+    let matches = 0;
+    for (const { arena } of ARENAS) {
+      for (const other of TEMPLATES) {
+        if (other === coverBot) continue;
+        for (const seed of SEEDS) {
+          for (const [first, second] of [[coverBot, other], [other, coverBot]]) {
+            const simulation = createSimulation([compileBrain(first.source), compileBrain(second.source)], { arena, stats: ROBOT_DEFAULTS, seed });
+            runToEnd(simulation);
+            matches++;
+            if (simulation.result?.reason === 'timeout') timeouts++;
+          }
+        }
+      }
+    }
+    // A match that runs out the clock goes to the robot with more hp: hiding is no way to a draw.
+    expect(timeouts).toBeGreaterThan(0);
+    expect(timeouts / matches).toBeLessThan(0.2);
+  }, 60_000); // Matches that run out the clock take a while to simulate.
 });

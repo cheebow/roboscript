@@ -2174,3 +2174,137 @@ button {
   font: inherit;
   cursor: pointer;
 }
+
+/*
+ * What can be pressed looks it. Three kinds of things are pressed, each with a look of its own:
+ *   1. buttons, which do something: always in a frame;
+ *   2. tabs, which switch what is shown: the chosen one underlined;
+ *   3. rows of a list, which open or play what they stand for: lit up under the pointer, with a mark of what they do.
+ * Text that cannot be pressed does not change under the pointer.
+ */
+
+/* 1. Buttons that looked like words: in a frame, like every other button. */
+.menu-button,
+.garage-action,
+#boot-button,
+.cm-word-guide {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded='true'],
+.garage-action:hover,
+#boot-button:hover,
+.cm-word-guide:hover {
+  border-color: var(--muted);
+  background: var(--selected);
+  color: var(--text);
+}
+
+.garage-action {
+  min-width: 22px;
+  margin-left: 3px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+#boot-button {
+  margin-right: 14px;
+  padding: 0 7px;
+}
+
+.cm-word-guide {
+  margin-top: 8px;
+  color: var(--syntax-command);
+}
+
+/* 2. Tabs: the one chosen underlined; the others underlined faintly under the pointer. */
+.tab:not(#boot-button) {
+  padding-bottom: 1px;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:not(#boot-button):hover {
+  border-bottom-color: var(--border);
+  color: var(--text);
+}
+
+.tab.selected:not(#boot-button) {
+  border-bottom-color: var(--syntax-value);
+  color: var(--text);
+}
+
+/* 3. Rows that open or play something: lit under the pointer, with a mark of what pressing does. */
+.tree-file:hover,
+.garage-name:hover {
+  background: var(--selected);
+  color: var(--text);
+}
+
+.garage-name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--muted);
+}
+
+.result.fought {
+  position: relative;
+  padding-right: 24px;
+}
+
+.result.fought::after {
+  content: '▶';
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.result.fought:hover::after {
+  color: var(--syntax-value);
+}
+
+.log-row[data-line]:hover::after,
+.log-row:hover::after {
+  content: '↵';
+  margin-left: auto;
+  padding-left: 1ch;
+  color: var(--muted);
+}
+
+/* Everything that can be pressed shows it under the pointer and when chosen with the keyboard; what cannot be pressed now is plainly faded. */
+button:not(:disabled),
+select:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+button:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+.help-search:focus-visible {
+  outline: 2px solid var(--syntax-command);
+  outline-offset: 1px;
+}
+
+/* The buttons beside a code field keep to one line: the field gives way. */
+.lineup-import .tool-button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.lineup-import .garage-name-input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}

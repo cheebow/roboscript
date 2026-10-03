@@ -122,7 +122,7 @@ export class BattleView {
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun),
+      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: snapshot.result.winnerId === null }),
     );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
@@ -203,30 +203,40 @@ export class BattleView {
     arena: Arena,
     showState: boolean,
     overrun: number,
+    /** The robot's place once the match is over, and whether nobody won; null while it goes on. */
+    standing: { place: number; draw: boolean } | null,
   ): void {
     const ctx = this.context;
     const { x, y } = robot;
     const { radius } = stats;
-    const sprites = this.spritesOf(index, loadout, robot.alive);
+    // Once the match is over, every robot that did not come first is shown beaten: greyed, like a wreck.
+    const place = standing?.place ?? null;
+    const beaten = !robot.alive || (place !== null && place > 1);
+    const sprites = this.spritesOf(index, loadout, !beaten);
     this.drawPart(sprites.hull, x, y, robot.rotation);
     this.drawPart(sprites.turret, x, y, robot.gunHeading);
 
     const lineHeight = LABEL_LINE_PX / this.scale;
-    const marks = placeMarks(y, radius, showState ? 2 : 1, lineHeight, arena.height);
+    const marks = placeMarks(y, radius, showState || place !== null ? 2 : 1, lineHeight, arena.height);
     if (robot.alive) this.drawGuard(robot, index, radius, marks, arena.width, overrun);
 
     const barWidth = radius * 2;
     ctx.fillStyle = COLORS.hpBack;
     ctx.fillRect(x - radius, marks.barY, barWidth, HP_BAR_HEIGHT);
-    ctx.fillStyle = !robot.alive ? COLORS.destroyed : robot.recovering ? COLORS.recovering : this.colorOf(index);
+    ctx.fillStyle = beaten ? COLORS.destroyed : robot.recovering ? COLORS.recovering : this.colorOf(index);
     ctx.fillRect(x - radius, marks.barY, barWidth * (robot.hp / stats.maxHp), HP_BAR_HEIGHT);
 
     ctx.font = this.font(LABEL_FONT_PX);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = COLORS.text;
+    ctx.fillStyle = beaten ? COLORS.mutedText : COLORS.text;
     this.fillTextInside(robot.id, x, marks.labelsY, arena.width);
-    if (showState) {
+    if (place !== null) {
+      // The match is over: its place in place of its label.
+      ctx.fillStyle = place === 1 ? COLORS.text : COLORS.mutedText;
+      const word = place > 1 ? t('battle.place', { place }) : standing?.draw ? t('battle.draw') : t('battle.won');
+      this.fillTextInside(word, x, marks.labelsY + lineHeight, arena.width);
+    } else if (showState) {
       ctx.fillStyle = COLORS.mutedText;
       this.fillTextInside(robot.label, x, marks.labelsY + lineHeight, arena.width);
     }

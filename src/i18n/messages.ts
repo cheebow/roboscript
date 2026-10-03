@@ -132,6 +132,8 @@ export const en = {
   'arena.problem': '{robot}: {problem}',
   // Battle view
   'battle.draw': 'DRAW',
+  'battle.won': 'WON',
+  'battle.place': 'LOST (#{place})',
   'battle.winner': 'WINNER: {name}',
   // Inspector / config
   'inspector.id': 'ID',
@@ -372,6 +374,8 @@ export const ja: Record<MessageKey, string> = {
   'arena.costOverLimit': '{robot}: パーツのコストが {cost} で、上限の {limit} を超えている',
   'arena.problem': '{robot}: {problem}',
   'battle.draw': '引き分け',
+  'battle.won': '勝ち',
+  'battle.place': '負け（{place} 位）',
   'battle.winner': '勝者: {name}',
   'inspector.id': 'ID',
   'inspector.hp': 'HP',

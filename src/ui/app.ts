@@ -179,6 +179,16 @@ class App {
       arena: () => this.arena,
       garage: () => this.garage?.list() ?? [],
       speed: () => this.speed,
+      chooseArena: (id) => {
+        this.selectArena(id);
+        this.toolbar.setArena(id);
+      },
+      keepRobots: (robots) => {
+        if (this.garage === null) throw new Error('storage is unavailable: the garage cannot keep robots');
+        const names = robots.map((robot) => this.garage?.importRobot(robot) ?? robot.name);
+        this.showGarage();
+        return names;
+      },
     });
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));

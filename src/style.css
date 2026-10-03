@@ -437,6 +437,36 @@ button {
   color: var(--error);
 }
 
+/* A result with its share button beside it, and the share code under it when asked for. */
+.result-line {
+  display: flex;
+  align-items: flex-start;
+}
+
+.result-line .result {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-line .garage-action {
+  padding-top: 2px;
+}
+
+.result-share {
+  padding-left: 10px;
+}
+
+.lineup-import {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.lineup-import .tool-button {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
 /* A series: its matches one under the other, the count of wins last. */
 .series {
   margin: 2px 0 6px;

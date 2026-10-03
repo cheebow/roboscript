@@ -3,7 +3,7 @@ import { STANDARD_LOADOUT } from '../src/data/parts';
 import { RULES_VERSION } from '../src/data/rules_version';
 import { SAMPLE_AI } from '../src/data/templates/sample';
 import type { SavedRobot } from '../src/project/garage';
-import { CODE_VERSION, decodeRobot, encodeRobot } from '../src/share/codec';
+import { CODE_VERSION, decodeMatch, decodeRobot, encodeMatch, encodeRobot } from '../src/share/codec';
 
 const ROBOT: SavedRobot = { name: 'Striker', source: SAMPLE_AI, loadout: { ...STANDARD_LOADOUT, body: 'heavy', sensor: 'short' } };
 
@@ -56,5 +56,34 @@ describe('share codes for robots', () => {
     const decoded = await decodeRobot(code);
     expect(decoded.ok && decoded.shared.rules).toBe('2026-01-01');
     expect(decoded.ok && decoded.shared.robot.loadout).toEqual(STANDARD_LOADOUT);
+  });
+});
+
+describe('share codes for matches', () => {
+  const OTHER: SavedRobot = { name: 'DumbBot', source: 'loop\n    wait', loadout: STANDARD_LOADOUT };
+  const MATCH = { robots: [ROBOT, OTHER] as [SavedRobot, SavedRobot], arenaId: 'cross', seed: 123456 };
+
+  it('bring back both robots in spawn order, the arena and the seed', async () => {
+    const decoded = await decodeMatch(await encodeMatch(MATCH));
+    expect(decoded).toEqual({ ok: true, shared: { ...MATCH, rules: RULES_VERSION } });
+  });
+
+  it('are not read as robot codes, nor robot codes as match codes', async () => {
+    expect(await decodeRobot(await encodeMatch(MATCH))).toEqual({ ok: false, problem: 'not a share code for a robot' });
+    expect(await decodeMatch(await encodeRobot(ROBOT))).toEqual({ ok: false, problem: 'not a share code for a match' });
+    expect(await decodeMatch('hello')).toEqual({ ok: false, problem: 'not a RoboScript share code' });
+  });
+
+  it('refuse a match code missing its robots, arena or seed', async () => {
+    const encode = async (json: unknown) => {
+      const bytes = new TextEncoder().encode(JSON.stringify(json));
+      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const deflated = new Uint8Array(await new Response(stream).arrayBuffer());
+      return btoa(String.fromCharCode(...deflated)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+    const robot = { name: 'A', source: 'loop\n    wait' };
+    expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot], arena: 'cross', seed: 1 }))).toEqual({ ok: false, problem: 'a share code without two robots in it' });
+    expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot, robot], seed: 1 }))).toEqual({ ok: false, problem: 'a share code with no arena or seed in it' });
+    expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot, robot], arena: 'cross', seed: 1.5 }))).toEqual({ ok: false, problem: 'a share code with no arena or seed in it' });
   });
 });

@@ -39,6 +39,11 @@ export class Toolbar {
     requireElement('reset').addEventListener('click', handlers.reset);
   }
 
+  /** Shows the given arena as the one picked, as when a shared match brings its own. */
+  setArena(id: string): void {
+    requireElement<HTMLSelectElement>('arena').value = id;
+  }
+
   setProjectName(name: string): void {
     this.projectName.textContent = name;
   }

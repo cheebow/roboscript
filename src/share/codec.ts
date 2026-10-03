@@ -14,6 +14,16 @@ export interface SharedRobot {
 
 export type Decoded = { ok: true; shared: SharedRobot } | { ok: false; problem: string };
 
+/** A match read from a share code: the two robots in spawn order, the arena and the seed, with the rules it was made under. */
+export interface SharedMatch {
+  robots: [SavedRobot, SavedRobot];
+  arenaId: string;
+  seed: number;
+  rules: string;
+}
+
+export type DecodedMatch = { ok: true; shared: SharedMatch } | { ok: false; problem: string };
+
 /** The robot as a share code: its JSON, deflated and written in URL-safe base64. */
 export async function encodeRobot(robot: SavedRobot): Promise<string> {
   const json = JSON.stringify({
@@ -29,22 +39,60 @@ export async function encodeRobot(robot: SavedRobot): Promise<string> {
 
 /** The robot in a share code, or what is wrong with the code. */
 export async function decodeRobot(code: string): Promise<Decoded> {
-  let json: unknown;
-  try {
-    json = JSON.parse(new TextDecoder().decode(await inflate(fromBase64Url(code.trim()))));
-  } catch {
-    return { ok: false, problem: 'not a RoboScript share code' };
-  }
+  const json = await decodePayload(code);
+  if (json === null) return { ok: false, problem: 'not a RoboScript share code' };
   if (!isRecord(json) || json.kind !== 'robot') return { ok: false, problem: 'not a share code for a robot' };
   if (json.v !== CODE_VERSION) return { ok: false, problem: `a share code of another version (${String(json.v)})` };
-  if (typeof json.name !== 'string' || typeof json.source !== 'string') return { ok: false, problem: 'a share code with no robot in it' };
+  const robot = readRobot(json);
+  if (robot === null) return { ok: false, problem: 'a share code with no robot in it' };
+  return { ok: true, shared: { robot, rules: rulesOf(json) } };
+}
+
+/** A match as a share code: both robots as they fought, the arena and the seed. */
+export async function encodeMatch(match: { robots: readonly [SavedRobot, SavedRobot]; arenaId: string; seed: number }): Promise<string> {
+  const json = JSON.stringify({
+    v: CODE_VERSION,
+    kind: 'match',
+    rules: RULES_VERSION,
+    arena: match.arenaId,
+    seed: match.seed,
+    robots: match.robots.map((robot) => ({ name: robot.name, loadout: robot.loadout, source: robot.source })),
+  });
+  return toBase64Url(await deflate(new TextEncoder().encode(json)));
+}
+
+/** The match in a share code, or what is wrong with the code. */
+export async function decodeMatch(code: string): Promise<DecodedMatch> {
+  const json = await decodePayload(code);
+  if (json === null) return { ok: false, problem: 'not a RoboScript share code' };
+  if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: 'not a share code for a match' };
+  if (json.v !== CODE_VERSION) return { ok: false, problem: `a share code of another version (${String(json.v)})` };
+  const robots = Array.isArray(json.robots) ? json.robots.map(readRobot) : [];
+  const [first, second] = robots;
+  if (robots.length !== 2 || first === null || second === null) return { ok: false, problem: 'a share code without two robots in it' };
+  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: 'a share code with no arena or seed in it' };
   return {
     ok: true,
-    shared: {
-      robot: { name: json.name, source: json.source, loadout: readLoadout(json.loadout) },
-      rules: typeof json.rules === 'string' ? json.rules : '',
-    },
+    shared: { robots: [first, second], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },
   };
+}
+
+/** The JSON inside a share code; null when the text is not one. */
+async function decodePayload(code: string): Promise<unknown> {
+  try {
+    return JSON.parse(new TextDecoder().decode(await inflate(fromBase64Url(code.trim()))));
+  } catch {
+    return null;
+  }
+}
+
+function readRobot(value: unknown): SavedRobot | null {
+  if (!isRecord(value) || typeof value.name !== 'string' || typeof value.source !== 'string') return null;
+  return { name: value.name, source: value.source, loadout: readLoadout(value.loadout) };
+}
+
+function rulesOf(json: Record<string, unknown>): string {
+  return typeof json.rules === 'string' ? json.rules : '';
 }
 
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {

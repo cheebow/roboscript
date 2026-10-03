@@ -124,7 +124,9 @@ button {
 #app:not([data-screen='arena']) :is(#lineup, #results),
 #app:not([data-screen='contest']) #contest,
 #app:not([data-screen='tutorial']) #tutorial,
-#app[data-screen='tutorial'] :is(#project, .picker) {
+#app[data-screen='tutorial'] :is(#project, .picker),
+/* The tutorial is left by its LEAVE button or the start menu (⏻), not by the tabs. */
+#app[data-screen='tutorial'] #screens .tab:not(#boot-button) {
   display: none;
 }
 

@@ -3,7 +3,7 @@ import { STANDARD_LOADOUT } from '../src/data/parts';
 import { RULES_VERSION } from '../src/data/rules_version';
 import { SAMPLE_AI } from '../src/data/templates/sample';
 import type { SavedRobot } from '../src/project/garage';
-import { CODE_VERSION, ROBOT_PARAM, codeInText, decodeRobot, encodeRobot, robotUrl } from '../src/share/codec';
+import { CODE_VERSION, decodeRobot, encodeRobot } from '../src/share/codec';
 
 const ROBOT: SavedRobot = { name: 'Striker', source: SAMPLE_AI, loadout: { ...STANDARD_LOADOUT, body: 'heavy', sensor: 'short' } };
 
@@ -24,6 +24,11 @@ describe('share codes for robots', () => {
   it('are a good deal shorter than the program', async () => {
     const code = await encodeRobot(ROBOT);
     expect(code.length).toBeLessThan(SAMPLE_AI.length);
+  });
+
+  it('take the code with spaces around it, as pasted', async () => {
+    const code = await encodeRobot(ROBOT);
+    expect((await decodeRobot(`  ${code}\n`)).ok).toBe(true);
   });
 
   it('refuse text that is not a code, saying so', async () => {
@@ -51,21 +56,5 @@ describe('share codes for robots', () => {
     const decoded = await decodeRobot(code);
     expect(decoded.ok && decoded.shared.rules).toBe('2026-01-01');
     expect(decoded.ok && decoded.shared.robot.loadout).toEqual(STANDARD_LOADOUT);
-  });
-});
-
-describe('share URLs', () => {
-  it('carry the code as a parameter of the page, in place of any other parameters', async () => {
-    const code = await encodeRobot(ROBOT);
-    const url = robotUrl('http://localhost:5173/?seed=7#x', code);
-    expect(url).toBe(`http://localhost:5173/?${ROBOT_PARAM}=${code}`);
-    expect(new URL(url).searchParams.get(ROBOT_PARAM)).toBe(code);
-  });
-
-  it('give up their code when pasted whole, as does a bare code', async () => {
-    const code = await encodeRobot(ROBOT);
-    expect(codeInText(`  ${robotUrl('http://localhost:5173/', code)} \n`)).toBe(code);
-    expect(codeInText(` ${code}\n`)).toBe(code);
-    expect(codeInText('http://localhost:5173/?seed=7')).toBe('http://localhost:5173/?seed=7');
   });
 });

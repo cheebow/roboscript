@@ -4,8 +4,6 @@ import type { SavedRobot } from '../project/garage';
 
 /** The form of a share code; raised when the layout of the JSON inside changes. */
 export const CODE_VERSION = 1;
-/** The URL parameter that carries a shared robot. */
-export const ROBOT_PARAM = 'robot';
 
 /** A robot read from a share code, with the rules it was made under. */
 export interface SharedRobot {
@@ -47,27 +45,6 @@ export async function decodeRobot(code: string): Promise<Decoded> {
       rules: typeof json.rules === 'string' ? json.rules : '',
     },
   };
-}
-
-/** The URL that opens the app with the robot: the page's address with the code as a parameter. */
-export function robotUrl(pageUrl: string, code: string): string {
-  const url = new URL(pageUrl);
-  url.search = '';
-  url.hash = '';
-  url.searchParams.set(ROBOT_PARAM, code);
-  return url.toString();
-}
-
-/** The share code in what was pasted: the code itself, or a URL that carries one. */
-export function codeInText(text: string): string {
-  const trimmed = text.trim();
-  try {
-    const code = new URL(trimmed).searchParams.get(ROBOT_PARAM);
-    if (code !== null) return code;
-  } catch {
-    // Not a URL: the text is the code.
-  }
-  return trimmed;
 }
 
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {

@@ -22,7 +22,7 @@ import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { Garage, MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { ProjectStore } from '../project/project_store';
 import { RULES_VERSION } from '../data/rules_version';
-import { ROBOT_PARAM, codeInText, decodeRobot, encodeRobot, robotUrl } from '../share/codec';
+import { decodeRobot, encodeRobot } from '../share/codec';
 import { type RobotBrain, createIdleAction } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatResult } from '../view/battle_view';
@@ -94,7 +94,7 @@ class App {
     load: (name, robotIndex) => this.loadFromGarage(name, robotIndex),
     remove: (name) => this.removeFromGarage(name),
     share: (name) => this.shareRobot(name),
-    importCode: (text) => void this.importRobot(codeInText(text)),
+    importCode: (text) => void this.importRobot(text),
   });
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
@@ -187,16 +187,12 @@ class App {
     this.showFile(this.shownFile);
     this.showGarage();
     requestAnimationFrame(this.frame);
-    const received = takeSharedRobotFromUrl();
-    if (received !== null) void this.importRobot(received);
   }
 
-  /** The share code and URL of a saved robot. */
-  private async shareRobot(name: string): Promise<{ url: string; code: string } | null> {
+  /** The share code of a saved robot. */
+  private async shareRobot(name: string): Promise<string | null> {
     const saved = this.garage?.find(name);
-    if (saved === undefined) return null;
-    const code = await encodeRobot(saved);
-    return { url: robotUrl(window.location.href, code), code };
+    return saved === undefined ? null : encodeRobot(saved);
   }
 
   /** Keeps the robot in a share code in the garage, and says so, or says what is wrong with the code. */
@@ -690,16 +686,6 @@ function readPinnedSeed(): number | null {
 }
 
 /** null when the browser refuses access to localStorage (e.g. blocked site data). */
-/** The share code in the page's URL, taken out of the URL so that a reload does not bring the robot in again. */
-function takeSharedRobotFromUrl(): string | null {
-  const url = new URL(window.location.href);
-  const code = url.searchParams.get(ROBOT_PARAM);
-  if (code === null) return null;
-  url.searchParams.delete(ROBOT_PARAM);
-  window.history.replaceState(null, '', url.toString());
-  return code;
-}
-
 function openStore(): ProjectStore | null {
   try {
     return new ProjectStore(window.localStorage, DEFAULT_SOURCES);

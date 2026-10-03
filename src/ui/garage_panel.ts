@@ -6,9 +6,9 @@ export interface GarageHandlers {
   /** Put the robot kept under the name in place of the robot at the given spawn index. */
   load(name: string, robotIndex: number): void;
   remove(name: string): void;
-  /** The share code and URL of the robot kept under the name; null when there is none. */
-  share(name: string): Promise<{ url: string; code: string } | null>;
-  /** Keep the robot in the pasted share code or URL. */
+  /** The share code of the robot kept under the name; null when there is none. */
+  share(name: string): Promise<string | null>;
+  /** Keep the robot in the pasted share code. */
   importCode(text: string): void;
 }
 
@@ -17,7 +17,7 @@ const CONFIRM_LABEL = 'sure?';
 const ARMED_CLASS = 'armed';
 const EMPTY_NOTE = 'No robots saved yet.';
 const SHARE_LABEL = '⇪';
-const IMPORT_PLACEHOLDER = 'paste a share code or URL';
+const IMPORT_PLACEHOLDER = 'paste a share code';
 
 /**
  * The garage: a name to type and a button per robot to save it under that
@@ -30,9 +30,9 @@ export class GaragePanel {
   private readonly importInput: HTMLInputElement;
   /** The delete button that was pressed once and waits for the second press. */
   private armed: HTMLButtonElement | null = null;
-  /** The robot whose share code is shown under its row, if any. */
+  /** The robot whose share code is shown under its row, if any, and the code. */
   private sharing: string | null = null;
-  private shared: { url: string; code: string } | null = null;
+  private shared: string | null = null;
 
   constructor(
     container: HTMLElement,
@@ -59,11 +59,11 @@ export class GaragePanel {
     this.importInput = createElement('input', 'garage-name-input');
     this.importInput.type = 'text';
     this.importInput.placeholder = IMPORT_PLACEHOLDER;
-    this.importInput.setAttribute('aria-label', 'Share code or URL of a robot to keep');
+    this.importInput.setAttribute('aria-label', 'Share code of a robot to keep');
     this.importInput.spellcheck = false;
     const importButton = createElement('button', 'tool-button', 'IMPORT');
     importButton.type = 'button';
-    importButton.title = 'Keep the robot in the pasted share code or URL';
+    importButton.title = 'Keep the robot in the pasted share code';
     const doImport = () => {
       handlers.importCode(this.importInput.value);
       this.importInput.value = '';
@@ -95,7 +95,7 @@ export class GaragePanel {
     );
   }
 
-  /** Shows the share code and URL of the robot under its row, or puts them away when shown already. */
+  /** Shows the share code of the robot under its row, or puts it away when shown already. */
   async toggleShare(name: string, names: readonly string[]): Promise<void> {
     if (this.sharing === name) {
       this.closeShare();
@@ -113,32 +113,26 @@ export class GaragePanel {
     this.shared = null;
   }
 
-  private shareBox({ url, code }: { url: string; code: string }): HTMLElement {
-    const box = createElement('div', 'garage-share');
-    for (const [label, text] of [
-      ['URL', url],
-      ['CODE', code],
-    ]) {
-      const field = createElement('input', 'garage-share-field');
-      field.type = 'text';
-      field.readOnly = true;
-      field.value = text;
-      field.setAttribute('aria-label', `Share ${label}`);
-      field.addEventListener('focus', () => field.select());
-      // The panel is narrow: the button says only COPY, and the field beside it shows what.
-      const copy = createElement('button', 'garage-action', 'COPY');
-      copy.type = 'button';
-      copy.title = `Copy the ${label} to the clipboard`;
-      copy.addEventListener('click', () => {
-        field.select();
-        navigator.clipboard?.writeText(text).catch(() => {
-          // Left selected: the player can copy it by hand.
-        });
+  private shareBox(code: string): HTMLElement {
+    const field = createElement('input', 'garage-share-field');
+    field.type = 'text';
+    field.readOnly = true;
+    field.value = code;
+    field.setAttribute('aria-label', 'Share code');
+    field.addEventListener('focus', () => field.select());
+    const copy = createElement('button', 'garage-action', 'COPY');
+    copy.type = 'button';
+    copy.title = 'Copy the share code to the clipboard';
+    copy.addEventListener('click', () => {
+      field.select();
+      navigator.clipboard?.writeText(code).catch(() => {
+        // Left selected: the player can copy it by hand.
       });
-      const line = createElement('div', 'garage-share-line');
-      line.append(createElement('span', 'garage-share-label', label), field, copy);
-      box.append(line);
-    }
+    });
+    const line = createElement('div', 'garage-share-line');
+    line.append(field, copy);
+    const box = createElement('div', 'garage-share');
+    box.append(line);
     return box;
   }
 
@@ -162,7 +156,7 @@ export class GaragePanel {
 
     const share = createElement('button', 'garage-action', SHARE_LABEL);
     share.type = 'button';
-    share.title = `Share ${name}: a code and a URL that put it in someone's garage`;
+    share.title = `Share ${name}: a code that puts it in someone's garage`;
     share.addEventListener('click', () => {
       void this.toggleShare(name, [...this.rows.querySelectorAll('.garage-name')].map((label) => label.textContent ?? ''));
     });

@@ -11,6 +11,7 @@ import {
   prepareFight,
 } from '../arena/match';
 import { type MessageKey, t } from '../i18n/messages';
+import { LEAGUE_MAX, LEAGUE_MIN, playLeague } from '../arena/league';
 import { randomSeed } from '../arena/seed';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS, REPLAY_TAIL_TICKS } from '../data/match_defaults';
@@ -30,6 +31,7 @@ import { formatResult } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createElement } from './dom';
 import { formatSeconds } from './format';
+import { createLeagueBoard } from './league_board';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 
 /** What the arena mode needs to know of the rest of the app. */
@@ -118,6 +120,8 @@ export class ArenaMode {
   constructor(
     lineup: HTMLElement,
     results: HTMLElement,
+    /** Over the battle view: where the result of a league or a tournament is shown. */
+    private readonly board: HTMLElement,
     private readonly setting: ArenaSetting,
   ) {
     this.slots = Array.from({ length: MAX_ENTRANTS }, (_, index) => this.createSlot(index));
@@ -151,12 +155,90 @@ export class ArenaMode {
     });
     const importRow = createElement('div', 'lineup-import');
     importRow.append(importInput, importButton);
-    lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow);
+    lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow, this.createContest());
 
     this.results = results;
     this.refresh();
     this.idle = this.captureIdle();
     this.showCount();
+  }
+
+  /** The robots ticked for a league, by entrant id. */
+  private contestPicks = new Set<string>(['built-in:sample', 'built-in:dumb_bot', 'built-in:strafe_bot', 'built-in:sentry_bot']);
+  private contestList: HTMLElement | null = null;
+  private boardButton: HTMLButtonElement | null = null;
+
+  /** The contest section: robots to tick, and the button that plays a league between them. */
+  private createContest(): HTMLElement {
+    const section = createElement('div', 'contest');
+    section.append(createElement('div', 'contest-title', t('contest.title', { min: LEAGUE_MIN, max: LEAGUE_MAX })));
+    this.contestList = createElement('div', 'contest-list');
+    const buttons = createElement('div', 'lineup-buttons');
+    const league = this.createButton(t('contest.league'), t('contest.league.title'), () => this.playLeague());
+    this.boardButton = this.createButton(t('contest.board'), t('contest.board.title'), () => this.showBoard());
+    this.boardButton.disabled = true;
+    buttons.append(league, this.boardButton);
+    section.append(this.contestList, buttons);
+    return section;
+  }
+
+  /** Lists the robots that can take part, ticked as picked. */
+  private showContestList(): void {
+    if (this.contestList === null) return;
+    const known = new Set(this.entrants.map((entrant) => entrant.id));
+    this.contestPicks = new Set([...this.contestPicks].filter((id) => known.has(id)));
+    this.contestList.replaceChildren(
+      ...this.entrants.map((entrant) => {
+        const label = createElement('label', 'contest-pick');
+        const box = createElement('input', 'contest-box');
+        box.type = 'checkbox';
+        box.checked = this.contestPicks.has(entrant.id);
+        box.addEventListener('change', () => {
+          if (box.checked) this.contestPicks.add(entrant.id);
+          else this.contestPicks.delete(entrant.id);
+        });
+        label.append(box, createElement('span', '', entrant.name));
+        return label;
+      }),
+    );
+  }
+
+  /** Plays a league between the ticked robots and shows its board. */
+  private playLeague(): void {
+    this.note = null;
+    const entrants = this.entrants.filter((entrant) => this.contestPicks.has(entrant.id));
+    if (entrants.length < LEAGUE_MIN || entrants.length > LEAGUE_MAX) {
+      this.note = t('contest.pickCount', { min: LEAGUE_MIN, max: LEAGUE_MAX, count: entrants.length });
+      return;
+    }
+    const played = playLeague(entrants, randomSeed());
+    if (!played.ok) {
+      this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
+      return;
+    }
+    this.leaveMatch();
+    const { matches, standings } = played;
+    const board = createLeagueBoard({ entrants, matches, standings }, (match) => {
+      const fought: FoughtMatch = { entrants: [entrants[match.first], entrants[match.second]], arena: match.arena, seed: match.seed };
+      this.board.hidden = true;
+      this.show(fought);
+    });
+    const header = createElement('div', 'board-header');
+    const close = this.createButton(t('contest.close'), t('contest.close.title'), () => {
+      this.board.hidden = true;
+    });
+    header.append(createElement('span', 'board-title', t('league.title', { count: entrants.length, matches: matches.length })), close);
+    this.board.replaceChildren(header, board);
+    this.showBoard();
+    const winner = entrants[standings[0].entrant].name;
+    this.addResult(createElement('div', 'result series-title', t('league.summary', { count: entrants.length, winner })));
+  }
+
+  /** Shows the board of the last league or tournament over the battle view. */
+  private showBoard(): void {
+    if (this.board.childElementCount === 0) return;
+    this.board.hidden = false;
+    if (this.boardButton !== null) this.boardButton.disabled = false;
   }
 
   /** Changes how many robots the next match takes. Leaves the match being shown. */
@@ -198,6 +280,7 @@ export class ArenaMode {
       slot.select.value = this.picked[index];
       this.showEntrant(index);
     });
+    this.showContestList();
     this.idle = this.captureIdle();
   }
 
@@ -415,6 +498,7 @@ export class ArenaMode {
   /** A match between the picked robots in the chosen arena, from where they were waiting. The next one gets a seed of its own. */
   private startFight(): void {
     this.note = null;
+    this.board.hidden = true;
     const match: FoughtMatch = { entrants: this.pickedEntrants(), arena: this.setting.arena(), seed: this.nextSeed };
     this.nextSeed = randomSeed();
     this.idle = this.captureIdle();

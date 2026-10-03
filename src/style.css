@@ -807,6 +807,7 @@ button {
 /* Battle view */
 
 #battle-frame {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -967,4 +968,237 @@ button {
 .log-error .log-type,
 .log-error .log-message {
   color: var(--error);
+}
+
+/* Contests: the robots to tick under the line-up, and the board of the result over the battle view. */
+
+.contest {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.contest-title {
+  padding: 6px 10px 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.contest-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 8px;
+  padding: 4px 10px;
+}
+
+.contest-pick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+#board {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 12px 16px;
+  background: var(--background);
+}
+
+#board[hidden],
+#app:not([data-screen='arena']) #board {
+  display: none;
+}
+
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.board-title {
+  color: var(--syntax-value);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.league-board {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.robot-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.robot-tag .robot-preview {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+}
+
+.robot-tag-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.robot-tag.small {
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  font-size: 10px;
+}
+
+.robot-tag.small .robot-tag-name {
+  max-width: 100%;
+}
+
+.cross-table {
+  display: grid;
+  gap: 3px;
+}
+
+.cross-head {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.cross-row-head {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+
+.cross-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.cross-cell.self {
+  background: repeating-linear-gradient(45deg, var(--panel), var(--panel) 4px, var(--background) 4px, var(--background) 8px);
+}
+
+.cross-cell.ahead {
+  border-color: var(--cell-color);
+  background: color-mix(in srgb, var(--cell-color) 22%, var(--panel));
+}
+
+.cross-cell.behind {
+  opacity: 0.6;
+}
+
+.cross-cell.level {
+  background: repeating-linear-gradient(135deg, var(--panel), var(--panel) 5px, #1a2026 5px, #1a2026 10px);
+}
+
+.cross-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.cross-dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cross-dot.won {
+  border-color: transparent;
+}
+
+.cross-dot.draw {
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.8);
+}
+
+.cross-dot:hover {
+  outline: 2px solid var(--text);
+}
+
+.cross-score {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.league-table {
+  display: grid;
+  gap: 6px;
+}
+
+.league-line {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1.3fr) minmax(0, 1fr) 54px;
+  gap: 8px;
+  align-items: center;
+}
+
+.league-line.head {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.league-place {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.league-place .place-badge {
+  position: static;
+}
+
+.league-place-number {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.league-bar {
+  position: relative;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--selected);
+  overflow: hidden;
+}
+
+.league-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+}
+
+.league-bar-label {
+  position: relative;
+  padding-left: 6px;
+  color: #14181b;
+  font-weight: bold;
+  font-size: 11px;
+  line-height: 16px;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.league-record {
+  color: var(--muted);
+  text-align: right;
 }

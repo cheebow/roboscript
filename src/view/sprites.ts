@@ -62,6 +62,47 @@ export const ROBOT_PALETTES: readonly RobotPalette[] = [
     treadLight: TREAD_LIGHT,
     sensor: SENSOR,
   },
+  // Further colours, for the boards of leagues and tournaments of up to eight robots.
+  {
+    body: '#d6707a',
+    shade: '#a84c56',
+    light: '#efa3aa',
+    gun: GUN,
+    hatch: '#2e1418',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#6a9fd6',
+    shade: '#4776a8',
+    light: '#a3c6ef',
+    gun: GUN,
+    hatch: '#14202e',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#d68cc4',
+    shade: '#a8659a',
+    light: '#efbde3',
+    gun: GUN,
+    hatch: '#2e1429',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#9cc76a',
+    shade: '#739945',
+    light: '#c6e3a3',
+    gun: GUN,
+    hatch: '#1e2a14',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
 ];
 
 export const WRECK_PALETTE: RobotPalette = {

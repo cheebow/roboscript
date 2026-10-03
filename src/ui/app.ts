@@ -176,7 +176,7 @@ class App {
     if (this.store === null) {
       this.events = [appEvent('warning', t('program.storageUnavailable'))];
     }
-    this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
+    this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), requireElement('board'), {
       arena: () => this.arena,
       garage: () => this.garage?.list() ?? [],
       speed: () => this.speed,

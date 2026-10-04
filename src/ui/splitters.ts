@@ -19,9 +19,13 @@ export const BATTLE_MIN_WIDTH = 300;
 export const BOTTOM_MIN_HEIGHT = 120;
 export const TOP_MIN_HEIGHT = 200;
 
-/** The editor width that fits the window: at least the minimum, and leaving the battle view its minimum. */
-export function clampEditorWidth(width: number, appWidth: number): number {
-  const most = appWidth - PROJECT_WIDTH - SPLITTER_SIZE - BATTLE_MIN_WIDTH;
+/**
+ * The editor width that fits the window: at least the minimum, and leaving the
+ * battle view its minimum. `leftWidth` is what stands left of the editor: the
+ * project column on the program screen, the tutorial or the challenge beside it.
+ */
+export function clampEditorWidth(width: number, appWidth: number, leftWidth: number = PROJECT_WIDTH): number {
+  const most = appWidth - leftWidth - SPLITTER_SIZE - BATTLE_MIN_WIDTH;
   return Math.round(Math.max(EDITOR_MIN_WIDTH, Math.min(width, most)));
 }
 
@@ -63,6 +67,8 @@ export class Splitters {
 
   constructor(
     private readonly app: HTMLElement,
+    /** The editor column: the splitter beside it sets its width from where it starts. */
+    private readonly editor: HTMLElement,
     vertical: HTMLElement,
     horizontal: HTMLElement,
     private readonly storage: KeyValueStorage | null,
@@ -70,8 +76,8 @@ export class Splitters {
     this.layout = readLayout(storage?.getItem(LAYOUT_KEY) ?? null);
     this.apply();
     this.attach(vertical, (event) => {
-      const width = event.clientX - this.app.getBoundingClientRect().left - PROJECT_WIDTH - SPLITTER_SIZE / 2;
-      this.layout.editorWidth = clampEditorWidth(width, this.app.clientWidth);
+      const width = event.clientX - this.editor.getBoundingClientRect().left - SPLITTER_SIZE / 2;
+      this.layout.editorWidth = clampEditorWidth(width, this.app.clientWidth, this.leftWidth());
     }, () => {
       this.layout.editorWidth = null;
     });
@@ -110,10 +116,21 @@ export class Splitters {
     });
   }
 
+  /** Puts the sizes on the grid again: the screen changed, and with it what stands left of the editor. */
+  refresh(): void {
+    this.apply();
+  }
+
+  /** px, the width of what stands left of the editor on the screen shown; the project column's while no editor is shown. */
+  private leftWidth(): number {
+    const left = this.editor.getBoundingClientRect().left - this.app.getBoundingClientRect().left;
+    return this.editor.offsetParent === null || left <= 0 ? PROJECT_WIDTH : left;
+  }
+
   /** Puts the sizes on the grid, keeping each within what fits the window now. */
   private apply(): void {
     const { editorWidth, bottomHeight } = this.layout;
-    const width = editorWidth === null ? null : clampEditorWidth(editorWidth, this.app.clientWidth);
+    const width = editorWidth === null ? null : clampEditorWidth(editorWidth, this.app.clientWidth, this.leftWidth());
     const height = bottomHeight === null ? null : clampBottomHeight(bottomHeight, this.app.clientHeight);
     this.setVariable('--editor-width', width);
     this.setVariable('--bottom-height', height);

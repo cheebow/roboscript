@@ -128,6 +128,8 @@ class App {
   private readonly ownWorkspaces: RobotWorkspace[];
   /** The editor of the tutorial and the challenges: their code is kept apart from the player's. */
   private readonly tutorialWorkspace: RobotWorkspace;
+  /** Set once the panels are in place; screens shown before then need no fitting. */
+  private splitters: Splitters | null = null;
   private readonly tutorial: TutorialPanel;
   private readonly challenges: ChallengePanel;
   private readonly inspector: Inspector;
@@ -270,7 +272,7 @@ class App {
     }
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
-    new Splitters(requireElement('app'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
+    this.splitters = new Splitters(requireElement('app'), requireElement('editor'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
     requireElement('help-button').addEventListener('click', () => this.help.toggle());
@@ -414,6 +416,8 @@ class App {
       this.showFile(codeFileOf(PLAYER_INDEX));
     }
     requireElement('app').dataset.screen = screen;
+    // The editor stands beside another column on the tutorial and challenge screens: its width is fitted again.
+    this.splitters?.refresh();
     for (const each of SCREENS) requireElement(`screen-${each}`).classList.toggle('selected', each === screen);
     // Robots may have been saved or deleted since the arena was last shown.
     if (screen === 'arena') this.arenaMode.refresh();

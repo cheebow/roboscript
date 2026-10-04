@@ -16,6 +16,8 @@ describe('splitter sizes', () => {
     expect(clampEditorWidth(500, 1440)).toBe(500);
     expect(clampEditorWidth(2000, 1440)).toBe(1440 - 180 - 6 - BATTLE_MIN_WIDTH);
     expect(clampEditorWidth(500.4, 1440)).toBe(500);
+    // Beside the wider tutorial or challenge column, less room is left.
+    expect(clampEditorWidth(2000, 1440, 380)).toBe(1440 - 380 - 6 - BATTLE_MIN_WIDTH);
   });
 
   it('keep the bottom row at least its minimum height, and leave the top row its minimum', () => {

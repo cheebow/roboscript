@@ -139,18 +139,24 @@ When the program has a mistake, the match does not start: the line turns red, an
 - パーツ名にマウスを載せると説明が出ます。下には、その組み合わせの性能が標準との差つきで出ます。
 - プログラムに合うパーツを選びましょう: 遠くから撃つなら Cannon と Scope、近づいて撃ちまくるなら Rapid と Heavy、隠れながら戦うなら Sprint や Light。
 - パーツを替えても、使える語は変わりません。` } },
-      { id: 'sharing', title: { en: `Sharing and files`, ja: `共有とファイル` }, body: { en: `There is no server. Robots and matches are given to others as **share codes** or **files**.
+      { id: 'sharing', title: { en: `Sharing and files`, ja: `共有とファイル` }, body: { en: `There is no server. Robots and matches are given to others as **share links**, **share codes** or **files**.
+
+- **Share links** are the easiest way to post on a social network or send in a message: under \`⇪\`, **COPY LINK** copies a link, and on a phone **SHARE…** opens the phone's share menu. Opening the link opens the game and takes the robot into the garage, or plays the match in the arena. However long the program, a social network counts the link as a short one.
 
 - **Robots**: \`⇪\` in the garage gives a share code, or **SAVE FILE**. The other person takes it in with **+ IMPORT** in their garage.
 - **Matches**: \`⇪\` on an arena result gives a share code and a file, which plays in their arena.
 - **Contest results**: save to a file from the contest's **RESULT** menu; **Open a result file…** shows the same board.
 - File names end in \`.roboscript.json\`. Files stay small, however long the program.
-- When the rules version differs, you are told so (the match may not play out the same).`, ja: `サーバーはありません。ロボットや試合は、**共有コード** か **ファイル** で人に渡します。
+- The same robot received again (same name, program and parts) is not kept twice.
+- When the rules version differs, you are told so (the match may not play out the same).`, ja: `サーバーはありません。ロボットや試合は、**共有リンク**、**共有コード**、**ファイル** で人に渡します。
+
+- **共有リンク** は、SNS に投稿したりメッセージで送ったりするのに一番手軽です。\`⇪\` の下の「リンクをコピー」でリンクをコピーできます。スマホでは「共有…」で端末の共有メニューが開きます。リンクを開くとゲームが立ち上がり、ロボットならガレージに入り、試合ならアリーナで再生されます。プログラムが長くても、SNS ではリンクは短いものとして数えられます。
 
 - **ロボット**: ガレージの \`⇪\` で共有コード、または「ファイルに保存」。もらった人はガレージの「＋ 取り込む」で取り込みます。
 - **試合**: アリーナの結果の \`⇪\` で共有コードとファイル。もらった人はアリーナで再生できます。
 - **大会の結果**: 大会の「結果」メニューからファイルに保存。もらった人は「結果ファイルを開く」で、同じ結果ボードを見られます。
 - ファイル名の末尾は \`.roboscript.json\` です。長いプログラムでも、ファイルは小さく収まります。
+- 同じロボット（名前・プログラム・パーツが同じ）をもう一度受け取っても、二重には入りません。
 - ルールの版が違うときは、そう知らせます（同じ試合にならないことがあります）。` } },
       { id: 'keys', title: { en: `Keys`, ja: `キー操作` }, body: { en: `- **Space**: play / pause
 - **← / →**: one step back / on (one line while debugging)

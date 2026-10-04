@@ -4,6 +4,7 @@ import { t } from '../i18n/messages';
 import { acceptDrops, chooseFile } from '../share/file';
 import { RobotIntake } from './robot_intake';
 import { createShareBox } from './share_box';
+import { shareLink } from '../share/link';
 
 export interface GarageHandlers {
   /** Keep the robot at the given spawn index under the name as typed, which may not be a usable name. */
@@ -135,7 +136,8 @@ export class GaragePanel {
 
   private shareBox(name: string, code: string): HTMLElement {
     const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
-    return createShareBox(code, 'garage-share', [saveFile]);
+    const link = { url: shareLink('robot', code, window.location.href), title: t('share.robotTitle', { name }) };
+    return createShareBox(code, 'garage-share', [saveFile], link);
   }
 
 

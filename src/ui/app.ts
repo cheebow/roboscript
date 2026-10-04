@@ -1,3 +1,4 @@
+import { readShareLink } from '../share/link';
 import type { ProgramFeatures } from '../ai/features';
 import { LANGUAGE_KEY, currentLanguage, otherLanguage } from '../i18n/language';
 import { t } from '../i18n/messages';
@@ -306,7 +307,30 @@ class App {
     });
     document.addEventListener('keydown', (event) => this.onShortcut(event));
     requestAnimationFrame(this.frame);
-    this.boot.show();
+    // A share link opens where its robot or match goes; any other address opens the start menu.
+    if (!this.openShareLink()) this.boot.show();
+    window.addEventListener('hashchange', () => this.openShareLink());
+  }
+
+  /**
+   * Takes in the robot or the match of a share link in the address: a robot
+   * into the garage, on the program screen; a match played in the arena. The
+   * code is then taken out of the address, so that reloading does not take
+   * it in again. False when the address has none.
+   */
+  private openShareLink(): boolean {
+    const link = readShareLink(window.location.hash);
+    if (link === null) return false;
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    this.boot.hide();
+    if (link.kind === 'robot') {
+      this.showScreen('program');
+      void this.garage.importCode(link.code);
+    } else {
+      this.showScreen('arena');
+      void this.arenaMode.importMatch(link.code);
+    }
+    return true;
   }
 
   /**

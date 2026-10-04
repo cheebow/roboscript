@@ -2,6 +2,7 @@ import { RULES_VERSION } from '../data/rules_version';
 import type { Loadout } from '../data/parts';
 import { t } from '../i18n/messages';
 import { Garage, MAX_NAME_LENGTH, type SavedRobot, garageName } from '../project/garage';
+import { SLOTS } from '../data/parts';
 import type { KeyValueStorage } from '../project/project_store';
 import { decodeRobot, encodeRobot } from '../share/codec';
 import { downloadText, fileName, readSharedFile, robotFileText } from '../share/file';
@@ -109,7 +110,7 @@ export class GarageController {
   }
 
   /** Keeps the robot in a share code, and says so, or says what is wrong with the code. True when it was kept. */
-  private async importCode(code: string): Promise<boolean> {
+  async importCode(code: string): Promise<boolean> {
     if (this.garage === null) {
       this.notice.show(t('garage.noStorage'), true);
       return false;
@@ -145,6 +146,12 @@ export class GarageController {
   /** Keeps a robot received from someone and says so, with a word when it was made under other rules; true when it was kept. */
   private keepOne(robot: SavedRobot, rules: string): boolean {
     if (this.garage === null) return false;
+    // The same robot again (a link opened twice, a code pasted twice): already there, not kept a second time.
+    const same = this.garage.list().find((saved) => sameRobot(saved, robot));
+    if (same !== undefined) {
+      this.notice.show(t('garage.alreadyThere', { name: same.name }));
+      return true;
+    }
     let kept = false;
     try {
       const name = this.garage.importRobot(robot);
@@ -162,4 +169,9 @@ export class GarageController {
   private show(): void {
     this.panel.show(this.list().map((robot) => robot.name));
   }
+}
+
+/** Whether two robots are the same: the same name, program and parts. */
+function sameRobot(a: SavedRobot, b: SavedRobot): boolean {
+  return a.name === b.name && a.source === b.source && SLOTS.every((slot) => a.loadout[slot] === b.loadout[slot]);
 }

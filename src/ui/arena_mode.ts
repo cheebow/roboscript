@@ -30,6 +30,7 @@ import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
 import { Notice } from './notice';
 import { createShareBox } from './share_box';
+import { shareLink } from '../share/link';
 import { describeError, formatSeconds } from './format';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 import { type ArenaScene, WatchedMatch } from './watched_match';
@@ -276,7 +277,7 @@ export class ArenaMode {
    * it is, any other kept in the garage first. Without a garage the match is
    * still played. True when it was played.
    */
-  private async importMatch(text: string): Promise<boolean> {
+  async importMatch(text: string): Promise<boolean> {
     const decoded = await decodeMatch(text);
     if (!decoded.ok) {
       this.notice.show(t('arena.couldNotImport', { problem: decoded.problem }), true);
@@ -364,7 +365,8 @@ export class ArenaMode {
           const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
             downloadText(fileName(`${robots.map((robot) => robot.name).join('-vs-')}`), matchFileText({ robots, arenaId: match.arena.id, seed: match.seed })),
           );
-          box = createShareBox(code, 'garage-share result-share', [saveFile]);
+          const link = { url: shareLink('match', code, window.location.href), title: t('share.matchTitle', { names: robots.map((robot) => robot.name).join(t('arena.vsJoin')) }) };
+          box = createShareBox(code, 'garage-share result-share', [saveFile], link);
           row.after(box);
         })
         .catch(() => {

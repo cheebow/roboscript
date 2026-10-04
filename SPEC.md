@@ -322,6 +322,8 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 - **共有コード**: JSON を deflate-raw で縮め、base64url にした文字列。
   - ロボット: `{ v: 1, kind: "robot", rules, name, loadout, source }`
   - 試合: `{ v: 1, kind: "match", rules, arena, seed, robots }`（2〜4 台、始める位置の順）
+- **共有リンク**: ゲームのアドレスの `#` のあとに共有コードを付けたもの（`…/#robot=コード`、`…/#match=コード`）。`#` 以降はサーバーに送られない。開くと起動メニューを出さずに、ロボットはプログラムの画面でガレージに受け取り、試合はアリーナで再生する。受け取ったらアドレスからコードを消す（再読み込みで二重に受け取らない）。開いているページでアドレスを書き換えても受け取る。共有の欄の「リンクをコピー」と、端末に共有メニューがあれば「共有…」（Web Share API）で渡す。
+- 名前・プログラム・パーツがガレージのロボットと同じロボットは、受け取っても二重に入れない（「もうガレージにあります」）。
 - **ファイル**: 拡張子 `.roboscript.json`、人が読める JSON。共通は `{ format: "roboscript", v: 1, kind, rules }`。
   - ロボット: `robot: { name, loadout, source }`
   - 試合: `arena`、`seed`、`robots`（2〜4 台）

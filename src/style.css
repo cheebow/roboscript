@@ -99,8 +99,8 @@ button {
     'contest battle';
 }
 
-/* The tutorial: the program screen, with the tutorial down the whole left side. */
-#app[data-screen='tutorial'] {
+/* The tutorial and the challenges: the program screen, with the tutorial (or the challenge) down the whole left side. */
+#app:is([data-screen='tutorial'], [data-screen='challenge']) {
   grid-template-columns: minmax(320px, 26%) var(--editor-width, minmax(300px, 3fr)) 6px minmax(0, 3.5fr) minmax(0, 3.5fr);
   grid-template-areas:
     'toolbar toolbar toolbar toolbar toolbar'
@@ -109,7 +109,8 @@ button {
     'tutorial log log inspector watch';
 }
 
-#tutorial {
+#tutorial,
+#challenge {
   grid-area: tutorial;
   border-right: 1px solid var(--border);
 }
@@ -124,9 +125,10 @@ button {
 #app:not([data-screen='arena']) :is(#lineup, #results),
 #app:not([data-screen='contest']) #contest,
 #app:not([data-screen='tutorial']) #tutorial,
-#app[data-screen='tutorial'] :is(#project, .picker),
-/* The tutorial is left by its LEAVE button or the start menu (⏻), not by the tabs. */
-#app[data-screen='tutorial'] #screens .tab:not(#boot-button) {
+#app:not([data-screen='challenge']) #challenge,
+#app:is([data-screen='tutorial'], [data-screen='challenge']) :is(#project, .picker),
+/* The tutorial and the challenges are left by their LEAVE button or the start menu (⏻), not by the tabs. */
+#app:is([data-screen='tutorial'], [data-screen='challenge']) #screens .tab:not(#boot-button) {
   display: none;
 }
 
@@ -1734,8 +1736,9 @@ button {
   margin-right: 14px;
 }
 
-/* The tutorial panel (see TutorialPanel). */
-#tutorial-body {
+/* The tutorial panel (see TutorialPanel), and the challenge panel made of the same parts (see ChallengePanel). */
+#tutorial-body,
+#challenge-body {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2443,4 +2446,32 @@ summary:focus-visible,
 /* Switches side by side in a heading keep together at the right. */
 .panel-toggle + .panel-toggle {
   margin-left: 0;
+}
+
+/* The challenge panel: what is laid down to clear it, and for stars. */
+.challenge-conditions {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+
+.challenge-conditions li {
+  margin: 2px 0;
+}
+
+.challenge-stars {
+  margin: 10px 0;
+}
+
+.challenge-stars .tutorial-task-label {
+  color: var(--muted);
+}
+
+.challenge-parts {
+  color: var(--muted);
+}
+
+.challenge-best {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
 }

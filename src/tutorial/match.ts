@@ -21,6 +21,7 @@ export function tutorialMatch(
   stage: Stage,
   source: string,
   loadout: Loadout = STANDARD_LOADOUT,
+  matchTime: number = TUTORIAL_MATCH_TIME,
 ): { ok: true; match: TutorialMatch } | { ok: false; errors: ScriptError[] } {
   const player = compileScript(source);
   if (!player.ok) return { ok: false, errors: player.errors };
@@ -34,7 +35,7 @@ export function tutorialMatch(
         // Exactly where the stage puts them: the step is written for those places.
         arena: stage.arena,
         tickRate: MATCH_DEFAULTS.tickRate,
-        maxMatchTime: TUTORIAL_MATCH_TIME,
+        maxMatchTime: matchTime,
         seed: stage.seed,
         robots: [
           { id: ROBOT_IDS[0], brain: player.brain, stats: statsOf(loadouts[0]) },

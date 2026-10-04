@@ -59,6 +59,19 @@ When the program has a mistake, its line turns red, the log says why, and the ma
 - 上の **マップ** で戦う場所を選びます。
 
 プログラムにエラーがあると、その行が赤くなり、ログに理由が出て、試合は始まりません。` } },
+      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Set matches to clear with conditions, started from **CHALLENGE** on the start menu. There are 12, and any can be tried in any order.
+
+- Each challenge has **conditions to clear it** (beat the opponent, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met one more, up to ★★★.
+- Some challenges **fix a part** (a Pistol, the Short sensor…); choose the others within the cost limit under **PARTS**.
+- Every try of a challenge is the same match: only your code and parts make a difference.
+- Your code for each challenge and your best (stars, then HP left, then time) are kept. Lines count only if they do something: blank lines and comments do not.
+- **Show an example answer** gives one way to clear it, with the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 12 問あり、どれからでも挑戦できます。
+
+- それぞれに **クリア条件**（相手に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアで ★、星の条件を 1 つ満たすごとに ★ が 1 つ増え、最高 ★★★ です。
+- **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのパーツは **パーツ** でコストの範囲で選べます。
+- 同じチャレンジは毎回同じ試合です。違いが出るのはコードとパーツだけです。
+- チャレンジごとのコードと自己ベスト（星の数、残り HP、時間の順に比べます）は残ります。行数に数えるのは何かをする行だけで、空行やコメントだけの行は数えません。
+- **解答例を見る** で、クリアのしかたの一例と、使うパーツが見られます。` } },
       { id: 'arena-screen', title: { en: `The arena`, ja: `アリーナ` }, body: { en: `The screen for picking robots, sending them into battle and watching.
 
 - Choose the **number of robots** (2 / 3 / 4) at the top, then a robot for each slot (those in your garage, and the 8 built-in ones).

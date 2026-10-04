@@ -3,12 +3,14 @@ import { t } from '../i18n/messages';
 import type { KeyValueStorage } from '../project/project_store';
 import type { Recording } from '../debug/recorder';
 import type { ReplayManager } from '../debug/replay_manager';
-import { CHAPTERS, STEPS, judgeStep } from '../tutorial';
+import { CHAPTERS, STEPS, judgeStep, trimmed } from '../tutorial';
+import { tutorialMatch } from '../tutorial/match';
+import type { Coach } from './coach';
 import type { Outcome } from '../tutorial/checks';
 import { TUTORIAL_KEY, readProgress, writeProgress, type Progress } from '../tutorial/progress';
 import type { Stage, Step, Text, TutorialAction } from '../tutorial/types';
 import { ActionMenu } from './action_menu';
-import { type Loadout, PARTS, STANDARD_LOADOUT } from '../data/parts';
+import { type Loadout, PARTS, STANDARD_LOADOUT, type Slot } from '../data/parts';
 import { createButton, createElement } from './dom';
 import { renderMarkup } from './markup';
 
@@ -38,7 +40,7 @@ export function local(text: Text): string {
  * what the player's program does in a match, or by reading on. Keeps where the
  * player is, what they cleared, and their code for each step.
  */
-export class TutorialPanel {
+export class TutorialPanel implements Coach {
   private progress: Progress;
   private index: number;
   /** Hints shown so far in this step. */
@@ -89,15 +91,29 @@ export class TutorialPanel {
     return undefined;
   }
 
-  /** How the match went for this step; for a step whose check is a match. */
-  judge(recording: Recording): Outcome {
-    return judgeStep(this.step, this.hooks.code(), recording);
+  /** How the last match went, until it is watched. */
+  private outcome: Outcome | null = null;
+
+  match(source: string, loadout: Loadout) {
+    const { stage } = this;
+    if (stage === undefined) throw new Error('A step without a field has no match');
+    return tutorialMatch(stage, source, loadout);
+  }
+
+  /** Judges the match for this step; it ends a moment after the step is cleared in it. */
+  played(recording: Recording): Recording {
+    const outcome = judgeStep(this.step, this.hooks.code(), recording);
+    this.outcome = outcome;
+    return trimmed(recording, outcome);
   }
 
   /** ALPHA's parts for this step: those chosen, for a step about parts; standard parts elsewhere. */
   get loadout(): Loadout {
     return this.step.parts === true ? this.progress.loadout : STANDARD_LOADOUT;
   }
+
+  /** The steps fix no parts: either they leave the parts standard, or they let them all be chosen. */
+  readonly fixedSlots: ReadonlySet<Slot> = new Set();
 
   /** The parts chosen in a step about parts: kept, and counted as the step's action. */
   setLoadout(loadout: Loadout): void {
@@ -131,9 +147,11 @@ export class TutorialPanel {
     this.save();
   }
 
-  /** A match was played and judged: its result is shown once the replay gets to that moment. */
-  matchPlayed(outcome: Outcome, replay: ReplayManager): void {
-    if (this.step.check.kind !== 'match') return;
+  /** The match played and judged is shown: its result comes out once the replay gets to that moment. */
+  watch(replay: ReplayManager): void {
+    const { outcome } = this;
+    this.outcome = null;
+    if (outcome === null || this.step.check.kind !== 'match') return;
     this.pending = { outcome, replay };
     this.showStatus();
   }

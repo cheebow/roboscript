@@ -89,8 +89,8 @@ export class PartsView {
     container.replaceChildren(card, parts, total, stats);
   }
 
-  /** Shows the robot with the given parts, drawn in the given colours. `ai` names what drives it. */
-  show(robotId: string, ai: string, loadout: Loadout, palette: RobotPalette): void {
+  /** Shows the robot with the given parts, drawn in the given colours. `ai` names what drives it; the parts of `fixed` slots cannot be changed. */
+  show(robotId: string, ai: string, loadout: Loadout, palette: RobotPalette, fixed: ReadonlySet<Slot> = NOTHING_FIXED): void {
     this.identity[0].textContent = robotId;
     this.identity[1].textContent = ai;
     drawRobotPreview(this.preview, loadout, palette);
@@ -100,6 +100,7 @@ export class PartsView {
         const selected = partId === loadout[slot];
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', `${selected}`);
+        button.disabled = fixed.has(slot) && !selected;
       }
       summary.textContent = partSummary(partIn(loadout, slot));
     }
@@ -122,6 +123,8 @@ export class PartsView {
     });
   }
 }
+
+const NOTHING_FIXED: ReadonlySet<Slot> = new Set();
 
 /** Adds a name/value row to the list and returns the element that holds its value. */
 function addField(list: HTMLElement, name: string): HTMLElement {

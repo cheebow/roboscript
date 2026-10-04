@@ -125,6 +125,7 @@ describe('the start-up screen', () => {
     expect(screen.querySelectorAll('.boot-line').length).toBeGreaterThan(5);
     expect(screen.querySelector('.boot-item.current .boot-item-name')?.textContent).toBe('TUTORIAL');
     key(screen, 'ArrowDown');
+    key(screen, 'ArrowDown');
     key(screen, 'Enter');
     expect(chosen).toEqual(['program']);
     expect(document.getElementById('boot')).toBeNull();

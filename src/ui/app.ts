@@ -28,8 +28,8 @@ import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { type BootChoice, BootScreen } from './boot_screen';
 import { TutorialPanel } from './tutorial_panel';
-import { tutorialMatch } from '../tutorial/match';
-import { trimmed } from '../tutorial';
+import { ChallengePanel } from './challenge_panel';
+import type { Coach } from './coach';
 import { createReplay } from './watched_match';
 import { CommentaryView } from './commentary_view';
 import { HelpPanel } from './help_panel';
@@ -64,8 +64,8 @@ type Mode = 'run' | 'debug';
  * anywhere play a league or a tournament.
  */
 const SCREENS = ['program', 'arena', 'contest'] as const;
-/** The screens: the three of the tabs, and the tutorial, reached from the start menu. */
-type Screen = (typeof SCREENS)[number] | 'tutorial';
+/** The screens: the three of the tabs, and the tutorial and the challenges, reached from the start menu. */
+type Screen = (typeof SCREENS)[number] | 'tutorial' | 'challenge';
 
 const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
@@ -125,9 +125,10 @@ class App {
   private workspaces: RobotWorkspace[];
   /** The player's ALPHA and BRAVO. */
   private readonly ownWorkspaces: RobotWorkspace[];
-  /** The tutorial's own editor: its code is kept apart from the player's. */
+  /** The editor of the tutorial and the challenges: their code is kept apart from the player's. */
   private readonly tutorialWorkspace: RobotWorkspace;
   private readonly tutorial: TutorialPanel;
+  private readonly challenges: ChallengePanel;
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
@@ -225,12 +226,19 @@ class App {
     this.tutorial = new TutorialPanel(requireElement('tutorial-body'), this.storage, {
       code: () => this.tutorialWorkspace.source,
       setCode: (code, undoable) => this.setTutorialCode(code, undoable),
-      stepChanged: () => this.tutorialStepChanged(),
+      stepChanged: () => this.coachedStageChanged(),
+      exit: () => this.boot.show(),
+      showParts: (shown) => this.showFile({ robotIndex: PLAYER_INDEX, file: shown ? 'config' : 'main.bot' }),
+    });
+    this.challenges = new ChallengePanel(requireElement('challenge-body'), this.storage, {
+      code: () => this.tutorialWorkspace.source,
+      setCode: (code, undoable) => this.setTutorialCode(code, undoable),
+      challengeChanged: () => this.coachedStageChanged(),
       exit: () => this.boot.show(),
       showParts: (shown) => this.showFile({ robotIndex: PLAYER_INDEX, file: shown ? 'config' : 'main.bot' }),
     });
     this.tutorialWorkspace = new RobotWorkspace(ROBOT_IDS[0], requireElement('tutorial-code'), '', {
-      save: (code) => this.tutorial.codeEdited(code),
+      save: (code) => this.coach?.codeEdited(code),
       edited: (workspace) => this.codeEdited(workspace),
       saveProblem: () => {},
       lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
@@ -369,18 +377,16 @@ class App {
   /** Switches between writing programs and watching fights. Either keeps what it was showing; its replay is paused meanwhile. */
   private showScreen(screen: Screen): void {
     this.shownReplay()?.pause();
-    const wasTutorial = this.screen === 'tutorial';
+    const before = this.coach;
     this.screen = screen;
-    // The tutorial and the program screen show the same panels with other programs: neither's match is the other's.
-    if (wasTutorial !== (screen === 'tutorial')) {
+    const after = this.coach;
+    // The tutorial, the challenges and the program screen show the same panels with other programs: none's match is another's.
+    if (before !== after) {
       this.leaveMatch();
-      this.workspaces = screen === 'tutorial' ? [this.tutorialWorkspace, this.ownWorkspaces[1]] : this.ownWorkspaces;
-      if (screen === 'tutorial') {
-        this.tutorial.open();
-      } else {
-        this.tutorial.close();
-        this.idleSnapshot = this.captureIdle();
-      }
+      this.workspaces = after !== null ? [this.tutorialWorkspace, this.ownWorkspaces[1]] : this.ownWorkspaces;
+      before?.close();
+      if (after !== null) after.open();
+      else this.idleSnapshot = this.captureIdle();
       this.showFile(codeFileOf(PLAYER_INDEX));
     }
     requireElement('app').dataset.screen = screen;
@@ -399,10 +405,17 @@ class App {
     for (const workspace of this.workspaces) workspace.stale = false;
   }
 
-  /** The tutorial went to another step: its field and robots are shown waiting, with its code. */
-  private tutorialStepChanged(): void {
+  /** What leads the player on this screen: the tutorial, the challenges, or nothing. */
+  private get coach(): Coach | null {
+    if (this.screen === 'tutorial') return this.tutorial;
+    if (this.screen === 'challenge') return this.challenges;
+    return null;
+  }
+
+  /** The tutorial went to another step, or the challenges to another challenge: its field and robots are shown waiting, with its code. */
+  private coachedStageChanged(): void {
     this.leaveMatch();
-    this.idleSnapshot = this.captureTutorialIdle();
+    this.idleSnapshot = this.captureCoachedIdle();
     this.showFile(codeFileOf(PLAYER_INDEX));
   }
 
@@ -412,26 +425,25 @@ class App {
     this.tutorialWorkspace.editor.showErrorLines([]);
   }
 
-  /** Plays the tutorial step's match: the tutorial's program against its training robot, where the step puts them. */
-  private startTutorial(mode: Mode): void {
-    const { stage } = this.tutorial;
-    if (stage === undefined) return;
+  /** Plays the coached match: the program in the editor against the training robot, where the stage puts them. */
+  private startCoached(coach: Coach, mode: Mode): void {
+    if (coach.stage === undefined) return;
     this.mode = mode;
     const workspace = this.tutorialWorkspace;
     workspace.flush();
     workspace.stale = false;
-    const loadout = this.tutorial.loadout;
+    const { loadout } = coach;
     const cost = costOf(loadout);
     if (cost > COST_LIMIT) {
       this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: [appEvent('error', t('program.costOverLimit', { cost, limit: COST_LIMIT }), null, workspace.robotId)] }]);
-      this.tutorial.matchRefused();
+      coach.matchRefused();
       return;
     }
-    const built = tutorialMatch(stage, workspace.source, loadout);
+    const built = coach.match(workspace.source, loadout);
     if (!built.ok) {
       workspace.editor.showErrorLines(built.errors.map((error) => error.line));
       this.showFaults([{ file: codeFileOf(PLAYER_INDEX), events: built.errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)) }]);
-      this.tutorial.matchRefused();
+      coach.matchRefused();
       return;
     }
     workspace.editor.showErrorLines([]);
@@ -439,23 +451,22 @@ class App {
     this.features = features;
     this.matchLoadouts = loadouts;
     const played = recordMatch(config, EFFECT_LIFETIMES);
-    const outcome = this.tutorial.judge(played);
-    const recording = trimmed(played, outcome);
+    const recording = coach.played(played);
     const replay = createReplay(recording, this.speed, ROBOT_IDS[PLAYER_INDEX]);
     this.replay = replay;
     this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
     replay.restart();
     this.refollow(replay);
-    this.tutorial.matchPlayed(outcome, replay);
-    if (mode === 'debug') this.tutorial.acted('debug');
+    coach.watch(replay);
+    if (mode === 'debug') coach.acted('debug');
   }
 
-  /** The tutorial step's robots where its match starts them. */
-  private captureTutorialIdle(): Snapshot {
-    const { stage } = this.tutorial;
-    if (stage === undefined) return this.captureIdle();
-    const built = tutorialMatch(stage, 'wait', this.tutorial.loadout);
+  /** The coached stage's robots where its match starts them. */
+  private captureCoachedIdle(): Snapshot {
+    const { coach } = this;
+    if (coach?.stage === undefined) return this.captureIdle();
+    const built = coach.match('wait', coach.loadout);
     if (!built.ok) return this.captureIdle();
     const config = built.match.config;
     return captureSnapshot(new Simulation({ ...config, robots: config.robots.map((robot) => ({ ...robot, brain: IDLE_BRAIN })) }));
@@ -490,8 +501,9 @@ class App {
    * plays it back, unless some code has errors or some robot's parts cost too much.
    */
   private start(mode: Mode): void {
-    if (this.screen === 'tutorial') {
-      this.startTutorial(mode);
+    const { coach } = this;
+    if (coach !== null) {
+      this.startCoached(coach, mode);
       return;
     }
     this.mode = mode;
@@ -567,7 +579,7 @@ class App {
   private step(): void {
     if (this.coding && this.mode === 'debug') {
       this.replay?.stepLine();
-      if (this.screen === 'tutorial') this.tutorial.acted('stepLine');
+      this.coach?.acted('stepLine');
     }
     else this.shownReplay()?.step();
   }
@@ -599,9 +611,9 @@ class App {
     else this.shownReplay()?.stepBack();
   }
 
-  /** Whether the screen is one where code is written and debugged: the program screen or the tutorial. */
+  /** Whether the screen is one where code is written and debugged: the program screen, the tutorial or the challenges. */
   private get coding(): boolean {
-    return this.screen === 'program' || this.screen === 'tutorial';
+    return this.screen === 'program' || this.coach !== null;
   }
 
   private togglePlay(): void {
@@ -618,7 +630,7 @@ class App {
     this.followed = null;
     for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
-    if (this.screen === 'tutorial') this.idleSnapshot = this.captureTutorialIdle();
+    if (this.coach !== null) this.idleSnapshot = this.captureCoachedIdle();
     else this.drawSeed();
   }
 
@@ -631,11 +643,12 @@ class App {
 
   /** Puts the part into the slot of the robot whose config is shown. Takes effect from the next RUN / DEBUG. */
   private pickPart(slot: Slot, partId: string): void {
-    if (this.screen === 'tutorial') {
-      const loadout = { ...this.tutorial.loadout, [slot]: partId };
-      this.tutorial.setLoadout(loadout);
-      this.partsView.show(ROBOT_IDS[PLAYER_INDEX], AI_LABEL, loadout, paletteOf(PLAYER_INDEX));
-      this.idleSnapshot = this.captureTutorialIdle();
+    const { coach } = this;
+    if (coach !== null) {
+      coach.setLoadout({ ...coach.loadout, [slot]: partId });
+      // The coach may keep some parts as they are.
+      this.partsView.show(ROBOT_IDS[PLAYER_INDEX], AI_LABEL, coach.loadout, paletteOf(PLAYER_INDEX), coach.fixedSlots);
+      this.idleSnapshot = this.captureCoachedIdle();
       return;
     }
     const { robotIndex } = this.shownFile;
@@ -719,7 +732,7 @@ class App {
     const marks = replay.runsOf(workspace.robotId, line).map((run) => run.tick);
     this.followed = { robotIndex, line, replay, marks };
     this.keepMark({ robotIndex, line });
-    if (this.screen === 'tutorial') this.tutorial.acted('mark');
+    this.coach?.acted('mark');
   }
 
   /** Keeps the marked line of the program screen (null when the mark is taken off). The tutorial's marks are not kept. */
@@ -781,18 +794,22 @@ class App {
     const isCode = file.file === 'main.bot';
     const robotId = ROBOT_IDS[file.robotIndex];
 
-    const tutorial = this.screen === 'tutorial';
+    const { coach } = this;
+    const coached = coach !== null;
     EDITOR_ELEMENT_IDS.forEach((elementId, robotIndex) => {
-      requireElement(elementId).hidden = tutorial || !(isCode && robotIndex === file.robotIndex);
+      requireElement(elementId).hidden = coached || !(isCode && robotIndex === file.robotIndex);
     });
-    requireElement('tutorial-code').hidden = !tutorial || !isCode;
+    requireElement('tutorial-code').hidden = !coached || !isCode;
     requireElement('config').hidden = isCode;
-    this.templateMenu.hidden = !isCode || tutorial;
-    if (!isCode) this.partsView.show(robotId, AI_LABEL, tutorial ? this.tutorial.loadout : this.loadouts[file.robotIndex], paletteOf(file.robotIndex));
+    this.templateMenu.hidden = !isCode || coached;
+    if (!isCode) this.partsView.show(robotId, AI_LABEL, coach?.loadout ?? this.loadouts[file.robotIndex], paletteOf(file.robotIndex), coach?.fixedSlots);
 
-    requireElement('editor-title').textContent = tutorial
-      ? t(isCode ? 'tutorial.editorTitle' : 'tutorial.partsTitle')
-      : t('program.editorTitle', { robot: robotId, file: file.file });
+    requireElement('editor-title').textContent =
+      this.screen === 'tutorial'
+        ? t(isCode ? 'tutorial.editorTitle' : 'tutorial.partsTitle')
+        : this.screen === 'challenge'
+          ? t(isCode ? 'challenge.editorTitle' : 'challenge.partsTitle')
+          : t('program.editorTitle', { robot: robotId, file: file.file });
     this.projectPanel.markSelected(file);
     // Line-by-line stepping follows the program in view.
     this.replay?.focusOn(robotId);
@@ -801,7 +818,7 @@ class App {
   private frame = (now: number): void => {
     const elapsed = (now - this.lastFrame) / MS_PER_SECOND;
     this.lastFrame = now;
-    if (this.screen === 'tutorial') this.tutorial.update();
+    this.coach?.update();
     if (this.screen === 'arena') this.showArena(elapsed);
     else if (this.screen === 'contest') this.showContest(elapsed);
     else this.showProgram(elapsed);
@@ -863,9 +880,10 @@ class App {
 
     const view = replay?.view ?? this.idleSnapshot;
     const debugging = this.mode === 'debug' && replay !== null;
-    const stage = this.screen === 'tutorial' ? this.tutorial.stage : undefined;
+    const { coach } = this;
+    const stage = coach?.stage;
     const idleArena = stage?.arena ?? this.arena.arena;
-    const idleLoadouts = stage === undefined ? this.loadouts : [this.tutorial.loadout, STANDARD_LOADOUT];
+    const idleLoadouts = coach === null || stage === undefined ? this.loadouts : [coach.loadout, { ...STANDARD_LOADOUT, ...stage.botLoadout }];
     const idleStats = stage === undefined ? this.stats : idleLoadouts.map((loadout) => statsOf(loadout));
     const stats = replay?.recording.stats ?? idleStats;
     const loadouts = replay === null ? idleLoadouts : this.matchLoadouts;

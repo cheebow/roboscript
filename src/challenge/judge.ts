@@ -1,0 +1,106 @@
+import { analyze } from '../arena/analysis';
+import type { Recording } from '../debug/recorder';
+import { judge } from '../tutorial/checks';
+import type { Goal, Text } from '../tutorial/types';
+import type { Challenge, Condition } from './types';
+
+/** What a try of a challenge came to: how it was played, and whether (and how well) it was cleared. */
+export interface ChallengeResult {
+  cleared: boolean;
+  /** The tick it was cleared at, or the end of the match. */
+  tick: number;
+  /** 0 when not cleared; else 1, and one more for each star condition met. */
+  stars: number;
+  /** Which of the two star conditions were met. */
+  starsMet: [boolean, boolean];
+  /** Why it was not cleared, when it was not. */
+  why: Text | null;
+  record: { lines: number; seconds: number; hp: number };
+}
+
+/** Lines of a program that do something: not blank, not only a comment. */
+export function linesOf(source: string): number {
+  return source.split(/\r?\n/).filter((line) => line.replace(/#.*$/, '').trim() !== '').length;
+}
+
+/** How a try went: the goal, the conditions it must meet, and the stars. */
+export function judgeChallenge(challenge: Challenge, source: string, recording: Recording): ChallengeResult {
+  const outcome = judge(challenge.goal, recording, challenge.stage);
+  const tick = outcome.done ? outcome.tick : recording.snapshots.length - 1;
+  const alpha = analyze(recording, ['ALPHA', 'BRAVO']).robots[0];
+  const record = {
+    lines: linesOf(source),
+    seconds: tick / recording.tickRate,
+    hp: recording.snapshots[tick].robots[0].hp,
+  };
+  const holds = (condition: Condition): boolean => {
+    switch (condition.kind) {
+      case 'lines':
+        return record.lines <= condition.max;
+      case 'seconds':
+        return record.seconds <= condition.max;
+      case 'hp':
+        return record.hp >= condition.min;
+      case 'noHit':
+        return alpha.damageTaken === 0;
+      case 'recovered':
+        return alpha.recovered >= condition.min;
+      case 'guarded':
+        return alpha.guarded >= condition.min;
+      case 'shots':
+        return alpha.shots <= condition.max;
+    }
+  };
+  if (!outcome.done) return { cleared: false, tick, stars: 0, starsMet: [false, false], why: outcome.why, record };
+  const unmet = (challenge.require ?? []).find((condition) => !holds(condition));
+  if (unmet !== undefined) {
+    return { cleared: false, tick, stars: 0, starsMet: [false, false], record, ...unmetWhy(unmet) };
+  }
+  const starsMet: [boolean, boolean] = [holds(challenge.stars[0]), holds(challenge.stars[1])];
+  return { cleared: true, tick, stars: 1 + starsMet.filter(Boolean).length, starsMet, why: null, record };
+}
+
+/** Why a condition that must hold did not, in both languages. */
+function unmetWhy(condition: Condition): { why: Text } {
+  return { why: { en: `Not cleared: ${describeCondition(condition).en}.`, ja: `クリアならず: ${describeCondition(condition).ja}。` } };
+}
+
+/** A condition in words, in both languages. */
+export function describeCondition(condition: Condition): Text {
+  switch (condition.kind) {
+    case 'lines':
+      return { en: `in ${condition.max} lines or fewer`, ja: `${condition.max} 行以内` };
+    case 'seconds':
+      return { en: `within ${condition.max} seconds`, ja: `${condition.max} 秒以内` };
+    case 'hp':
+      return { en: `with ${condition.min} HP or more left`, ja: `HP を ${condition.min} 以上残す` };
+    case 'noHit':
+      return { en: 'without being hit', ja: '1 発も当たらない' };
+    case 'recovered':
+      return { en: `getting back ${condition.min} HP or more`, ja: `HP を合計 ${condition.min} 以上回復` };
+    case 'guarded':
+      return { en: `guarding against ${condition.min} hits or more`, ja: `${condition.min} 回以上ガードで受ける` };
+    case 'shots':
+      return { en: `in ${condition.max} shots or fewer`, ja: `${condition.max} 発以内` };
+  }
+}
+
+/** What a challenge's match has to end in, in both languages. */
+export function describeGoal(goal: Goal): Text {
+  switch (goal.kind) {
+    case 'win':
+      return { en: 'Win the match', ja: '試合に勝つ' };
+    case 'destroy':
+      return { en: 'Destroy BRAVO', ja: 'BRAVO を壊す' };
+    case 'reach':
+      return { en: 'Get to the goal', ja: 'ゴールに着く' };
+    case 'recover':
+      return { en: 'Get HP back', ja: 'HP を回復する' };
+    case 'guard':
+      return { en: 'Guard against a hit', ja: 'ガードで弾を受ける' };
+    case 'hits':
+      return { en: `Hit BRAVO ${goal.count} times`, ja: `BRAVO に ${goal.count} 発当てる` };
+    case 'run':
+      return { en: 'Run the program', ja: 'プログラムを動かす' };
+  }
+}

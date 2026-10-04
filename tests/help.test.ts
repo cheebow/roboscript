@@ -38,3 +38,22 @@ describe('the help', () => {
     }
   });
 });
+
+describe('the examples in the list of all words', () => {
+  it('are there for every word, and for nothing else', async () => {
+    const { allWords } = await import('../src/ai/reference');
+    const { WORD_EXAMPLES } = await import('../src/help/word_examples');
+    const keys = allWords().map((word) => `${word.kind}:${word.word}`);
+    expect(Object.keys(WORD_EXAMPLES).sort()).toEqual([...keys].sort());
+  });
+
+  it('are whole programs that compile, and use the word they are for', async () => {
+    const { compileScript } = await import('../src/ai/roboscript');
+    const { WORD_EXAMPLES } = await import('../src/help/word_examples');
+    for (const [key, source] of Object.entries(WORD_EXAMPLES)) {
+      const compiled = compileScript(source);
+      expect(compiled.ok ? [] : compiled.errors.map((error) => error.message), key).toEqual([]);
+      expect(source.split(/[^A-Za-z0-9_]+/), key).toContain(key.split(':')[1]);
+    }
+  });
+});

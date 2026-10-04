@@ -1,4 +1,5 @@
-import { type WordKind, type WordReference, allWords } from '../ai/reference';
+import { type WordKind, type WordReference, allWords, describeWord } from '../ai/reference';
+import { WORD_EXAMPLES } from '../help/word_examples';
 import { HELP, type HelpTopic, WORDS_TOPIC } from '../help/topics';
 import { t } from '../i18n/messages';
 import { createButton, createElement } from './dom';
@@ -141,22 +142,48 @@ export class HelpPanel {
     });
   }
 
-  /** The words, by kind: each with what it is and what it does. */
+  /** The words, by kind: each with what it is, what it does, and a short program that uses it. Buttons at the top go to each kind. */
   private wordList(words: readonly WordReference[]): HTMLElement {
     const list = createElement('div', 'help-words');
+    const jumps = createElement('div', 'help-word-jumps');
+    list.append(jumps);
     for (const kind of WORD_GROUPS) {
       const ofKind = words.filter((word) => word.kind === kind);
       if (ofKind.length === 0) continue;
-      list.append(createElement('h3', 'help-word-group', t(`help.kind.${kind}` as 'help.kind.control')));
+      const group = createElement('section', 'help-word-group');
+      const title = t(`help.kind.${kind}` as 'help.kind.control');
+      const heading = createElement('h3', 'help-word-group-title', title);
+      group.append(heading, createElement('p', 'help-word-group-what', t(`help.kind.${kind}.what` as 'help.kind.control.what')));
+      jumps.append(createButton('tool-button', title, '', () => heading.scrollIntoView({ block: 'start' })));
       for (const word of ofKind) {
         const entry = createElement('div', 'help-word');
         entry.dataset.word = word.word;
         const head = createElement('div', 'help-word-head');
-        head.append(createElement('code', 'markup-inline', word.word), createElement('span', 'help-word-hint', word.hint));
+        head.append(createElement('code', 'help-word-name', word.word), createElement('span', 'help-word-hint', word.hint));
         entry.append(head, createElement('p', 'help-word-summary', word.summary));
-        list.append(entry);
+        const example = WORD_EXAMPLES[`${word.kind}:${word.word}`];
+        if (example !== undefined) entry.append(exampleOf(example, word.word));
+        group.append(entry);
       }
+      list.append(group);
     }
     return list;
   }
+}
+
+/** The example program, coloured as the editor colours it, with the word it shows picked out. */
+function exampleOf(source: string, featured: string): HTMLElement {
+  const code = createElement('pre', 'help-word-example');
+  const parts = source.split(/([A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?)/);
+  parts.forEach((part, index) => {
+    if (part === '') return;
+    // The split leaves the words and numbers at the odd places, what lies between them at the even ones.
+    if (index % 2 === 0) {
+      code.append(part);
+      return;
+    }
+    const kind = /^\d/.test(part) ? 'number' : (describeWord(part)?.kind ?? 'name');
+    code.append(createElement('span', `code-${kind}${part === featured ? ' code-featured' : ''}`, part));
+  });
+  return code;
 }

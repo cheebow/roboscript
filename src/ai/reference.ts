@@ -20,7 +20,7 @@ export interface WordReference {
 }
 
 const NO_TIME = 'Takes no time.';
-const NOT_THE_ENEMY = 'The enemy does not count.';
+const NOT_THE_ENEMY = 'Robots do not count: when the enemy is in the way, touching_enemy is true instead.';
 const ANGLE = 'in degrees: 0 is straight ahead, positive is to the right';
 const BULLET_STEP = Math.round(ROBOT_DEFAULTS.shotSpeed / MATCH_DEFAULTS.tickRate);
 const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
@@ -112,7 +112,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'face',
     kind: 'command',
     hint: 'turn the hull until it faces',
-    summary: 'Turns the hull towards the enemy, cover or where the last hit came from, a tick at a time, until it faces it: "face hit" is the same as "turn hit" repeated. Takes no time once the hull faces it, or when there is nothing to face.',
+    summary: 'Turns the hull towards the enemy, cover, where the last hit came from, or the way opposite to where it faces now (back), a tick at a time, until it faces it: "face hit" is the same as "turn hit" repeated. Takes no time once the hull faces it, or when there is nothing to face.',
   },
   {
     word: 'aim',
@@ -156,6 +156,12 @@ export const LANGUAGE: readonly WordReference[] = [
     kind: 'direction',
     hint: 'towards the hiding place',
     summary: 'Along the shortest way to a place hidden from the enemy: towards the next point of that way, round the corners of obstacles (see cover_visible).',
+  },
+  {
+    word: 'back',
+    kind: 'direction',
+    hint: 'the way behind, for face',
+    summary: 'For face only: the way opposite to where the hull faces when the face begins. "face back" turns the hull right round, which takes a second with standard legs. "turn back" is not a thing: turn turns for one tick only.',
   },
   {
     word: 'enemy_visible',

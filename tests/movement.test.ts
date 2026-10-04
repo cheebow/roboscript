@@ -175,3 +175,25 @@ describe('driving', () => {
     expect(later.position.y).toBeGreaterThan(START.y + moveSpeed);
   });
 });
+
+describe('face back', () => {
+  it('turns the hull right round, a tick at a time, and then goes on', () => {
+    const simulation = createSimulation([compileBrain('face back\nlabel DONE\nloop\n    wait\n'), compileBrain('loop\n    wait\n')]);
+    const start = simulation.robots[0].rotation;
+    runTicks(simulation, 1);
+    // One tick of turning: still far from facing back.
+    expect(Math.abs(simulation.robots[0].rotation - start)).toBeLessThan(10);
+    runTicks(simulation, 60);
+    const turned = Math.abs(((simulation.robots[0].rotation - start + 540) % 360) - 180);
+    expect(turned).toBeCloseTo(180, 0);
+    expect(simulation.robots[0].label).toBe('DONE');
+  });
+
+  it('cannot be written as turn back, which would turn for a tick only', async () => {
+    const { compileScript } = await import('../src/ai/roboscript');
+    const compiled = compileScript('turn back');
+    expect(compiled.ok ? [] : compiled.errors.map((error) => error.message)).toEqual([
+      '"turn back" would turn only one tick: to turn until the hull faces the other way, use face back',
+    ]);
+  });
+});

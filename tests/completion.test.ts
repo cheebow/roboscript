@@ -84,7 +84,7 @@ describe('completionsAt: arguments', () => {
     expect(offered('aim |')).toEqual(['left', 'right', 'enemy', 'lead', 'ahead']);
     expect(offered('aim l|')).toEqual(['left', 'lead']);
     expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover', 'hit']);
-    expect(offered('face |')).toEqual(['enemy', 'cover', 'hit']);
+    expect(offered('face |')).toEqual(['enemy', 'cover', 'hit', 'back']);
     expect(offered('turn left |', true)).toBeNull();
   });
 

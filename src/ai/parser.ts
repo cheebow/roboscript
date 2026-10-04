@@ -260,6 +260,7 @@ class Parser {
       }
       case 'turn': {
         if (argument === undefined) throw new LineError(t('parse.expectDirectionAfter', { command: 'turn' }));
+        if (argument.text === 'back') throw new LineError(t('parse.turnBackIsFace'));
         if (!isTurnDirection(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
         expectEnd(rest, `turn ${argument.text}`);
         return { kind: 'turn', line: lineNumber, direction: argument.text };

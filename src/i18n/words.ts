@@ -8,7 +8,7 @@ export interface WordText {
 }
 
 const NO_TIME = '時間はかからない。';
-const NOT_THE_ENEMY = '敵は数えない。';
+const NOT_THE_ENEMY = 'ロボットは数えない（敵にふさがれているときは、かわりに touching_enemy が真になる）。';
 const ANGLE = '度。0 が正面、右が正';
 const BULLET_STEP = Math.round(ROBOT_DEFAULTS.shotSpeed / MATCH_DEFAULTS.tickRate);
 const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
@@ -30,7 +30,7 @@ export const WORDS_JA: Record<string, WordText> = {
   label: { hint: '今していることに名前を付ける', summary: `label HIDING のように、今していることに好きな名前を付ける。名前はロボットの下に出て、変わったときにログに出る。動きは変わらない。${NO_TIME}` },
   drive: { hint: '車体の走り方を決める', summary: `車体の走り方をこれ以降 forward、backward、stop のどれかにする。旋回・照準・発射をしている間も走り続ける。${NO_TIME}` },
   turn: { hint: '車体を回す、1 tick', summary: '車体を 1 tick ぶん回す: left、right、enemy（敵の方へ）、cover（隠れ場所の方へ）、hit（撃たれた方へ）。砲塔も一緒に回る。' },
-  face: { hint: '向くまで車体を回す', summary: '敵、隠れ場所、最後に撃たれた方向を向くまで、車体を 1 tick ずつ回す。face hit は turn hit を繰り返すのと同じ。向いていれば、または向く先がなければ、時間はかからない。' },
+  face: { hint: '向くまで車体を回す', summary: '敵、隠れ場所、最後に撃たれた方向、今の真後ろ（back）のどれかを向くまで、車体を 1 tick ずつ回す。face hit は turn hit を繰り返すのと同じ。向いていれば、または向く先がなければ、時間はかからない。' },
   aim: { hint: '砲塔を回す、1 tick', summary: '砲塔を 1 tick ぶん回す: left、right、enemy（敵の方へ）、lead（敵の動く先へ）、ahead（車体の正面へ）。' },
   fire: { hint: '撃つ、1 tick', summary: '砲塔の向いている方へ撃つ。1 tick かかる。次の弾が撃てるようになるまでの間と、弾切れのときは、弾は出ない。車体が走っている tick に撃つと、弾のばらつきが 5 倍になる。' },
   guard: { hint: '被弾に備える、1 tick', summary: `1 tick のあいだ身構える: その tick に当たった弾のダメージは ${GUARDED_SHARE} になる。1 試合に ${ROBOT_DEFAULTS.maxGuards} tick ぶんしか使えず、使うたびに、次に撃てるようになるのが ${ROBOT_DEFAULTS.guardRecovery} 秒遅れる。弾が当たる tick に合わせて使う。` },
@@ -43,6 +43,7 @@ export const WORDS_JA: Record<string, WordText> = {
   enemy: { hint: '敵の方へ', summary: '敵の方へ。見えていなければ、最後に見た位置の方へ。' },
   lead: { hint: '敵の動く先', summary: '今撃った弾が届くころに敵がいる場所（今の動きを続けた場合）。そこを狙った弾は、動きを変える敵には外れる。' },
   ahead: { hint: '車体の正面', summary: '車体の正面。' },
+  back: { hint: '真後ろ（face 用）', summary: 'face でだけ使う。face を始めたときの向きの真後ろ。face back で車体がくるりと反対を向く（標準の脚で約 1 秒）。turn は 1 tick しか回らないので、turn back とは書けない。' },
   cover: { hint: '隠れ場所の方へ', summary: '敵から隠れられる場所への一番短い道の、次の地点の方へ。障害物の角を回る道も選ぶ（cover_visible を参照）。' },
   enemy_visible: { hint: '敵が見えている', summary: '敵がセンサーの範囲内にいて、障害物の陰に隠れていないとき真。見えている敵へは、まっすぐ走って行くことも、まっすぐ撃つこともできる。敵が複数いるとき（バトルロイヤル）は、enemy_ の語と向き enemy はすべて「見えている敵のうち一番近い 1 台」（誰も見えなければ最後に見た敵）のこと。' },
   blocked: { hint: 'すぐ前に壁か障害物', summary: `すぐ前に壁か障害物があって前進できないとき真。${NOT_THE_ENEMY}` },

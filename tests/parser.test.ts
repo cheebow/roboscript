@@ -307,9 +307,9 @@ describe('parser: errors', () => {
   it('reports bad command arguments', () => {
     expect(errorsOf('drive')).toEqual(['Line 1: Expected "forward", "backward" or "stop" after "drive"']);
     expect(errorsOf('drive up')).toEqual(['Line 1: Unknown direction "up"']);
-    expect(errorsOf('face')).toEqual(['Line 1: Expected what to face after "face": enemy, cover or hit']);
+    expect(errorsOf('face')).toEqual(['Line 1: Expected what to face after "face": enemy, cover, hit or back']);
     expect(errorsOf('face left')).toEqual([
-      'Line 1: "face left" is not a thing to face: use face enemy, face cover or face hit (or "turn left")',
+      'Line 1: "face left" is not a thing to face: use face enemy, face cover, face hit or face back (or "turn left")',
     ]);
     expect(errorsOf('loop\n    face hit')).toEqual([]);
     expect(errorsOf('drive enemy')).toEqual(['Line 1: Unknown direction "enemy"']);

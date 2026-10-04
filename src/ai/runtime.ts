@@ -1,3 +1,4 @@
+import { normalizeAngle } from '../sim/math';
 import { type AIAction, type AIContext, type RobotBrain, createIdleAction } from '../sim/ai_context';
 import {
   type ArithmeticOperator,
@@ -83,16 +84,20 @@ export class ScriptBrain implements RobotBrain {
           yield* this.enter(statement.line);
         }
         return null;
-      case 'face':
+      case 'face': {
         // One tick of turning at a time, until the hull faces the target. Facing it already, or with
         // nothing to face (the angle is 0 then), it takes no time at all.
-        while (Math.abs(this.angleTo(statement.target)) > FACED_WITHIN) {
+        // Back is the way opposite to where the hull faces now: kept, as the hull turns towards it.
+        const back = statement.target === 'back' ? normalizeAngle(this.context.heading + 180) : null;
+        while (Math.abs(back === null ? this.angleTo(statement.target) : normalizeAngle(back - this.context.heading)) > FACED_WITHIN) {
           this.action.turn = statement.target;
+          this.action.heading = back;
           this.action.sourceLines.turn = statement.line;
           yield;
           yield* this.enter(statement.line);
         }
         return null;
+      }
       case 'call': {
         const body = this.prepareCall(statement.name, statement.args);
         // What the function returns is of no use to a call on a line of its own.
@@ -134,6 +139,8 @@ export class ScriptBrain implements RobotBrain {
         return this.context.coverAngle;
       case 'hit':
         return this.context.hitAngle;
+      case 'back':
+        return 0;
     }
   }
 

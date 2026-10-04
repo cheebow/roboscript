@@ -80,6 +80,8 @@ export class RobotController {
   private hitFrom: number | null = null;
   private hitSensed: HitReading = NO_HIT_READING;
   private lastAction: AIAction | null = null;
+  /** deg on the field: where a turn `back` of this tick's action turns to. */
+  private turnHeading: number | null = null;
   private readonly knownVariables = new Map<string, number>();
 
   constructor(options: RobotOptions) {
@@ -221,6 +223,7 @@ export class RobotController {
     // A hit is told of once: the brain that has looked is not told again.
     if (lookedAtHit) this.struck = false;
     if (action.label !== null) this.label = action.label;
+    this.turnHeading = action.heading;
     this.lastAction = action;
     for (const { name, value } of action.assignments) this.knownVariables.set(name, value);
     return action;
@@ -303,6 +306,8 @@ export class RobotController {
         return clamp(this.around.cover?.angle ?? 0, -maxStep, maxStep);
       case 'hit':
         return clamp(this.hitSensed.hitAngle, -maxStep, maxStep);
+      case 'back':
+        return this.turnHeading === null ? 0 : clamp(normalizeAngle(this.turnHeading - this.rotation), -maxStep, maxStep);
     }
   }
 
@@ -332,6 +337,7 @@ export class RobotController {
       ammo: this.weapon.ammo,
       guards: this.guardsLeft,
       blocked: this.around.blocked,
+      heading: this.rotation,
       blockedBehind: this.around.blockedBehind,
       wallAhead: this.around.wallAhead,
       wallBehind: this.around.wallBehind,

@@ -36,6 +36,7 @@ export const QUIET_CONTEXT: AIContext = {
   guards: ROBOT_DEFAULTS.maxGuards,
   blocked: false,
   blockedBehind: false,
+  heading: 0,
   wallAhead: 0,
   wallBehind: 0,
   wallLeft: 0,

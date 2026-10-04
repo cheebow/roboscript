@@ -6,7 +6,8 @@ export type DriveDirection = 'forward' | 'backward';
 /** What the hull is set to do until told otherwise. */
 export type DriveSetting = DriveDirection | 'stop';
 /** Which way the hull turns: `cover` is towards the hiding place, `hit` towards where the bullet that last hit the robot came from. */
-export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover' | 'hit';
+/** `back` turns towards the heading in `AIAction.heading`: what `face back` set out to face. */
+export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover' | 'hit' | 'back';
 /** Which way the turret turns: `lead` is where the enemy will be when a bullet gets there, `ahead` the front of the hull. */
 export type AimDirection = 'left' | 'right' | 'enemy' | 'lead' | 'ahead';
 
@@ -32,6 +33,8 @@ export interface AIContext {
   readonly blocked: boolean;
   /** An obstacle or a wall is directly behind, so the robot cannot move backward. The other robot does not count. */
   readonly blockedBehind: boolean;
+  /** deg, the way the hull faces on the field. Not a word of the language: `face back` works out its aim from it. */
+  readonly heading: number;
   /** Distance from the robot's edge to the nearest wall or obstacle straight ahead, behind, to the left and to the right. */
   readonly wallAhead: number;
   readonly wallBehind: number;
@@ -83,6 +86,8 @@ export interface AIAction {
   /** null keeps driving as before. */
   drive: DriveSetting | null;
   turn: TurnDirection | null;
+  /** deg on the field, for a turn `back`: the heading to turn towards. */
+  heading: number | null;
   aim: AimDirection | null;
   fire: boolean;
   /** Brace for this tick: hits do less damage. */
@@ -129,6 +134,7 @@ export function createIdleAction(): AIAction {
   return {
     drive: null,
     turn: null,
+    heading: null,
     aim: null,
     fire: false,
     guard: false,

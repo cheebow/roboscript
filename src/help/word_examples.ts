@@ -139,6 +139,11 @@ loop
     else
         drive stop
     wait`,
+  'direction:back': `drive forward
+loop
+    if blocked
+        face back
+    wait`,
   'direction:hit': `loop
     if hit
         face hit

@@ -206,7 +206,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | 種類 | 文 | 時間 |
 |---|---|---|
 | 車体を回す | `turn left` / `right` / `enemy` / `cover` / `hit` | 1 tick |
-| 向くまで回る | `face enemy` / `cover` / `hit` | 向くまで（向いていれば 0） |
+| 向くまで回る | `face enemy` / `cover` / `hit` / `back` | 向くまで（向いていれば 0） |
 | 砲塔を回す | `aim left` / `right` / `enemy` / `lead` / `ahead` | 1 tick |
 | 撃つ・身構える・待つ | `fire` / `guard` / `wait` | 1 tick |
 | 走行の設定 | `drive forward` / `backward` / `stop` | なし |
@@ -218,7 +218,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | コメント | `#` から行末まで | — |
 
 - ブロック（`if` / `else` / `loop` / `while` / `def` の中身）は、次の行から半角の空白で字下げして書く。タブと全角スペースの字下げはエラー。
-- **方向**: `enemy` は敵（見えなければ最後に見た位置）、`cover` は隠れ場所への道の次の地点、`hit` は最後に当たった弾が来た方向、`lead` は敵が今の動きを続けたときに弾が届く頃の位置（直線の動きだけを読む）、`ahead` は車体の正面。向く先がないときは何もしない（その tick は使う）。
+- **方向**: `enemy` は敵（見えなければ最後に見た位置）、`cover` は隠れ場所への道の次の地点、`hit` は最後に当たった弾が来た方向、`lead` は敵が今の動きを続けたときに弾が届く頃の位置（直線の動きだけを読む）、`ahead` は車体の正面、`back`（`face` だけ）は `face` を始めたときの向きの真後ろ（`turn back` は、1 tick しか回らないのでエラーにして `face back` を案内する）。向く先がないときは何もしない（その tick は使う）。
 - `label` は表示とログのためだけで、動きは変わらない。ロボットの下（デバッグ中）、状態、ウォッチに出る。何も付けていない間は `IDLE`。
 
 ### 5.3 式と条件
@@ -248,7 +248,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | `reload` | 次に撃てるまでの秒数。撃てるときは 0 |
 | `weapon_range` | 自分の銃の射程 |
 | `aim_angle` / `lead_angle` / `gun_angle` | 砲塔から敵まで、砲塔から敵の移動先までの角度と、車体の上での砲塔の向き |
-| `blocked` / `blocked_behind` | すぐ前 / 後ろに壁や障害物があって進めない（ロボットは数えない） |
+| `blocked` / `blocked_behind` | すぐ前 / 後ろに壁や障害物があって進めない（ロボットは数えない。敵にぶつかってもそのまま戦えるように。敵にふさがれているかは `touching_enemy`） |
 | `wall_ahead` / `wall_behind` / `wall_left` / `wall_right` | その方向の壁・障害物までの距離（車体の端から。ロボットは数えない） |
 | `bullet_incoming` / `bullet_distance` / `bullet_angle` | 自分に当たるコースの弾があるか、その弾までの距離と方向。なければ 0 |
 | `cover_visible` / `cover_distance` / `cover_angle` | 隠れ場所へ行けるか、そこまでの道のり、道の次の地点の方向。隠れていれば距離 0。敵を一度も見ていなければ偽 |

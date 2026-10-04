@@ -59,3 +59,45 @@ describe('challenge progress', () => {
     expect(better(two, { ...two, seconds: 30 })).toBe(two);
   });
 });
+
+describe('the champion', () => {
+  /** Wins of the first robot against the second over every map, seeds 1 to `seeds`, from both sides. */
+  async function wins(a: { source: string; parts: object }, b: { source: string; parts: object }, seeds: number) {
+    const { prepareFight } = await import('../src/arena/match');
+    const { ARENAS } = await import('../src/data/arenas');
+    const { Simulation } = await import('../src/sim/simulation');
+    const entrant = (name: string, robot: { source: string; parts: object }) => ({ id: name, name, origin: 'garage' as const, loadout: { ...STANDARD_LOADOUT, ...robot.parts }, source: robot.source });
+    let won = 0;
+    let played = 0;
+    for (const { arena } of ARENAS) {
+      for (let seed = 1; seed <= seeds; seed++) {
+        for (const first of [true, false]) {
+          const pair = first ? [entrant('A', a), entrant('B', b)] : [entrant('B', b), entrant('A', a)];
+          const prepared = prepareFight(pair, arena, seed);
+          if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+          const simulation = new Simulation(prepared.fight.config);
+          while (simulation.result === null) simulation.step();
+          if (simulation.result.winnerId === 'A') won++;
+          played++;
+        }
+      }
+    }
+    return won / played;
+  }
+
+  it('beats every built-in robot in most matches', async () => {
+    const { CHAMPION, CHAMPION_LOADOUT } = await import('../src/challenge/champion');
+    const { TEMPLATES } = await import('../src/data/templates');
+    for (const template of TEMPLATES) {
+      const rate = await wins({ source: CHAMPION, parts: CHAMPION_LOADOUT }, { source: template.source, parts: {} }, 2);
+      expect(rate, template.name).toBeGreaterThanOrEqual(0.7);
+    }
+  });
+
+  it('is beaten more often than not by SentryBot built to shoot from beyond what it can see', async () => {
+    const { CHAMPION, CHAMPION_LOADOUT } = await import('../src/challenge/champion');
+    const { SENTRY_BOT } = await import('../src/data/templates/sentry_bot');
+    const rate = await wins({ source: SENTRY_BOT, parts: { legs: 'sprint', gun: 'cannon', sensor: 'scope' } }, { source: CHAMPION, parts: CHAMPION_LOADOUT }, 4);
+    expect(rate).toBeGreaterThan(0.5);
+  });
+});

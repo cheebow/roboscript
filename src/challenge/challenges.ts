@@ -1,4 +1,5 @@
 import { CENTER_BLOCK } from '../data/arenas/center_block';
+import { CROSS } from '../data/arenas/cross';
 import { OPEN_FIELD } from '../data/arenas/open_field';
 import { PILLARS } from '../data/arenas/pillars';
 import { AGGRESSIVE_BOT } from '../data/templates/aggressive_bot';
@@ -7,6 +8,7 @@ import { DUMB_BOT } from '../data/templates/dumb_bot';
 import { SENTRY_BOT } from '../data/templates/sentry_bot';
 import { STRAFE_BOT } from '../data/templates/strafe_bot';
 import { DUEL, SHELTER, SHOT_AT, SNIPE, TARGET_BOT } from '../tutorial/stages';
+import { CHAMPION, CHAMPION_LOADOUT } from './champion';
 import type { Challenge } from './types';
 
 /** The code every challenge starts with: it stands still, and clears none of them. */
@@ -231,7 +233,7 @@ export const CHALLENGES: readonly Challenge[] = [
   },
   {
     id: 'final',
-    title: { en: 'The last test', ja: '最後の試練' },
+    title: { en: 'Putting it all together', ja: '総仕上げ' },
     brief: {
       en: 'Beat SentryBot with 40 HP or more left. Use everything you have learnt.',
       ja: 'HP を 40 以上残して SentryBot に勝ちましょう。これまでに覚えたことを全部使います。',
@@ -242,5 +244,19 @@ export const CHALLENGES: readonly Challenge[] = [
     stars: [{ kind: 'hp', min: 100 }, { kind: 'seconds', max: 40 }],
     start: START,
     answer: HUNTER,
+  },
+  {
+    id: 'champion',
+    title: { en: 'Beat the champion', ja: '最強ロボに勝て' },
+    brief: {
+      en: 'The champion beats every built-in robot in nine matches out of ten or more. It carries Heavy, Rapid and Short, guards the moment a bullet hits, hunts you down when you hide, and closes in when you drive across its fire. Shoot it out face to face and you lose: look for its weak spot in its parts.',
+      ja: '最強ロボ「チャンピオン」は、内蔵ロボットのどれにも 9 割以上勝ちます。Heavy・Rapid・Short を積み、当たる瞬間にガードし、隠れても追いかけてきて、横に走れば近づいてきます。正面から撃ち合っても勝てません。弱点は、積んでいるパーツから探しましょう。',
+    },
+    stage: { arena: CROSS, bot: CHAMPION, botLoadout: CHAMPION_LOADOUT, seed: 121 },
+    goal: { kind: 'win' },
+    stars: [{ kind: 'hp', min: 100 }, { kind: 'seconds', max: 30 }],
+    start: START,
+    answer: SENTRY_BOT,
+    answerParts: { legs: 'sprint', gun: 'cannon', sensor: 'scope' },
   },
 ];

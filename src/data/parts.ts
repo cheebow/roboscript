@@ -62,7 +62,7 @@ export const PARTS: readonly Part[] = [
     name: 'Heavy',
     cost: 4,
     summary: 'More HP. Drives and turns slower.',
-    stats: { maxHp: 240 },
+    stats: { maxHp: 220 },
     scales: { moveSpeed: 0.8, rotateSpeed: 0.8 },
   },
 

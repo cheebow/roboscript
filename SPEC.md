@@ -175,7 +175,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 |---|---|---|---|
 | 車体（BODY） | Light | 2 | HP 160、移動と旋回が 1.2 倍 |
 | | Standard | 3 | HP 200 |
-| | Heavy | 4 | HP 240、移動と旋回が 0.8 倍 |
+| | Heavy | 4 | HP 220、移動と旋回が 0.8 倍 |
 | 脚（LEGS） | Sprint | 3 | 移動 135、旋回 150 |
 | | Standard | 3 | 移動 100、旋回 180 |
 | | Pivot | 3 | 移動 85、旋回 260 |

@@ -233,15 +233,14 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'final',
     title: { en: 'The last test', ja: '最後の試練' },
     brief: {
-      en: 'Beat SentryBot with 50 HP or more left. Use everything you have learnt.',
-      ja: 'HP を 50 以上残して SentryBot に勝ちましょう。これまでに覚えたことを全部使います。',
+      en: 'Beat SentryBot with 40 HP or more left. Use everything you have learnt.',
+      ja: 'HP を 40 以上残して SentryBot に勝ちましょう。これまでに覚えたことを全部使います。',
     },
     stage: { arena: CENTER_BLOCK, bot: SENTRY_BOT, seed: 112 },
     goal: { kind: 'win' },
-    require: [{ kind: 'hp', min: 50 }],
+    require: [{ kind: 'hp', min: 40 }],
     stars: [{ kind: 'hp', min: 100 }, { kind: 'seconds', max: 40 }],
     start: START,
     answer: HUNTER,
-    answerParts: { body: 'heavy', sensor: 'scope' },
   },
 ];

@@ -62,7 +62,8 @@ export function judgeChallenge(challenge: Challenge, source: string, recording: 
 
 /** Why a condition that must hold did not, in both languages. */
 function unmetWhy(condition: Condition): { why: Text } {
-  return { why: { en: `Not cleared: ${describeCondition(condition).en}.`, ja: `クリアならず: ${describeCondition(condition).ja}。` } };
+  const { en, ja } = describeCondition(condition);
+  return { why: { en: `Not cleared: the condition "${en}" was not met.`, ja: `条件「${ja}」を満たしていないので、クリアになりません。` } };
 }
 
 /** A condition in words, in both languages. */

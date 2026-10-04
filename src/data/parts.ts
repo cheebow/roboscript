@@ -89,7 +89,7 @@ export const PARTS: readonly Part[] = [
     slot: 'gun',
     name: 'Pistol',
     cost: 2,
-    summary: 'Cheap. Short range, scattered shots, and not many of them.',
+    summary: 'Short range, scattered shots, little ammo. Low cost.',
     stats: {
       shotDamage: 20,
       shotCooldown: 0.8,
@@ -131,7 +131,7 @@ export const PARTS: readonly Part[] = [
     slot: 'gun',
     name: 'Cannon',
     cost: 4,
-    summary: 'Heavy shots that reach far. Slow to reload and to turn, slow bullets, little ammo.',
+    summary: 'Heavy shots with a long range. Slow to reload and to turn, slow bullets, little ammo.',
     stats: {
       shotDamage: 45,
       shotCooldown: 1.5,
@@ -149,7 +149,7 @@ export const PARTS: readonly Part[] = [
     slot: 'sensor',
     name: 'Short',
     cost: 2,
-    summary: 'Cheap. Sees all around, but not far.',
+    summary: 'Sees all around, but not far. Low cost.',
     stats: { sensorRange: 300, sensorAngle: 360 },
   },
   {
@@ -165,7 +165,7 @@ export const PARTS: readonly Part[] = [
     slot: 'sensor',
     name: 'Scope',
     cost: 2,
-    summary: 'Cheap. Sees far, but only ahead.',
+    summary: 'Sees far, but only ahead. Low cost.',
     stats: { sensorRange: 1200, sensorAngle: 120 },
   },
 ];

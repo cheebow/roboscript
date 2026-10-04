@@ -56,8 +56,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'first-win',
     title: { en: 'First win', ja: 'はじめての勝利' },
     brief: {
-      en: 'Beat the sparring partner. It shoots back, slowly, with a cheap gun.',
-      ja: '練習相手に勝ちましょう。撃ち返してきますが、ゆっくりで、安い銃です。',
+      en: 'Beat the sparring partner. It shoots back, but it is slow to aim, and its Pistol has a short range.',
+      ja: '練習相手に勝ちましょう。相手も撃ち返してきます。ただし狙いをつけるのが遅く、銃は射程の短い Pistol です。',
     },
     stage: { ...DUEL, seed: 101 },
     goal: { kind: 'win' },
@@ -69,8 +69,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'pistol',
     title: { en: 'Pistol only', ja: 'ピストル 1 丁' },
     brief: {
-      en: 'Beat DumbBot with a Pistol: short range (300), weak shots. Get close, but not too close.',
-      ja: 'Pistol（射程 300、弱い弾）で DumbBot に勝ちましょう。近づく必要がありますが、近づきすぎに注意。',
+      en: 'Beat DumbBot with a Pistol. Its range is only 300 and its shots scatter, so get in close before you fire.',
+      ja: 'Pistol で DumbBot に勝ちましょう。射程は 300 しかなく、弾もばらけやすいので、近づいてから撃ちます。',
     },
     stage: { arena: OPEN_FIELD, bot: DUMB_BOT, seed: 102 },
     goal: { kind: 'win' },
@@ -81,10 +81,10 @@ export const CHALLENGES: readonly Challenge[] = [
   },
   {
     id: 'untouchable',
-    title: { en: 'Untouchable', ja: '一発も受けるな' },
+    title: { en: 'Untouchable', ja: '1 発も受けるな' },
     brief: {
-      en: 'Destroy the shooter 480 away without being hit once. It reaches 400; choose parts that reach further.',
-      ja: '480 先の砲台を、1 発も受けずに壊しましょう。相手の弾は 400 まで。もっと遠くまで届くパーツを選びます。',
+      en: 'BRAVO stands 480 away and shoots, with a range of 400. Destroy it without taking a single hit: choose parts that reach further than it does.',
+      ja: 'BRAVO は 480 離れた所から動かずに撃ってきます。射程は 400 です。1 発も当たらずに BRAVO を壊しましょう。BRAVO より遠くまで届くパーツを選びます。',
     },
     stage: { ...SNIPE, seed: 103 },
     goal: { kind: 'destroy' },
@@ -98,8 +98,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'short-route',
     title: { en: 'Short and sweet', ja: '短いコードで' },
     brief: {
-      en: 'Drive round the block to the goal, in 10 lines or fewer.',
-      ja: 'ブロックを回り込んでゴールへ。プログラムは 10 行以内です。',
+      en: 'Drive round the block to the goal, with a program of 10 lines or fewer.',
+      ja: 'ブロックを回り込んで、ゴールまで行きましょう。プログラムは 10 行以内で書きます。',
     },
     stage: {
       arena: CENTER_BLOCK,
@@ -117,8 +117,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'speed-sentry',
     title: { en: 'Against the clock', ja: '時間との勝負' },
     brief: {
-      en: 'Destroy SentryBot within 45 seconds. It stops in range and aims where you will be.',
-      ja: 'SentryBot を 45 秒以内に倒しましょう。射程に入ると止まり、動く先を狙ってきます。',
+      en: 'Destroy SentryBot within 45 seconds. It stops once you are in range, and aims where you are going.',
+      ja: 'SentryBot を 45 秒以内に倒しましょう。SentryBot は射程に入ると止まり、こちらが動いていく先を狙って撃ってきます。',
     },
     stage: { arena: OPEN_FIELD, bot: SENTRY_BOT, seed: 105 },
     goal: { kind: 'win' },
@@ -131,8 +131,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'hide-and-heal',
     title: { en: 'Hide and heal', ja: '隠れて回復' },
     brief: {
-      en: 'Get back 60 HP or more by resting where the shooter cannot see you.',
-      ja: '砲台から見えない場所で休んで、HP を合計 60 以上回復しましょう。',
+      en: 'BRAVO stands still and shoots. Hide where it cannot see you, rest, and get back 60 HP or more in all.',
+      ja: 'BRAVO は動かずに撃ってきます。BRAVO から見えない場所に隠れて休み、HP を合計 60 以上回復しましょう。',
     },
     stage: { ...SHELTER, seed: 106 },
     goal: { kind: 'recover' },
@@ -156,8 +156,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'guard-wall',
     title: { en: 'Iron guard', ja: '鉄壁のガード' },
     brief: {
-      en: 'Beat the shooter close by, guarding against 3 hits or more on the way.',
-      ja: '近くの砲台に勝ちましょう。その間に 3 回以上、ガードで弾を受けること。',
+      en: 'Beat BRAVO, which stands close by and shoots. On the way, guard against 3 hits or more.',
+      ja: '近くで動かずに撃ってくる BRAVO に勝ちましょう。それまでに、3 回以上ガードで弾を受けます。',
     },
     stage: { ...SHOT_AT, seed: 107 },
     goal: { kind: 'win' },
@@ -177,8 +177,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'short-sight',
     title: { en: 'Short sight', ja: '近眼のロボット' },
     brief: {
-      en: 'Beat CowardBot with the Short sensor: it sees only 300 away. Find it first.',
-      ja: '300 までしか見えない Short センサーで CowardBot に勝ちましょう。まずは見つけること。',
+      en: 'Beat CowardBot with the Short sensor, which sees only 300 away. Finding it is the first step.',
+      ja: 'Short センサーで CowardBot に勝ちましょう。Short は 300 までしか見えません。まずは敵を見つけることからです。',
     },
     stage: { arena: OPEN_FIELD, bot: COWARD_BOT, seed: 108 },
     goal: { kind: 'win' },
@@ -191,8 +191,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'strafe-buster',
     title: { en: 'Strafe buster', ja: '横走りを止めろ' },
     brief: {
-      en: 'Beat StrafeBot. It drives across your fire and aims where you will be. Choose your parts.',
-      ja: 'StrafeBot に勝ちましょう。横に走りながら、こちらの動く先を狙ってきます。パーツも選べます。',
+      en: 'Beat StrafeBot. It drives sideways across your fire and aims where you are going. Your parts are up to you.',
+      ja: 'StrafeBot に勝ちましょう。StrafeBot は横に走って弾をよけながら、こちらが動いていく先を狙ってきます。パーツは自由に選べます。',
     },
     stage: { arena: PILLARS, bot: STRAFE_BOT, seed: 109 },
     goal: { kind: 'win' },
@@ -204,8 +204,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'light-body',
     title: { en: 'Light and fast', ja: '軽さで勝負' },
     brief: {
-      en: 'Beat AggressiveBot with the Light body: 160 HP, but fast.',
-      ja: 'Light の車体（HP 160、そのかわり速い）で AggressiveBot に勝ちましょう。',
+      en: 'Beat AggressiveBot with the Light body: only 160 HP, but fast.',
+      ja: 'Light の車体で AggressiveBot に勝ちましょう。HP は 160 しかありませんが、速く走れます。',
     },
     stage: { arena: OPEN_FIELD, bot: AGGRESSIVE_BOT, seed: 110 },
     goal: { kind: 'win' },
@@ -219,7 +219,7 @@ export const CHALLENGES: readonly Challenge[] = [
     title: { en: 'Sharpshooter', ja: '狙撃手' },
     brief: {
       en: 'Beat DumbBot in 15 shots or fewer. Make every shot count.',
-      ja: '15 発以内で DumbBot に勝ちましょう。1 発もむだにしないこと。',
+      ja: '15 発以内で DumbBot に勝ちましょう。1 発もむだにできません。',
     },
     stage: { arena: OPEN_FIELD, bot: DUMB_BOT, seed: 111 },
     goal: { kind: 'win' },
@@ -233,8 +233,8 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'final',
     title: { en: 'The last test', ja: '最後の試練' },
     brief: {
-      en: 'Beat SentryBot, with 50 HP or more left. Everything you have learnt counts.',
-      ja: 'HP を 50 以上残して SentryBot に勝ちましょう。これまでの全部を使って。',
+      en: 'Beat SentryBot with 50 HP or more left. Use everything you have learnt.',
+      ja: 'HP を 50 以上残して SentryBot に勝ちましょう。これまでに覚えたことを全部使います。',
     },
     stage: { arena: CENTER_BLOCK, bot: SENTRY_BOT, seed: 112 },
     goal: { kind: 'win' },

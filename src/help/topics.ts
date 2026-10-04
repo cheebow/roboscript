@@ -28,63 +28,65 @@ export const HELP: readonly HelpSection[] = [
 - On the **PROGRAM** screen, write a robot's program, run a match, and debug it when it does not do what you meant.
 - In the **ARENA**, send your robots or the built-in ones into battle and watch.
 - In a **CONTEST**, gather many robots for a league or a tournament.
+- In **CHALLENGE**, solve set puzzles and collect stars.
 - New here? Start with the **TUTORIAL**: it teaches the language one step at a time.
 
 The start menu comes up when the page opens; ⏻ at the left of the top bar brings it back at any time. The tabs at the top switch screens.`, ja: `RoboScript は、ロボットの動きを **プログラムで決めて** 戦わせるゲームです。試合中にロボットを操作することはありません。どう動くかは、試合の前に書いたプログラムがすべて決めます。
 
 - **プログラム** の画面で、ロボットのプログラムを書いて試合をし、うまくいかなければデバッグして直します。
-- **アリーナ** で、作ったロボットや内蔵のロボットを戦わせて観ます。
+- **アリーナ** で、作ったロボットや内蔵のロボットを戦わせて見ます。
 - **大会** で、たくさんのロボットを集めてリーグ戦やトーナメントをします。
+- **チャレンジ** で、条件つきの課題を解いて星を集めます。
 - 初めてなら **チュートリアル** から始めましょう。一歩ずつ書き方を学べます。
 
 ページを開くと起動メニューが出ます。上部バー左端の ⏻ でいつでも戻れます。上のタブで画面を切り替えられます。` } },
-      { id: 'program-screen', title: { en: `The program screen`, ja: `プログラムの画面` }, body: { en: `The screen for writing code, running matches and fixing them.
+      { id: 'program-screen', title: { en: `The program screen`, ja: `プログラムの画面` }, body: { en: `The screen for writing code, trying it in a match, and fixing it.
 
 - **PROJECT** (top left): ALPHA (green) and BRAVO (orange), each with a \`main.bot\` (program) and a \`config\` (parts). Click one to open it. BRAVO's program can be changed too.
 - **The editor** (middle): write the program here. **LOAD TEMPLATE** in its heading loads a built-in robot's program; **GUIDE** opens the guide to the language.
 - **The battle view** (right): the match, seen from above.
-- **RUN** works out the whole match and plays it. **DEBUG** plays the same match so it can be followed line by line. **RESET** goes back to before the match.
-- Under the battle view: play / pause, one step back or on, the seek bar, the speed.
-- Below, the **log** lists what happened in the match; **Inspector** and **Watch** show the robot's numbers. Click a log row to go to that moment.
+- **RUN** works out the whole match, then plays it. **DEBUG** plays the same match so you can follow the program line by line. **RESET** goes back to before the match.
+- Under the battle view are play / pause, one step back or on, the seek bar and the playback speed.
+- Below, the **log** lists what happened in the match, and the **analysis** tab beside it shows the hits, the damage and HP over time. **Inspector** and **Watch** show the robot's numbers. Click a log row to go to that moment.
 - **MAP** at the top chooses where to fight.
 
-When the program has a mistake, its line turns red, the log says why, and the match does not start.`, ja: `コードを書いて、試合をして、直す画面です。
+When the program has a mistake, the match does not start: the line turns red, and the log says why.`, ja: `コードを書き、試合で試して、直していく画面です。
 
 - **プロジェクト**（左上）: ALPHA（緑）と BRAVO（オレンジ）。それぞれ \`main.bot\`（プログラム）と \`config\`（パーツ）を持ちます。押すと開きます。BRAVO のプログラムも書きかえられます。
 - **エディタ**（真ん中）: プログラムを書きます。見出しの **テンプレート** で内蔵ロボットのプログラムを読み込めます。**解説** でスクリプトの解説が開きます。
 - **戦闘画面**（右）: 試合を上から見た図です。
-- **実行** で試合を最初から最後まで計算して再生します。**デバッグ** は同じ試合を 1 行ずつ追える形で再生します。**リセット** で試合の前に戻ります。
-- 戦闘画面の下で、再生・一時停止、1 つ戻る / 進む、シーク、速さを変えられます。
-- 下段の **ログ** には試合の出来事が、**状態** と **ウォッチ** にはロボットの値が出ます。ログの行を押すと、その時点に飛びます。
+- **実行** を押すと、試合を最後まで計算してから再生します。**デバッグ** では、同じ試合をプログラムの 1 行ずつ追いながら再生できます。**リセット** で試合の前に戻ります。
+- 戦闘画面の下には、再生 / 一時停止、1 つ戻る / 進む、シークバー、再生の速さのボタンがあります。
+- 下段の **ログ** には、試合の出来事が出ます。隣の **分析** タブでは、命中やダメージ、HP の推移を見られます。**状態** と **ウォッチ** には、ロボットの値が出ます。ログの行を押すと、その時点へ移ります。
 - 上の **マップ** で戦う場所を選びます。
 
-プログラムにエラーがあると、その行が赤くなり、ログに理由が出て、試合は始まりません。` } },
-      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Set matches to clear with conditions, started from **CHALLENGE** on the start menu. There are 12, and any can be tried in any order.
+プログラムにエラーがあると、試合は始まりません。エラーのある行が赤くなり、ログに理由が出ます。` } },
+      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 12, and you can try them in any order.
 
-- Each challenge has **conditions to clear it** (beat the opponent, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met one more, up to ★★★.
-- Some challenges **fix a part** (a Pistol, the Short sensor…); choose the others within the cost limit under **PARTS**.
+- Each challenge has **conditions to clear it** (beat the enemy, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met adds one more, up to ★★★.
+- Some challenges **fix a part** (a Pistol, the Short sensor…); choose the other slots within the cost limit under **PARTS**.
 - Every try of a challenge is the same match: only your code and parts make a difference.
-- Your code for each challenge and your best (stars, then HP left, then time) are kept. Lines count only if they do something: blank lines and comments do not.
-- **Show an example answer** gives one way to clear it, with the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 12 問あり、どれからでも挑戦できます。
+- Your code and your best are kept for each challenge. Bests are compared by stars, then HP left, then time. Blank lines and lines with only a comment are not counted as lines.
+- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 12 問あり、どれからでも挑戦できます。
 
-- それぞれに **クリア条件**（相手に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアで ★、星の条件を 1 つ満たすごとに ★ が 1 つ増え、最高 ★★★ です。
-- **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのパーツは **パーツ** でコストの範囲で選べます。
+- それぞれに **クリア条件**（敵に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアすると ★ が 1 つ。星の条件を 1 つ満たすごとに ★ がもう 1 つ増え、最高で ★★★ です。
+- **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのスロットは、**パーツ** を押してコストの範囲で選べます。
 - 同じチャレンジは毎回同じ試合です。違いが出るのはコードとパーツだけです。
-- チャレンジごとのコードと自己ベスト（星の数、残り HP、時間の順に比べます）は残ります。行数に数えるのは何かをする行だけで、空行やコメントだけの行は数えません。
-- **解答例を見る** で、クリアのしかたの一例と、使うパーツが見られます。` } },
+- コードと自己ベストは、チャレンジごとに保存されます。自己ベストは、星の数、残り HP、時間の順に比べます。空行とコメントだけの行は、行数に数えません。
+- **解答例を見る** を押すと、クリアのしかたの一例と、そのときのパーツが出ます。` } },
       { id: 'arena-screen', title: { en: `The arena`, ja: `アリーナ` }, body: { en: `The screen for picking robots, sending them into battle and watching.
 
 - Choose the **number of robots** (2 / 3 / 4) at the top, then a robot for each slot (those in your garage, and the 8 built-in ones).
 - **FIGHT** plays one match. **SERIES** plays 20 matches over every map at once, and counts the wins (with 3 or 4 robots, how often each came in each place).
 - The results line up at the bottom left; click one to watch it again. \`⇪\` gives that match's share code and file.
-- Paste a match code you were given and press **PLAY**, or open a match file, to watch the same match.
-- During a match, **commentary** runs along the bottom of the battle view ("COMMENTARY" in its heading turns it on or off).`, ja: `ロボットを選んで戦わせ、試合を観る画面です。
+- Paste a match share code you were given and press **PLAY**, or open a match file with **FILE…**, to watch the same match.
+- During a match, **commentary** runs along the bottom of the battle view. In the battle view's heading, "COMMENTARY" turns it on or off, and "ANALYSIS" shows how the match went.`, ja: `ロボットを選んで戦わせ、試合を見る画面です。
 
-- 上で **台数**（2 / 3 / 4）を選び、各枠のロボットを選びます（ガレージに保存したロボットと、内蔵の 8 台）。
-- **対戦** で 1 試合。**連戦** で全マップを回って 20 試合を一度に行い、勝ち数（3〜4 台なら何位を何回取ったか）を出します。
-- 結果は左下に並び、押すともう一度観られます。\`⇪\` で、その試合の共有コードとファイルが出ます。
-- 人からもらった試合のコードを貼って **再生** するか、試合のファイルを開くと、同じ試合が再生されます。
-- 試合中は、戦闘画面の下に **実況** が流れます（見出しの「実況」で ON / OFF）。` } },
+- 上で **台数**（2 / 3 / 4）を選び、枠ごとにロボットを選びます。選べるのは、ガレージに保存したロボットと、内蔵の 8 台です。
+- **対戦** で 1 試合します。**連戦** では全マップで 20 試合をまとめて行い、勝ち数を出します（3〜4 台なら、何位を何回取ったか）。
+- 結果は左下に並び、押すともう一度見られます。\`⇪\` を押すと、その試合の共有コードとファイルが出ます。
+- 人からもらった試合の共有コードを貼って **再生** を押すか、**ファイル…** で試合のファイルを開くと、同じ試合を見られます。
+- 試合中は、戦闘画面の下に **実況** が流れます。戦闘画面の見出しの「実況」で ON / OFF を切り替え、「分析」でその試合の分析を開けます。` } },
       { id: 'contest-screen', title: { en: `Contests`, ja: `大会` }, body: { en: `The screen for gathering 3 to 8 robots for a league or a tournament.
 
 - **+ ADD A ROBOT** brings in built-in robots, robots from your garage, robot files, or share codes.
@@ -92,47 +94,47 @@ When the program has a mistake, its line turns red, the log says why, and the ma
 - The result appears on the **board** over the battle view. Click a dot to watch that match; "◀ BOARD" at the top left brings the board back.
 - From the **RESULT** menu, save the result as a file, or open someone else's.`, ja: `3〜8 台のロボットを集めて、リーグ戦かトーナメントをする画面です。
 
-- **＋ ロボットを追加** から、内蔵ロボット、ガレージのロボット、ロボットのファイル、共有コードで出場ロボットを集めます。
+- **＋ ロボットを追加** から出場ロボットを集めます。内蔵ロボット、ガレージのロボット、ロボットのファイル、共有コードから選べます。
 - 上で **リーグ戦**（全員と 2 回ずつ）か **トーナメント**（2 勝で勝ち上がり）を選んで始めます。
-- 結果は戦闘画面の上の **結果ボード** に出ます。丸を押すと、その試合を観られます。左上の「◀ 結果ボード」で戻ります。
+- 結果は戦闘画面の上の **結果ボード** に出ます。丸を押すと、その試合を見られます。左上の「◀ 結果ボード」で戻ります。
 - **結果** メニューから、結果をファイルに保存したり、人の結果ファイルを開いたりできます。` } },
       { id: 'garage-help', title: { en: `The garage`, ja: `ガレージ` }, body: { en: `The shelf where you keep robots (program and parts) under a name. It is at the bottom left of the program screen.
 
-- Type a name and press **SAVE ALPHA** / **SAVE BRAVO**. If a robot of that name is already there, it asks "replace?": press again to replace it.
+- Type a name and press **SAVE ALPHA** / **SAVE BRAVO**. If a robot of that name is already there, the button turns into "replace?": press it again to replace that robot.
 - \`A\` / \`B\` in the list loads that robot into ALPHA / BRAVO.
 - \`⇪\` gives a share code: **COPY** it to give to someone, or **SAVE FILE**.
 - \`×\` deletes, on the second press.
 - **+ IMPORT** takes in a robot file or a share code someone gave you.`, ja: `できたロボット（プログラムとパーツ）を、名前を付けてしまっておく棚です。プログラムの画面の左下にあります。
 
-- 名前を入れて **ALPHA を保存** / **BRAVO を保存**。同じ名前のロボットがあると「上書き?」と聞くので、もう一度押すと上書きします。
+- 名前を入れて **ALPHA を保存** / **BRAVO を保存** を押します。同じ名前のロボットがあるとボタンが「上書き?」に変わり、もう一度押すと上書きします。
 - 一覧の \`A\` / \`B\` で、そのロボットを ALPHA / BRAVO に読み込みます。
 - \`⇪\` で共有コードが出ます。「コピー」して人に渡すか、「ファイルに保存」します。
 - \`×\` は 2 回押すと削除します。
 - **＋ 取り込む** から、人にもらったロボットのファイルや共有コードを取り込めます。` } },
       { id: 'rules', title: { en: `How a match works`, ja: `試合のルール` }, body: { en: `- One second is 30 **ticks**. A robot does one action a tick. A match lasts at most 120 seconds.
-- A robot can only move the way it faces (like a tank). It stops against walls, obstacles and other robots.
+- Like a tank, a robot only drives forward or backward along the way it faces. It stops against walls, obstacles and other robots.
 - Sensors cannot see through obstacles. A robot remembers where it last saw a lost enemy.
 - Bullets fly straight the way the turret points, and vanish at walls and obstacles. Shooting on the move scatters the shots a lot.
-- Bracing with \`guard\` halves the damage of a bullet that hits at that moment (4 times a match).
+- Bracing with \`guard\` halves the damage of a bullet that hits at that moment (up to 4 times a match).
 - Standing still where no enemy can see you brings HP back.
-- Destroy the enemy, or have more HP left when time or ammo runs out, to win.
-- The same robots, map and seed always make the same match.`, ja: `- 1 秒は 30 **tick**。ロボットは 1 tick に行動を 1 つします。試合は最大 120 秒。
-- ロボットは向いている方にしか進めません（戦車のような動き）。壁や障害物、ほかのロボットにはぶつかって止まります。
+- To win, destroy the enemy, or have more HP left when time or ammo runs out.
+- The same robots, map and seed always make the same match.`, ja: `- 1 秒は 30 **tick** です。ロボットは 1 tick に 1 つ行動します。試合は最長 120 秒です。
+- ロボットは戦車のように、向いている方向に前進か後退しかできません。壁や障害物、ほかのロボットにはぶつかって止まります。
 - センサーは障害物の向こうを見られません。見失った敵は、最後に見た位置を覚えています。
 - 弾は砲塔の向きへまっすぐ飛び、壁や障害物で消えます。走りながら撃つと、弾が大きくばらけます。
-- \`guard\` で身構えると、その瞬間の弾のダメージが半分になります（1 試合に 4 回）。
+- \`guard\` で身構えると、その瞬間に当たった弾のダメージが半分になります（1 試合に 4 回まで）。
 - 敵から見えない場所で止まっていると、HP が回復します。
-- 相手を撃破するか、時間切れ・弾切れのときに残り HP が多いほうが勝ちです。
+- 敵を撃破するか、時間切れや弾切れになったときに残り HP が多いほうが勝ちです。
 - 同じロボット・マップ・seed なら、何度やっても同じ試合になります。` } },
       { id: 'parts-help', title: { en: `Choosing parts`, ja: `パーツの選び方` }, body: { en: `A robot is made of four parts: the **body** (HP), the **legs** (speed), the **gun** (damage, range, how often it fires) and the **sensor** (how far and which way it sees). Choose them in the project's \`config\`.
 
-- Parts have costs, and the total may be **at most 12**. To carry a strong part (4), make another a cheap one (2).
-- Put the mouse on a name to see what it does; the robot's numbers are shown below, with the difference from standard.
+- Each part has a cost, and the total may be **at most 12**. To carry a strong cost-4 part, make another slot a cost-2 part: those are weaker at something, in return for their low cost.
+- Put the mouse on a part's name to see what it does. Below, the robot's numbers are shown with the difference from standard.
 - Choose parts to suit the program: the Cannon and Scope to shoot from afar, Rapid and Heavy to get close and fire away, Sprint or Light to fight from cover.
-- Changing parts never changes the words you can use.`, ja: `ロボットは 4 つのパーツでできています: **車体**（HP）、**脚**（速さ）、**銃**（威力・射程・撃てる間隔）、**センサー**（見える距離と向き）。プロジェクトの \`config\` で選びます。
+- Changing parts never changes the words you can use.`, ja: `ロボットは、**車体**（HP）、**脚**（速さ）、**銃**（威力・射程・撃つ間隔）、**センサー**（見える距離と向き）の 4 つのパーツでできています。パーツはプロジェクトの \`config\` で選びます。
 
-- パーツにはコストがあり、合計 **12 まで** です。強いパーツ（4）を積むなら、どこかを安いパーツ（2）にします。
-- 名前にマウスを載せると説明が出て、下に性能が標準との差つきで出ます。
+- パーツにはそれぞれコストがあり、合計は **12 まで** です。コスト 4 の強いパーツを積むなら、どこかをコスト 2 のパーツにします。コスト 2 のパーツは、何かが苦手なかわりにコストが低いパーツです。
+- パーツ名にマウスを載せると説明が出ます。下には、その組み合わせの性能が標準との差つきで出ます。
 - プログラムに合うパーツを選びましょう: 遠くから撃つなら Cannon と Scope、近づいて撃ちまくるなら Rapid と Heavy、隠れながら戦うなら Sprint や Light。
 - パーツを替えても、使える語は変わりません。` } },
       { id: 'sharing', title: { en: `Sharing and files`, ja: `共有とファイル` }, body: { en: `There is no server. Robots and matches are given to others as **share codes** or **files**.
@@ -140,14 +142,14 @@ When the program has a mistake, its line turns red, the log says why, and the ma
 - **Robots**: \`⇪\` in the garage gives a share code, or **SAVE FILE**. The other person takes it in with **+ IMPORT** in their garage.
 - **Matches**: \`⇪\` on an arena result gives a share code and a file, which plays in their arena.
 - **Contest results**: save to a file from the contest's **RESULT** menu; **Open a result file…** shows the same board.
-- Files end in \`.roboscript.json\`, and stay short however long the program.
-- When the rules version differs, you are told so (a replay may not go the same).`, ja: `サーバーはありません。ロボットや試合は、**共有コード** か **ファイル** で人に渡します。
+- File names end in \`.roboscript.json\`. Files stay small, however long the program.
+- When the rules version differs, you are told so (the match may not play out the same).`, ja: `サーバーはありません。ロボットや試合は、**共有コード** か **ファイル** で人に渡します。
 
 - **ロボット**: ガレージの \`⇪\` で共有コード、または「ファイルに保存」。もらった人はガレージの「＋ 取り込む」で取り込みます。
 - **試合**: アリーナの結果の \`⇪\` で共有コードとファイル。もらった人はアリーナで再生できます。
 - **大会の結果**: 大会の「結果」メニューからファイルに保存。もらった人は「結果ファイルを開く」で、同じ結果ボードを見られます。
-- ファイルは \`.roboscript.json\`。大きなプログラムでも長くなりません。
-- ルールの版が違うときは、その旨が出ます（再生が結果と違うことがあります）。` } },
+- ファイル名の末尾は \`.roboscript.json\` です。長いプログラムでも、ファイルは小さく収まります。
+- ルールの版が違うときは、そう知らせます（同じ試合にならないことがあります）。` } },
       { id: 'keys', title: { en: `Keys`, ja: `キー操作` }, body: { en: `- **Space**: play / pause
 - **← / →**: one step back / on (one line while debugging)
 - **Cmd / Ctrl + Enter**: run
@@ -173,10 +175,10 @@ The program got past its last line and ended. Put what should repeat inside a \`
 The enemy is further than the gun's range (400 as standard), or you shoot on the move and the shots scatter. Drive closer using \`enemy_distance\`, then stop with \`drive stop\` and shoot. For a moving enemy, try \`aim lead\`.
 
 **I cannot find the enemy**
-It is behind an obstacle. Turn the other way after a while without a sighting, or head for where it was last seen (tutorial chapter 9).
+It is probably behind an obstacle. Turn the other way after a while without a sighting, or head for where it was last seen (tutorial chapter 9).
 
 **Has my code gone?**
-Code is saved in the browser at every edit. Right after loading a template, Cmd / Ctrl + Z brings yours back. The tutorial's code is kept apart from your own.`, ja: `**実行しても試合が始まらない**
+Code is saved in the browser at every edit. Right after loading a template, Cmd / Ctrl + Z brings yours back. The code of the tutorial and of the challenges is kept apart from your own.`, ja: `**実行しても試合が始まらない**
 プログラムにエラーがあるか、パーツのコストが 12 を超えています。赤い行とログを見てください。
 
 **ロボットが何もしない / すぐ止まる**
@@ -186,10 +188,10 @@ Code is saved in the browser at every edit. Right after loading a template, Cmd 
 敵が射程（標準は 400）より遠いか、走りながら撃っていて弾がばらけています。\`enemy_distance\` で近づいてから、\`drive stop\` で止まって撃ちましょう。動く敵には \`aim lead\` が効きます。
 
 **敵が見つからない**
-障害物の陰にいます。しばらく見つからなければ回る向きを変える、最後に見た場所へ向かう、などの工夫をしましょう（チュートリアル 9 章）。
+障害物の陰にいるのかもしれません。しばらく見つからなければ回る向きを変える、最後に見た場所へ向かう、といった工夫をしましょう（チュートリアル 9 章）。
 
 **自分のコードが消えた？**
-コードは編集のたびにブラウザに保存されています。テンプレートを読み込んだ直後なら、Cmd / Ctrl + Z で戻せます。チュートリアルのコードは、いつものコードとは別に保存されています。` } },
+コードは編集のたびにブラウザに保存されています。テンプレートを読み込んだ直後なら、Cmd / Ctrl + Z で戻せます。チュートリアルとチャレンジのコードは、いつものコードとは別に保存されています。` } },
     ],
   },
   {
@@ -229,18 +231,18 @@ loop
 - **Turn until facing**: \`face enemy\` / \`cover\` / \`hit\` keep turning, however many ticks it takes, until facing that way.
 - **Drive**: \`drive forward\` / \`backward\` / \`stop\`. It is a setting: the robot keeps driving until \`drive stop\`.
 - **Turn the turret**: \`aim left\` / \`right\` / \`enemy\` / \`lead\` / \`ahead\`. The turret turns apart from the body, and faster (270 degrees a second). \`aim lead\` aims where a bullet will meet the enemy if it keeps moving as it does.
-- **Shoot**: \`fire\` shoots the way the turret points. Nothing happens while the gun is reloading (every 0.8 seconds as standard) or out of ammo. Shooting on the move scatters the shot five times as much.
-- **Brace**: \`guard\` halves the damage of a bullet that hits on that tick (4 times a match; each puts off your next shot a little).
-- **Wait**: \`wait\` does nothing for one tick.`, ja: `- **車体を回す**: \`turn left\` / \`right\` で 6 度ずつ。\`turn enemy\`（敵の方へ）、\`turn cover\`（隠れ場所への道の方へ）、\`turn hit\`（撃たれた方へ）は、その方向へ回せるだけ回ります。
+- **Shoot**: \`fire\` shoots the way the turret points. Nothing happens while the gun is getting the next shot ready (one shot every 0.8 seconds as standard) or out of ammo. A shot fired on the move scatters five times as much as one fired standing still.
+- **Brace**: \`guard\` halves the damage of a bullet that hits on that tick (up to 4 times a match; each one puts off your next shot a little).
+- **Wait**: \`wait\` does nothing for one tick.`, ja: `- **車体を回す**: \`turn left\` / \`right\` で 6 度ずつ回ります。\`turn enemy\`（敵の方へ）、\`turn cover\`（隠れ場所への道の方へ）、\`turn hit\`（撃たれた方へ）は、その方向へ回せるだけ回ります。
 - **向くまで回る**: \`face enemy\` / \`cover\` / \`hit\` は、その方向を向くまで何 tick でも回り続けます。
 - **走る**: \`drive forward\` / \`backward\` / \`stop\`。設定なので、\`drive stop\` まで走り続けます。
-- **砲塔を回す**: \`aim left\` / \`right\` / \`enemy\` / \`lead\` / \`ahead\`。砲塔は車体と別に、速く（1 秒 270 度）回ります。\`aim lead\` は、敵がこのまま動いたときに弾が届く位置を狙います。
-- **撃つ**: \`fire\` は砲塔の向きへ撃ちます。準備中（標準で 0.8 秒ごと）や弾切れのときは何も起きません。走りながら撃つと弾が 5 倍ばらけます。
-- **身構える**: \`guard\` は、その tick に当たった弾のダメージを半分にします（1 試合に 4 回、使うと次の弾が少し遅れます）。
+- **砲塔を回す**: \`aim left\` / \`right\` / \`enemy\` / \`lead\` / \`ahead\`。砲塔は車体とは別に、車体より速く（1 秒に 270 度）回ります。\`aim lead\` は、敵がこのまま動いたときに弾が届く位置を狙います。
+- **撃つ**: \`fire\` は砲塔の向きへ撃ちます。次の弾の準備中（標準では 0.8 秒に 1 発）や弾切れのときは、何も起きません。走りながら撃つと、止まって撃つときの 5 倍ばらけます。
+- **身構える**: \`guard\` は、その tick に当たった弾のダメージを半分にします（1 試合に 4 回まで。使うたびに、次に撃てるまでが少し延びます）。
 - **待つ**: \`wait\` は何もせずに 1 tick 過ごします。` } },
       { id: WORDS_TOPIC, title: { en: 'All the words', ja: '語の一覧' }, body: { en: '', ja: '' } },
       { id: 'values', title: { en: `Numbers and variables`, ja: `数と変数` }, body: { en: `- Every value is a **number**. Calculate with \`+ - * /\` and brackets. Dividing by 0 gives 0.
-- **Sensors** are words holding what the robot found out: numbers, or true / false (\`enemy_distance\`, \`hp\` and so on). They are listed in "All the words".
+- **Sensors** are words holding what the robot found out: a number, or true / false (\`enemy_distance\`, \`hp\` and so on). They are listed in "All the words".
 - A **variable** is a box for a number. Put a number in with \`set\`:
 
 \`\`\`
@@ -253,7 +255,7 @@ loop
 - A name is letters, digits and \`_\`, starting with a letter. The names of words and sensors cannot be used.
 - Reading a name that is never \`set\` anywhere in the program is a mistake. Read before it is set, it is 0.
 - While debugging, the variables show at the top of Watch.`, ja: `- 値はすべて **数** です。\`+ - * /\` と括弧で計算できます。0 で割ると 0 になります。
-- **センサー** は、ロボットが調べた数や正しい / 正しくないが入った言葉です（\`enemy_distance\`、\`hp\` など）。一覧は「語の一覧」にあります。
+- **センサー** は、ロボットが調べた結果が入った語です。中身は数か、正しい / 正しくないのどちらかです（\`enemy_distance\`、\`hp\` など）。一覧は「語の一覧」にあります。
 - **変数** は数を入れておく箱です。\`set\` で入れます。
 
 \`\`\`
@@ -348,7 +350,7 @@ loop
 - 呼ぶときは \`名前(値, …)\`。1 行に単独で書くか、条件や式の中に書きます。
 - \`return 値\` で、呼び出しがその値になります（書かなければ 0）。
 - 条件や式の中で呼ぶ関数には、時間のかかる行動と \`loop\` / \`while\` は書けません。
-- 関数の中だけのものは引数だけです。\`set\` した変数はプログラム全体で共有されます。
+- 関数の中だけで使えるのは引数だけです。\`set\` した変数は、プログラム全体で共有されます。
 - 関数が自分自身を呼ぶこと（再帰）はできません。` } },
       { id: 'debugging-help', title: { en: `Debugging`, ja: `デバッグのしかた` }, body: { en: `- Run with **DEBUG**, and the line that runs next (yellow) and the lines run so far in this tick (pale green) are shown.
 - \`1▶\` goes on one line, \`◀1\` back one. \`1▷\` (step over) runs through any function the line calls.
@@ -360,7 +362,7 @@ loop
 When the robot does not do what you meant, look in Watch for the line where a value is not what you expected.`, ja: `- **デバッグ** で実行すると、次に実行する行（黄色）と、今の tick で通った行（薄い緑）が出ます。
 - \`1▶\` で 1 行進み、\`◀1\` で 1 行戻ります。\`1▷\`（ステップオーバー）は、その行が呼ぶ関数の中を一気に進めます。
 - **行番号を押す** と、その行に ◆ が付き、その行が次に実行される瞬間へ飛びます。シークバーに、実行されたすべての時点が出ます。\`◆▶\` / \`◀◆\` で次 / 前へ。
-- **ウォッチ** に変数とセンサーの値、**状態** にロボットの位置や HP が出ます。止まっているときのセンサーの値は、プログラムがその行で読む値です。
+- **ウォッチ** に変数とセンサーの値、**状態** にロボットの位置や HP が出ます。一時停止中のセンサーの値は、プログラムがその行で読む値です。
 - **ログ** の行を押すと、その出来事を起こした行へ飛びます。
 - 戦闘画面には、敵への視線や狙いの印が出ます。
 
@@ -376,7 +378,7 @@ When the robot does not do what you meant, look in Watch for the line where a va
 | "f" cannot be used as a value: it takes time | Take the actions (\`fire\` and so on) out of a function called in a condition or a calculation |
 | "f" calls itself | Make sure functions do not call each other round in a circle |
 | "break" can only be used inside a loop or a while | Move \`break\` into a repeat |
-| The cost is over the limit | Choose cheaper parts in \`config\`, so the total is 12 or less |
+| The cost is over the limit | Change to lower-cost parts in \`config\`, so the total is 12 or less |
 
 A faulty line turns red, and the editor underlines it. Put the cursor on it to see what is wrong.`, ja: `| ログの文 | よくある原因と直し方 |
 |---|---|
@@ -389,7 +391,7 @@ A faulty line turns red, and the editor underlines it. Put the cursor on it to s
 | "f" は値として使えない: 時間がかかる | 条件や式の中で呼ぶ関数から、行動（\`fire\` など）を外す |
 | "f" が自分自身を呼んでいる | 関数どうしが呼び合わないようにする |
 | break は loop か while の中でしか使えない | \`break\` を繰り返しの中に移す |
-| コストが上限を超えている | \`config\` で安いパーツを選び、合計を 12 以下にする |
+| コストが上限を超えている | \`config\` でコストの低いパーツに替え、合計を 12 以下にする |
 
 エラーのある行は赤くなり、エディタではその行に波線が出ます。カーソルを載せると内容が出ます。` } },
       { id: 'examples', title: { en: `Examples`, ja: `例` }, body: { en: `**Drive up and shoot**
@@ -460,7 +462,7 @@ loop
         fire
 \`\`\`
 
-**撃たれたら隠れて休む**
+**HP が減ったら隠れて休む**
 
 \`\`\`
 loop

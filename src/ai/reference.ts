@@ -43,7 +43,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'loop',
     kind: 'control',
     hint: 'repeat forever',
-    summary: 'Repeats the indented lines below forever. Without a loop, the program runs once and then does nothing more: the hull keeps driving as it was last set (drive stop stops it).',
+    summary: 'Repeats the indented lines below forever. Without a loop, the program runs once and stops, but the hull keeps driving as it was last set (drive stop stops it).',
   },
   {
     word: 'while',
@@ -112,7 +112,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'face',
     kind: 'command',
     hint: 'turn the hull until it faces',
-    summary: 'Turns the hull towards the enemy, cover or where the last hit came from, a tick at a time, until it faces it: "face hit" does what "turn hit" repeated would. Takes no time once the hull faces it, or when there is nothing to face.',
+    summary: 'Turns the hull towards the enemy, cover or where the last hit came from, a tick at a time, until it faces it: "face hit" is the same as "turn hit" repeated. Takes no time once the hull faces it, or when there is nothing to face.',
   },
   {
     word: 'aim',
@@ -130,7 +130,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'guard',
     kind: 'command',
     hint: 'brace against hits, 1 tick',
-    summary: `Braces for one tick: a bullet that hits during it does only ${GUARDED_SHARE} of its damage. A robot can guard for ${ROBOT_DEFAULTS.maxGuards} ticks in a match (see guards), and each of them puts off its own next shot by ${GUARD_RECOVERY}: guard on the tick the bullet hits, not before.`,
+    summary: `Braces for one tick: a bullet that hits during it does only ${GUARDED_SHARE} of its damage. A robot can guard for ${ROBOT_DEFAULTS.maxGuards} ticks in a match (see guards), and each tick of guarding delays the next shot by ${GUARD_RECOVERY}. Guard on the tick the bullet hits, not before.`,
   },
   { word: 'wait', kind: 'command', hint: 'do nothing, 1 tick', summary: 'Does nothing for one tick.' },
   { word: 'forward', kind: 'direction', hint: 'the way the hull faces', summary: 'The way the hull is facing.' },
@@ -148,7 +148,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'lead',
     kind: 'direction',
     hint: 'where the enemy will be',
-    summary: 'Where the enemy will be when a bullet fired now gets there, if it keeps moving as it does. A shot aimed there misses an enemy that changes its way.',
+    summary: 'Where the enemy will be when a bullet fired now gets there, if it keeps moving as it does. A shot aimed there misses an enemy that changes course.',
   },
   { word: 'ahead', kind: 'direction', hint: 'the front of the hull', summary: 'Straight ahead of the hull.' },
   {
@@ -295,13 +295,13 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'reload',
     kind: 'sensor',
     hint: 'seconds until the gun can fire',
-    summary: 'Seconds until the gun can fire again: 0 when it can. A fire before then does nothing.',
+    summary: 'Seconds until the gun can fire again: 0 when it can. "fire" before then does nothing.',
   },
   {
     word: 'hit',
     kind: 'sensor',
     hint: 'a bullet has hit the robot',
-    summary: 'True once an enemy bullet has hit the robot, and until the program has looked: however many ticks it takes to get to a line that reads it, it is still true there, and false again from the next tick. See hit_angle for where the bullet came from; "turn hit" turns the hull that way.',
+    summary: 'True from when an enemy bullet hits the robot until the program reads it: however many ticks it takes to reach a line that reads it, it is still true there, and false again from the next tick. hit_angle tells where the bullet came from; "turn hit" turns the hull that way.',
   },
   {
     word: 'hit_angle',
@@ -319,7 +319,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'hidden',
     kind: 'sensor',
     hint: "out of the enemy's sight",
-    summary: `True while the enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. Standing still while hidden for ${ROBOT_DEFAULTS.recoveryDelay} seconds, the robot then regains ${ROBOT_DEFAULTS.recoveryRate} hp a second, up to its full hp, until it drives or is seen again.`,
+    summary: `True while the enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. A robot that stays hidden and still for ${ROBOT_DEFAULTS.recoveryDelay} seconds regains ${ROBOT_DEFAULTS.recoveryRate} hp a second, up to its full hp, until it drives or is seen again.`,
   },
 ];
 

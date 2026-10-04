@@ -61,7 +61,7 @@ A program can also **calculate**:
 - \`+\` add, \`-\` subtract, \`*\` multiply, \`/\` divide
 - \`( )\` to work something out first
 
-For example, \`weapon_range - 50\` is "50 short of the range". At the very edge of the range a shot may miss a moving enemy, so shooting from a little closer is safer.
+For example, \`weapon_range - 50\` is "50 short of the range". From the very edge of the range, a shot may fall short of a moving enemy, so it is safer to shoot from a little closer.
 
 Using this instead of the number 350 makes a program that still works if you change your gun later.`, ja: `銃の弾が届く距離（**射程**）は、パーツによって変わります。**\`weapon_range\`**（ウェポン・レンジ）は、自分の銃の射程が入ったセンサーです（今は 400）。
 
@@ -70,7 +70,7 @@ Using this instead of the number 350 makes a program that still works if you cha
 - \`+\` たす、\`-\` ひく、\`*\` かける、\`/\` わる
 - \`( )\` で先に計算するところをまとめる
 
-たとえば \`weapon_range - 50\` は「射程より 50 手前」です。射程ぎりぎりだと、動く相手には届かないことがあるので、少し手前から撃つと確実です。
+たとえば \`weapon_range - 50\` は「射程より 50 手前」です。射程ぎりぎりから撃つと、動く敵には届かないことがあります。少し手前から撃つほうが確実です。
 
 数字の 350 のかわりにこれを使えば、あとで銃を替えても、そのまま使えるプログラムになります。` },
     task: { en: `Use \`weapon_range - 50\` instead of 350, and destroy the target.`, ja: `350 のかわりに \`weapon_range - 50\` を使って、的を壊しましょう。` },
@@ -243,7 +243,7 @@ loop
         wait
 \`\`\`
 
-\`shoot()\` の行に来ると、\`def shoot()\` の中身が実行されて、終わると次の行に戻ってきます。
+プログラムが \`shoot()\` の行に来ると、\`def shoot()\` の中身を実行し、終わったら次の行に戻ります。
 
 関数は、それを使う行より **上** に書きます。` },
     task: { en: `Put "stop, aim, fire" into a function \`shoot\`, call it, and destroy the target.`, ja: `「止まる・狙う・撃つ」を関数 \`shoot\` にまとめて呼び、的を壊しましょう。` },
@@ -355,7 +355,7 @@ Run with **DEBUG** in the top bar, and you can follow the match **one line at a 
 
 - the editor shows **the line that runs next** in colour;
 - the battle view shows the line of sight to the enemy, and aiming marks;
-- the log shows everything that happens.`, ja: `プログラムが思ったとおりに動かないことを「**バグ**（虫）」、それを見つけて直すことを「**デバッグ**」といいます。
+- the log shows everything that happens.`, ja: `プログラムが思ったとおりに動かないとき、その原因になっている間違いを「**バグ**（虫）」といいます。バグを見つけて直すことが「**デバッグ**」です。
 
 上のバーの **デバッグ** で実行すると、試合を **1 行ずつ** 見られるようになります。
 
@@ -378,7 +378,7 @@ Pause, press \`1▶\` a few times, and watch how the coloured line moves. When a
 
 一時停止して \`1▶\` を何度か押し、色付きの行がどう動くか見てみましょう。\`if\` の条件が正しくないと、その中の行は飛ばされるのが分かります。
 
-右下の **ウォッチ** には、その瞬間のセンサーの値と、プログラムの変数の中身が出ます。\`敵までの距離\`（\`enemy_distance\`）が、走るにつれて小さくなっていくのを見てください。` },
+右下の **ウォッチ** には、その瞬間のセンサーの値と、プログラムの変数の中身が出ます。**敵までの距離**（\`enemy_distance\`）が、走るにつれて小さくなっていくのを確かめてください。` },
     task: { en: `Run with DEBUG, and press **\`1▶\`**.`, ja: `デバッグで実行して、**\`1▶\`** を押しましょう。` },
     stage: FAR,
     check: { kind: 'action', action: 'stepLine' },
@@ -402,12 +402,12 @@ It is a handy way to find out "how many times did \`fire\` run?" or "when did it
   },
   {
     id: 'find-bug',
-    title: { en: `Find the bug`, ja: `虫を探す` },
+    title: { en: `Find the bug`, ja: `バグを探す` },
     body: { en: `The program in the editor has a **bug** put in on purpose. When it runs, ALPHA does not drive up to the target: it keeps shooting from where it is.
 
 Run it with DEBUG, step through it line by line, look at \`enemy_distance\` in Watch, and find which line is wrong.
 
-When you have found it, fix it, and destroy the target.`, ja: `エディタのプログラムには、わざと **バグ** を 1 つ入れました。実行すると、ALPHA は的に近づかずに、その場で撃ち続けてしまいます。
+When you have found it, fix it, and destroy the target.`, ja: `エディタのプログラムには、わざと **バグ** を 1 つ入れてあります。実行すると、ALPHA は的に近づかず、その場で撃ち続けてしまいます。
 
 デバッグで実行し、1 行ずつ進めたり、ウォッチで \`enemy_distance\` を見たりして、どの行がおかしいか探してください。
 
@@ -544,7 +544,7 @@ loop
 
 - **BODY** … how much HP. Heavier means more HP, and slower
 - **LEGS** … how fast it drives and turns
-- **GUN** … how hard its bullets hit, how fast they fly and how far, how often it can fire, how many shots
+- **GUN** … how hard its bullets hit, how fast they fly, its range, how often it can fire, and how many shots it has
 - **SENSOR** … how far it sees, and which way
 
 Press **PARTS** above to choose parts (**CODE** takes you back to the editor). Put the mouse on a part's name to see what it does. Below, the robot's numbers with those parts are shown, with the difference from standard.
@@ -553,7 +553,7 @@ The parts you choose here are used in the matches of the steps about parts. Your
 
 - **車体**（BODY）… HP の多さ。重いほど HP が多く、遅い
 - **脚**（LEGS）… 走る速さと回る速さ
-- **銃**（GUN）… 弾の威力・速さ・届く距離・撃てる間隔・弾の数
+- **銃**（GUN）… 弾の威力・速さ・射程・撃つ間隔・弾数
 - **センサー**（SENSOR）… 見える距離と向き
 
 上の **パーツ** を押すと、パーツを選ぶ画面になります（**コード** でエディタに戻ります）。パーツの名前にマウスを載せると説明が出ます。下には、そのパーツでのロボットの性能が、標準との違いつきで出ます。
@@ -569,17 +569,17 @@ The parts you choose here are used in the matches of the steps about parts. Your
     title: { en: `Within the cost`, ja: `コストの中でやりくりする` },
     body: { en: `Each part has a **cost**, and the four together may cost **at most 12**. All Standard (cost 3 each) is exactly 12.
 
-Strong parts cost more (4), and cheap parts (2) are weak at something. Make one thing stronger, and give up something else: that is what choosing parts is about.
+A part that is strong at something costs 4, and a part that costs 2 is weak at something. Making one thing stronger means giving up something else: that is what choosing parts is about.
 
-This BRAVO stands **480** away and shoots back. A Standard gun only reaches 400, so your bullets do not reach it (nor do its bullets reach you).
+This BRAVO stands **480** away and shoots back. A Standard gun reaches only 400, so your bullets fall short (and so do BRAVO's).
 
-The **Cannon** reaches 520, but costs 4: as it is, the total would be 13, one over the limit. Make one part a cheaper one. The **Scope** sensor (cost 2) sees only ahead, but far. BRAVO is straight ahead, so that does not matter.`, ja: `パーツにはそれぞれ **コスト** があり、4 つの合計は **12 まで** です。全部 Standard（コスト 3）で、ちょうど 12 です。
+The **Cannon** reaches 520, but costs 4: with the other parts as they are, the total would be 13, one over the limit. Swap one of the other parts for one that costs 2. The **Scope** sensor (cost 2) sees only ahead, but far. BRAVO is straight ahead, so that does not matter.`, ja: `パーツにはそれぞれ **コスト** があり、4 つの合計は **12 まで** です。全部 Standard（コスト 3）で、ちょうど 12 です。
 
-強いパーツはコストが高く（4）、安いパーツ（2）には苦手なことがあります。何かを強くしたら、何かを我慢する。それがパーツ選びです。
+強いパーツはコストが 4 です。コスト 2 のパーツには、そのかわり苦手なことがあります。何かを強くしたら、ほかの何かをあきらめる。それがパーツ選びです。
 
-今度の BRAVO は **480** 先にいて、撃ち返してきます。Standard の銃は 400 までしか届かないので、こちらの弾も届きません（BRAVO の弾も届きませんが）。
+今度の BRAVO は **480** 先にいて、撃ち返してきます。Standard の銃は射程が 400 なので、こちらの弾は届きません（BRAVO の弾も届きません）。
 
-銃の **Cannon**（キャノン）は 520 まで届きますが、コストが 4 です。そのままでは合計 13 で、上限を 1 超えてしまいます。どこかを 1 つ安いパーツにしましょう。センサーの **Scope**（スコープ、コスト 2）は前しか見えませんが、遠くまで見えます。BRAVO は正面にいるので、困りません。` },
+銃の **Cannon**（キャノン）は 520 まで届きますが、コストが 4 です。ほかがそのままだと合計 13 で、上限を 1 超えてしまいます。ほかのどれか 1 つを、コスト 2 のパーツにしましょう。センサーの **Scope**（スコープ、コスト 2）は、前しか見えないかわりに遠くまで見えます。BRAVO は正面にいるので、前しか見えなくても困りません。` },
     task: { en: `Choose parts within a cost of 12 that can reach BRAVO 480 away, and destroy it.`, ja: `コスト 12 以内で、480 先の BRAVO を壊せるパーツを選び、壊しましょう。` },
     hints: [
       { en: `With the Cannon as GUN, the cost is 13.`, ja: `銃を Cannon にすると、コストは 13 になります。` },
@@ -611,11 +611,11 @@ The **Cannon** reaches 520, but costs 4: as it is, the total would be 13, one ov
 And when you change parts, look at the program again. If it uses \`weapon_range\` (chapter 4), for example, the distance it starts shooting from fits a new gun by itself.`, ja: `パーツの選び方に正解はありません。**プログラムに合うパーツ** を選ぶのが大事です。
 
 - 遠くから撃つプログラムなら … 射程の長い **Cannon**、遠くまで見える **Scope**
-- 近づいて撃ちまくるなら … 間隔の短い **Rapid**、HP の多い **Heavy**
-- 隠れながら戦うなら … 速く走れる **Sprint** や **Light**
-- 相手のまわりを回るなら … 素早く向きを変える **Pivot**
+- 近づいて撃ちまくるなら … 撃つ間隔の短い **Rapid**、HP の多い **Heavy**
+- 隠れながら戦うなら … 速く走れる脚の **Sprint**、軽い車体の **Light**
+- 敵のまわりを回るなら … 素早く向きを変えられる脚の **Pivot**
 
-逆に、パーツを替えたらプログラムも見直しましょう。たとえば 4 章で \`weapon_range\` を使っておくと、銃を替えても撃ち始める距離が自動で合います。` },
+また、パーツを替えたらプログラムも見直しましょう。たとえば 4 章で \`weapon_range\` を使っておくと、銃を替えても撃ち始める距離が自動で合います。` },
     check: { kind: 'read' },
   },
   ],
@@ -641,7 +641,7 @@ On the program screen, press **LOAD TEMPLATE** to the right of the editor's head
 
 Each is explained with comments (\`#\`). Put the cursor on a word this tutorial did not cover to see what it means.`, ja: `上達の近道は、**ほかの人のプログラムを読む** ことです。
 
-プログラムの画面で、エディタの見出しの右にある **テンプレート** を押すと、内蔵の 8 つのロボットのプログラムをエディタに読み込めます（Cmd / Ctrl + Z で元に戻せます）。
+プログラムの画面で、エディタの見出しの右にある **テンプレート** を押すと、内蔵ロボット 8 台のプログラムをエディタに読み込めます（Cmd / Ctrl + Z で元に戻せます）。
 
 - **Sample** … 近づいて撃つ、基本の形
 - **AggressiveBot** … 止まらずに突っ込む
@@ -666,7 +666,7 @@ How to search is up to your program. For example:
 - **Face where the shots come from.** When \`hit\` is true, an enemy you cannot see has shot you. \`face hit\` turns you towards it, and you may find it.
 - **Follow a wall.** Watch \`wall_left\` or \`wall_right\`, and drive so as not to stray from the wall: it takes you deep into maze-like maps.
 
-The rules do not tell you where the enemy is. How to look for it is for your program, and for you, to show what it can do.`, ja: `障害物の多いマップでは、敵がなかなか見つからないことがあります。とくに、**同じ向きに回って探す 2 台** は、障害物のまわりを追いかけっこして、いつまでも出会えないことがあります。
+The rules never tell you where the enemy is. How to look for it is a chance for your program, and for you, to show what you can do.`, ja: `障害物の多いマップでは、敵がなかなか見つからないことがあります。とくに、**同じ向きに回って探す 2 台** は、障害物のまわりを追いかけっこして、いつまでも出会えないことがあります。
 
 探し方は、プログラムの工夫しだいです。たとえば
 
@@ -675,7 +675,7 @@ The rules do not tell you where the enemy is. How to look for it is for your pro
 - **撃たれた方を向く。** \`hit\` が正しければ、見えない敵に撃たれています。\`face hit\` でそちらを向けば、見つかることがあります。
 - **壁に沿って走る。** \`wall_left\` や \`wall_right\` で壁までの距離を見て、壁から離れすぎないように走ると、迷路のようなマップでも奥まで行けます。
 
-ルールで敵の場所を教えることはしません。どう探すかも、プログラムを書くあなたの腕の見せどころです。` },
+敵の居場所は、ルールでは教えてくれません。どう探すかも、プログラムを書くあなたの腕の見せどころです。` },
     check: { kind: 'read' },
   },
   {
@@ -720,7 +720,7 @@ From here on, build robots freely and send them into battle. If you are ever uns
 Press **THE END** to go back to the start menu.`, ja: `これでチュートリアルはおしまいです。ここまで来たあなたは、もう
 
 - 命令を順番に並べ、\`loop\` で繰り返し、
-- \`if\` と センサーで状況に合わせて動きを変え、
+- \`if\` とセンサーで状況に合わせて動きを変え、
 - 変数と関数でプログラムを整理し、
 - デバッグで間違いを見つけて直し、
 - パーツを選んで、自分だけのロボットを作る

@@ -140,7 +140,7 @@ fire
 
 gives only one bullet. The three lines are over in three ticks (0.1 seconds), and the gun is not ready again in that time.
 
-If you are curious, go back a step and try it. In the next step we learn how to get round this.`, ja: `プログラムは**上の行から順番に**進みます。一番下の行まで行くと、プログラムは終わり、ロボットはそれ以上何もしません。
+If you are curious, go back a step and try it. In the next step we learn how to get round this.`, ja: `プログラムは**上の行から順番に**進みます。一番下の行まで進むとプログラムは終わり、ロボットはそれ以上何もしません。
 
 試合の時間は「**tick**（ティック）」という短い区切りで進みます。1 tick は 1/30 秒です。ロボットは **1 tick に 1 つだけ行動** できます。\`fire\` も 1 つの行動なので、\`fire\` の行を実行すると 1 tick たちます。
 
@@ -169,7 +169,7 @@ loop
 
 The lines written under \`loop\` **with space at the start** are what is repeated. That space at the start of a line is called **indentation**. Indent with four spaces. If you type \`loop\` and press Enter in the editor, the next line is indented for you.
 
-This program repeats "shoot" for ever. A \`fire\` while the gun is not ready does nothing, but as soon as the gun is ready it shoots, so the robot fires once every 0.8 seconds.
+This program repeats "shoot" for ever. While the gun is not ready, \`fire\` does nothing. But it shoots the moment the gun is ready, so the robot fires once every 0.8 seconds.
 
 The target has 200 hit points (**HP**), and each hit takes away 20. Ten hits destroy it.`, ja: `同じことを何度もしてほしいときは **\`loop\`**（ループ、「繰り返し」）を使います。
 
@@ -180,7 +180,7 @@ loop
 
 \`loop\` の下に、**行の先頭を空けて**書いた行が、繰り返す中身です。この行の先頭の空白を「**字下げ**（インデント）」といいます。字下げは半角の空白 4 つです。エディタで \`loop\` と書いて Enter を押すと、自動で字下げされます。
 
-このプログラムは「撃つ」をずっと繰り返します。銃の準備ができていない間の \`fire\` は何も起きませんが、準備ができたとたんに撃つので、0.8 秒ごとに 1 発ずつ撃ち続けます。
+このプログラムは「撃つ」をずっと繰り返します。銃の準備ができていないうちは、\`fire\` を実行しても何も起きません。それでも準備ができたとたんに撃つので、0.8 秒ごとに 1 発ずつ撃ち続けます。
 
 的には体力（**HP**）が 200 あり、1 発で 20 減ります。10 発当てると的は壊れます。` },
     task: { en: `Use \`loop\` to keep firing, and destroy the target.`, ja: `\`loop\` を使って撃ち続け、的を壊しましょう。` },
@@ -371,11 +371,11 @@ loop
 
 This time the target is **behind** ALPHA. The program in the editor only shoots straight ahead, so it misses.
 
-Running \`turn enemy\` and \`fire\` one after the other in a \`loop\`, the robot turns a little towards the enemy each time, and shoots whenever its gun is ready.`, ja: `\`turn\` には、\`left\` と \`right\` のほかに **\`turn enemy\`** もあります。**敵の方へ向かって**回る命令です。敵の場所を自分で計算しなくても、ロボットが向きを合わせてくれます。
+With \`turn enemy\` and \`fire\` taking turns in a \`loop\`, the robot turns a little further towards the enemy each time, and shoots whenever its gun is ready.`, ja: `\`turn\` には、\`left\` と \`right\` のほかに **\`turn enemy\`** もあります。**敵の方へ向かって**回る命令です。敵の場所を自分で計算しなくても、ロボットが向きを合わせてくれます。
 
 今度の的は ALPHA の**後ろ**にいます。エディタのプログラムは前に撃っているだけなので、当たりません。
 
-\`turn enemy\` と \`fire\` を \`loop\` の中で交互に実行すると、少しずつ敵の方を向きながら、準備ができたら撃てます。` },
+\`loop\` の中で \`turn enemy\` と \`fire\` を交互に実行すると、少しずつ敵の方を向きながら、銃の準備ができるたびに撃ちます。` },
     task: { en: `Use \`turn enemy\` to face the target behind, and destroy it.`, ja: `\`turn enemy\` を使って後ろの的の方を向き、的を壊しましょう。` },
     hints: [
       { en: `Add a line \`turn enemy\` above \`fire\`, inside the \`loop\`.`, ja: `\`loop\` の中の \`fire\` の上に、\`turn enemy\` の行を足します。` },
@@ -398,14 +398,14 @@ Running \`turn enemy\` and \`fire\` one after the other in a \`loop\`, the robot
 - \`aim enemy\` … turn the turret towards the enemy
 - \`aim left\` / \`aim right\` … turn the turret left / right
 
-The turret turns faster than the body (270 degrees a second). And the body keeps facing the way it did, so a robot can drive one way and shoot another.
+The turret turns faster than the body (270 degrees a second). Turning the turret does not turn the body, so a robot can drive one way and shoot another.
 
 This time the target **moves**. Try aiming with \`aim enemy\` instead of \`turn enemy\`.`, ja: `ロボットの上の銃（**砲塔**）は、車体とは別に回すことができます。砲塔を回す命令は **\`aim\`**（エイム、「狙う」）です。
 
 - \`aim enemy\` … 砲塔を敵の方へ回す
 - \`aim left\` / \`aim right\` … 砲塔を左 / 右へ回す
 
-砲塔は車体より速く回ります（1 秒で 270 度）。しかも車体の向きはそのままなので、走りながら別の方向を撃つこともできます。
+砲塔は車体より速く回ります（1 秒で 270 度）。砲塔を回しても車体の向きは変わらないので、走りながら別の方向を撃つこともできます。
 
 今度の的は**動きます**。\`turn enemy\` のかわりに \`aim enemy\` で狙ってみましょう。` },
     task: { en: `Aim with \`aim enemy\` and hit the moving target three times.`, ja: `\`aim enemy\` で狙って、動く的に 3 発当てましょう。` },
@@ -479,7 +479,7 @@ loop
   {
     id: 'sparring',
     title: { en: `A first match`, ja: `はじめての試合` },
-    body: { en: `At last, a match against an opponent that shoots back. BRAVO is a sparring robot: it looks for its enemy and shoots (slowly).
+    body: { en: `At last, a match against an opponent that shoots back. BRAVO is a sparring robot: it looks for ALPHA and shoots, but slowly.
 
 Put together what you have learnt so far.
 
@@ -488,7 +488,7 @@ Put together what you have learnt so far.
 
 There is an obstacle in the middle, so BRAVO cannot be seen at first.
 
-The first to bring the other's HP to 0 wins. If you lose, try again as often as you like. Change the program a little, run it, and compare.`, ja: `いよいよ、撃ち返してくる相手との試合です。BRAVO は練習相手のロボットで、敵を探して撃ってきます（ただし、ゆっくりです）。
+The first to bring the other's HP to 0 wins. If you lose, try again as often as you like: change the program a little, run it, and compare the results.`, ja: `いよいよ、撃ち返してくる相手との試合です。BRAVO は練習相手のロボットです。ALPHA を探して撃ってきますが、撃つペースはゆっくりです。
 
 ここまでに学んだことを組み合わせましょう。
 

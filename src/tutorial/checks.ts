@@ -53,7 +53,7 @@ export function judge(goal: Goal, recording: Recording, stage: Stage | undefined
     case 'win': {
       const result = snapshots[last].result;
       if (result?.winnerId === 'ALPHA') return { done: true, tick: last };
-      if (result?.winnerId === null) return { done: false, why: { en: 'A draw: win to clear the step.', ja: '引き分けでした。勝つとクリアです。' } };
+      if (result?.winnerId === null) return { done: false, why: { en: 'A draw: win to clear it.', ja: '引き分けでした。勝つとクリアです。' } };
       return { done: false, why: { en: 'BRAVO won this time.', ja: '今回は BRAVO の勝ちでした。' } };
     }
   }

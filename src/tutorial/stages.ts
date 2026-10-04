@@ -115,7 +115,7 @@ export const HIDDEN: Stage = {
 };
 
 /**
- * A first real match, against the sparring partner with a cheap gun: close
+ * A first real match, against the sparring partner with a short-range Pistol: close
  * enough for the guns to reach, a block between them to look round.
  */
 export const DUEL: Stage = {

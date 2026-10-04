@@ -74,6 +74,8 @@ npm run build      # dist/ に出力。PWA として、ブラウザから「ア�
 npm run preview    # ビルドしたものを手元で開く
 ```
 
+**公開**: master に push すると、GitHub Actions（`.github/workflows/deploy.yml`）がテストとビルドをして、GitHub Pages（https://cheebow.github.io/roboscript/）に公開する。リポジトリの Settings → Pages の Source を「GitHub Actions」にしておく必要がある。ビルドは相対パスで出力するので（`vite.config.ts` の `base: './'`）、サイトの一番上でも `/roboscript/` のような下の階層でも動く。
+
 開くと起動画面と起動メニューが出る。遊び方は `SPEC.md` の「2. 画面」。URL に `?seed=数値` を付けると、プログラムの画面の試合の seed を固定できる（同じ試合でコードの違いを見比べるとき用）。
 
 ## テスト方法

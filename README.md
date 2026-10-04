@@ -4,6 +4,8 @@
 
 *A game where you write your robot's AI in a small programming language, send it into battle, and debug it. Runs in the browser; the screen can be shown in English or Japanese.*
 
+**遊ぶ / Play**: https://cheebow.github.io/roboscript/ （インストール不要。ブラウザで開くだけで遊べます）
+
 ![プログラムの画面: コードを 1 行ずつ追いながら、試合を戦闘画面とログ・ウォッチで見る](docs/images/program.png)
 
 ## どんなゲーム？

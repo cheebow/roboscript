@@ -2,6 +2,7 @@ import { type WordKind, type WordReference, allWords, describeWord } from '../ai
 import { WORD_EXAMPLES } from '../help/word_examples';
 import { HELP, type HelpTopic, WORDS_TOPIC } from '../help/topics';
 import { t } from '../i18n/messages';
+import { createCredits } from './credits';
 import { createButton, createElement } from './dom';
 import { renderMarkup } from './markup';
 import { local } from './tutorial_panel';
@@ -89,6 +90,7 @@ export class HelpPanel {
         nav.append(link);
       }
     }
+    nav.append(createCredits('help-credits'));
     const content = createElement('div', 'help-content');
     const body = createElement('div', 'help-body');
     body.append(nav, content);

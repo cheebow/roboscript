@@ -1750,6 +1750,35 @@ button {
   margin-right: 14px;
 }
 
+/* The copyright and the link to the source (see createCredits). */
+.credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.credits-source {
+  color: var(--syntax-command);
+  text-decoration: none;
+}
+
+.credits-source:hover {
+  text-decoration: underline;
+}
+
+.boot-credits {
+  margin-top: auto;
+  color: #4a5158;
+}
+
+/* At the foot of the help's table of contents, below the topics. */
+.help-credits {
+  margin-top: auto;
+  padding: 16px 12px 4px;
+}
+
 /* The tutorial panel (see TutorialPanel), and the challenge panel made of the same parts (see ChallengePanel). */
 #tutorial-body,
 #challenge-body {
@@ -2067,6 +2096,8 @@ button {
 }
 
 .help-nav {
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   padding: 8px 0;
   border-right: 1px solid var(--border);

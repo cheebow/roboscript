@@ -5,6 +5,7 @@ import { TEMPLATES } from '../data/templates';
 import { RULES_VERSION } from '../data/rules_version';
 import { type MessageKey, t } from '../i18n/messages';
 import type { KeyValueStorage } from '../project/project_store';
+import { createCredits } from './credits';
 import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
@@ -150,7 +151,7 @@ export class BootScreen {
       return item;
     });
     const help = createElement('div', 'boot-help', t('boot.help'));
-    this.element.append(menu, help);
+    this.element.append(menu, help, createCredits('boot-credits'));
     this.menu = menu;
     // The cursor starts on what was started last time; the first time, on the tutorial.
     const start = last ?? 'tutorial';
@@ -159,6 +160,8 @@ export class BootScreen {
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Enter on the link to the source opens it, not a line of the menu.
+    if (event.target instanceof HTMLAnchorElement) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const step = event.key === 'ArrowDown' ? 1 : -1;
       let at = this.cursor;

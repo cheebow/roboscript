@@ -33,6 +33,9 @@ import { trimmed } from '../tutorial';
 import { createReplay } from './watched_match';
 import { CommentaryView } from './commentary_view';
 import { HelpPanel } from './help_panel';
+import { AnalysisView } from './analysis_view';
+import { analyze, lineCounts } from '../arena/analysis';
+import type { Recording } from '../debug/recorder';
 import { HELP } from '../help/topics';
 import { GUIDE_EVENT } from './roboscript_assist';
 import { parse } from '../ai/parser';
@@ -40,7 +43,7 @@ import { functionLines } from '../ai/structure';
 import { ArenaMode } from './arena_mode';
 import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
-import { requireElement } from './dom';
+import { createButton, createElement, requireElement } from './dom';
 import { GarageController } from './garage_controller';
 import { describeError } from './format';
 import { Inspector } from './inspector';
@@ -128,6 +131,18 @@ class App {
   private readonly inspector: Inspector;
   private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
+  /** The analysis of the program screen's match, in the tab beside the log. */
+  private readonly analysisView = new AnalysisView((tick) => this.replay?.seek(tick));
+  /** Which tab of the bottom left is shown: the log or the analysis. */
+  private analysisShown = false;
+  /** The recording the analysis tab and the run counts were worked out for, so as not to work them out every frame. */
+  private analyzed: { recording: Recording; counts: Map<number, number>[] } | null = null;
+  /** The analysis of a match watched in the arena or a contest, over the battle view. */
+  private readonly watchedAnalysis = new AnalysisView((tick) => {
+    this.shownReplay()?.seek(tick);
+    this.analysisOverlay.hidden = true;
+  });
+  private readonly analysisOverlay = createElement('div', 'analysis-overlay');
   private readonly seedLabel = requireElement('battle-seed');
   /** The help and the guide to the language, from the right. */
   private readonly help = new HelpPanel();
@@ -257,6 +272,19 @@ class App {
       else this.help.openWord(word);
     });
     requireElement('battle-frame').append(this.commentaryView.element);
+    requireElement('analysis-body').append(this.analysisView.element);
+    this.analysisView.show(null, null);
+    const closeAnalysis = createButton('tool-button', t('analysis.close'), '', () => {
+      this.analysisOverlay.hidden = true;
+    });
+    const overlayHeader = createElement('div', 'board-header');
+    overlayHeader.append(createElement('span', 'board-title', t('analysis.button')), closeAnalysis);
+    this.analysisOverlay.append(overlayHeader, this.watchedAnalysis.element);
+    this.analysisOverlay.hidden = true;
+    requireElement('battle-frame').append(this.analysisOverlay);
+    requireElement('analysis-button').addEventListener('click', () => this.toggleWatchedAnalysis());
+    requireElement('log-tab-log').addEventListener('click', () => this.showAnalysisTab(false));
+    requireElement('log-tab-analysis').addEventListener('click', () => this.showAnalysisTab(true));
     const toggle = requireElement('commentary-toggle');
     toggle.classList.toggle('selected', this.commentaryOn);
     toggle.addEventListener('click', () => {
@@ -297,6 +325,38 @@ class App {
     else if (event.key === 'ArrowLeft') this.stepBack();
     else return;
     event.preventDefault();
+  }
+
+  /** The log or the analysis in the bottom left of the program screen. */
+  private showAnalysisTab(shown: boolean): void {
+    this.analysisShown = shown;
+    requireElement('log-rows').hidden = shown;
+    requireElement('analysis-body').hidden = !shown;
+    requireElement('log-tab-log').classList.toggle('selected', !shown);
+    requireElement('log-tab-analysis').classList.toggle('selected', shown);
+  }
+
+  /** The analysis and the run counts of the program screen's match: worked out once a match, when first wanted. */
+  private analysisOf(replay: ReplayManager): { recording: Recording; counts: Map<number, number>[] } {
+    if (this.analyzed?.recording !== replay.recording) {
+      const { recording } = replay;
+      this.analyzed = { recording, counts: ROBOT_IDS.map((id) => lineCounts(recording, id)) };
+      this.analysisView.show(analyze(recording, ROBOT_IDS), recording.arena);
+    }
+    return this.analyzed;
+  }
+
+  /** Opens or closes the analysis of the match watched in the arena or a contest. */
+  private toggleWatchedAnalysis(): void {
+    if (!this.analysisOverlay.hidden) {
+      this.analysisOverlay.hidden = true;
+      return;
+    }
+    const screen = this.screen === 'arena' ? this.arenaMode : this.screen === 'contest' ? this.contestMode : null;
+    const replay = screen?.replay ?? null;
+    if (screen === null || replay === null) return;
+    this.watchedAnalysis.show(analyze(replay.recording, screen.fightNames()), replay.recording.arena);
+    this.analysisOverlay.hidden = false;
   }
 
   /** What the start menu starts. Help opens over the screen that was shown. */
@@ -774,6 +834,9 @@ class App {
     this.toolbar.setMessage(screen.message());
     this.showSeed(replay?.recording.seed ?? null);
     this.commentaryView.update(screen.commentary(), replay?.tick ?? 0, this.commentaryOn);
+    if (replay === null) this.analysisOverlay.hidden = true;
+    else if (!this.analysisOverlay.hidden) this.watchedAnalysis.update(replay.tick);
+    requireElement('analysis-button').toggleAttribute('disabled', replay === null);
     this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
@@ -825,6 +888,17 @@ class App {
       workspace.editor.showFollowedLine(followed?.robotIndex === robotIndex ? followed.line : null);
     });
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
+    const analyzed = replay === null ? null : this.analysisOf(replay);
+    if (replay === null && this.analyzed !== null) {
+      this.analyzed = null;
+      this.analysisView.show(null, null);
+    }
+    if (this.analysisShown) this.analysisView.update(replay?.tick ?? 0);
+    // Beside the lines, while debugging the code that was run: how many times each ran in the match.
+    this.workspaces.forEach((workspace, robotIndex) => {
+      const counts = debugging && !workspace.stale ? (analyzed?.counts[robotIndex] ?? null) : null;
+      workspace.editor.showRunCounts(counts);
+    });
     this.toolbar.setMessage(this.message());
     this.toolbar.setMode(replay === null ? null : this.mode);
     this.showSeed(replay?.recording.seed ?? stage?.seed ?? this.seed);

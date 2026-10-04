@@ -87,6 +87,7 @@
       <section id="battle" class="panel">
         <h2>
           <span data-i18n="panel.battle">BATTLE VIEW</span>
+          <button id="analysis-button" class="panel-toggle" type="button" data-i18n="analysis.button" data-i18n-title="analysis.button.title" title="How the match being watched went">ANALYSIS</button>
           <button id="commentary-toggle" class="panel-toggle" type="button" data-i18n="commentary.toggle" data-i18n-title="commentary.toggle.title" title="Turn the commentary of the match on or off">COMMENTARY</button>
           <span id="battle-seed" class="panel-aside" data-i18n-title="battle.seed.title" title="The seed decides where the robots start and how their shots scatter; ?seed= in the URL plays the same match again"></span>
         </h2>
@@ -111,8 +112,14 @@
       </section>
 
       <section id="log" class="panel">
-        <h2 data-i18n="panel.log">DEBUG LOG</h2>
+        <h2>
+          <span id="log-tabs">
+            <button id="log-tab-log" class="tab selected" type="button" data-i18n="analysis.tab.log">LOG</button>
+            <button id="log-tab-analysis" class="tab" type="button" data-i18n="analysis.tab.analysis" data-i18n-title="analysis.tab.analysis.title" title="How the match went">ANALYSIS</button>
+          </span>
+        </h2>
         <div id="log-rows" class="panel-body"></div>
+        <div id="analysis-body" class="panel-body" hidden></div>
       </section>
 
       <section id="watch" class="panel">

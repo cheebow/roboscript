@@ -256,6 +256,11 @@ export class ArenaMode {
     return this.watched.commentary;
   }
 
+  /** The names the robots of the match being watched fight under; empty while there is none. */
+  fightNames(): readonly string[] {
+    return this.watched.fight?.names ?? [];
+  }
+
   /** The line for the toolbar: who fights whom, and how it stands. */
   message(): string {
     const { fight } = this.watched;

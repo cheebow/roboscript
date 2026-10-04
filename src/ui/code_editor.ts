@@ -87,6 +87,46 @@ const followedLine = StateField.define<RangeSet<GutterMarker>>({
   },
 });
 
+/** How many times a line ran in the match, beside its number. */
+class RunCountMarker extends GutterMarker {
+  constructor(private readonly count: number) {
+    super();
+  }
+
+  eq(other: RunCountMarker): boolean {
+    return other.count === this.count;
+  }
+
+  toDOM(): Node {
+    return document.createTextNode(this.count > 9999 ? '9999+' : `${this.count}`);
+  }
+}
+
+/** Sets the run counts shown beside the lines, by 1-based line; null takes them away. */
+const setRunCounts = StateEffect.define<ReadonlyMap<number, number> | null>();
+
+const runCounts = StateField.define<RangeSet<GutterMarker>>({
+  create: () => RangeSet.empty,
+  update(markers, transaction) {
+    let next = markers.map(transaction.changes);
+    for (const effect of transaction.effects) {
+      if (!effect.is(setRunCounts)) continue;
+      const { doc } = transaction.state;
+      const counts = effect.value;
+      next =
+        counts === null
+          ? RangeSet.empty
+          : RangeSet.of(
+              [...counts]
+                .filter(([line]) => line >= 1 && line <= doc.lines)
+                .sort(([a], [b]) => a - b)
+                .map(([line, count]) => new RunCountMarker(count).range(doc.line(line).from)),
+            );
+    }
+    return next;
+  },
+});
+
 const theme = EditorView.theme(
   {
     '&': { height: '100%', backgroundColor: 'var(--panel)', color: 'var(--text)' },
@@ -148,6 +188,7 @@ export class CodeEditor {
   private readonly view: EditorView;
   private checkTimer: number | null = null;
   private followed: number | null = null;
+  private counts: ReadonlyMap<number, number> | null = null;
   /** What each per-frame highlight currently shows, to skip updates that change nothing. */
   private readonly shown = new Map<LineHighlight, string>();
 
@@ -171,6 +212,8 @@ export class CodeEditor {
         doc: source,
         extensions: [
           followedLine,
+          runCounts,
+          gutter({ class: 'cm-run-counts', markers: (view) => view.state.field(runCounts) }),
           gutter({
             class: 'cm-followed-gutter',
             markers: (view) => view.state.field(followedLine),
@@ -306,6 +349,13 @@ export class CodeEditor {
   /** Marks the 1-based line the program runs next, or none. Cheap to call every frame. */
   showCurrentLine(line: number | null): void {
     this.showLines(currentLine, line === null ? [] : [line]);
+  }
+
+  /** Shows beside each line how many times it ran in the match; null takes the counts away. Cheap to call every frame with the same map. */
+  showRunCounts(counts: ReadonlyMap<number, number> | null): void {
+    if (counts === this.counts) return;
+    this.counts = counts;
+    this.view.dispatch({ effects: setRunCounts.of(counts) });
   }
 
   /** Marks the 1-based line being followed through the match, or none. Cheap to call every frame. */

@@ -1,5 +1,6 @@
 import type { Recording } from '../debug/recorder';
 import { type MessageKey, t } from '../i18n/messages';
+import { readHit } from './analysis';
 
 /** One line of the commentary, said when the replay gets to its tick. */
 export interface CommentaryLine {
@@ -41,7 +42,6 @@ const LOW_AMMO = 5;
 /** sec before the end of the time when the last seconds are called. */
 const LAST_SECONDS = 10;
 
-const HIT = /^(\S+) damage=(\d+) hp=(\d+)( \(guarded\))?$/;
 
 /**
  * The commentary of a recorded match, in the language of the screen: what
@@ -66,14 +66,12 @@ export function commentaryOf(recording: Recording, names: readonly string[], max
   let lastShooter: string | null = null;
   let firstHit = true;
   for (const event of recording.events) {
-    if (event.type !== 'hit' || event.robotId === null) continue;
-    const match = HIT.exec(event.message);
-    if (match === null) continue;
-    const [, target, damageText, hpText, guarded] = match;
-    const shooter = nameOf(event.robotId);
+    const hit = readHit(event);
+    if (hit === null) continue;
+    const { targetId: target, damage, hp } = hit;
+    const guarded = hit.guarded ? true : undefined;
+    const shooter = nameOf(hit.shooterId);
     const victim = nameOf(target);
-    const damage = Number(damageText);
-    const hp = Number(hpText);
     const maxHp = recording.stats[snapshots[0].robots.findIndex((robot) => robot.id === target)]?.maxHp ?? 200;
     const before = hp + damage;
     const streak = lastShooter === shooter ? (hitsBy.get(shooter) ?? 0) + 1 : 1;

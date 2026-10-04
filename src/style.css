@@ -797,6 +797,12 @@ button {
   color: var(--muted);
 }
 
+.part-note {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .part-summary {
   grid-column: 2;
   color: var(--muted);

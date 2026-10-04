@@ -129,11 +129,13 @@ When the program has a mistake, the match does not start: the line turns red, an
       { id: 'parts-help', title: { en: `Choosing parts`, ja: `パーツの選び方` }, body: { en: `A robot is made of four parts: the **body** (HP), the **legs** (speed), the **gun** (damage, range, how often it fires) and the **sensor** (how far and which way it sees). Choose them in the project's \`config\`.
 
 - Each part has a cost, and the total may be **at most 12**. To carry a strong cost-4 part, make another slot a cost-2 part: those are weaker at something, in return for their low cost.
+- The **legs** all cost 3, so they cannot be traded for cost. None is stronger: choose by how the robot moves, fast in a straight line (Sprint), quick to turn (Pivot), or in between (Standard).
 - Put the mouse on a part's name to see what it does. Below, the robot's numbers are shown with the difference from standard.
 - Choose parts to suit the program: the Cannon and Scope to shoot from afar, Rapid and Heavy to get close and fire away, Sprint or Light to fight from cover.
 - Changing parts never changes the words you can use.`, ja: `ロボットは、**車体**（HP）、**脚**（速さ）、**銃**（威力・射程・撃つ間隔）、**センサー**（見える距離と向き）の 4 つのパーツでできています。パーツはプロジェクトの \`config\` で選びます。
 
 - パーツにはそれぞれコストがあり、合計は **12 まで** です。コスト 4 の強いパーツを積むなら、どこかをコスト 2 のパーツにします。コスト 2 のパーツは、何かが苦手なかわりにコストが低いパーツです。
+- **脚** はどれもコスト 3 なので、コストを浮かせる用には使えません。強さも同じです。直進が速い Sprint、小回りの利く Pivot、その間の Standard から、走り方で選びます。
 - パーツ名にマウスを載せると説明が出ます。下には、その組み合わせの性能が標準との差つきで出ます。
 - プログラムに合うパーツを選びましょう: 遠くから撃つなら Cannon と Scope、近づいて撃ちまくるなら Rapid と Heavy、隠れながら戦うなら Sprint や Light。
 - パーツを替えても、使える語は変わりません。` } },

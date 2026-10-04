@@ -77,6 +77,9 @@ export class PartsView {
       choice.append(...options.map((option) => option.button));
       const summary = createElement('div', 'part-summary');
       row.append(createElement('span', 'field-name', t(`slot.${slot}`)), choice, summary);
+      // A slot whose parts all cost the same is chosen by what suits the program, not to save cost.
+      const costs = new Set(partsOf(slot).map((part) => part.cost));
+      if (costs.size === 1) row.append(createElement('div', 'part-note', t('config.sameCost', { cost: [...costs][0] })));
       parts.append(row);
       return { slot, options, summary };
     });

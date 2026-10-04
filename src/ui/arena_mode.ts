@@ -73,7 +73,6 @@ const GROUPS: readonly { origin: Entrant['origin']; label: MessageKey }[] = [
   { origin: 'garage', label: 'arena.group.garage' },
   { origin: 'built-in', label: 'arena.group.builtIn' },
 ];
-const SHARE_LABEL = '⇪';
 
 interface SlotView {
   preview: HTMLCanvasElement;
@@ -347,7 +346,7 @@ export class ArenaMode {
   /** A result's entry with a share button beside it; pressing the button shows the match's share code under the row. */
   private shareableRow(entry: HTMLElement, match: FoughtMatch): HTMLElement {
     const row = createElement('div', 'result-row');
-    const share = createButton('garage-action', SHARE_LABEL, t('arena.share.title'));
+    const share = createButton('garage-action', t('share.button'), t('arena.share.title'));
     let box: HTMLElement | null = null;
     /** Set while the code is being made: a second press meanwhile is not a second request. */
     let making = false;
@@ -365,7 +364,8 @@ export class ArenaMode {
           const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
             downloadText(fileName(`${robots.map((robot) => robot.name).join('-vs-')}`), matchFileText({ robots, arenaId: match.arena.id, seed: match.seed })),
           );
-          const link = { url: shareLink('match', code, window.location.href), title: t('share.matchTitle', { names: robots.map((robot) => robot.name).join(t('arena.vsJoin')) }) };
+          const names = robots.map((robot) => robot.name).join(t('arena.vsJoin'));
+          const link = { url: shareLink('match', code, window.location.href), title: t('share.matchTitle', { names }), text: t('share.matchText', { names }) };
           box = createShareBox(code, 'garage-share result-share', [saveFile], link);
           row.after(box);
         })

@@ -695,11 +695,11 @@ Keep a robot you are happy with in the **GARAGE** below, under a name: type the 
 
 - **ARENA** … pick robots from your garage or the built-in ones, send them into battle and watch. There are battle royales of 3 or 4 robots, and series of 20 matches over every map.
 - **CONTEST** … gather 3 to 8 robots for a league or a tournament, with a table or a bracket of the results.
-- **Sharing** … with \`⇪\` in the garage, turn a robot into a **share code** or a **file** to give to a friend. Take in your friends' robots, and set them against yours in a contest.`, ja: `ロボットができたら、ほかの画面で試してみましょう（起動メニューから行けます）。
+- **Sharing** … with **SHARE** in the garage, post a robot on X, or turn it into a **share link**, a **share code** or a **file** to give to a friend. Take in your friends' robots, and set them against yours in a contest.`, ja: `ロボットができたら、ほかの画面で試してみましょう（起動メニューから行けます）。
 
 - **アリーナ** … ガレージのロボットや内蔵ロボットを選んで戦わせ、試合を見ます。3〜4 台のバトルロイヤルや、全マップで 20 試合の連戦もできます。
 - **大会** … 3〜8 台を集めて、リーグ戦やトーナメントをします。結果は表やトーナメント表で見られます。
-- **共有** … ガレージの \`⇪\` で、ロボットを **共有コード** や **ファイル** にして、友だちに渡せます。友だちのロボットを取り込んで、大会で戦わせることもできます。` },
+- **共有** … ガレージの「共有」で、ロボットを X に投稿したり、**共有リンク**・**共有コード**・**ファイル** にしたりして、友だちに渡せます。友だちのロボットを取り込んで、大会で戦わせることもできます。` },
     check: { kind: 'read' },
   },
   {

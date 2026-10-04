@@ -24,7 +24,6 @@ export interface GarageHandlers {
 
 const REMOVE_LABEL = '×';
 const ARMED_CLASS = 'armed';
-const SHARE_LABEL = '⇪';
 
 /**
  * The garage: a name to type and a button per robot to save it under that
@@ -136,7 +135,7 @@ export class GaragePanel {
 
   private shareBox(name: string, code: string): HTMLElement {
     const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
-    const link = { url: shareLink('robot', code, window.location.href), title: t('share.robotTitle', { name }) };
+    const link = { url: shareLink('robot', code, window.location.href), title: t('share.robotTitle', { name }), text: t('share.robotText', { name }) };
     return createShareBox(code, 'garage-share', [saveFile], link);
   }
 
@@ -154,7 +153,7 @@ export class GaragePanel {
       row.append(load);
     });
 
-    const share = createButton('garage-action', SHARE_LABEL, t('garage.share.title', { name }));
+    const share = createButton('garage-action', t('share.button'), t('garage.share.title', { name }));
     share.addEventListener('click', () => {
       void this.toggleShare(name);
     });

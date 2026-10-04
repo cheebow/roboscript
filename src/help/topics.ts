@@ -78,13 +78,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 
 - Choose the **number of robots** (2 / 3 / 4) at the top, then a robot for each slot (those in your garage, and the 8 built-in ones).
 - **FIGHT** plays one match. **SERIES** plays 20 matches over every map at once, and counts the wins (with 3 or 4 robots, how often each came in each place).
-- The results line up at the bottom left; click one to watch it again. \`⇪\` gives that match's share code and file.
+- The results line up at the bottom left; click one to watch it again. **SHARE** beside a result shares that match.
 - Paste a match share code you were given and press **PLAY**, or open a match file with **FILE…**, to watch the same match.
 - During a match, **commentary** runs along the bottom of the battle view. In the battle view's heading, "COMMENTARY" turns it on or off, and "ANALYSIS" shows how the match went.`, ja: `ロボットを選んで戦わせ、試合を見る画面です。
 
 - 上で **台数**（2 / 3 / 4）を選び、枠ごとにロボットを選びます。選べるのは、ガレージに保存したロボットと、内蔵の 8 台です。
 - **対戦** で 1 試合します。**連戦** では全マップで 20 試合をまとめて行い、勝ち数を出します（3〜4 台なら、何位を何回取ったか）。
-- 結果は左下に並び、押すともう一度見られます。\`⇪\` を押すと、その試合の共有コードとファイルが出ます。
+- 結果は左下に並び、押すともう一度見られます。結果の横の「共有」で、その試合を共有できます。
 - 人からもらった試合の共有コードを貼って **再生** を押すか、**ファイル…** で試合のファイルを開くと、同じ試合を見られます。
 - 試合中は、戦闘画面の下に **実況** が流れます。戦闘画面の見出しの「実況」で ON / OFF を切り替え、「分析」でその試合の分析を開けます。` } },
       { id: 'contest-screen', title: { en: `Contests`, ja: `大会` }, body: { en: `The screen for gathering 3 to 8 robots for a league or a tournament.
@@ -102,13 +102,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 
 - Type a name and press **SAVE ALPHA** / **SAVE BRAVO**. If a robot of that name is already there, the button turns into "replace?": press it again to replace that robot.
 - \`A\` / \`B\` in the list loads that robot into ALPHA / BRAVO.
-- \`⇪\` gives a share code: **COPY** it to give to someone, or **SAVE FILE**.
+- **SHARE** gives the ways to share the robot: **POST ON X**, **COPY LINK**, **COPY CODE**, or **SAVE FILE**.
 - \`×\` deletes, on the second press.
 - **+ IMPORT** takes in a robot file or a share code someone gave you.`, ja: `できたロボット（プログラムとパーツ）を、名前を付けてしまっておく棚です。プログラムの画面の左下にあります。
 
 - 名前を入れて **ALPHA を保存** / **BRAVO を保存** を押します。同じ名前のロボットがあるとボタンが「上書き?」に変わり、もう一度押すと上書きします。
 - 一覧の \`A\` / \`B\` で、そのロボットを ALPHA / BRAVO に読み込みます。
-- \`⇪\` で共有コードが出ます。「コピー」して人に渡すか、「ファイルに保存」します。
+- 「共有」で、ロボットの共有のしかたが出ます: 「X に投稿」「リンクをコピー」「コードをコピー」「ファイルに保存」。
 - \`×\` は 2 回押すと削除します。
 - **＋ 取り込む** から、人にもらったロボットのファイルや共有コードを取り込めます。` } },
       { id: 'rules', title: { en: `How a match works`, ja: `試合のルール` }, body: { en: `- One second is 30 **ticks**. A robot does one action a tick. A match lasts at most 120 seconds.
@@ -141,19 +141,19 @@ When the program has a mistake, the match does not start: the line turns red, an
 - パーツを替えても、使える語は変わりません。` } },
       { id: 'sharing', title: { en: `Sharing and files`, ja: `共有とファイル` }, body: { en: `There is no server. Robots and matches are given to others as **share links**, **share codes** or **files**.
 
-- **Share links** are the easiest way to post on a social network or send in a message: under \`⇪\`, **COPY LINK** copies a link, and on a phone **SHARE…** opens the phone's share menu. Opening the link opens the game and takes the robot into the garage, or plays the match in the arena. However long the program, a social network counts the link as a short one.
+- **Share links** are the easiest way to post on a social network or send in a message: under **SHARE**, **POST ON X** opens a post with the link and #RoboScript in it, **COPY LINK** copies the link, and on a phone **SHARE VIA APP…** opens the phone's share menu. Opening the link opens the game and takes the robot into the garage, or plays the match in the arena. However long the program, a social network counts the link as a short one.
 
-- **Robots**: \`⇪\` in the garage gives a share code, or **SAVE FILE**. The other person takes it in with **+ IMPORT** in their garage.
-- **Matches**: \`⇪\` on an arena result gives a share code and a file, which plays in their arena.
+- **Robots**: **SHARE** in the garage gives a share link and code, or **SAVE FILE**. The other person takes it in with **+ IMPORT** in their garage.
+- **Matches**: **SHARE** on an arena result gives a share link, code and file, which plays in their arena.
 - **Contest results**: save to a file from the contest's **RESULT** menu; **Open a result file…** shows the same board.
 - File names end in \`.roboscript.json\`. Files stay small, however long the program.
 - The same robot received again (same name, program and parts) is not kept twice.
 - When the rules version differs, you are told so (the match may not play out the same).`, ja: `サーバーはありません。ロボットや試合は、**共有リンク**、**共有コード**、**ファイル** で人に渡します。
 
-- **共有リンク** は、SNS に投稿したりメッセージで送ったりするのに一番手軽です。\`⇪\` の下の「リンクをコピー」でリンクをコピーできます。スマホでは「共有…」で端末の共有メニューが開きます。リンクを開くとゲームが立ち上がり、ロボットならガレージに入り、試合ならアリーナで再生されます。プログラムが長くても、SNS ではリンクは短いものとして数えられます。
+- **共有リンク** は、SNS に投稿したりメッセージで送ったりするのに一番手軽です。「共有」の下の「X に投稿」で、リンクと #RoboScript 入りの投稿が X で開きます。「リンクをコピー」でリンクをコピーでき、スマホでは「アプリで共有…」で端末の共有メニューが開きます。リンクを開くとゲームが立ち上がり、ロボットならガレージに入り、試合ならアリーナで再生されます。プログラムが長くても、SNS ではリンクは短いものとして数えられます。
 
-- **ロボット**: ガレージの \`⇪\` で共有コード、または「ファイルに保存」。もらった人はガレージの「＋ 取り込む」で取り込みます。
-- **試合**: アリーナの結果の \`⇪\` で共有コードとファイル。もらった人はアリーナで再生できます。
+- **ロボット**: ガレージの「共有」で共有リンクと共有コード、または「ファイルに保存」。もらった人はガレージの「＋ 取り込む」で取り込みます。
+- **試合**: アリーナの結果の「共有」で共有リンク、共有コード、ファイル。もらった人はアリーナで再生できます。
 - **大会の結果**: 大会の「結果」メニューからファイルに保存。もらった人は「結果ファイルを開く」で、同じ結果ボードを見られます。
 - ファイル名の末尾は \`.roboscript.json\` です。長いプログラムでも、ファイルは小さく収まります。
 - 同じロボット（名前・プログラム・パーツが同じ）をもう一度受け取っても、二重には入りません。

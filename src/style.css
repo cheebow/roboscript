@@ -469,6 +469,12 @@ button {
   white-space: nowrap;
 }
 
+.garage-share-caption {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .garage-share-field {
   flex: 1 1 0;
   width: 0;

@@ -1,17 +1,22 @@
 import { t } from '../i18n/messages';
 import { createButton, createElement } from './dom';
 
-/** A share link to offer beside the code: the address, and what to call it in a message. */
+/** A share link to offer beside the code: the address, what to call it, and the words to post with it. */
 export interface ShareLink {
   url: string;
   title: string;
+  /** A line to post with the link, the hashtag at its end. */
+  text: string;
 }
 
+/** Where "POST ON X" opens: X's page for writing a post, with the words and the link in it. */
+const X_POST = 'https://x.com/intent/post';
+
 /**
- * A share code to copy: the code on a line of its own, chosen whole when
- * clicked, and under it a button to copy it with any others given. With a
- * link, buttons to copy the link, and where the device can, to send it with
- * the device's own share menu (to a social network, a message ...).
+ * How to give something away, the easiest first: with a link, buttons to post
+ * it on X, to copy it, and where the device can, to send it with the device's
+ * own share menu; then the share code with a button to copy it, and any
+ * other buttons given (such as saving a file).
  */
 export function createShareBox(code: string, className: string, others: readonly HTMLButtonElement[] = [], link?: ShareLink): HTMLElement {
   const field = createElement('input', 'garage-share-field');
@@ -20,17 +25,22 @@ export function createShareBox(code: string, className: string, others: readonly
   field.value = code;
   field.setAttribute('aria-label', t('share.field'));
   field.addEventListener('focus', () => field.select());
-  const copy = createButton('tool-button share-action', t('garage.copy'), t('garage.copy.title'), () => {
+  const copyCode = createButton('tool-button share-action', t('share.copyCode'), t('share.copyCode.title'), () => {
     field.select();
-    navigator.clipboard?.writeText(code).catch(() => {
-      // Left selected: the player can copy it by hand.
-    });
+    navigator.clipboard?.writeText(code).then(
+      () => (copyCode.textContent = t('share.copied')),
+      () => {
+        // Left selected: the player can copy it by hand.
+      },
+    );
   });
-  const line = createElement('div', 'garage-share-line');
-  line.append(field);
+
   const actions = createElement('div', 'garage-share-line');
-  actions.append(copy);
   if (link !== undefined) {
+    const post = createButton('tool-button share-action', t('share.postOnX'), t('share.postOnX.title'), () => {
+      const address = `${X_POST}?${new URLSearchParams({ text: link.text, url: link.url })}`;
+      window.open(address, '_blank', 'noopener');
+    });
     const copyLink = createButton('tool-button share-action', t('share.copyLink'), t('share.copyLink.title'), () => {
       navigator.clipboard?.writeText(link.url).then(
         () => (copyLink.textContent = t('share.copied')),
@@ -41,19 +51,22 @@ export function createShareBox(code: string, className: string, others: readonly
         },
       );
     });
-    actions.append(copyLink);
+    actions.append(post, copyLink);
     if (typeof navigator.share === 'function') {
       actions.append(
         createButton('tool-button share-action', t('share.send'), t('share.send.title'), () => {
-          navigator.share({ title: link.title, url: link.url }).catch(() => {
+          navigator.share({ title: link.title, text: link.text, url: link.url }).catch(() => {
             // Closed without sending: nothing to do.
           });
         }),
       );
     }
   }
-  actions.append(...others);
+  actions.append(copyCode, ...others);
+
+  const codeLine = createElement('div', 'garage-share-line');
+  codeLine.append(createElement('span', 'garage-share-caption', t('share.field')), field);
   const box = createElement('div', className);
-  box.append(line, actions);
+  box.append(actions, codeLine);
   return box;
 }

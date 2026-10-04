@@ -225,6 +225,7 @@ npm run results    # 対戦結果の表、テンプレートの勝率と試合�
 
 ```text
 README.md                  GitHub 向けの紹介（スクリーンショットは docs/images/）
+LICENSE                    MIT ライセンス
 SPEC.md                    今のゲームの仕様書
 IMPLEMENTATION_STATUS.md   このファイル
 index.html                 画面の枠（3 画面の領域をここに置き、どれを出すかは CSS で切り替える）

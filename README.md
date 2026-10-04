@@ -102,3 +102,7 @@ src/
 └─ view/       戦闘画面の描画
 tests/         Vitest のテスト
 ```
+
+## ライセンス
+
+[MIT](LICENSE)

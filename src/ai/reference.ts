@@ -106,13 +106,13 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'turn',
     kind: 'command',
     hint: 'turn the hull, 1 tick',
-    summary: 'Turns the hull for one tick: left, right, towards the enemy, towards cover, or towards where the last hit came from (hit). The turret turns with it. With an angle after left or right, as in "turn left 90", it turns a tick at a time until it has turned that many degrees.',
+    summary: 'Turns the hull for one tick: left, right, towards the enemy, towards cover, or towards where the last hit came from (hit). The turret turns with it. With an angle after left or right, as in "turn left 90", it turns a tick at a time until it has turned that many degrees. To turn until the hull faces the enemy, use face.',
   },
   {
     word: 'face',
     kind: 'command',
     hint: 'turn the hull until it faces',
-    summary: 'Turns the hull towards the enemy, cover, where the last hit came from, or the way opposite to where it faces now (back), a tick at a time, until it faces it: "face hit" is the same as "turn hit" repeated. Takes no time once the hull faces it, or when there is nothing to face.',
+    summary: 'Turns the hull towards the enemy, cover, where the last hit came from, or the way opposite to where it faces now (back), a tick at a time, until it faces it: "face hit" is the same as "turn hit" repeated. Takes no time once the hull faces it, or when there is nothing to face. While it turns, the program does nothing else: to check bullets and walls on every tick as well, use turn in a loop.',
   },
   {
     word: 'aim',

@@ -2,7 +2,7 @@ import { createElement } from './dom';
 
 /**
  * The little markup of the tutorial's and the help's texts, as elements:
- * paragraphs parted by blank lines, "- " lists, "| a | b |" tables (the first
+ * paragraphs parted by blank lines, "## " headings, "- " lists, "| a | b |" tables (the first
  * row is the heading; a "|---|" row is skipped), ``` code blocks, `code` and
  * **bold** in a line.
  */
@@ -14,6 +14,10 @@ export function renderMarkup(text: string): HTMLElement {
     const line = lines[index];
     if (line.trim() === '') {
       index++;
+    } else if (line.startsWith('## ')) {
+      const heading = createElement('h3', 'markup-heading');
+      heading.append(...inline(lines[index++].slice(3)));
+      root.append(heading);
     } else if (line.startsWith('```')) {
       const code: string[] = [];
       index++;
@@ -47,7 +51,7 @@ export function renderMarkup(text: string): HTMLElement {
       root.append(list);
     } else {
       const words: string[] = [];
-      while (index < lines.length && lines[index].trim() !== '' && !/^(```|- |\|)/.test(lines[index])) {
+      while (index < lines.length && lines[index].trim() !== '' && !/^(```|- |\||## )/.test(lines[index])) {
         words.push(lines[index++]);
       }
       const paragraph = createElement('p', 'markup-paragraph');

@@ -2,6 +2,7 @@
 // language's own descriptions when shown (see wordsTopic), so it never falls behind the language.
 // Made from the text by a script: edit it here, keeping the markup (see renderMarkup).
 import type { Text } from '../tutorial/types';
+import { recipesText } from './recipes';
 
 export interface HelpTopic {
   id: string;
@@ -406,113 +407,22 @@ A faulty line turns red, and the editor underlines it. Put the cursor on it to s
 | コストが上限を超えている | \`config\` でコストの低いパーツに替え、合計を 12 以下にする |
 
 エラーのある行は赤くなり、エディタではその行に波線が出ます。カーソルを載せると内容が出ます。` } },
-      { id: 'examples', title: { en: `Examples`, ja: `例` }, body: { en: `**Drive up and shoot**
-
-\`\`\`
-loop
-    if enemy_visible and enemy_distance < weapon_range - 50
-        drive stop
-        aim enemy
-        fire
-    else
-        turn enemy
-        drive forward
-\`\`\`
-
-**Drive sideways, aiming where the enemy will be**
-
-\`\`\`
-drive forward
-loop
-    if blocked
-        turn left
-    else if lead_angle > 2 or lead_angle < -2
-        aim lead
-    else
-        fire
-\`\`\`
-
-**Hide and rest when hurt**
-
-\`\`\`
-loop
-    if hp < 120 and not hidden
-        face cover
-        drive forward
-        wait
-    else if hidden
-        drive stop
-        wait
-    else
-        aim enemy
-        fire
-\`\`\`
-
-**Do something only once, at the start**
-
-The program runs from the top just once, so lines above \`loop\` run once at the start of the match. This one turns 90 degrees left first.
-
-\`\`\`
-turn left 90
-loop
-    face enemy
-    fire
-\`\`\`
-
-To learn more, read the built-in robots' programs with **LOAD TEMPLATE** in the editor.`, ja: `**近づいて撃つ**
-
-\`\`\`
-loop
-    if enemy_visible and enemy_distance < weapon_range - 50
-        drive stop
-        aim enemy
-        fire
-    else
-        turn enemy
-        drive forward
-\`\`\`
-
-**横に走りながら、動く先を狙う**
-
-\`\`\`
-drive forward
-loop
-    if blocked
-        turn left
-    else if lead_angle > 2 or lead_angle < -2
-        aim lead
-    else
-        fire
-\`\`\`
-
-**HP が減ったら隠れて休む**
-
-\`\`\`
-loop
-    if hp < 120 and not hidden
-        face cover
-        drive forward
-        wait
-    else if hidden
-        drive stop
-        wait
-    else
-        aim enemy
-        fire
-\`\`\`
-
-**始めに 1 回だけ何かをする**
-
-プログラムは上から 1 回だけ流れるので、\`loop\` より上に書いた行は、試合の始めに 1 回だけ動きます。この例は、まず左へ 90 度向きます。
-
-\`\`\`
-turn left 90
-loop
-    face enemy
-    fire
-\`\`\`
-
-もっと知りたいときは、エディタの **テンプレート** で内蔵ロボットのプログラムを読んでみましょう。` } },
+      {
+        id: 'recipes',
+        title: { en: `Recipes`, ja: `レシピ集` },
+        body: {
+          en: recipesText(
+            'en',
+            `Short programs for things you may want a robot to do. Each runs as it is: copy the one nearest to what you want into the editor, and change its numbers and directions.`,
+            `To learn more, read the built-in robots' programs with **LOAD TEMPLATE** in the editor.`,
+          ),
+          ja: recipesText(
+            'ja',
+            `やりたいことごとの短いプログラムです。どれもそのまま動きます。やりたいことに近いものをエディタに写して、数や向きを変えてみましょう。`,
+            `もっと知りたいときは、エディタの **テンプレート** で内蔵ロボットのプログラムを読んでみましょう。`,
+          ),
+        },
+      },
     ],
   },
 ];

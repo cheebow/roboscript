@@ -80,8 +80,10 @@ export class RobotController {
   private hitFrom: number | null = null;
   private hitSensed: HitReading = NO_HIT_READING;
   private lastAction: AIAction | null = null;
-  /** deg on the field: where a turn `back` of this tick's action turns to. */
+  /** deg on the field: where a turn of this tick's action stops (`back`, or `left` / `right` by an angle). */
   private turnHeading: number | null = null;
+  /** deg on the hull: where an aim `left` / `right` by an angle of this tick's action stops. */
+  private aimGunAngle: number | null = null;
   private readonly knownVariables = new Map<string, number>();
 
   constructor(options: RobotOptions) {
@@ -224,6 +226,7 @@ export class RobotController {
     if (lookedAtHit) this.struck = false;
     if (action.label !== null) this.label = action.label;
     this.turnHeading = action.heading;
+    this.aimGunAngle = action.gunAngle;
     this.lastAction = action;
     for (const { name, value } of action.assignments) this.knownVariables.set(name, value);
     return action;
@@ -267,9 +270,9 @@ export class RobotController {
   private aimStep(direction: AimDirection, maxStep: number): number {
     switch (direction) {
       case 'left':
-        return -maxStep;
+        return this.aimGunAngle === null ? -maxStep : clamp(normalizeAngle(this.aimGunAngle - this.gunRotation), -maxStep, maxStep);
       case 'right':
-        return maxStep;
+        return this.aimGunAngle === null ? maxStep : clamp(normalizeAngle(this.aimGunAngle - this.gunRotation), -maxStep, maxStep);
       case 'ahead':
         return clamp(-this.gunRotation, -maxStep, maxStep);
       case 'enemy':
@@ -297,9 +300,9 @@ export class RobotController {
   private turnStep(direction: TurnDirection, maxStep: number): number {
     switch (direction) {
       case 'left':
-        return -maxStep;
+        return this.turnHeading === null ? -maxStep : clamp(normalizeAngle(this.turnHeading - this.rotation), -maxStep, maxStep);
       case 'right':
-        return maxStep;
+        return this.turnHeading === null ? maxStep : clamp(normalizeAngle(this.turnHeading - this.rotation), -maxStep, maxStep);
       case 'enemy':
         return this.reading.lastSeen === null ? 0 : clamp(this.reading.enemyAngle, -maxStep, maxStep);
       case 'cover':

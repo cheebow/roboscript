@@ -58,10 +58,14 @@ export interface SetNode {
   value: Expression;
 }
 
-/** A statement that makes the robot do something, and takes one tick. */
+/**
+ * A statement that makes the robot do something, and takes one tick. A turn or
+ * an aim `left` / `right` given an angle (deg) goes on, a tick at a time, until
+ * it has turned that far; an angle of 0 takes no time.
+ */
 export type ActionNode =
-  | { kind: 'turn'; line: number; direction: TurnDirection }
-  | { kind: 'aim'; line: number; direction: AimDirection }
+  | { kind: 'turn'; line: number; direction: TurnDirection; angle: Expression | null }
+  | { kind: 'aim'; line: number; direction: AimDirection; angle: Expression | null }
   | { kind: 'fire'; line: number }
   | { kind: 'guard'; line: number }
   | { kind: 'wait'; line: number };

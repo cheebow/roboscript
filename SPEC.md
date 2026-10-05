@@ -206,8 +206,10 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | 種類 | 文 | 時間 |
 |---|---|---|
 | 車体を回す | `turn left` / `right` / `enemy` / `cover` / `hit` | 1 tick |
+| 角度だけ車体を回す | `turn left 角度` / `turn right 角度` | 回り切るまで（0 度なら 0） |
 | 向くまで回る | `face enemy` / `cover` / `hit` / `back` | 向くまで（向いていれば 0） |
 | 砲塔を回す | `aim left` / `right` / `enemy` / `lead` / `ahead` | 1 tick |
+| 角度だけ砲塔を回す | `aim left 角度` / `aim right 角度` | 回り切るまで（0 度なら 0） |
 | 撃つ・身構える・待つ | `fire` / `guard` / `wait` | 1 tick |
 | 走行の設定 | `drive forward` / `backward` / `stop` | なし |
 | 条件 | `if 条件` / `else if 条件` / `else` | なし |
@@ -219,6 +221,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 
 - ブロック（`if` / `else` / `loop` / `while` / `def` の中身）は、次の行から半角の空白で字下げして書く。タブと全角スペースの字下げはエラー。
 - **方向**: `enemy` は敵（見えなければ最後に見た位置）、`cover` は隠れ場所への道の次の地点、`hit` は最後に当たった弾が来た方向、`lead` は敵が今の動きを続けたときに弾が届く頃の位置（直線の動きだけを読む）、`ahead` は車体の正面、`back`（`face` だけ）は `face` を始めたときの向きの真後ろ（`turn back` は、1 tick しか回らないのでエラーにして `face back` を案内する）。向く先がないときは何もしない（その tick は使う）。
+- **角度**: `left` / `right` の後ろにだけ、数か式で角度（度）を書ける（`turn left 90`、`aim right n * 2`）。書くと、その角度だけ回り切るまで、1 tick ずつ回れるだけ回り、最後の tick はちょうどその角度で止まる（標準の脚で `turn left 90` は 15 tick）。角度は行を始めたときに 1 回だけ計算する。マイナスは反対へ回る。360 度より大きければ何周でも回る。回っている間、ログは `turn left` / `aim left` のまま。ほかの向きに角度を書くとエラー。
 - `label` は表示とログのためだけで、動きは変わらない。ロボットの下（デバッグ中）、状態、ウォッチに出る。何も付けていない間は `IDLE`。
 
 ### 5.3 式と条件

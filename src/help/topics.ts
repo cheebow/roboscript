@@ -236,6 +236,7 @@ loop
 - \`#\` から行末までは **コメント**（メモ）で、何もしません。
 - 語は小文字の英語です。大文字と小文字は区別されます。` } },
       { id: 'moving', title: { en: `Moving and shooting`, ja: `動く・撃つ` }, body: { en: `- **Turn the body**: \`turn left\` / \`right\` turn 6 degrees at a time. \`turn enemy\` (towards the enemy), \`turn cover\` (along the way to cover) and \`turn hit\` (towards where you were shot from) turn that way as far as they can in a tick.
+- **Turn by an angle**: put the degrees after \`left\` / \`right\`, as in \`turn left 90\`, and the hull keeps turning, however many ticks it takes, until it has turned that far (15 ticks with standard legs). A negative angle turns the other way. The program does nothing else while it turns. \`aim left 30\` turns the turret the same way.
 - **Turn until facing**: \`face enemy\` / \`cover\` / \`hit\` keep turning, however many ticks it takes, until facing that way. \`face back\` turns right round, to face the way opposite to where the robot faced (about a second with standard legs).
 - **Something in the way**: \`blocked\` / \`blocked_behind\` are true when a wall or an obstacle is right ahead / behind. Robots do not count, so that a robot that runs into the enemy can keep fighting it; \`touching_enemy\` tells when the enemy is in the way.
 - **Drive**: \`drive forward\` / \`backward\` / \`stop\`. It is a setting: the robot keeps driving until \`drive stop\`.
@@ -243,6 +244,7 @@ loop
 - **Shoot**: \`fire\` shoots the way the turret points. Nothing happens while the gun is getting the next shot ready (one shot every 0.8 seconds as standard) or out of ammo. A shot fired on the move scatters five times as much as one fired standing still.
 - **Brace**: \`guard\` halves the damage of a bullet that hits on that tick (up to 4 times a match; each one puts off your next shot a little).
 - **Wait**: \`wait\` does nothing for one tick.`, ja: `- **車体を回す**: \`turn left\` / \`right\` で 6 度ずつ回ります。\`turn enemy\`（敵の方へ）、\`turn cover\`（隠れ場所への道の方へ）、\`turn hit\`（撃たれた方へ）は、その方向へ回せるだけ回ります。
+- **角度だけ回る**: \`turn left 90\` のように \`left\` / \`right\` の後ろに角度を書くと、その角度だけ回り切るまで何 tick でも回り続けます（標準の脚なら 15 tick）。マイナスの角度は反対へ回ります。回っている間、プログラムはほかのことをしません。\`aim left 30\` で、砲塔も同じように回せます。
 - **向くまで回る**: \`face enemy\` / \`cover\` / \`hit\` は、その方向を向くまで何 tick でも回り続けます。\`face back\` は、今向いている方の真後ろを向くまでくるりと回ります（標準の脚で約 1 秒）。
 - **前に何かある**: \`blocked\` / \`blocked_behind\` は、すぐ前 / 後ろに壁か障害物があるとき真です。ロボットは数えません。敵にぶつかってもそのまま戦えるようにするためです。敵にふさがれているかは \`touching_enemy\` で分かります。
 - **走る**: \`drive forward\` / \`backward\` / \`stop\`。設定なので、\`drive stop\` まで走り続けます。
@@ -448,13 +450,10 @@ loop
 
 **Do something only once, at the start**
 
-The program runs from the top just once, so lines above \`loop\` run once at the start of the match. This one turns 90 degrees left first (15 turns of 6 degrees with standard legs).
+The program runs from the top just once, so lines above \`loop\` run once at the start of the match. This one turns 90 degrees left first.
 
 \`\`\`
-set n = 0
-while n < 15
-    turn left
-    set n = n + 1
+turn left 90
 loop
     face enemy
     fire
@@ -504,13 +503,10 @@ loop
 
 **始めに 1 回だけ何かをする**
 
-プログラムは上から 1 回だけ流れるので、\`loop\` より上に書いた行は、試合の始めに 1 回だけ動きます。この例は、まず左へ 90 度向きます（標準の脚なら 6 度を 15 回）。
+プログラムは上から 1 回だけ流れるので、\`loop\` より上に書いた行は、試合の始めに 1 回だけ動きます。この例は、まず左へ 90 度向きます。
 
 \`\`\`
-set n = 0
-while n < 15
-    turn left
-    set n = n + 1
+turn left 90
 loop
     face enemy
     fire

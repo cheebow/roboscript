@@ -1,6 +1,7 @@
 import { normalizeAngle } from '../sim/math';
 import { type AIAction, type AIContext, type RobotBrain, createIdleAction } from '../sim/ai_context';
 import {
+  type ActionNode,
   type ArithmeticOperator,
   type ComparisonOperator,
   type ConditionNode,
@@ -20,6 +21,12 @@ type Execution = Generator<void, Completion, void>;
 
 /** deg: `face` is done when the target is this close to straight ahead; the last tick of turning lands exactly on it. */
 const FACED_WITHIN = 0.5;
+
+/** deg: what is left of a turn or an aim by an angle once it lands on it, give or take rounding. */
+const TURNED_WITHIN = 1e-6;
+
+/** deg: the farthest a turn or an aim by an angle sets out to go in one tick; more than a hull or a turret turns in a tick. */
+const TURN_TARGET_STEP = 90;
 
 /**
  * Runs a parsed RoboScript program the way an ordinary program runs: from the
@@ -105,10 +112,12 @@ export class ScriptBrain implements RobotBrain {
         return null;
       }
       case 'turn':
+        if (statement.angle !== null) return yield* this.turnBy(statement, statement.angle);
         action.turn = statement.direction;
         action.sourceLines.turn = statement.line;
         break;
       case 'aim':
+        if (statement.angle !== null) return yield* this.turnBy(statement, statement.angle);
         action.aim = statement.direction;
         action.sourceLines.aim = statement.line;
         break;
@@ -127,6 +136,35 @@ export class ScriptBrain implements RobotBrain {
     }
     // An action was chosen: the tick is over.
     yield;
+    return null;
+  }
+
+  /**
+   * Turns the hull (`turn`) or the turret (`aim`) left or right, a tick at a
+   * time, until it has turned by the angle; a negative angle turns the other
+   * way. Each tick turns as far as it can, but no further than what is left.
+   */
+  private *turnBy(statement: Extract<ActionNode, { kind: 'turn' | 'aim' }>, angle: Expression): Execution {
+    const value = this.valueOf(angle);
+    const sign = (statement.direction === 'right' ? 1 : -1) * Math.sign(value);
+    let left = Math.abs(value);
+    while (left > TURNED_WITHIN) {
+      const from = statement.kind === 'turn' ? this.context.heading : this.context.gunAngle;
+      const to = normalizeAngle(from + sign * Math.min(left, TURN_TARGET_STEP));
+      if (statement.kind === 'turn') {
+        this.action.turn = statement.direction;
+        this.action.heading = to;
+        this.action.sourceLines.turn = statement.line;
+      } else {
+        this.action.aim = statement.direction;
+        this.action.gunAngle = to;
+        this.action.sourceLines.aim = statement.line;
+      }
+      yield;
+      yield* this.enter(statement.line);
+      const now = statement.kind === 'turn' ? this.context.heading : this.context.gunAngle;
+      left -= Math.abs(normalizeAngle(now - from));
+    }
     return null;
   }
 

@@ -106,7 +106,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'turn',
     kind: 'command',
     hint: 'turn the hull, 1 tick',
-    summary: 'Turns the hull for one tick: left, right, towards the enemy, towards cover, or towards where the last hit came from (hit). The turret turns with it.',
+    summary: 'Turns the hull for one tick: left, right, towards the enemy, towards cover, or towards where the last hit came from (hit). The turret turns with it. With an angle after left or right, as in "turn left 90", it turns a tick at a time until it has turned that many degrees.',
   },
   {
     word: 'face',
@@ -118,7 +118,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'aim',
     kind: 'command',
     hint: 'turn the turret, 1 tick',
-    summary: 'Turns the turret for one tick: left, right, at the enemy, at where the enemy will be (lead) or back to the front of the hull (ahead).',
+    summary: 'Turns the turret for one tick: left, right, at the enemy, at where the enemy will be (lead) or back to the front of the hull (ahead). With an angle after left or right, as in "aim right 30", it turns a tick at a time until it has turned that many degrees.',
   },
   {
     word: 'fire',
@@ -136,8 +136,8 @@ export const LANGUAGE: readonly WordReference[] = [
   { word: 'forward', kind: 'direction', hint: 'the way the hull faces', summary: 'The way the hull is facing.' },
   { word: 'backward', kind: 'direction', hint: 'away from where it faces', summary: 'Opposite to the way the hull is facing.' },
   { word: 'stop', kind: 'direction', hint: 'stand still', summary: 'Stops driving.' },
-  { word: 'left', kind: 'direction', hint: 'counterclockwise', summary: 'Counterclockwise, as seen on the screen.' },
-  { word: 'right', kind: 'direction', hint: 'clockwise', summary: 'Clockwise, as seen on the screen.' },
+  { word: 'left', kind: 'direction', hint: 'counterclockwise', summary: 'Counterclockwise, as seen on the screen. A number after it is how many degrees to turn: turn left 90.' },
+  { word: 'right', kind: 'direction', hint: 'clockwise', summary: 'Clockwise, as seen on the screen. A number after it is how many degrees to turn: aim right 30.' },
   {
     word: 'enemy',
     kind: 'direction',

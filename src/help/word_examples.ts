@@ -87,8 +87,9 @@ loop
     if blocked
         drive stop
     wait`,
-  'command:turn': `loop
-    turn left`,
+  'command:turn': `turn left 90
+loop
+    turn right`,
   'command:face': `loop
     face enemy
     fire`,
@@ -119,8 +120,9 @@ loop
     wait`,
   'direction:left': `loop
     turn left`,
-  'direction:right': `loop
-    aim right`,
+  'direction:right': `aim right 30
+loop
+    fire`,
   'direction:enemy': `loop
     turn enemy
     aim enemy

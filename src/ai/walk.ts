@@ -39,6 +39,10 @@ function walkStatement(statement: StatementNode, visitor: Visitor): void {
     case 'return':
       if (statement.value !== null) walkExpression(statement.value, line, visitor);
       return;
+    case 'turn':
+    case 'aim':
+      if (statement.angle !== null) walkExpression(statement.angle, line, visitor);
+      return;
     default:
       // Actions and settings: nothing inside them to visit.
       return;

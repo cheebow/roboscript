@@ -111,7 +111,9 @@ while n < 15
 
 This means "while \`n\` is less than 15, turn left and add 1 to \`n\`", so it does \`turn left\` **exactly 15 times**: 15 × 6 = 90 degrees.
 
-This time the goal is **90 degrees to the left** of ALPHA (straight up). Instead of writing \`turn left\` on 15 lines as in chapter 2, count the turns with \`while\`.`, ja: `**変数** は、数を入れておく **名前の付いた箱** です。**\`set\`**（セット）で数を入れます。
+This time the goal is **90 degrees to the left** of ALPHA (straight up). Instead of writing \`turn left\` on 15 lines as in chapter 2, count the turns with \`while\`.
+
+(In fact \`turn left 90\` turns this far in one line. Here, for practice with variables, count the turns.)`, ja: `**変数** は、数を入れておく **名前の付いた箱** です。**\`set\`**（セット）で数を入れます。
 
 \`\`\`
 set n = 0
@@ -131,7 +133,9 @@ while n < 15
 
 これは「\`n\` が 15 より小さいあいだ、左に回って \`n\` を 1 増やす」なので、\`turn left\` を **ちょうど 15 回** します。15 × 6 = 90 度です。
 
-今度のゴールは、ALPHA から見て **左に 90 度**（真上）です。2 章のように \`turn left\` を 15 行書くかわりに、\`while\` で数えて回りましょう。` },
+今度のゴールは、ALPHA から見て **左に 90 度**（真上）です。2 章のように \`turn left\` を 15 行書くかわりに、\`while\` で数えて回りましょう。
+
+（実は \`turn left 90\` の 1 行でも、ここまで回れます。ここでは変数の練習なので、数えて回りましょう。）` },
     task: { en: `Turn 90 degrees to the left with \`set\` and \`while\`, then drive to the goal.`, ja: `\`set\` と \`while\` で左に 90 度回ってから走り、ゴールに着きましょう。` },
     hints: [
       { en: `Under the program of the explanation, write \`drive forward\` outside the \`while\` (not indented).`, ja: `説明のプログラムの下に、\`while\` の外（字下げなし）で \`drive forward\` を書きます。` },

@@ -44,10 +44,10 @@ describe('parser: statements', () => {
   it('parses every command', () => {
     const source = ['turn left', 'turn right', 'turn enemy', 'turn cover', 'fire', 'guard', 'wait', 'label EVADE'].join('\n');
     expect(parseOk(source)).toEqual([
-      { kind: 'turn', line: 1, direction: 'left' },
-      { kind: 'turn', line: 2, direction: 'right' },
-      { kind: 'turn', line: 3, direction: 'enemy' },
-      { kind: 'turn', line: 4, direction: 'cover' },
+      { kind: 'turn', line: 1, direction: 'left', angle: null },
+      { kind: 'turn', line: 2, direction: 'right', angle: null },
+      { kind: 'turn', line: 3, direction: 'enemy', angle: null },
+      { kind: 'turn', line: 4, direction: 'cover', angle: null },
       { kind: 'fire', line: 5 },
       { kind: 'guard', line: 6 },
       { kind: 'wait', line: 7 },
@@ -66,7 +66,7 @@ describe('parser: statements', () => {
   it('parses the directions of the turret', () => {
     const directions = ['left', 'right', 'enemy', 'lead', 'ahead'];
     expect(parseOk(directions.map((direction) => `aim ${direction}`).join('\n'))).toEqual(
-      directions.map((direction, index) => ({ kind: 'aim', line: index + 1, direction })),
+      directions.map((direction, index) => ({ kind: 'aim', line: index + 1, direction, angle: null })),
     );
   });
 
@@ -84,7 +84,7 @@ describe('parser: statements', () => {
         condition: VISIBLE,
         thenBody: [{ kind: 'fire', line: 2 }],
         elseLine: 3,
-        elseBody: [{ kind: 'turn', line: 4, direction: 'right' }], elseIf: false,
+        elseBody: [{ kind: 'turn', line: 4, direction: 'right', angle: null }], elseIf: false,
       },
     ]);
   });
@@ -130,13 +130,13 @@ describe('parser: statements', () => {
       params: [],
       body: [
         { kind: 'label', line: 5, label: 'SEARCH' },
-        { kind: 'turn', line: 6, direction: 'left' },
+        { kind: 'turn', line: 6, direction: 'left', angle: null },
       ],
     });
     const attack = program.functions.get('attack');
     expect(attack).toMatchObject({ line: 9, params: ['distance'] });
     expect(attack?.body).toEqual([
-      { kind: 'turn', line: 10, direction: 'enemy' },
+      { kind: 'turn', line: 10, direction: 'enemy', angle: null },
       {
         kind: 'if',
         line: 12,

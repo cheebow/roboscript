@@ -255,15 +255,13 @@ class Parser {
       case 'aim': {
         if (argument === undefined) throw new LineError(t('parse.expectDirectionAfter', { command: 'aim' }));
         if (!isAimDirection(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
-        expectEnd(rest, `aim ${argument.text}`);
-        return { kind: 'aim', line: lineNumber, direction: argument.text };
+        return { kind: 'aim', line: lineNumber, direction: argument.text, angle: this.parseAngle(rest, 'aim', argument.text) };
       }
       case 'turn': {
         if (argument === undefined) throw new LineError(t('parse.expectDirectionAfter', { command: 'turn' }));
         if (argument.text === 'back') throw new LineError(t('parse.turnBackIsFace'));
         if (!isTurnDirection(argument.text)) throw new LineError(t('parse.unknownDirection', { direction: argument.text }));
-        expectEnd(rest, `turn ${argument.text}`);
-        return { kind: 'turn', line: lineNumber, direction: argument.text };
+        return { kind: 'turn', line: lineNumber, direction: argument.text, angle: this.parseAngle(rest, 'turn', argument.text) };
       }
       case 'face': {
         if (argument === undefined) throw new LineError(t('parse.expectFaceTarget'));
@@ -305,6 +303,13 @@ class Parser {
       default:
         return this.parseCall(line);
     }
+  }
+
+  /** The angle after `turn left`, `aim right` and so on: only a side takes one, and none is needed. */
+  private parseAngle(rest: Token[], command: string, direction: string): Expression | null {
+    if (rest.length === 0) return null;
+    if (!isSide(direction)) throw new LineError(t('parse.angleOnlySides', { command, direction }));
+    return new ExpressionParser(rest, this.scope).parseWholeExpression();
   }
 
   /** A line that calls a function, such as `approach(350)`. */
@@ -413,9 +418,13 @@ function isSymbol(token: Token | undefined, text: string): boolean {
   return token !== undefined && token.type === 'symbol' && token.text === text;
 }
 
+function isSide(direction: string): boolean {
+  return direction === 'left' || direction === 'right';
+}
+
 /** `drive left` / `drive right` are valid English but not valid here: robots drive like tanks. */
 function isSideways(direction: string): boolean {
-  return direction === 'left' || direction === 'right';
+  return isSide(direction);
 }
 
 function expectEnd(rest: Token[], command: string): void {

@@ -492,7 +492,7 @@ describe('language: guard, turn cover and the new sensors', () => {
   it('parses guard and turn cover', () => {
     expect(parse('guard\nturn cover').program?.body).toEqual([
       { kind: 'guard', line: 1 },
-      { kind: 'turn', line: 2, direction: 'cover' },
+      { kind: 'turn', line: 2, direction: 'cover', angle: null },
     ]);
     expect(errorsOf('guard now')).toHaveLength(1);
   });

@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#0b0d0f;--panel:#0f1215;--border:#2c333a;--text:#c5ccd3;--muted:#6f7a85;--ctl:#b3a1d6;--cmd:#7fb4d6;--val:#d4b77a;--var:#8fc7a6;--num:#d49a6a}
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;background:var(--bg);color:var(--text);font-family:Menlo,ui-monospace,monospace;overflow:hidden;position:relative}
+.left{position:absolute;left:56px;top:52px;width:470px}
+h1{font-size:54px;letter-spacing:.06em;color:#e6ebef;font-weight:bold}
+.tag{margin-top:14px;font-size:22px;line-height:1.5;color:var(--text);font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;font-weight:600}
+.en{margin-top:6px;font-size:16px;color:var(--muted)}
+pre{margin-top:26px;padding:16px 18px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--val);font-size:19px;line-height:1.5;font-family:inherit}
+.c{color:var(--ctl)}.k{color:var(--cmd)}.v{color:var(--val)}.s{color:var(--var)}.n{color:var(--num)}
+.right{position:absolute;right:48px;top:52px;width:582px;height:349px;border:1px solid var(--border);overflow:hidden;background:#000}
+.log{position:absolute;right:48px;top:415px;width:582px;padding:10px 14px;background:var(--panel);border:1px solid var(--border);font-size:15px;line-height:1.6;white-space:pre;color:var(--text)}
+.t{color:var(--muted)}.a{color:#e6ebef}.act{color:var(--cmd)}.hit{color:var(--num)}
+.right img{width:100%;height:100%;object-fit:cover;display:block}
+.url{position:absolute;left:56px;bottom:40px;font-size:20px;color:var(--var)}
+.badge{position:absolute;right:48px;bottom:40px;font-size:16px;color:var(--muted);font-family:"Hiragino Sans",sans-serif}
+</style></head><body>
+<div class="left">
+<h1>ROBOSCRIPT</h1>
+<div class="tag">ロボットの AI をプログラムで書いて、<br>戦わせて、デバッグするゲーム</div>
+<div class="en">Write your robot's AI. Send it into battle. Debug it.</div>
+<pre><span class="c">loop</span>
+    <span class="c">if</span> <span class="s">enemy_visible</span>
+        <span class="k">aim</span> <span class="v">enemy</span>
+        <span class="k">fire</span>
+    <span class="c">else</span>
+        <span class="k">turn</span> <span class="v">left</span> <span class="n">90</span>
+        <span class="k">drive</span> <span class="v">forward</span></pre>
+</div>
+<div class="right"><img src="fight.png"></div>
+<div class="log"><span class="t">[07.300]</span> <span class="a">ALPHA</span> <span class="act">ACTION</span>  fire
+<span class="t">[07.600]</span> <span class="a">BRAVO</span> <span class="hit">HIT</span>     ALPHA damage=20 hp=180
+<span class="t">[08.100]</span> <span class="a">ALPHA</span> <span class="act">ACTION</span>  fire
+<span class="t">[08.400]</span> <span class="a">ALPHA</span> <span class="hit">HIT</span>     BRAVO damage=20 hp=180</div>
+<div class="url">cheebow.github.io/roboscript</div>
+<div class="badge">ブラウザで、インストールなしで遊べます</div>
+</body></html>

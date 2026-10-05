@@ -446,6 +446,20 @@ loop
         fire
 \`\`\`
 
+**Do something only once, at the start**
+
+The program runs from the top just once, so lines above \`loop\` run once at the start of the match. This one turns 90 degrees left first (15 turns of 6 degrees with standard legs).
+
+\`\`\`
+set n = 0
+while n < 15
+    turn left
+    set n = n + 1
+loop
+    face enemy
+    fire
+\`\`\`
+
 To learn more, read the built-in robots' programs with **LOAD TEMPLATE** in the editor.`, ja: `**近づいて撃つ**
 
 \`\`\`
@@ -486,6 +500,20 @@ loop
     else
         aim enemy
         fire
+\`\`\`
+
+**始めに 1 回だけ何かをする**
+
+プログラムは上から 1 回だけ流れるので、\`loop\` より上に書いた行は、試合の始めに 1 回だけ動きます。この例は、まず左へ 90 度向きます（標準の脚なら 6 度を 15 回）。
+
+\`\`\`
+set n = 0
+while n < 15
+    turn left
+    set n = n + 1
+loop
+    face enemy
+    fire
 \`\`\`
 
 もっと知りたいときは、エディタの **テンプレート** で内蔵ロボットのプログラムを読んでみましょう。` } },

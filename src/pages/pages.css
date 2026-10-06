@@ -1,0 +1,235 @@
+/* The standalone pages: the introduction (about.html) and the help page
+ * (help.html). They share the game's palette and base styles (style.css)
+ * and scroll like ordinary pages. */
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+}
+
+body {
+  font-size: 14px;
+}
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px clamp(16px, 5vw, 48px);
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.page-title {
+  color: var(--text);
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+
+.page-links {
+  display: flex;
+  gap: 14px;
+  margin-right: auto;
+}
+
+.page-link {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.page-link:hover,
+.page-link.selected {
+  color: var(--text);
+}
+
+.page-main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 5vw, 48px) 48px;
+}
+
+.page-footer {
+  padding: 18px clamp(16px, 5vw, 48px) 28px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- The introduction ---- */
+
+.about-hero {
+  margin: 36px 0 12px;
+  text-align: center;
+}
+
+.about-title {
+  margin: 0;
+  font-size: clamp(36px, 7vw, 56px);
+  letter-spacing: 0.08em;
+}
+
+.about-tagline {
+  margin: 10px auto 22px;
+  max-width: 560px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.about-play {
+  display: inline-block;
+  padding: 12px 36px;
+  border: 1px solid var(--syntax-value);
+  color: var(--syntax-value);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+
+.about-play:hover {
+  background: var(--selected);
+}
+
+.about-no-install {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.about-shot {
+  display: block;
+  width: 100%;
+  margin: 28px 0;
+  border: 1px solid var(--border);
+}
+
+.about-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin: 28px 0;
+}
+
+.about-pillar {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+}
+
+.about-pillar h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--syntax-value);
+}
+
+.about-pillar p {
+  margin: 0;
+  color: var(--text);
+}
+
+.about-code {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--border);
+  background: var(--panel);
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.about-section-title {
+  margin: 36px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+}
+
+.about-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-features li {
+  padding-left: 14px;
+  text-indent: -14px;
+}
+
+.about-features li::before {
+  content: '▶ ';
+  color: var(--syntax-command);
+}
+
+.about-read-first {
+  margin: 28px 0 8px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+}
+
+.about-read-first a {
+  color: var(--syntax-variable);
+}
+
+/* ---- The help page ---- */
+
+.help-page {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 4vw, 48px) 48px;
+}
+
+.help-page-nav {
+  position: sticky;
+  top: 64px;
+  align-self: start;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.help-page-nav h2 {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.help-page-nav a {
+  display: block;
+  padding: 2px 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.help-page-nav a:hover {
+  color: var(--syntax-value);
+}
+
+.help-page-topic {
+  margin-bottom: 36px;
+}
+
+.help-page-topic > h2 {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .help-page {
+    grid-template-columns: 1fr;
+  }
+
+  .help-page-nav {
+    position: static;
+    max-height: none;
+  }
+}

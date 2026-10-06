@@ -6,6 +6,8 @@
 
 **遊ぶ / Play**: https://cheebow.github.io/roboscript/ （インストール不要。ブラウザで開くだけで遊べます）
 
+**紹介 / About**: https://cheebow.github.io/roboscript/about.html ・ **ヘルプ / Help**: https://cheebow.github.io/roboscript/help.html （遊ぶ前に、中身とヘルプを読めます）
+
 ![デバッグ: 試合を再生しながら、ログとウォッチが進む。途中で 1 行ずつ進めると、今の行（黄色）がコードの中を動く](docs/images/debug.gif)
 
 ## どんなゲーム？

@@ -166,6 +166,7 @@ export const en = {
   'boot.choice.language': '日本語',
   'boot.choice.language.what': '画面を日本語にする',
   'boot.help': '↑↓ choose   Enter start   1-7 pick a line',
+  'boot.news': 'SINCE YOUR LAST VISIT',
   'boot.button.title': 'Back to the start menu',
   'credits.source': 'The source of RoboScript on GitHub',
   // Panels
@@ -719,6 +720,7 @@ export const ja: Record<MessageKey, string> = {
   'boot.choice.language': 'English',
   'boot.choice.language.what': 'Show the screen in English',
   'boot.help': '↑↓ 選ぶ   Enter 決定   1〜7 番号で選ぶ',
+  'boot.news': '前回からの更新',
   'boot.button.title': '起動メニューに戻る',
   'credits.source': 'RoboScript のソースコード（GitHub）',
   'panel.project': 'プロジェクト',

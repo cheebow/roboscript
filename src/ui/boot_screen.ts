@@ -4,6 +4,8 @@ import { PARTS, SLOTS } from '../data/parts';
 import { TEMPLATES } from '../data/templates';
 import { RULES_VERSION } from '../data/rules_version';
 import { type MessageKey, t } from '../i18n/messages';
+import { type Change, changesSince, latestChangeDate } from '../data/changes';
+import { currentLanguage } from '../i18n/language';
 import type { KeyValueStorage } from '../project/project_store';
 import { createCredits } from './credits';
 import { createElement } from './dom';
@@ -35,6 +37,10 @@ export class BootScreen {
   private cursor = 0;
   private items: HTMLButtonElement[] = [];
   private menu: HTMLElement | null = null;
+  /** What the menu started last time, kept across saves. */
+  private lastChoice: BootChoice | null = null;
+  /** The day of the newest change the player has seen, as YYYY-MM-DD; null before the first note of it. */
+  private seen: string | null = null;
 
   constructor(
     private readonly storage: KeyValueStorage | null,
@@ -50,6 +56,10 @@ export class BootScreen {
   show(): void {
     if (this.element !== null) return;
     const saved = this.readSaved();
+    this.lastChoice = saved.last;
+    this.seen = saved.seen;
+    // On the very first visit everything would be "new": the news starts with the next change.
+    const news = saved.visited ? changesSince(saved.seen) : [];
     const element = createElement('div', 'boot');
     element.id = 'boot';
     element.tabIndex = -1;
@@ -69,7 +79,7 @@ export class BootScreen {
       if (this.timer !== null) clearTimeout(this.timer);
       this.timer = null;
       while (shownLines < lines.length) log.append(this.lineElement(lines[shownLines++]));
-      if (this.menu === null) this.showMenu(saved.last);
+      if (this.menu === null) this.showMenu(saved.last, news);
     };
     const next = () => {
       if (shownLines >= lines.length) {
@@ -130,7 +140,7 @@ export class BootScreen {
     return row;
   }
 
-  private showMenu(last: BootChoice | null): void {
+  private showMenu(last: BootChoice | null, news: readonly Change[]): void {
     if (this.element === null) return;
     const menu = createElement('div', 'boot-menu');
     menu.setAttribute('role', 'menu');
@@ -151,12 +161,30 @@ export class BootScreen {
       return item;
     });
     const help = createElement('div', 'boot-help', t('boot.help'));
-    this.element.append(menu, help, createCredits('boot-credits'));
+    this.element.append(menu, ...(news.length > 0 ? [this.newsElement(news)] : []), help, createCredits('boot-credits'));
     this.menu = menu;
+    // Shown (or, the first time, skipped): the player is up to date from here on.
+    if (this.seen !== latestChangeDate()) {
+      this.seen = latestChangeDate();
+      this.write();
+    }
     // The cursor starts on what was started last time; the first time, on the tutorial.
     const start = last ?? 'tutorial';
     const at = CHOICES.indexOf(start);
     this.moveTo(this.items[at]?.disabled === false ? at : this.items.findIndex((item) => !item.disabled));
+  }
+
+  /** The changes since the player's last visit, every one of them, under a heading. */
+  private newsElement(news: readonly Change[]): HTMLElement {
+    const box = createElement('div', 'boot-news');
+    box.append(createElement('div', 'boot-news-title', t('boot.news')));
+    const language = currentLanguage();
+    for (const change of news) {
+      const row = createElement('div', 'boot-news-item');
+      row.append(createElement('span', 'boot-news-date', change.date), createElement('span', 'boot-news-text', change[language]));
+      box.append(row);
+    }
+    return box;
   }
 
   private onKey(event: KeyboardEvent): void {
@@ -195,19 +223,30 @@ export class BootScreen {
     this.onChoose(choice);
   }
 
-  private readSaved(): { last: BootChoice | null } {
+  /** `visited` is false on the very first visit: nothing of the game was seen yet, so nothing is news. */
+  private readSaved(): { last: BootChoice | null; seen: string | null; visited: boolean } {
     try {
       const value: unknown = JSON.parse(this.storage?.getItem(BOOT_KEY) ?? 'null');
-      const last = typeof value === 'object' && value !== null ? (value as { last?: unknown }).last : null;
-      return { last: CHOICES.includes(last as BootChoice) ? (last as BootChoice) : null };
+      if (typeof value !== 'object' || value === null) return { last: null, seen: null, visited: false };
+      const { last, seen } = value as { last?: unknown; seen?: unknown };
+      return {
+        last: CHOICES.includes(last as BootChoice) ? (last as BootChoice) : null,
+        seen: typeof seen === 'string' ? seen : null,
+        visited: true,
+      };
     } catch {
-      return { last: null };
+      return { last: null, seen: null, visited: false };
     }
   }
 
   private save(choice: BootChoice): void {
+    this.lastChoice = choice;
+    this.write();
+  }
+
+  private write(): void {
     try {
-      this.storage?.setItem(BOOT_KEY, JSON.stringify({ version: 1, last: choice }));
+      this.storage?.setItem(BOOT_KEY, JSON.stringify({ version: 1, last: this.lastChoice ?? undefined, seen: this.seen ?? undefined }));
     } catch {
       // Storage may be full or blocked: the menu then starts on the tutorial again next time.
     }

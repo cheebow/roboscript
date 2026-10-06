@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionMenu } from '../src/ui/action_menu';
+import { CHANGES, latestChangeDate } from '../src/data/changes';
 import { BOOT_KEY, BootScreen } from '../src/ui/boot_screen';
 import { GaragePanel, type GarageHandlers } from '../src/ui/garage_panel';
 import { renderMarkup } from '../src/ui/markup';
@@ -135,6 +136,47 @@ describe('the start-up screen', () => {
     boot.show();
     key(document.getElementById('boot')!, 'x');
     expect(document.querySelector('.boot-item.current .boot-item-name')?.textContent).toBe('PROGRAM');
+  });
+
+  it('tells a returning player what changed, once, and keeps quiet for a new one', () => {
+    // A returning player: the boot choice was saved before there was any news.
+    const storage = memoryStorage();
+    storage.setItem(BOOT_KEY, JSON.stringify({ version: 1, last: 'program' }));
+    const boot = new BootScreen(storage, () => {});
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    expect(document.querySelectorAll('.boot-news-item').length).toBe(CHANGES.length);
+    expect(document.querySelector('.boot-news-title')?.textContent).toBe('SINCE YOUR LAST VISIT');
+    expect(JSON.parse(storage.getItem(BOOT_KEY)!).seen).toBe(latestChangeDate());
+    boot.hide();
+
+    // Seen: the next visit shows nothing, and choosing a screen keeps the day.
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    expect(document.querySelector('.boot-news')).toBeNull();
+    key(document.getElementById('boot')!, 'Enter');
+    expect(JSON.parse(storage.getItem(BOOT_KEY)!).seen).toBe(latestChangeDate());
+  });
+
+  it('shows no news on the very first visit: it only notes the day', () => {
+    const storage = memoryStorage();
+    const boot = new BootScreen(storage, () => {});
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    expect(document.querySelector('.boot-news')).toBeNull();
+    expect(JSON.parse(storage.getItem(BOOT_KEY)!).seen).toBe(latestChangeDate());
+    boot.hide();
+  });
+
+  it('shows only what came after the day last seen', () => {
+    const oldest = CHANGES[CHANGES.length - 1].date;
+    const storage = memoryStorage();
+    storage.setItem(BOOT_KEY, JSON.stringify({ version: 1, last: 'arena', seen: oldest }));
+    const boot = new BootScreen(storage, () => {});
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    expect(document.querySelectorAll('.boot-news-item').length).toBe(CHANGES.filter((change) => change.date > oldest).length);
+    boot.hide();
   });
 
   it('is in English above the menu whatever the language', () => {

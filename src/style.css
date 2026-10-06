@@ -1741,6 +1741,41 @@ button {
   cursor: default;
 }
 
+.boot-news {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(560px, 100%);
+  margin-top: 18px;
+  padding: 8px 0 10px;
+  border: 1px solid var(--border);
+  animation: notice-in 0.2s ease-out;
+}
+
+.boot-news-title {
+  margin: -20px 0 6px 14px;
+  padding: 0 6px;
+  align-self: flex-start;
+  background: #000;
+  color: var(--syntax-variable);
+  letter-spacing: 0.08em;
+}
+
+.boot-news-item {
+  display: grid;
+  grid-template-columns: 11ch 1fr;
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.boot-news-date {
+  color: var(--muted);
+}
+
+.boot-news-text {
+  color: var(--text);
+}
+
 .boot-help {
   color: #6f7a85;
   font-size: 12px;

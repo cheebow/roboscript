@@ -1,6 +1,7 @@
 // The help: how to use the app, and the guide to RoboScript. "All the words" is made from the
 // language's own descriptions when shown (see wordsTopic), so it never falls behind the language.
 // Made from the text by a script: edit it here, keeping the markup (see renderMarkup).
+import { CHANGES } from '../data/changes';
 import type { Text } from '../tutorial/types';
 import { recipesText } from './recipes';
 
@@ -201,6 +202,14 @@ Code is saved in the browser at every edit. Right after loading a template, Cmd 
 
 **自分のコードが消えた？**
 コードは編集のたびにブラウザに保存されています。テンプレートを読み込んだ直後なら、Cmd / Ctrl + Z で戻せます。チュートリアルとチャレンジのコードは、いつものコードとは別に保存されています。` } },
+      {
+        id: 'changelog',
+        title: { en: `What changed`, ja: `更新履歴` },
+        body: {
+          en: ['All the changes so far, newest first. The ones since your last visit also show on the start menu.', '', ...CHANGES.map((change) => `- **${change.date}**: ${change.en}`)].join('\n'),
+          ja: ['これまでの更新の一覧です（新しい順）。前回開いたあとの更新は、起動メニューにも出ます。', '', ...CHANGES.map((change) => `- **${change.date}**: ${change.ja}`)].join('\n'),
+        },
+      },
     ],
   },
   {

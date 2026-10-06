@@ -153,6 +153,24 @@ loop
         drive stop
         fire`,
       },
+      {
+        id: 'hover-run',
+        title: { en: 'Never stop (for the Hover legs)', ja: '止まらずに走り撃ちする（Hover 向き）' },
+        text: {
+          en: 'For a robot with the **Hover** legs (set in `config`). It never stops: it shoots on the move, and turns a different way at every wall. A way of fighting that never stops plays to the Hover: fast, hard to hit, gliding so smoothly that its shots scatter little on the move — and its weakness, that it cannot stop at once, never shows. The same program on Standard legs wins far less.',
+          ja: '`config` で脚を **Hover** にしたロボットのためのレシピです。止まらずに走りながら撃ち、壁に当たるたびにちがう向きへ曲がります。止まらない戦い方は Hover の良さがそのまま出ます。速くて弾が当たりにくく、浮いて滑らかに走るので走りながらの弾もばらけにくく、「すぐ止まれない」弱点は一度も出ません。同じプログラムでも、Standard の脚では勝率がずっと下がります。',
+        },
+        code: `drive forward
+loop
+    if blocked or touching_enemy
+        turn left random(60, 120)
+    else if not enemy_visible
+        wait
+    else if abs(aim_angle) > 3
+        aim enemy
+    else
+        fire`,
+      },
     ],
   },
   {

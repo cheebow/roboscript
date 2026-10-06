@@ -3,6 +3,7 @@ import { arenaFor } from '../src/arena/match';
 import { ARENAS } from '../src/data/arenas';
 import { CENTER_BLOCK } from '../src/data/arenas/center_block';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
+import { STANDARD_LOADOUT, statsOf } from '../src/data/parts';
 import { ROBOT_DEFAULTS, type RobotStats } from '../src/data/robot_defaults';
 import { RECIPES } from '../src/help/recipes';
 import type { RobotBrain } from '../src/sim/ai_context';
@@ -166,6 +167,49 @@ describe('the recipes of the help: moving', () => {
   it('dodge: is hit much less often than the same robot standing still', () => {
     const enemies = ['sentry_bot', 'dumb_bot', 'strafe_bot'];
     expect(tally(recipe('dodge'), enemies).hitsTaken).toBeLessThan(0.7 * tally(SHOOTER, enemies).hitsTaken);
+  });
+});
+
+describe('the recipes of the help: never stop (Hover)', () => {
+  /** The recipe on the given legs, against some robots of standard parts, counting its shots and hits. */
+  function runs(legs: string) {
+    const stats = statsOf({ ...STANDARD_LOADOUT, legs });
+    let shots = 0;
+    let movingShots = 0;
+    let hits = 0;
+    for (const enemy of ['dumb_bot', 'sentry_bot']) {
+      for (const { arena } of ARENAS) {
+        for (const seed of [1, 2]) {
+          const brain = compileBrain(recipe('hover-run'));
+          const simulation = createSimulation([brain, compileBrain(enemySource(enemy))], {
+            arena: arenaFor(arena, seed, 2),
+            seed,
+            robots: [
+              { id: 'ALPHA', brain, stats },
+              { id: 'BRAVO', brain: compileBrain(enemySource(enemy)), stats: ROBOT_DEFAULTS },
+            ],
+          });
+          const [self, other] = simulation.robots;
+          while (simulation.result === null) {
+            const ammo = self.weapon.ammo;
+            const hp = other.hp;
+            simulation.step();
+            if (self.weapon.ammo < ammo) {
+              shots++;
+              if (self.moved) movingShots++;
+            }
+            if (other.hp < hp) hits++;
+          }
+        }
+      }
+    }
+    return { shots, movingShots, hitRate: hits / shots };
+  }
+
+  it('hover-run: shoots on the move, and hits more on the Hover than the same program on Standard legs', () => {
+    const hover = runs('hover');
+    expect(hover.movingShots / hover.shots).toBeGreaterThan(0.9);
+    expect(hover.hitRate).toBeGreaterThan(1.1 * runs('standard').hitRate);
   });
 });
 

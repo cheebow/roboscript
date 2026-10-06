@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
+    en: 'A recipe for the Hover legs, "Never stop", joined the recipes in the help.',
+    ja: 'Hover の脚で遊ぶレシピ「止まらずに走り撃ちする」が、ヘルプのレシピ集に入りました。',
+  },
+  {
+    date: '2026-10-07',
     en: 'New legs: the Walker is slow but shoots well on the move; the Hover is fast but slides, and cannot stop at once.',
     ja: '新しい脚: Walker は遅いかわりに走りながらでも当てられ、Hover は速いかわりにすぐ止まれず滑ります。',
   },

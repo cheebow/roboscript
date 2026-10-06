@@ -114,6 +114,29 @@ describe('the recipes of the help: the flow of the program', () => {
   });
 });
 
+describe('the recipes of the help: random turns', () => {
+  /** The robot's heading every 2 seconds, just before each turn, over a match on a seed. */
+  function headings(seed: number): number[] {
+    const simulation = createSimulation([compileBrain(recipe('random-turn')), new FixedBrain()], {
+      seed,
+      arena: { ...DUEL_ARENA, spawns: [{ x: 500, y: 300, rotation: 0 }, { x: 950, y: 560, rotation: 180 }] },
+    });
+    const seen: number[] = [];
+    for (let tick = 1; tick <= 12 * tickRate; tick++) {
+      simulation.step();
+      if (tick % (2 * tickRate) === 0) seen.push(Math.round(simulation.robots[0].rotation));
+    }
+    return seen;
+  }
+
+  it('random-turn: turns a different way each time, and the same way in the same match', () => {
+    const first = headings(5);
+    expect(headings(5)).toEqual(first);
+    expect(new Set(first).size).toBeGreaterThan(3);
+    expect(headings(6)).not.toEqual(first);
+  });
+});
+
 describe('the recipes of the help: moving', () => {
   it('distance: closes in on a far enemy, backs off from a near one, and stays between', () => {
     const far = match(recipe('distance'), new FixedBrain(), { bravo: { x: 900, y: 300, rotation: 180 } });

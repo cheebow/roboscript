@@ -8,7 +8,7 @@ import { renderMarkup } from './markup';
 import { local } from './tutorial_panel';
 
 /** The kinds of word in the list of all words, in the order they are shown. */
-const WORD_GROUPS: readonly WordKind[] = ['control', 'command', 'direction', 'sensor'];
+const WORD_GROUPS: readonly WordKind[] = ['control', 'command', 'direction', 'sensor', 'builtin'];
 
 /**
  * The help, sliding in from the right: a table of contents, a search field and

@@ -11,6 +11,7 @@ import {
   type StatementNode,
   parameterVariable,
 } from './ast';
+import { BUILTINS } from './builtins';
 import { BOOLEAN_VARIABLES, type FaceTarget, NUMBER_VARIABLES } from './script_variables';
 
 /** How a stretch of program ended: by a `return`, with its value, by a `break`, or (null) by running to its end. */
@@ -280,6 +281,8 @@ export class ScriptBrain implements RobotBrain {
    * to that), so it runs through without a break.
    */
   private call(name: string, args: Expression[]): number {
+    const builtin = this.program.functions.has(name) ? undefined : BUILTINS.get(name);
+    if (builtin !== undefined) return builtin.apply(args.map((argument) => this.valueOf(argument)), () => this.context.random());
     const completion = this.runWithoutBreak(this.prepareCall(name, args));
     return completion !== null && 'value' in completion ? completion.value : 0;
   }

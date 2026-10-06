@@ -10,6 +10,7 @@ import type {
 } from './ai_context';
 import { INITIAL_LABEL } from './ai_context';
 import { leadPoint } from './aiming';
+import type { MatchRng } from './rng';
 import { clamp, headingVector, normalizeAngle } from './math';
 import { EMPTY_READING, type SensedRobot, type Sensor, type SensorReading, measure } from './sensor';
 import { OPEN_SURROUNDINGS, type Surroundings } from './surroundings';
@@ -29,6 +30,8 @@ export interface RobotOptions {
   brain: RobotBrain;
   sensor: Sensor;
   weapon: Weapon;
+  /** The robot's own random numbers, for its program; apart from the match's, so drawing them changes nothing else. */
+  dice: MatchRng;
 }
 
 export class RobotController {
@@ -69,6 +72,7 @@ export class RobotController {
 
   private readonly brain: RobotBrain;
   private readonly sensor: Sensor;
+  private readonly dice: MatchRng;
   private reading: SensorReading = EMPTY_READING;
   private around: Surroundings = OPEN_SURROUNDINGS;
   /** Where to shoot to hit the enemy if it keeps moving as it does; null until it has been seen. */
@@ -97,6 +101,7 @@ export class RobotController {
     this.guardsLeft = options.stats.maxGuards;
     this.brain = options.brain;
     this.sensor = options.sensor;
+    this.dice = options.dice;
   }
 
   get alive(): boolean {
@@ -372,6 +377,7 @@ export class RobotController {
       },
       hitAngle,
       touchingEnemy: around.touchingEnemy,
+      random: () => this.dice.next(),
     };
   }
 }

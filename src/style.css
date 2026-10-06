@@ -2233,7 +2233,7 @@ button {
   color: var(--syntax-control);
 }
 
-.help-word-example .code-command {
+.help-word-example :is(.code-command, .code-builtin) {
   color: var(--syntax-command);
 }
 

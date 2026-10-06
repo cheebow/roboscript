@@ -8,6 +8,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
   return completionsAt(source, position, explicit)?.options.map((option) => option.word) ?? null;
 }
 
+const FUNCTIONS = ['abs', 'min', 'max', 'sqrt', 'random'];
 const STATEMENTS = ['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
@@ -123,9 +124,9 @@ describe('completionsAt: arguments', () => {
 
 describe('completionsAt: conditions', () => {
   it('offers the sensors, the variables of the program and "not" at the start of a condition', () => {
-    expect(offered('if |')).toEqual([...SENSORS, 'not']);
-    expect(offered('set shots = 0\nwhile |')).toEqual([...SENSORS, 'not', 'shots']);
-    expect(offered('if blocked and |')).toEqual([...SENSORS, 'not']);
+    expect(offered('if |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
+    expect(offered('set shots = 0\nwhile |')).toEqual([...SENSORS, ...FUNCTIONS, 'not', 'shots']);
+    expect(offered('if blocked and |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
     expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
   });
 
@@ -136,7 +137,7 @@ describe('completionsAt: conditions', () => {
 
   it('offers numbers only after a comparison or arithmetic, once a letter is typed', () => {
     expect(offered('if enemy_distance < |')).toBeNull();
-    expect(offered('if enemy_distance < |', true)).toEqual(['true', 'false', ...NUMBERS]);
+    expect(offered('if enemy_distance < |', true)).toEqual(['true', 'false', ...NUMBERS, ...FUNCTIONS]);
     expect(offered('set limit = 1\nif enemy_distance < li|')).toEqual(['limit']);
     expect(offered('if hp + am|')).toEqual(['ammo']);
   });
@@ -166,7 +167,7 @@ describe('completionsAt: set', () => {
 
   it('offers number sensors and variables in the value', () => {
     expect(offered('set left = am|')).toEqual(['ammo']);
-    expect(offered('set n = 0\nset m = n + |', true)).toEqual(['true', 'false', ...NUMBERS, 'n', 'm']);
+    expect(offered('set n = 0\nset m = n + |', true)).toEqual(['true', 'false', ...NUMBERS, ...FUNCTIONS, 'n', 'm']);
     expect(offered('set left = ammo |', true)).toBeNull();
   });
 });
@@ -210,8 +211,15 @@ describe('completionsAt: functions', () => {
     });
   });
 
+  it("offers the language's functions in values and conditions, up to their parenthesis", () => {
+    expect(offered('if ra|')).toEqual(['random']);
+    const position = 'set x = ab'.length;
+    expect(completionsAt('set x = ab', position)?.options[0]).toMatchObject({ word: 'abs', kind: 'builtin', insert: 'abs(' });
+  });
+
   it('offers values between the parentheses of a call, after each comma too', () => {
-    expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'approach', 'abs', 'stop']);
+    // The program's own abs takes the place of the language's.
+    expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'min', 'max', 'sqrt', 'random', 'approach', 'abs', 'stop']);
     expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
     expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });

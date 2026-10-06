@@ -1,3 +1,4 @@
+import { BUILTINS } from './builtins';
 import { type Token, lex, withoutComment } from './lexer';
 import {
   type ProgramVariable,
@@ -91,7 +92,9 @@ export function completionsAt(source: string, position: number, explicit = false
     ...expectation.words
       .map((word) => (expectation.directions ? describeDirection(word) : describeWord(word)))
       .filter((reference) => reference !== undefined)
-      .map((reference) => ({ ...reference, insert: TAKES_MORE.has(reference.word) ? `${reference.word} ` : reference.word })),
+      // A function of the language gives way to one of the program's own with its name.
+      .filter((reference) => reference.kind !== 'builtin' || !functions.some((definition) => definition.name === reference.word))
+      .map((reference) => ({ ...reference, insert: insertOf(reference) })),
     ...(expectation.variables && owner !== null ? owner.params.map((param) => plain(describeParameter(param, owner))) : []),
     ...(expectation.variables ? variablesFor(source, lineStart, tokens).map((variable) => plain(describeVariable(variable))) : []),
     // A function is put in up to its opening parenthesis, and closed at once when it takes nothing.
@@ -164,8 +167,14 @@ function expectationAfter(tokens: readonly Token[]): Expectation | null {
   }
 }
 
+/** What to put in for a word of the language: a function up to its opening parenthesis, a word that needs more with a space after it. */
+function insertOf(reference: WordReference): string {
+  if (reference.kind === 'builtin') return `${reference.word}(`;
+  return TAKES_MORE.has(reference.word) ? `${reference.word} ` : reference.word;
+}
+
 /** A number is expected: a sensor that gives one, a variable or a function. Not offered until a letter is typed. */
-const VALUE: Expectation = { words: ['true', 'false', ...NUMBER_SENSORS], variables: true, functions: true, eager: false };
+const VALUE: Expectation = { words: ['true', 'false', ...NUMBER_SENSORS, ...BUILTINS.keys()], variables: true, functions: true, eager: false };
 
 /** What fits next in a condition (`if`, `while`) or, when not `inCondition`, in the value of a `set`. */
 function valueAfter(tokens: readonly Token[], inCondition: boolean): Expectation | null {
@@ -177,7 +186,7 @@ function valueAfter(tokens: readonly Token[], inCondition: boolean): Expectation
   if (numbersOnly) return VALUE;
   // The start of a condition: after "if", "while", "and", "or", "not" or "(".
   const eager = last.type === 'word';
-  return { words: [...BOOLEAN_SENSORS, ...NUMBER_SENSORS, 'not'], variables: true, functions: true, eager };
+  return { words: [...BOOLEAN_SENSORS, ...NUMBER_SENSORS, ...BUILTINS.keys(), 'not'], variables: true, functions: true, eager };
 }
 
 /** Whether the word stands for a value: anything but the words that join or open conditions. */

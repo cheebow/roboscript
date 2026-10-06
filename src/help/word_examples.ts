@@ -305,4 +305,39 @@ loop
     else
         face cover
         drive forward`,
+
+  // Functions of the language
+  'builtin:abs': `loop
+    if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+  'builtin:min': `loop
+    set limit = min(weapon_range - 50, 300)
+    if enemy_visible and enemy_distance < limit
+        drive stop
+        fire
+    else
+        turn enemy
+        drive forward`,
+  'builtin:max': `loop
+    set gap = max(enemy_distance - 200, 0)
+    if gap > 0
+        turn enemy
+        drive forward
+    else
+        drive stop
+        fire`,
+  'builtin:sqrt': `set across = 30
+set up = 40
+set length = sqrt(across * across + up * up)
+loop
+    fire`,
+  'builtin:random': `drive forward
+loop
+    if blocked
+        turn left random(30, 150)
+    else
+        aim enemy
+        fire`,
 };

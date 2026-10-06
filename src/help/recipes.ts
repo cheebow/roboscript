@@ -61,7 +61,26 @@ loop
     if t == 90
         set t = 0
         turn right 90
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+      },
+      {
+        id: 'random-turn',
+        title: { en: 'Turn a different way each time, to be hard to read', ja: '毎回ちがう向きに曲がって、動きを読まれにくくする' },
+        text: {
+          en: '`random(-90, 90)` is a whole number from -90 to 90, a different one each time; `turn right` by a negative angle turns left. Every 2 seconds the robot turns a different way, so an enemy that aims ahead of it misses more. The numbers come from the seed of the match, so the same match turns the same way every time.',
+          ja: '`random(-90, 90)` は、-90 から 90 までの整数で、毎回ちがう数になります。`turn right` にマイナスの角度を書くと、左へ回ります。2 秒ごとにちがう向きへ曲がるので、動く先を狙ってくる敵の弾が外れやすくなります。数は試合の seed から作るので、同じ試合なら毎回同じ向きに曲がります。',
+        },
+        code: `set t = 0
+drive forward
+loop
+    set t = t + 1
+    if t == 60 or blocked
+        set t = 0
+        turn right random(-90, 90)
+    else if abs(aim_angle) > 2
         aim enemy
     else
         fire`,
@@ -87,9 +106,9 @@ loop
         drive stop
     if blocked
         turn left
-    else if enemy_angle > 5 or enemy_angle < -5
+    else if abs(enemy_angle) > 5
         turn enemy
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         aim enemy
     else
         fire`,
@@ -121,13 +140,13 @@ loop
         },
         code: `loop
     if bullet_incoming
-        if bullet_angle > 45 and bullet_angle < 135 or bullet_angle < -45 and bullet_angle > -135
+        if abs(bullet_angle) > 45 and abs(bullet_angle) < 135
             drive forward
             wait
         else
             drive stop
             turn left
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         drive stop
         aim enemy
     else
@@ -143,13 +162,13 @@ loop
         id: 'aimed',
         title: { en: 'Shoot once the aim is right', ja: '狙いが合ってから撃つ' },
         text: {
-          en: '`aim_angle` is the angle from the turret to the enemy. Until it is within 2 degrees, the robot aims with `aim enemy`; then it shoots. Fewer shots go to waste.',
-          ja: '`aim_angle` は、砲塔から敵までの角度です。±2 度に入るまでは `aim enemy` で狙いを合わせ、入ってから撃ちます。むだになる弾が減ります。',
+          en: '`aim_angle` is the angle from the turret to the enemy; `abs(aim_angle)` is how far off it is, to the left or the right. Until it is within 2 degrees, the robot aims with `aim enemy`; then it shoots. Fewer shots go to waste.',
+          ja: '`aim_angle` は、砲塔から敵までの角度です。`abs(aim_angle)` は、左右どちらにずれていても、そのずれの大きさになります。2 度以内に入るまでは `aim enemy` で狙いを合わせ、入ってから撃ちます。むだになる弾が減ります。',
         },
         code: `loop
     if not enemy_visible
         wait
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         aim enemy
     else
         fire`,
@@ -165,7 +184,7 @@ loop
 loop
     if blocked
         turn left 90
-    else if enemy_visible and reload == 0 and aim_angle < 2 and aim_angle > -2
+    else if enemy_visible and reload == 0 and abs(aim_angle) < 2
         drive stop
         fire
         drive forward
@@ -182,7 +201,7 @@ loop
         code: `loop
     if not enemy_visible
         wait
-    else if lead_angle > 2 or lead_angle < -2
+    else if abs(lead_angle) > 2
         aim lead
     else
         fire`,
@@ -223,7 +242,7 @@ loop
         guard
     else if not enemy_visible
         wait
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         aim enemy
     else
         fire`,
@@ -263,7 +282,7 @@ loop
         turn enemy
         drive forward
         wait
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         drive stop
         aim enemy
     else
@@ -288,7 +307,7 @@ loop
         turn enemy
         drive forward
         wait
-    else if aim_angle > 2 or aim_angle < -2
+    else if abs(aim_angle) > 2
         drive stop
         aim enemy
     else

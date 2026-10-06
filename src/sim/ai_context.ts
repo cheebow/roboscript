@@ -75,6 +75,12 @@ export interface AIContext {
   readonly touchingEnemy: boolean;
   /** The enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. */
   readonly hidden: boolean;
+  /**
+   * A number in [0, 1) from the robot's own stream of random numbers, drawn
+   * from the match's seed: the same match draws the same numbers. For the
+   * program's `random`; not a word of the language itself.
+   */
+  random(): number;
 }
 
 /**

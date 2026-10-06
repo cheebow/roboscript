@@ -58,6 +58,7 @@ export const QUIET_CONTEXT: AIContext = {
   hitAngle: 0,
   touchingEnemy: false,
   hidden: false,
+  random: () => 0,
 };
 
 const TURN = /\bturn (left|right)\b/g;

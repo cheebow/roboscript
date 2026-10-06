@@ -59,7 +59,7 @@ function insertAndGoOn(text: string) {
 export const GUIDE_EVENT = 'roboscript:guide';
 
 /** The words with an entry of their own in the guide: the language's, not the program's own names. */
-const IN_THE_GUIDE = new Set(['control', 'command', 'direction', 'sensor']);
+const IN_THE_GUIDE = new Set(['control', 'command', 'direction', 'sensor', 'builtin']);
 
 function openGuide(word: string): void {
   document.dispatchEvent(new CustomEvent(GUIDE_EVENT, { detail: word }));

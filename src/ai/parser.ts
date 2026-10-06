@@ -10,6 +10,7 @@ import {
   parameterVariable,
 } from './ast';
 import { t } from '../i18n/messages';
+import { BUILTINS, isBuiltin } from './builtins';
 import { checkFunctions } from './functions';
 import { type LexedLine, type Token, lex } from './lexer';
 import type { ScriptError } from './script_error';
@@ -369,6 +370,8 @@ class Parser {
     const call = new ExpressionParser(line.tokens, this.scope).parseWholeExpression();
     // Something like `approach(350) + 1`: a calculation whose result goes nowhere.
     if (call.kind !== 'call') throw new LineError(t('parse.onlyCallAlone'));
+    // A function of the language only works out a value: on a line of its own it would do nothing.
+    if (!this.signatures.has(call.name)) throw new LineError(t('parse.builtinAlone', { name: call.name }));
     return { kind: 'call', line: line.line, name: call.name, args: call.args };
   }
 
@@ -652,13 +655,14 @@ class ExpressionParser {
     if (owner?.params.includes(token.text) || variables.has(token.text)) {
       return { kind: 'variable', name: variableIn(this.scope, token.text) };
     }
-    if (functions.has(token.text)) throw new LineError(t('parse.expectParenAfter', { name: token.text }));
+    if (functions.has(token.text) || isBuiltin(token.text)) throw new LineError(t('parse.expectParenAfter', { name: token.text }));
     throw new LineError(t('parse.unknownVariable', { name: token.text }));
   }
 
   /** The values in parentheses after the name of a function, which has just been read. */
   private parseCall(name: string): Expression {
-    const signature = this.scope.functions.get(name);
+    // The program's own function first: one it defined with the name of a function of the language stays its own.
+    const signature = this.scope.functions.get(name) ?? BUILTINS.get(name);
     if (signature === undefined) throw new LineError(t('parse.unknownFunction', { name }));
     this.position++;
 

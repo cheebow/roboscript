@@ -47,6 +47,14 @@ export type MatchEndReason = 'destroyed' | 'timeout' | 'out of ammo';
  */
 const CLOSE_RANGE_RADII = 3;
 
+/** Mixed into the seed of each robot's own random numbers, so that they are not the match's (which scatter the shots). */
+const DICE_SALT = 0xd1ce;
+
+/** The seed of the random numbers of the robot at `index`: from the match's seed, and different for every robot. */
+function diceSeed(seed: number, index: number): number {
+  return (seed ^ DICE_SALT ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0;
+}
+
 /** `deflected`: a bullet hit a robot that was guarding. `detected`: a robot caught sight of the enemy. */
 export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected';
 
@@ -119,6 +127,7 @@ export class Simulation {
             this.hasLineOfSight(stats, from, to),
           ),
           weapon: new Gun(stats, config.tickRate),
+          dice: new MatchRng(diceSeed(config.seed, index)),
         }),
     );
     this.reporter = config.logger === undefined ? null : new EventReporter(config.logger, config.tickRate);

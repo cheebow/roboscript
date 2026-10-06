@@ -8,6 +8,7 @@ import {
   isNumberVariable,
   isTurnDirection,
 } from '../ai/script_variables';
+import { isBuiltin } from '../ai/builtins';
 
 const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'and', 'or', 'not', 'true', 'false']);
 const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'set']);
@@ -15,7 +16,7 @@ const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 
 const DIRECTED_WORDS = new Set(['drive', 'turn', 'aim']);
 
 const NUMBER = /^\d+(\.\d+)?/;
-const OPERATOR = /^(<=|>=|==|!=|[<>=+\-*/()])/;
+const OPERATOR = /^(<=|>=|==|!=|[<>=+\-*/(),])/;
 const WORD = /^[A-Za-z_][A-Za-z0-9_]*/;
 
 /** What the tokenizer remembers along a line. */
@@ -67,6 +68,8 @@ const language = StreamLanguage.define<LineState>({
 function classifyWord(word: string): string | null {
   if (CONTROL_WORDS.has(word)) return 'keyword';
   if (COMMAND_WORDS.has(word)) return 'typeName';
+  // The functions of the language, in the colour of the commands.
+  if (isBuiltin(word)) return 'typeName';
   if (isBooleanVariable(word) || isNumberVariable(word)) return 'variableName';
   if (isDirection(word)) return 'atom';
   // Any other word is a variable of the program's own.

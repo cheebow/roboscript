@@ -7,7 +7,8 @@ import { withoutComment } from './lexer';
 import { isReservedWord } from './script_variables';
 
 /** What part a word plays in the language. */
-export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'variable' | 'label' | 'function';
+/** `function` is one of the program's own; `builtin` one that comes with the language. */
+export type WordKind = 'control' | 'command' | 'sensor' | 'direction' | 'variable' | 'label' | 'function' | 'builtin';
 
 /** What a word of RoboScript means, as told to the player while writing. */
 export interface WordReference {
@@ -327,6 +328,36 @@ export const LANGUAGE: readonly WordReference[] = [
     hint: "out of the enemy's sight",
     summary: `True while the enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. A robot that stays hidden and still for ${ROBOT_DEFAULTS.recoveryDelay} seconds regains ${ROBOT_DEFAULTS.recoveryRate} hp a second, up to its full hp, until it drives or is seen again.`,
   },
+  {
+    word: 'abs',
+    kind: 'builtin',
+    hint: 'abs(x): x without its sign',
+    summary: 'The value without its sign: abs(-30) is 30. abs(aim_angle) > 2 means the aim is more than 2 degrees off, either way.',
+  },
+  {
+    word: 'min',
+    kind: 'builtin',
+    hint: 'min(a, b): the smaller',
+    summary: 'The smaller of the two values: min(hp, 100) is never more than 100.',
+  },
+  {
+    word: 'max',
+    kind: 'builtin',
+    hint: 'max(a, b): the larger',
+    summary: 'The larger of the two values: max(enemy_distance - 200, 0) is never below 0.',
+  },
+  {
+    word: 'sqrt',
+    kind: 'builtin',
+    hint: 'sqrt(x): the square root',
+    summary: 'The square root: sqrt(x * x + y * y) is the length of a line x across and y up. The square root of a negative number is 0.',
+  },
+  {
+    word: 'random',
+    kind: 'builtin',
+    hint: 'random(a, b): a whole number',
+    summary: "A whole number from a to b, both included, picked at random: random(1, 6) is like a die. The numbers come from the match's seed, so the same match picks the same numbers.",
+  },
 ];
 
 const BY_WORD = new Map(LANGUAGE.map((reference) => [reference.word, reference]));
@@ -490,7 +521,9 @@ export function describeAt(source: string, position: number): Description | null
 
   const word = code.slice(from, to);
   const known = BEFORE_DIRECTION.test(code.slice(0, from)) ? describeDirection(word) : describeWord(word);
-  const reference = known ?? describeOwn(source, position, word);
+  // A function or a variable of the program's own with the name of a function of the language is its own.
+  const own = known === undefined || known.kind === 'builtin' ? describeOwn(source, position, word) : undefined;
+  const reference = own ?? known;
   if (reference === undefined) return null;
   return { ...reference, from: lineStart + from, to: lineStart + to };
 }

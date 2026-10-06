@@ -269,7 +269,20 @@ loop
 
 - A name is letters, digits and \`_\`, starting with a letter. The names of words and sensors cannot be used.
 - Reading a name that is never \`set\` anywhere in the program is a mistake. Read before it is set, it is 0.
-- While debugging, the variables show at the top of Watch.`, ja: `- 値はすべて **数** です。\`+ - * /\` と括弧で計算できます。0 で割ると 0 になります。
+- While debugging, the variables show at the top of Watch.
+
+**Functions that come with the language**
+
+| Function | Value |
+|---|---|
+| \`abs(x)\` | x without its sign: \`abs(-30)\` is 30 |
+| \`min(a, b)\` / \`max(a, b)\` | the smaller / the larger of the two |
+| \`sqrt(x)\` | the square root (0 for a negative number) |
+| \`random(a, b)\` | a whole number from a to b, both included, picked at random |
+
+- Use them in a value or a condition: \`if abs(aim_angle) > 2\` holds when the aim is more than 2 degrees off, to either side.
+- \`random\` draws from numbers made from the seed of the match: the same match draws the same numbers, so a match shared with someone plays out the same for them.
+- A function of your own with the same name comes first.`, ja: `- 値はすべて **数** です。\`+ - * /\` と括弧で計算できます。0 で割ると 0 になります。
 - **センサー** は、ロボットが調べた結果が入った語です。中身は数か、正しい / 正しくないのどちらかです（\`enemy_distance\`、\`hp\` など）。一覧は「語の一覧」にあります。
 - **変数** は数を入れておく箱です。\`set\` で入れます。
 
@@ -282,7 +295,20 @@ loop
 
 - 名前は英字で始まる半角の英数字と \`_\` です。語やセンサーの名前は使えません。
 - プログラムのどこにも \`set\` のない名前を読むとエラーになります。\`set\` する前に読むと 0 です。
-- 変数の中身は、デバッグ中にウォッチの上の欄で見られます。` } },
+- 変数の中身は、デバッグ中にウォッチの上の欄で見られます。
+
+**はじめから使える関数**
+
+| 関数 | 値 |
+|---|---|
+| \`abs(x)\` | x からマイナスを取ったもの: \`abs(-30)\` は 30 |
+| \`min(a, b)\` / \`max(a, b)\` | 2 つのうち小さい方 / 大きい方 |
+| \`sqrt(x)\` | 平方根（マイナスの数なら 0） |
+| \`random(a, b)\` | a から b までの整数（両端を含む）のどれかを、でたらめに選んだもの |
+
+- 値や条件の中で使います: \`if abs(aim_angle) > 2\` は、狙いが左右どちらかに 2 度より大きくずれているときに正しくなります。
+- \`random\` の数は試合の seed から作ります。同じ試合なら同じ数が出るので、人に渡した試合も同じように進みます。
+- 同じ名前の関数を自分で作ると、そちらが使われます。` } },
       { id: 'conditions', title: { en: `Conditions and repeating`, ja: `条件と繰り返し` }, body: { en: `\`\`\`
 loop
     if enemy_distance < 200

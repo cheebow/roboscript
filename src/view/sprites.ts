@@ -167,6 +167,28 @@ export const PART_PATTERNS: Record<Slot, Record<string, Pattern>> = {
       NONE,
       NONE,
     ]),
+    // Three jointed legs a side, reaching out.
+    walker: mirrored([
+      '.T....T....T....',
+      '..t....t....t...',
+      '..tt...tt...tt..',
+      '...t....t....t..',
+      NONE,
+      NONE,
+      NONE,
+      NONE,
+    ]),
+    // A skirt all round, that the hull floats on.
+    hover: mirrored([
+      '....TTTTTTT.....',
+      '..TTtttttttTT...',
+      '.Ttt.......ttT..',
+      '.Tt.........tT..',
+      '.Tt.........tT..',
+      '.Tt.........tT..',
+      '.Tt.........tT..',
+      '.Tt.........tT..',
+    ]),
   },
   body: {
     // Slim, with a pointed nose.

@@ -611,6 +611,8 @@ The **Cannon** reaches 520, but costs 4: with the other parts as they are, the t
 - One that gets close and fires away … the quick-firing **Rapid**, the **Heavy** body with more HP
 - One that fights from cover … the fast **Sprint** legs, or the **Light** body
 - One that circles round its enemy … the quick-turning **Pivot** legs
+- One that shoots without stopping … the sure-footed **Walker** legs
+- One that races between hiding places … the **Hover** legs, which slide and cannot stop at once
 
 And when you change parts, look at the program again. If it uses \`weapon_range\` (chapter 4), for example, the distance it starts shooting from fits a new gun by itself.`, ja: `パーツの選び方に正解はありません。**プログラムに合うパーツ** を選ぶのが大事です。
 

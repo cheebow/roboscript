@@ -33,6 +33,12 @@ export interface RobotStats {
   recoveryDelay: number;
   /** hp/sec regained while still and out of the enemy's sight, once the delay is over. */
   recoveryRate: number;
+  /**
+   * How much of its way the hull keeps from one tick to the next, 0 to below 1.
+   * 0 drives where the hull faces and stops at once; above 0 the hull slides:
+   * it takes a while to stop, and drifts the old way after it turns (Hover legs).
+   */
+  slide: number;
 }
 
 export const ROBOT_DEFAULTS: RobotStats = {
@@ -62,4 +68,5 @@ export const ROBOT_DEFAULTS: RobotStats = {
   guardRecovery: 0.3,
   recoveryDelay: 0.5,
   recoveryRate: 20,
+  slide: 0,
 };

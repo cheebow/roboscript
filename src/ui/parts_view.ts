@@ -1,5 +1,7 @@
 import { COST_LIMIT, type Loadout, SLOTS, STANDARD_LOADOUT, type Slot, costOf, partIn, partsOf, statsOf } from '../data/parts';
+import { MATCH_DEFAULTS } from '../data/match_defaults';
 import type { RobotStats } from '../data/robot_defaults';
+import { STILL_STEP } from '../sim/robot';
 import type { RobotPalette } from '../view/sprites';
 import { type MessageKey, t } from '../i18n/messages';
 import { partSummary } from '../i18n/parts';
@@ -32,9 +34,18 @@ const STAT_ROWS: readonly StatRow[] = [
   { name: 'stat.SHOT_COOLDOWN', value: (stats) => stats.shotCooldown, unit: 'unit.seconds', moreIsBetter: false },
   { name: 'stat.SHOT_SPREAD', value: (stats) => stats.shotSpread, prefix: '±', unit: 'unit.degrees', moreIsBetter: false },
   { name: 'stat.MOVING_SPREAD', value: (stats) => stats.movingShotSpread, prefix: '±', unit: 'unit.degrees', moreIsBetter: false },
+  { name: 'stat.STOPPING', value: stoppingTime, unit: 'unit.seconds', moreIsBetter: false },
   { name: 'stat.AMMO', value: (stats) => stats.maxAmmo, unit: '', moreIsBetter: true },
   { name: 'stat.GUARDS', value: (stats) => stats.maxGuards, unit: '', moreIsBetter: true },
 ];
+
+/** sec: how long a hull at full speed takes to stop after `drive stop`; 0 for all but a sliding one. */
+function stoppingTime(stats: RobotStats): number {
+  if (stats.slide <= 0) return 0;
+  const fullStep = stats.moveSpeed / MATCH_DEFAULTS.tickRate;
+  const ticks = Math.ceil(Math.log(STILL_STEP / fullStep) / Math.log(stats.slide));
+  return Math.max(ticks, 0) / MATCH_DEFAULTS.tickRate;
+}
 
 /** Stats come out of multiplications; this many decimals are shown. */
 const DECIMALS = 2;

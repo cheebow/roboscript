@@ -342,8 +342,7 @@ export class Simulation {
           if (other === robot || distance(robot.position, other.position) >= robot.stats.radius + other.stats.radius) continue;
           for (const each of [robot, other]) {
             if (!each.moved) continue;
-            each.position = { ...(starts.get(each) ?? each.position) };
-            each.moved = false;
+            each.pushedBack(starts.get(each) ?? each.position);
             changed = true;
           }
         }

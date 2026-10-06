@@ -11,6 +11,9 @@ import type {
 import { INITIAL_LABEL } from './ai_context';
 import { leadPoint } from './aiming';
 import type { MatchRng } from './rng';
+
+/** units per tick: a sliding hull slower than this has stopped. */
+export const STILL_STEP = 0.1;
 import { clamp, headingVector, normalizeAngle } from './math';
 import { EMPTY_READING, type SensedRobot, type Sensor, type SensorReading, measure } from './sensor';
 import { OPEN_SURROUNDINGS, type Surroundings } from './surroundings';
@@ -58,6 +61,8 @@ export class RobotController {
   hidden = false;
   /** The hull drove somewhere on the latest tick. */
   moved = false;
+  /** The way the hull went on the latest tick, per tick: what a sliding hull keeps some of. */
+  private velocity: Vec2 = { x: 0, y: 0 };
   /** sec, the length of a tick, as the robot last sensed. */
   private tickDuration = 0;
   /** Regaining hp on the latest tick: still and out of the enemy's sight for long enough, and hurt. */
@@ -243,6 +248,13 @@ export class RobotController {
     this.rotation = normalizeAngle(this.rotation + this.turnStep(direction, maxStep));
   }
 
+  /** One tick of driving in the given direction, at full speed, as a step. */
+  private wayOf(direction: DriveDirection, tickDuration: number): Vec2 {
+    const heading = headingVector(this.rotation + DRIVE_HEADING_OFFSETS[direction]);
+    const step = this.stats.moveSpeed * tickDuration;
+    return { x: heading.x * step, y: heading.y * step };
+  }
+
   /** Where one tick of driving in the given direction would take the robot if nothing were in the way. */
   stepTarget(direction: DriveDirection, tickDuration: number): Vec2 {
     const heading = headingVector(this.rotation + DRIVE_HEADING_OFFSETS[direction]);
@@ -255,14 +267,44 @@ export class RobotController {
     if (setting !== null) this.driving = setting;
   }
 
-  /** Drives one tick's worth as set, or stays put if anything is in the way. */
+  /**
+   * Drives one tick's worth as set, or stays put if anything is in the way.
+   * A hull that slides (Hover legs) keeps part of last tick's way: it comes
+   * to a stop little by little, and drifts the old way after it turns.
+   */
   drive(tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
     this.moved = false;
+    if (this.stats.slide > 0) {
+      this.slideOn(tickDuration, isBlocked);
+      return;
+    }
     if (this.driving === 'stop') return;
     const target = this.stepTarget(this.driving, tickDuration);
     if (isBlocked(target)) return;
     this.position = target;
     this.moved = true;
+  }
+
+  private slideOn(tickDuration: number, isBlocked: (position: Vec2) => boolean): void {
+    const { slide } = this.stats;
+    const wanted = this.driving === 'stop' ? { x: 0, y: 0 } : this.wayOf(this.driving, tickDuration);
+    const step = { x: this.velocity.x * slide + wanted.x * (1 - slide), y: this.velocity.y * slide + wanted.y * (1 - slide) };
+    const target = { x: this.position.x + step.x, y: this.position.y + step.y };
+    if (Math.hypot(step.x, step.y) < STILL_STEP || isBlocked(target)) {
+      // Slowed to nothing, or run into something: it stops there.
+      this.velocity = { x: 0, y: 0 };
+      return;
+    }
+    this.position = target;
+    this.velocity = step;
+    this.moved = true;
+  }
+
+  /** Put back where it was by a clash with another robot: it stands still, with no way left in it. */
+  pushedBack(to: Vec2): void {
+    this.position = { ...to };
+    this.velocity = { x: 0, y: 0 };
+    this.moved = false;
   }
 
   /** Turns the turret on the hull. Aiming at the enemy goes by where the robot is now, after driving. */

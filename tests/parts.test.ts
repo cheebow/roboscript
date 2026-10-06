@@ -65,8 +65,11 @@ describe('parts', () => {
   it('give every robot stats it can fight with', () => {
     for (const loadout of allLoadouts()) {
       for (const [name, value] of Object.entries(statsOf(loadout))) {
-        expect(value, `${name} of ${JSON.stringify(loadout)}`).toBeGreaterThan(0);
+        // Sliding is the one stat that is 0 on most robots: they stop at once.
+        if (name === 'slide') expect(value).toBeGreaterThanOrEqual(0);
+        else expect(value, `${name} of ${JSON.stringify(loadout)}`).toBeGreaterThan(0);
       }
+      expect(statsOf(loadout).slide).toBeLessThan(1);
     }
   });
 });

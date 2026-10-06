@@ -83,6 +83,24 @@ export const PARTS: readonly Part[] = [
     summary: 'Quick to turn. Slow in a straight line.',
     stats: { moveSpeed: 85, rotateSpeed: 260 },
   },
+  {
+    id: 'walker',
+    slot: 'legs',
+    name: 'Walker',
+    cost: 3,
+    summary: 'Slow, but shots fired on the move scatter far less.',
+    stats: { moveSpeed: 70, rotateSpeed: 150 },
+    scales: { movingShotSpread: 0.3 },
+  },
+  {
+    id: 'hover',
+    slot: 'legs',
+    name: 'Hover',
+    cost: 3,
+    summary: 'Fast, and glides so smoothly that shots on the move scatter less. Cannot stop at once: it slides, and drifts after it turns.',
+    stats: { moveSpeed: 150, rotateSpeed, slide: 0.7 },
+    scales: { movingShotSpread: 0.6 },
+  },
 
   {
     id: 'pistol',

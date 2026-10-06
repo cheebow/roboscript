@@ -48,6 +48,8 @@ describe('turn left / right by an angle', () => {
     ['standard legs', {}, 180],
     ['Sprint legs', { legs: 'sprint' }, 150],
     ['Pivot legs', { legs: 'pivot' }, 260],
+    ['Walker legs', { legs: 'walker' }, 150],
+    ['Hover legs', { legs: 'hover' }, 180],
     ['a Light body on Pivot legs', { body: 'light', legs: 'pivot' }, 260 * 1.2],
   ] as const)('turns the hull exactly 90 degrees with %s, then goes on', (_, loadout, speed) => {
     const ticks = ticksFor(90, speed);

@@ -20,19 +20,32 @@ interface Facts {
 
 const ACTIONS: readonly string[] = ['turn', 'aim', 'fire', 'guard', 'wait'];
 
+/**
+ * How deep functions may call functions: f calling g calling h is 3 deep. Far
+ * beyond any program written by hand; it keeps a crafted one from running the
+ * browser out of room.
+ */
+export const MAX_CALL_DEPTH = 50;
+
 /** The errors in how the program's functions call each other. Empty for a program without functions. */
 export function checkFunctions(program: Pick<Program, 'body' | 'functions'>): ScriptError[] {
   const facts = new Map<string, Facts>();
   for (const [name, definition] of program.functions) facts.set(name, factsOf(definition.body));
+
+  const depths = callDepths(facts);
+  for (const [name, definition] of program.functions) {
+    if ((depths.get(name) ?? 0) > MAX_CALL_DEPTH) return [{ line: definition.line, message: t('functions.tooDeep', { name, limit: MAX_CALL_DEPTH }) }];
+  }
 
   const recursion = recursionErrors(program.functions, facts);
   // With a function calling itself, "what it takes to run" has no answer.
   if (recursion.length > 0) return recursion;
 
   const errors: ScriptError[] = [];
+  const reasons = new Map<string, string | null>();
   const check = ({ valueCalls }: Facts) => {
     for (const { name, line } of valueCalls) {
-      const reason = whyNotAValue(name, facts);
+      const reason = whyNotAValue(name, facts, reasons);
       if (reason !== null) errors.push({ line, message: t('functions.notAValue', { name, reason }) });
     }
   };
@@ -41,17 +54,62 @@ export function checkFunctions(program: Pick<Program, 'body' | 'functions'>): Sc
   return errors;
 }
 
-/** Why the function cannot be called inside a condition or a value, or null if it can. */
-function whyNotAValue(name: string, facts: ReadonlyMap<string, Facts>): string | null {
+/**
+ * Why the function cannot be called inside a condition or a value, or null if
+ * it can. Each answer is kept in `reasons`: a function called many times over
+ * is looked into once.
+ */
+function whyNotAValue(name: string, facts: ReadonlyMap<string, Facts>, reasons: Map<string, string | null>): string | null {
+  const known = reasons.get(name);
+  if (known !== undefined) return known;
+  const reason = reasonOf(name, facts, reasons);
+  reasons.set(name, reason);
+  return reason;
+}
+
+function reasonOf(name: string, facts: ReadonlyMap<string, Facts>, reasons: Map<string, string | null>): string | null {
   const own = facts.get(name);
   if (own === undefined) return null;
   if (own.timeLine !== null) return t('functions.takesTime', { line: own.timeLine });
   if (own.loopLine !== null) return t('functions.loops', { line: own.loopLine });
   for (const call of own.calls) {
-    const reason = whyNotAValue(call.name, facts);
+    const reason = whyNotAValue(call.name, facts, reasons);
     if (reason !== null) return reason;
   }
   return null;
+}
+
+/**
+ * How deep the calls from each function go: 1 for one that calls none.
+ * Worked out without recursion, so that a long chain cannot run the browser
+ * out of room; a call back into a function on the way (recursion, reported
+ * apart) counts as none.
+ */
+function callDepths(facts: ReadonlyMap<string, Facts>): Map<string, number> {
+  const depths = new Map<string, number>();
+  const onTheWay = new Set<string>();
+  for (const start of facts.keys()) {
+    if (depths.has(start)) continue;
+    const stack = [{ name: start, next: 0 }];
+    onTheWay.add(start);
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      const calls = facts.get(top.name)?.calls ?? [];
+      if (top.next < calls.length) {
+        const callee = calls[top.next++].name;
+        if (facts.has(callee) && !depths.has(callee) && !onTheWay.has(callee)) {
+          onTheWay.add(callee);
+          stack.push({ name: callee, next: 0 });
+        }
+        continue;
+      }
+      const deepest = calls.reduce((most, call) => Math.max(most, depths.get(call.name) ?? 0), 0);
+      depths.set(top.name, deepest + 1);
+      onTheWay.delete(top.name);
+      stack.pop();
+    }
+  }
+  return depths;
 }
 
 function recursionErrors(functions: ReadonlyMap<string, FunctionNode>, facts: ReadonlyMap<string, Facts>): ScriptError[] {

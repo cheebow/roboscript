@@ -117,7 +117,8 @@ export interface Assignment {
  * `finished`: the program ran off its end and does nothing any more.
  * `stalled`: it ran too many lines this tick without an action, so the tick passed without one.
  */
-export type ProgramStatus = 'running' | 'finished' | 'stalled';
+/** `failed`: the program could not go on (its calls went too deep for the browser) and does nothing more. */
+export type ProgramStatus = 'running' | 'finished' | 'stalled' | 'failed';
 
 export interface ActionSourceLines {
   drive: number | null;

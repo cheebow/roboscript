@@ -5,6 +5,13 @@ import { type SavedRobot, readSavedRobot } from '../project/garage';
 /** The form of a share code; raised when the layout of the JSON inside changes. */
 export const CODE_VERSION = 1;
 
+/**
+ * bytes: the most a share code may hold once inflated. Four robots with long
+ * programs come to a few tens of kilobytes; a crafted code that inflates to
+ * gigabytes is refused before it can use up the browser's memory.
+ */
+export const MAX_INFLATED_BYTES = 1024 * 1024;
+
 /** A robot read from a share code, with the rules it was made under. */
 export interface SharedRobot {
   robot: SavedRobot;
@@ -95,8 +102,26 @@ async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
   return pipe(bytes, new CompressionStream('deflate-raw'));
 }
 
+/** The inflated bytes; throws once there are more than MAX_INFLATED_BYTES of them, without reading on. */
 async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
-  return pipe(bytes, new DecompressionStream('deflate-raw'));
+  const reader = new Blob([bytes.slice()]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.length;
+    if (size > MAX_INFLATED_BYTES) {
+      await reader.cancel();
+      throw new Error('too large');
+    }
+    chunks.push(read.value);
+  }
+  const whole = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    whole.set(chunk, at);
+    at += chunk.length;
+  }
+  return whole;
 }
 
 async function pipe(bytes: Uint8Array, transform: GenericTransformStream): Promise<Uint8Array> {

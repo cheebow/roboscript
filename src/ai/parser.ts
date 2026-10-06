@@ -35,11 +35,17 @@ export function parse(source: string): ParseResult {
   // on would only report follow-on errors.
   if (lexed.errors.length > 0) return { program: null, errors: lexed.errors };
 
-  const parser = new Parser(lexed.lines);
-  const program: Program = { body: parser.parseBlock(0), functions: parser.functions };
-  // How the functions call each other is only worth checking once every line is right by itself.
-  const errors = firstErrorPerLine(parser.errors.length > 0 ? parser.errors : checkFunctions(program));
-  return { program: errors.length === 0 ? program : null, errors };
+  try {
+    const parser = new Parser(lexed.lines);
+    const program: Program = { body: parser.parseBlock(0), functions: parser.functions };
+    // How the functions call each other is only worth checking once every line is right by itself.
+    const errors = firstErrorPerLine(parser.errors.length > 0 ? parser.errors : checkFunctions(program));
+    return { program: errors.length === 0 ? program : null, errors };
+  } catch (error) {
+    // Nesting within the limits, but so much of it at once that the browser runs out of room.
+    if (!(error instanceof RangeError)) throw error;
+    return { program: null, errors: [{ line: 1, message: t('parse.tooDeepOverall') }] };
+  }
 }
 
 function firstErrorPerLine(errors: ScriptError[]): ScriptError[] {
@@ -49,6 +55,14 @@ function firstErrorPerLine(errors: ScriptError[]): ScriptError[] {
   }
   return [...byLine.values()].sort((a, b) => a.line - b.line);
 }
+
+/**
+ * How deep things may nest: blocks inside blocks (each `else if` counting as
+ * one more), and within a line brackets, `not`, minus signs, the values of a
+ * call and the steps of a calculation. Far beyond any program written by
+ * hand; it keeps a crafted one from running the browser out of room.
+ */
+export const MAX_NESTING = 100;
 
 /** Raised while parsing a single line; reported against that line. */
 class LineError extends Error {}
@@ -80,6 +94,8 @@ class Parser {
   private owner: Header | null = null;
   /** How many loops and whiles the line being parsed is in, within its function: where `break` may go. */
   private loopDepth = 0;
+  /** How many blocks (and else ifs) the parser is inside. */
+  private nesting = 0;
   private index = 0;
   private previousIndent = 0;
 
@@ -105,6 +121,21 @@ class Parser {
   /** Parses consecutive lines at exactly `indent`, stopping at the first shallower line. */
   parseBlock(indent: number): StatementNode[] {
     const body: StatementNode[] = [];
+    if (this.nesting >= MAX_NESTING) {
+      this.report(this.lines[this.index], t('parse.tooDeep', { limit: MAX_NESTING }));
+      this.skipWhile((line) => line.indent >= indent);
+      return body;
+    }
+    this.nesting++;
+    try {
+      this.parseLinesAt(indent, body);
+    } finally {
+      this.nesting--;
+    }
+    return body;
+  }
+
+  private parseLinesAt(indent: number, body: StatementNode[]): void {
     while (this.index < this.lines.length) {
       const line = this.lines[this.index];
       if (line.indent < indent) break;
@@ -120,7 +151,11 @@ class Parser {
       const statement = this.parseStatement(line);
       if (statement !== null) body.push(statement);
     }
-    return body;
+  }
+
+  /** Moves past the lines for which `skipped` holds, without parsing them. */
+  private skipWhile(skipped: (line: LexedLine) => boolean): void {
+    while (this.index < this.lines.length && skipped(this.lines[this.index])) this.index++;
   }
 
   private parseStatement(line: LexedLine): StatementNode | null {
@@ -154,8 +189,19 @@ class Parser {
       if (isWord(next.tokens[1], 'if')) {
         // `else if`: an if of its own in the else branch, with any else of its own after it.
         elseIf = true;
-        const chained = this.parseIf({ ...next, tokens: next.tokens.slice(1) });
-        elseBody = chained === null ? [] : [chained];
+        if (this.nesting >= MAX_NESTING) {
+          this.report(next, t('parse.tooDeep', { limit: MAX_NESTING }));
+          // The rest of the chain: the blocks below, and the elses that follow.
+          this.skipWhile((later) => later.indent > line.indent || (later.indent === line.indent && isWord(later.tokens[0], 'else')));
+        } else {
+          this.nesting++;
+          try {
+            const chained = this.parseIf({ ...next, tokens: next.tokens.slice(1) });
+            elseBody = chained === null ? [] : [chained];
+          } finally {
+            this.nesting--;
+          }
+        }
       } else {
         if (next.tokens.length > 1) this.report(next, t('parse.unexpectedAfter', { text: next.tokens[1].text, command: 'else' }));
         elseBody = this.parseChildBlock(next);
@@ -440,6 +486,8 @@ function expectEnd(rest: Token[], command: string): void {
  */
 class ExpressionParser {
   private position = 0;
+  /** How many brackets, nots, minus signs and calls the parser is inside. */
+  private nesting = 0;
 
   constructor(
     private readonly tokens: Token[],
@@ -450,13 +498,26 @@ class ExpressionParser {
     if (this.tokens.length === 0) throw new LineError(t('parse.expectCondition'));
     const condition = this.parseOr();
     this.expectEnd();
+    checkDepth(condition);
     return condition;
   }
 
   parseWholeExpression(): Expression {
     const expression = this.parseSum();
     this.expectEnd();
+    checkDepth(expression);
     return expression;
+  }
+
+  /** Parses something nested one level deeper, within MAX_NESTING. */
+  private deeper<T>(parse: () => T): T {
+    if (this.nesting >= MAX_NESTING) throw new LineError(t('parse.tooDeep', { limit: MAX_NESTING }));
+    this.nesting++;
+    try {
+      return parse();
+    } finally {
+      this.nesting--;
+    }
   }
 
   private expectEnd(): void {
@@ -489,7 +550,7 @@ class ExpressionParser {
   private parseNot(): ConditionNode {
     if (isWord(this.peek(), 'not')) {
       this.position++;
-      return { kind: 'not', operand: this.parseNot() };
+      return { kind: 'not', operand: this.deeper(() => this.parseNot()) };
     }
     return this.parseTruth();
   }
@@ -513,7 +574,7 @@ class ExpressionParser {
     } catch (error) {
       if (!(error instanceof LineError)) throw error;
       this.position = start + 1;
-      const condition = this.parseOr();
+      const condition = this.deeper(() => this.parseOr());
       if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
       this.position++;
       return condition;
@@ -560,7 +621,7 @@ class ExpressionParser {
   private parseSigned(): Expression {
     if (isSymbol(this.peek(), '-')) {
       this.position++;
-      const operand = this.parseSigned();
+      const operand = this.deeper(() => this.parseSigned());
       // Fold the sign into a literal, so `-10` is simply the number -10.
       return operand.kind === 'number' ? { kind: 'number', value: -operand.value } : { kind: 'negate', operand };
     }
@@ -574,7 +635,7 @@ class ExpressionParser {
 
     if (token.type === 'number') return { kind: 'number', value: token.value };
     if (isSymbol(token, '(')) {
-      const inner = this.parseSum();
+      const inner = this.deeper(() => this.parseSum());
       if (!isSymbol(this.peek(), ')')) throw new LineError(t('parse.expectCloseParen'));
       this.position++;
       return inner;
@@ -604,7 +665,7 @@ class ExpressionParser {
     const args: Expression[] = [];
     while (!isSymbol(this.peek(), ')')) {
       if (this.peek() === undefined) throw new LineError(t('parse.expectCloseParen'));
-      args.push(this.parseSum());
+      args.push(this.deeper(() => this.parseSum()));
       if (isSymbol(this.peek(), ',')) {
         this.position++;
         // A comma is between two values: none may end the list.
@@ -617,6 +678,39 @@ class ExpressionParser {
       throw new LineError(takesMessage(name, signature.params.length, args.length));
     }
     return { kind: 'call', name, args };
+  }
+}
+
+/**
+ * Refuses a condition or a value whose tree is deeper than MAX_NESTING: a
+ * long calculation such as 1 + 1 + 1 + … nests one level per step. Counted
+ * without recursion, so that the count itself cannot run out of room.
+ */
+function checkDepth(root: ConditionNode | Expression): void {
+  const stack: [ConditionNode | Expression, number][] = [[root, 1]];
+  for (let entry = stack.pop(); entry !== undefined; entry = stack.pop()) {
+    const [node, depth] = entry;
+    if (depth > MAX_NESTING) throw new LineError(t('parse.tooDeep', { limit: MAX_NESTING }));
+    for (const child of childrenOf(node)) stack.push([child, depth + 1]);
+  }
+}
+
+function childrenOf(node: ConditionNode | Expression): (ConditionNode | Expression)[] {
+  switch (node.kind) {
+    case 'and':
+    case 'or':
+    case 'comparison':
+    case 'arithmetic':
+      return [node.left, node.right];
+    case 'not':
+    case 'negate':
+      return [node.operand];
+    case 'truthy':
+      return [node.value];
+    case 'call':
+      return node.args;
+    default:
+      return [];
   }
 }
 

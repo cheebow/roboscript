@@ -229,7 +229,7 @@ describe('the recipes of the help: defending', () => {
     };
     const notLookingRound = recipe('face-hit').replace('turn left', 'wait');
     expect(seesTheShooter(notLookingRound)).toBe(true);
-    expect(seesTheShooter(notLookingRound.replace('    if hit\n        face hit\n    else if', '    if'))).toBe(false);
+    expect(seesTheShooter(notLookingRound.replace('    if hit\n        face hit\n', ''))).toBe(false);
   });
 
   it('peek: takes much less damage than the same robot without hiding', () => {

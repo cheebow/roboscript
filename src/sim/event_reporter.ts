@@ -68,7 +68,9 @@ export class EventReporter {
     if (status === 'finished') {
       this.emit('warning', robotId, 'program finished: the robot does nothing more and keeps driving as it was set (use loop to keep it going)');
     } else if (status === 'stalled') {
-      this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs turn, aim, fire, guard or wait)');
+      this.emit('warning', robotId, 'too many lines without an action: the robot waits (a loop needs turn, aim, fire, guard or wait; the lines of functions called for a value count too)');
+    } else if (status === 'failed') {
+      this.emit('warning', robotId, 'program stopped: its calls went too deep; the robot does nothing more');
     }
   }
 

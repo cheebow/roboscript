@@ -19,6 +19,13 @@ type Completion = { value: number } | { break: true } | null;
 /** Execution that hands control back whenever a tick is over. */
 type Execution = Generator<void, Completion, void>;
 
+/**
+ * Raised when the functions called for a value run past the tick's line
+ * budget: the tick ends without an action, and the line is worked out again
+ * on the next tick.
+ */
+class OverBudget extends Error {}
+
 /** deg: `face` is done when the target is this close to straight ahead; the last tick of turning lands exactly on it. */
 const FACED_WITHIN = 0.5;
 
@@ -39,6 +46,7 @@ export class ScriptBrain implements RobotBrain {
   private readonly variables = new Map<string, number>();
   private readonly execution: Execution;
   private finished = false;
+  private failed = false;
   // The tick being decided: what the robot senses, and the action being built.
   private context!: AIContext;
   private action!: AIAction;
@@ -54,8 +62,17 @@ export class ScriptBrain implements RobotBrain {
   decide(context: AIContext): AIAction {
     this.context = context;
     this.action = createIdleAction();
-    if (!this.finished) this.finished = this.execution.next().done === true;
-    if (this.finished) this.action.status = 'finished';
+    if (!this.finished) {
+      try {
+        this.finished = this.execution.next().done === true;
+      } catch (error) {
+        // Calls nested too deep for the browser: the program cannot go on, but the match can.
+        if (!(error instanceof RangeError)) throw error;
+        this.finished = true;
+        this.failed = true;
+      }
+    }
+    if (this.finished) this.action.status = this.failed ? 'failed' : 'finished';
     return this.action;
   }
 
@@ -73,7 +90,7 @@ export class ScriptBrain implements RobotBrain {
     const { action } = this;
     switch (statement.kind) {
       case 'if':
-        if (this.holds(statement.condition)) return yield* this.runBlock(statement.thenBody);
+        if (yield* this.settle(statement.line, () => this.holds(statement.condition))) return yield* this.runBlock(statement.thenBody);
         if (statement.elseLine === null) return null;
         // An `else if` notes its line itself, as the if it is.
         if (!statement.elseIf) yield* this.enter(statement.elseLine);
@@ -85,7 +102,7 @@ export class ScriptBrain implements RobotBrain {
           yield* this.enter(statement.line);
         }
       case 'while':
-        while (this.holds(statement.condition)) {
+        while (yield* this.settle(statement.line, () => this.holds(statement.condition))) {
           const completion = yield* this.runBlock(statement.body);
           if (completion !== null) return 'break' in completion ? null : completion;
           yield* this.enter(statement.line);
@@ -106,7 +123,7 @@ export class ScriptBrain implements RobotBrain {
         return null;
       }
       case 'call': {
-        const body = this.prepareCall(statement.name, statement.args);
+        const body = yield* this.settle(statement.line, () => this.prepareCall(statement.name, statement.args));
         // What the function returns is of no use to a call on a line of its own.
         yield* this.runBlock(body);
         return null;
@@ -132,7 +149,7 @@ export class ScriptBrain implements RobotBrain {
       case 'wait':
         break;
       default:
-        return this.runInstantly(statement);
+        return yield* this.settle(statement.line, () => this.runInstantly(statement));
     }
     // An action was chosen: the tick is over.
     yield;
@@ -145,7 +162,7 @@ export class ScriptBrain implements RobotBrain {
    * way. Each tick turns as far as it can, but no further than what is left.
    */
   private *turnBy(statement: Extract<ActionNode, { kind: 'turn' | 'aim' }>, angle: Expression): Execution {
-    const value = this.valueOf(angle);
+    const value = yield* this.settle(statement.line, () => this.valueOf(angle));
     const sign = (statement.direction === 'right' ? 1 : -1) * Math.sign(value);
     let left = Math.abs(value);
     while (left > TURNED_WITHIN) {
@@ -219,6 +236,24 @@ export class ScriptBrain implements RobotBrain {
     this.action.executedLines.push(line);
   }
 
+  /**
+   * Works out a condition or a value of the line, which may call functions.
+   * Their lines count against the tick's budget like any other: past it, the
+   * tick ends without an action and the line is worked out again next tick.
+   */
+  private *settle<T>(line: number, work: () => T): Generator<void, T, void> {
+    for (;;) {
+      try {
+        return work();
+      } catch (error) {
+        if (!(error instanceof OverBudget)) throw error;
+        this.action.status = 'stalled';
+        yield;
+        yield* this.enter(line);
+      }
+    }
+  }
+
   /** Works out the values passed to a function and puts them in its parameters. Returns the body to run. */
   private prepareCall(name: string, args: Expression[]): StatementNode[] {
     const definition = this.functionNamed(name);
@@ -251,6 +286,7 @@ export class ScriptBrain implements RobotBrain {
 
   private runWithoutBreak(body: StatementNode[]): Completion {
     for (const statement of body) {
+      if (this.action.executedLines.length >= this.lineBudget) throw new OverBudget();
       this.action.executedLines.push(statement.line);
       const completion = this.runStatementWithoutBreak(statement);
       if (completion !== null) return completion;

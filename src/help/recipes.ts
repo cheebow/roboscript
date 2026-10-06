@@ -238,7 +238,7 @@ loop
         code: `loop
     if hit
         face hit
-    else if enemy_visible
+    if enemy_visible
         aim enemy
         fire
     else

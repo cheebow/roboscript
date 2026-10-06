@@ -154,6 +154,26 @@ loop
         fire`,
       },
       {
+        id: 'walker-march',
+        title: { en: 'March in, firing all the way (for the Walker legs)', ja: '撃ちながら歩いて詰める（Walker 向き）' },
+        text: {
+          en: 'For a robot with the **Walker** legs (set in `config`). Other legs stop to shoot, because shots on the move scatter five times as much; the Walker\'s barely scatter, so it marches at the enemy firing the whole way in, and keeps firing pressed right up against it. The same program on Standard legs hits far less.',
+          ja: '`config` で脚を **Walker** にしたロボットのためのレシピです。走りながらの弾は 5 倍ばらけるので、ふつうの脚は止まって撃ちます。Walker はほとんどばらけないので、撃ちながら歩いて敵に詰め、密着したら押しつけたまま撃ち続けます。同じプログラムでも、Standard の脚では命中がずっと下がります。',
+        },
+        code: `drive forward
+loop
+    if blocked
+        turn left 90
+    else if not enemy_visible
+        turn enemy
+    else if enemy_distance > weapon_range - 50
+        turn enemy
+    else if abs(aim_angle) > 3
+        aim enemy
+    else
+        fire`,
+      },
+      {
         id: 'hover-run',
         title: { en: 'Never stop (for the Hover legs)', ja: '止まらずに走り撃ちする（Hover 向き）' },
         text: {

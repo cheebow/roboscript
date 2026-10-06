@@ -12,8 +12,8 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
-    en: 'A recipe for the Hover legs, "Never stop", joined the recipes in the help.',
-    ja: 'Hover の脚で遊ぶレシピ「止まらずに走り撃ちする」が、ヘルプのレシピ集に入りました。',
+    en: 'Recipes for the new legs joined the help: "March in, firing all the way" (Walker) and "Never stop" (Hover).',
+    ja: '新しい脚で遊ぶレシピがレシピ集に入りました: 「撃ちながら歩いて詰める」（Walker）と「止まらずに走り撃ちする」（Hover）。',
   },
   {
     date: '2026-10-07',

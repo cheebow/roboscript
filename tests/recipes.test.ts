@@ -170,9 +170,9 @@ describe('the recipes of the help: moving', () => {
   });
 });
 
-describe('the recipes of the help: never stop (Hover)', () => {
+describe('the recipes of the help: the legs with a way of fighting of their own', () => {
   /** The recipe on the given legs, against some robots of standard parts, counting its shots and hits. */
-  function runs(legs: string) {
+  function runs(id: string, legs: string) {
     const stats = statsOf({ ...STANDARD_LOADOUT, legs });
     let shots = 0;
     let movingShots = 0;
@@ -180,7 +180,7 @@ describe('the recipes of the help: never stop (Hover)', () => {
     for (const enemy of ['dumb_bot', 'sentry_bot']) {
       for (const { arena } of ARENAS) {
         for (const seed of [1, 2]) {
-          const brain = compileBrain(recipe('hover-run'));
+          const brain = compileBrain(recipe(id));
           const simulation = createSimulation([brain, compileBrain(enemySource(enemy))], {
             arena: arenaFor(arena, seed, 2),
             seed,
@@ -207,9 +207,15 @@ describe('the recipes of the help: never stop (Hover)', () => {
   }
 
   it('hover-run: shoots on the move, and hits more on the Hover than the same program on Standard legs', () => {
-    const hover = runs('hover');
+    const hover = runs('hover-run', 'hover');
     expect(hover.movingShots / hover.shots).toBeGreaterThan(0.9);
-    expect(hover.hitRate).toBeGreaterThan(1.1 * runs('standard').hitRate);
+    expect(hover.hitRate).toBeGreaterThan(1.1 * runs('hover-run', 'standard').hitRate);
+  });
+
+  it('walker-march: fires on the way in, and hits more on the Walker than the same program on Standard legs', () => {
+    const walker = runs('walker-march', 'walker');
+    expect(walker.movingShots / walker.shots).toBeGreaterThan(0.55);
+    expect(walker.hitRate).toBeGreaterThan(1.1 * runs('walker-march', 'standard').hitRate);
   });
 });
 

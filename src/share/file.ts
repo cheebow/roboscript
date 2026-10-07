@@ -1,7 +1,8 @@
 import { type ContestRecord, type ReadRecord, readRecord } from '../arena/contest_record';
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
-import { type SavedRobot, readSavedRobot } from '../project/garage';
+import { type SavedRobot, type SavedTeam, readSavedRobot, readSavedTeam } from '../project/garage';
+import { MAX_TEAM_SIZE } from '../data/castle';
 
 /** The name every RoboScript file carries, so that other JSON is not taken for one. */
 const FILE_FORMAT = 'roboscript';
@@ -12,8 +13,18 @@ export const FILE_EXTENSION = '.roboscript.json';
 /** What a file holds, with the rules it was made under. */
 export type SharedFile =
   | { kind: 'robot'; rules: string; robot: SavedRobot }
+  | { kind: 'team'; rules: string; team: SavedTeam }
   | { kind: 'contest'; rules: string; savedAt: string; contest: ReadRecord }
-  | { kind: 'match'; rules: string; match: SharedMatch };
+  | { kind: 'match'; rules: string; match: SharedMatch }
+  | { kind: 'castle'; rules: string; match: SharedCastleMatchFile };
+
+/** A castle match as it is shared: both teams (team 0 first), the arena by id, the robots a side, and the seed. */
+export interface SharedCastleMatchFile {
+  teams: [SavedTeam, SavedTeam];
+  arenaId: string;
+  teamSize: number;
+  seed: number;
+}
 
 /** A match as it is shared: its robots in the order they start, its arena by id, and its seed. */
 export interface SharedMatch {
@@ -35,6 +46,37 @@ export function matchFileText(match: SharedMatch): string {
       arena: match.arenaId,
       seed: match.seed,
       robots: match.robots.map((robot) => ({ name: robot.name, loadout: robot.loadout, source: robot.source })),
+    },
+    null,
+    2,
+  );
+}
+
+export function teamFileText(team: SavedTeam): string {
+  return JSON.stringify(
+    {
+      format: FILE_FORMAT,
+      v: FILE_VERSION,
+      kind: 'team',
+      rules: RULES_VERSION,
+      team: { name: team.name, source: team.source, loadouts: team.loadouts },
+    },
+    null,
+    2,
+  );
+}
+
+export function castleMatchFileText(match: SharedCastleMatchFile): string {
+  return JSON.stringify(
+    {
+      format: FILE_FORMAT,
+      v: FILE_VERSION,
+      kind: 'castle',
+      rules: RULES_VERSION,
+      arena: match.arenaId,
+      size: match.teamSize,
+      seed: match.seed,
+      teams: match.teams.map((team) => ({ name: team.name, source: team.source, loadouts: team.loadouts })),
     },
     null,
     2,
@@ -88,6 +130,27 @@ export function readSharedFile(text: string): { ok: true; file: SharedFile } | {
     }
     if (typeof file.arena !== 'string' || !Number.isInteger(file.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
     return { ok: true, file: { kind: 'match', rules, match: { robots: robots as SavedRobot[], arenaId: file.arena, seed: file.seed as number } } };
+  }
+  if (file.kind === 'team') {
+    const team = readSavedTeam(file.team);
+    if (team === null) return { ok: false, problem: t('share.noTeam') };
+    return { ok: true, file: { kind: 'team', rules, team } };
+  }
+  if (file.kind === 'castle') {
+    const teams = Array.isArray(file.teams) ? file.teams.map(readSavedTeam) : [];
+    const size = file.size;
+    if (teams.length !== 2 || teams.some((team) => team === null)) return { ok: false, problem: t('share.notTwoTeams') };
+    if (!Number.isInteger(size) || (size as number) < 1 || (size as number) > MAX_TEAM_SIZE) return { ok: false, problem: t('share.notTwoTeams') };
+    if ((teams as SavedTeam[]).some((team) => team.loadouts.length < (size as number))) return { ok: false, problem: t('share.notTwoTeams') };
+    if (typeof file.arena !== 'string' || !Number.isInteger(file.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
+    return {
+      ok: true,
+      file: {
+        kind: 'castle',
+        rules,
+        match: { teams: teams as [SavedTeam, SavedTeam], arenaId: file.arena, teamSize: size as number, seed: file.seed as number },
+      },
+    };
   }
   return { ok: false, problem: t('file.unknownKind') };
 }

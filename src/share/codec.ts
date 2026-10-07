@@ -1,6 +1,7 @@
+import { MAX_TEAM_SIZE } from '../data/castle';
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
-import { type SavedRobot, readSavedRobot } from '../project/garage';
+import { type SavedRobot, type SavedTeam, readSavedRobot, readSavedTeam } from '../project/garage';
 
 /** The form of a share code; raised when the layout of the JSON inside changes. */
 export const CODE_VERSION = 1;
@@ -82,6 +83,96 @@ export async function decodeMatch(code: string): Promise<DecodedMatch> {
   return {
     ok: true,
     shared: { robots: robots as SavedRobot[], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },
+  };
+}
+
+/** A team read from a share code, with the rules it was made under. */
+export interface SharedTeam {
+  team: SavedTeam;
+  rules: string;
+}
+
+export type DecodedTeam = { ok: true; shared: SharedTeam } | { ok: false; problem: string };
+
+/** A castle match read from a share code: both teams in spawn order (team 0 first), the arena, the size and the seed. */
+export interface SharedCastleMatch {
+  teams: [SavedTeam, SavedTeam];
+  arenaId: string;
+  /** Robots a side. */
+  teamSize: number;
+  seed: number;
+  rules: string;
+}
+
+export type DecodedCastleMatch = { ok: true; shared: SharedCastleMatch } | { ok: false; problem: string };
+
+/**
+ * A team as a share code. New kinds keep CODE_VERSION 1: a game from before
+ * them reads the code cleanly as "not a robot" rather than as another version.
+ */
+export async function encodeTeam(team: SavedTeam): Promise<string> {
+  const json = JSON.stringify({
+    v: CODE_VERSION,
+    kind: 'team',
+    rules: RULES_VERSION,
+    name: team.name,
+    source: team.source,
+    loadouts: team.loadouts,
+  });
+  return toBase64Url(await deflate(new TextEncoder().encode(json)));
+}
+
+/** The team in a share code, or what is wrong with the code. */
+export async function decodeTeam(code: string): Promise<DecodedTeam> {
+  const json = await decodePayload(code);
+  if (json === null) return { ok: false, problem: t('share.notACode') };
+  if (!isRecord(json) || json.kind !== 'team') return { ok: false, problem: t('share.notATeam') };
+  if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
+  const team = readSavedTeam(json);
+  if (team === null) return { ok: false, problem: t('share.noTeam') };
+  return { ok: true, shared: { team, rules: rulesOf(json) } };
+}
+
+/** A castle match as a share code: both teams as they fought, the arena, the size and the seed. */
+export async function encodeCastleMatch(match: {
+  teams: readonly [SavedTeam, SavedTeam];
+  arenaId: string;
+  teamSize: number;
+  seed: number;
+}): Promise<string> {
+  const json = JSON.stringify({
+    v: CODE_VERSION,
+    kind: 'castle',
+    rules: RULES_VERSION,
+    arena: match.arenaId,
+    size: match.teamSize,
+    seed: match.seed,
+    teams: match.teams.map((team) => ({ name: team.name, source: team.source, loadouts: team.loadouts })),
+  });
+  return toBase64Url(await deflate(new TextEncoder().encode(json)));
+}
+
+/** The castle match in a share code, or what is wrong with the code. */
+export async function decodeCastleMatch(code: string): Promise<DecodedCastleMatch> {
+  const json = await decodePayload(code);
+  if (json === null) return { ok: false, problem: t('share.notACode') };
+  if (!isRecord(json) || json.kind !== 'castle') return { ok: false, problem: t('share.notACastleMatch') };
+  if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
+  const teams = Array.isArray(json.teams) ? json.teams.map(readSavedTeam) : [];
+  const size = json.size;
+  if (teams.length !== 2 || teams.some((team) => team === null)) return { ok: false, problem: t('share.notTwoTeams') };
+  if (!Number.isInteger(size) || (size as number) < 1 || (size as number) > MAX_TEAM_SIZE) return { ok: false, problem: t('share.notTwoTeams') };
+  if ((teams as SavedTeam[]).some((team) => team.loadouts.length < (size as number))) return { ok: false, problem: t('share.notTwoTeams') };
+  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
+  return {
+    ok: true,
+    shared: {
+      teams: teams as [SavedTeam, SavedTeam],
+      arenaId: json.arena,
+      teamSize: size as number,
+      seed: json.seed as number,
+      rules: rulesOf(json),
+    },
   };
 }
 

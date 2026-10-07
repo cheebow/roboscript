@@ -3,9 +3,9 @@
  * opening the link opens the game and takes the robot or the match in. What
  * comes after `#` never reaches a server.
  */
-export type LinkKind = 'robot' | 'match';
+export type LinkKind = 'robot' | 'match' | 'team' | 'castle';
 
-const LINK = /^#(robot|match)=([A-Za-z0-9_-]+)$/;
+const LINK = /^#(robot|match|team|castle)=([A-Za-z0-9_-]+)$/;
 
 /** The link that opens the game at `page` (its address, without anything after `#`) with the share code in it. */
 export function shareLink(kind: LinkKind, code: string, page: string): string {

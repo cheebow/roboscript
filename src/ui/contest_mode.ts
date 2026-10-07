@@ -381,8 +381,8 @@ export class ContestMode {
       this.add(file.robot, 'file');
       return;
     }
-    if (file.kind === 'match') {
-      // A match is played in the arena, not here.
+    if (file.kind !== 'contest') {
+      // A match is played in the arena, and a team belongs to the team battle, not here.
       this.notice.show(t('contest.matchFile'), true);
       return;
     }

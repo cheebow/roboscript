@@ -1,4 +1,5 @@
 import { t } from '../i18n/messages';
+import { MAX_TEAM_SIZE } from '../data/castle';
 import { type Loadout, readLoadout } from '../data/parts';
 import type { KeyValueStorage } from './project_store';
 
@@ -7,6 +8,28 @@ export interface SavedRobot {
   name: string;
   source: string;
   loadout: Loadout;
+}
+
+/** A team of the castle match kept under a name: its one program and the parts of each of its machines. */
+export interface SavedTeam {
+  name: string;
+  source: string;
+  /** One loadout per machine, 1 to MAX_TEAM_SIZE of them. */
+  loadouts: Loadout[];
+}
+
+/** The team in data read from elsewhere; null when there is none. Parts it does not know are the standard ones. */
+export function readSavedTeam(value: unknown): SavedTeam | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { name, source, loadouts } = value as Record<string, unknown>;
+  if (typeof name !== 'string' || typeof source !== 'string') return null;
+  if (!Array.isArray(loadouts) || loadouts.length < 1) return null;
+  return { name, source, loadouts: loadouts.slice(0, MAX_TEAM_SIZE).map(readLoadout) };
+}
+
+/** A copy of the team that does not change when the team does. */
+export function copyTeam(team: SavedTeam): SavedTeam {
+  return { name: team.name, source: team.source, loadouts: team.loadouts.map((loadout) => ({ ...loadout })) };
 }
 
 /** The robot in data read from elsewhere (storage, a share code, a file); null when there is none. Parts it does not know are the standard ones. */
@@ -94,8 +117,70 @@ export class Garage {
     if (others.length < robots.length) this.write(others);
   }
 
+  /** The saved teams of the castle match, under names of their own, apart from the robots'. */
+  listTeams(): SavedTeam[] {
+    const entries = this.raw()?.teams;
+    const teams = new Map<string, SavedTeam>();
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      const team = readSavedTeam(entry);
+      if (team !== null && garageName(team.name) === team.name && !teams.has(team.name)) teams.set(team.name, team);
+    }
+    return [...teams.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  findTeam(name: string): SavedTeam | undefined {
+    return this.listTeams().find((team) => team.name === name);
+  }
+
+  /** Keeps the team under its name, in place of any team kept under that name before. Returns whether there was one. */
+  saveTeam(team: SavedTeam): boolean {
+    if (garageName(team.name) !== team.name) throw new Error(`"${team.name}" is not a name a team can be kept under`);
+    const others = this.listTeams().filter((other) => other.name !== team.name);
+    const replaced = others.length < this.listTeams().length;
+    this.writeTeams([...others, copyTeam(team)]);
+    return replaced;
+  }
+
+  /** Keeps a team received from elsewhere, numbering its name if that is taken, as importRobot does. Returns the name it is kept under. */
+  importTeam(team: SavedTeam): string {
+    const taken = new Set(this.listTeams().map((saved) => saved.name));
+    const base = garageName(team.name) ?? t('garage.sharedName');
+    let name = base;
+    for (let n = 2; taken.has(name); n++) {
+      const suffix = ` (${n})`;
+      name = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
+    }
+    this.saveTeam({ ...copyTeam(team), name });
+    return name;
+  }
+
+  /** Does nothing when no team is kept under the name. */
+  removeTeam(name: string): void {
+    const teams = this.listTeams();
+    const others = teams.filter((team) => team.name !== name);
+    if (others.length < teams.length) this.writeTeams(others);
+  }
+
+  /** What is saved, as parsed JSON; null when nothing readable is. */
+  private raw(): Record<string, unknown> | null {
+    const text = this.storage.getItem(GARAGE_KEY);
+    if (text === null) return null;
+    try {
+      const saved: unknown = JSON.parse(text);
+      return isRecord(saved) ? saved : null;
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      return null;
+    }
+  }
+
   private write(robots: readonly SavedRobot[]): void {
-    this.storage.setItem(GARAGE_KEY, JSON.stringify({ version: VERSION, robots }));
+    // The teams kept alongside stay as they are, and the other way round.
+    this.storage.setItem(GARAGE_KEY, JSON.stringify({ version: VERSION, robots, teams: this.raw()?.teams ?? [] }));
+  }
+
+  private writeTeams(teams: readonly SavedTeam[]): void {
+    this.storage.setItem(GARAGE_KEY, JSON.stringify({ version: VERSION, robots: this.raw()?.robots ?? [], teams }));
   }
 }
 

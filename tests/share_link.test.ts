@@ -19,3 +19,11 @@ describe('share links', () => {
     expect(readShareLink('#robot=a b')).toBeNull();
   });
 });
+
+describe('team share links', () => {
+  it('carry a team code after #team=, and read it back', () => {
+    expect(shareLink('team', 'abc-123', 'https://example.test/game/#old')).toBe('https://example.test/game/#team=abc-123');
+    expect(readShareLink('#team=abc-123')).toEqual({ kind: 'team', code: 'abc-123' });
+    expect(readShareLink('#castle=xyz')).toEqual({ kind: 'castle', code: 'xyz' });
+  });
+});

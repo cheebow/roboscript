@@ -191,3 +191,24 @@ describe('match files', () => {
     expect(problem((file) => { delete file.seed; })).toBe('a share code with no arena or seed in it');
   });
 });
+
+describe('team and castle-match files', () => {
+  const TEAM = {
+    name: 'Pack',
+    source: 'loop\n    wait\n',
+    loadouts: [{ ...STANDARD_LOADOUT, gun: 'pistol' }, { ...STANDARD_LOADOUT }],
+  };
+
+  it('bring a team back as it was', async () => {
+    const { readSharedFile, teamFileText } = await import('../src/share/file');
+    const read = readSharedFile(teamFileText(TEAM));
+    expect(read).toEqual({ ok: true, file: { kind: 'team', rules: RULES_VERSION, team: TEAM } });
+  });
+
+  it('bring a castle match back whole', async () => {
+    const { castleMatchFileText, readSharedFile } = await import('../src/share/file');
+    const match = { teams: [TEAM, { ...TEAM, name: 'Wall' }] as [typeof TEAM, typeof TEAM], arenaId: 'castle_plain', teamSize: 2, seed: 9 };
+    const read = readSharedFile(castleMatchFileText(match));
+    expect(read.ok && read.file).toEqual({ kind: 'castle', rules: RULES_VERSION, match });
+  });
+});

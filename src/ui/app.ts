@@ -50,6 +50,7 @@ import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
 import { createButton, createElement, requireElement } from './dom';
 import { GarageController } from './garage_controller';
+import { TeamGarageController } from './team_garage_controller';
 import { describeError } from './format';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
@@ -193,6 +194,8 @@ class App {
   private readonly teamStore = this.storage === null ? null : new TeamStore(this.storage, DEFAULT_TEAM_SOURCES);
   /** The two team editors, made the first time the team battle is entered. */
   private teamWorkspaces: RobotWorkspace[] | null = null;
+  /** The garage of teams, made with the team editors. */
+  private teamGarage: TeamGarageController | null = null;
   /** Robots a side in the team battle. */
   private teamSize = clampTeamSize(this.teamStore?.loadInfo().teamSize);
   /** The castle arena the team battle is fought in. */
@@ -363,11 +366,16 @@ class App {
   private openShareLink(): boolean {
     const link = readShareLink(window.location.hash);
     if (link === null) return false;
+    // A castle-match link plays in the team battle's watching, which comes with a later phase.
+    if (link.kind === 'castle') return false;
     history.replaceState(null, '', window.location.pathname + window.location.search);
     this.boot.hide();
     if (link.kind === 'robot') {
       this.showScreen('program');
       void this.garage.importCode(link.code);
+    } else if (link.kind === 'team') {
+      this.showScreen('team');
+      void this.teamGarage?.importCode(link.code);
     } else {
       this.showScreen('arena');
       void this.arenaMode.importMatch(link.code);
@@ -1062,18 +1070,34 @@ class App {
     return this.teamLoadouts.flatMap((machines) => machines.slice(0, this.teamSize));
   }
 
-  /** The team editors, made the first time the team battle is entered. */
+  /** The team editors, made the first time the team battle is entered, with the garage of teams beside them. */
   private ensureTeamWorkspaces(): RobotWorkspace[] {
-    this.teamWorkspaces ??= ROBOT_IDS.map(
-      (teamName, team) =>
-        new RobotWorkspace(teamName, requireElement(TEAM_EDITOR_ELEMENT_IDS[team]), this.teamStore?.loadSource(team) ?? DEFAULT_TEAM_SOURCES[team], {
-          save: (code) => this.teamStore?.saveSource(team, code),
-          edited: (workspace) => this.codeEdited(workspace),
-          saveProblem: (problem) => this.noteSave(`team-code:${team}`, problem),
-          lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
+    if (this.teamWorkspaces === null) {
+      this.teamWorkspaces = ROBOT_IDS.map(
+        (teamName, team) =>
+          new RobotWorkspace(teamName, requireElement(TEAM_EDITOR_ELEMENT_IDS[team]), this.teamStore?.loadSource(team) ?? DEFAULT_TEAM_SOURCES[team], {
+            save: (code) => this.teamStore?.saveSource(team, code),
+            edited: (workspace) => this.codeEdited(workspace),
+            saveProblem: (problem) => this.noteSave(`team-code:${team}`, problem),
+            lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
+          }),
+      );
+      this.teamGarage = new TeamGarageController(requireElement('team-garage'), [...ROBOT_IDS], this.storage, {
+        team: (team) => ({
+          source: this.teamWorkspaces?.[team].source ?? '',
+          loadouts: this.teamLoadouts[team].slice(0, this.teamSize).map((loadout) => ({ ...loadout })),
         }),
-    );
+        load: (team, saved) => this.loadTeam(team, saved),
+      });
+    }
     return this.teamWorkspaces;
+  }
+
+  /** Puts a saved team's program and parts in place of a team's own. Does not change the match's team size. */
+  private loadTeam(team: number, saved: { source: string; loadouts: readonly Loadout[] }): void {
+    this.ensureTeamWorkspaces()[team].load(saved.source);
+    saved.loadouts.slice(0, MAX_TEAM_SIZE).forEach((loadout, machine) => this.setTeamLoadout(team, machine + 1, { ...loadout }));
+    this.showFile(codeFileOf(team));
   }
 
   /** The next team match: both teams' programs and machines, in the chosen castle arena. */

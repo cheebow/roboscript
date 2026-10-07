@@ -3,8 +3,13 @@ import { MAX_NAME_LENGTH, garageName } from '../project/garage';
 import { t } from '../i18n/messages';
 import { acceptDrops, chooseFile } from '../share/file';
 import { RobotIntake } from './robot_intake';
-import { createShareBox } from './share_box';
+import { type ShareLink, createShareBox } from './share_box';
 import { shareLink } from '../share/link';
+
+/** How the panel's share box links what is kept: as a robot unless told otherwise (the team garage brings its own). */
+export interface GaragePanelOptions {
+  link?: (name: string, code: string) => ShareLink;
+}
 
 export interface GarageHandlers {
   /** Keep the robot at the given spawn index under the name as typed, which may not be a usable name. */
@@ -50,6 +55,7 @@ export class GaragePanel {
     container: HTMLElement,
     private readonly robotIds: readonly string[],
     private readonly handlers: GarageHandlers,
+    private readonly options: GaragePanelOptions = {},
   ) {
     this.nameInput = createElement('input', 'garage-name-input');
     this.nameInput.type = 'text';
@@ -135,7 +141,9 @@ export class GaragePanel {
 
   private shareBox(name: string, code: string): HTMLElement {
     const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('garage.saveFile.title', { name }), () => this.handlers.saveFile(name));
-    const link = { url: shareLink('robot', code, window.location.href), title: t('share.robotTitle', { name }), text: t('share.robotText', { name }) };
+    const link =
+      this.options.link?.(name, code) ??
+      ({ url: shareLink('robot', code, window.location.href), title: t('share.robotTitle', { name }), text: t('share.robotText', { name }) } satisfies ShareLink);
     return createShareBox(code, 'garage-share', [saveFile], link);
   }
 

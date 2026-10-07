@@ -96,3 +96,47 @@ describe('share codes for matches', () => {
     expect(await decodeMatch(await encode({ v: CODE_VERSION, kind: 'match', robots: [robot, robot], arena: 'cross', seed: 1.5 }))).toEqual({ ok: false, problem: 'a share code with no arena or seed in it' });
   });
 });
+
+describe('share codes for teams and castle matches', () => {
+  const TEAM = {
+    name: 'Pack',
+    source: 'loop\n    signal 1\n    wait\n',
+    loadouts: [
+      { ...STANDARD_LOADOUT, gun: 'pistol' },
+      { ...STANDARD_LOADOUT, body: 'light' },
+      { ...STANDARD_LOADOUT },
+    ],
+  };
+
+  it('bring a team back as it was: name, program and every machine’s parts', async () => {
+    const { decodeTeam, encodeTeam } = await import('../src/share/codec');
+    const decoded = await decodeTeam(await encodeTeam(TEAM));
+    expect(decoded).toEqual({ ok: true, shared: { team: TEAM, rules: RULES_VERSION } });
+  });
+
+  it('bring a castle match back whole: both teams, the arena, the size and the seed', async () => {
+    const { decodeCastleMatch, encodeCastleMatch } = await import('../src/share/codec');
+    const match = { teams: [TEAM, { ...TEAM, name: 'Wall' }] as [typeof TEAM, typeof TEAM], arenaId: 'castle_lanes', teamSize: 3, seed: 7 };
+    const decoded = await decodeCastleMatch(await encodeCastleMatch(match));
+    expect(decoded.ok && decoded.shared).toEqual({ ...match, rules: RULES_VERSION });
+  });
+
+  it('are refused cleanly by the readers of the other kinds', async () => {
+    const { decodeTeam, encodeTeam, encodeCastleMatch, decodeCastleMatch } = await import('../src/share/codec');
+    const teamCode = await encodeTeam(TEAM);
+    expect((await decodeRobot(teamCode)).ok).toBe(false);
+    expect((await decodeMatch(teamCode)).ok).toBe(false);
+    expect((await decodeCastleMatch(teamCode)).ok).toBe(false);
+    const robotCode = await encodeRobot(ROBOT);
+    expect((await decodeTeam(robotCode)).ok).toBe(false);
+    const matchCode = await encodeCastleMatch({ teams: [TEAM, TEAM], arenaId: 'castle_plain', teamSize: 1, seed: 1 });
+    expect((await decodeTeam(matchCode)).ok).toBe(false);
+  });
+
+  it('refuse a castle match whose teams do not cover its size', async () => {
+    const { decodeCastleMatch, encodeCastleMatch } = await import('../src/share/codec');
+    const thin = { ...TEAM, loadouts: TEAM.loadouts.slice(0, 1) };
+    const code = await encodeCastleMatch({ teams: [thin, TEAM], arenaId: 'castle_plain', teamSize: 3, seed: 1 });
+    expect((await decodeCastleMatch(code)).ok).toBe(false);
+  });
+});

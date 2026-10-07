@@ -160,3 +160,42 @@ describe('Garage.importRobot', () => {
     expect(garage.importRobot(robot('   '))).toBe('Shared');
   });
 });
+
+describe('the garage of teams', () => {
+  const team = (name: string, machines = 3) => ({
+    name,
+    source: 'loop\n    wait\n',
+    loadouts: Array.from({ length: machines }, () => ({ ...STANDARD_LOADOUT, gun: 'pistol' })),
+  });
+
+  it('keeps teams apart from the robots, under names of their own', () => {
+    const { garage } = createGarage();
+    garage.save(robot('Striker'));
+    garage.saveTeam(team('Striker'));
+    expect(names(garage)).toEqual(['Striker']);
+    expect(garage.listTeams().map((saved) => saved.name)).toEqual(['Striker']);
+    garage.removeTeam('Striker');
+    expect(names(garage)).toEqual(['Striker']);
+    expect(garage.listTeams()).toEqual([]);
+  });
+
+  it('keeps the robots saved before teams existed, and the teams when robots are saved', () => {
+    const { storage, garage } = createGarage();
+    // A garage written before teams existed: only robots in it.
+    storage.setItem(GARAGE_KEY, JSON.stringify({ version: 1, robots: [robot('Old')] }));
+    expect(garage.listTeams()).toEqual([]);
+    garage.saveTeam(team('Pack'));
+    expect(names(garage)).toEqual(['Old']);
+    garage.save(robot('New'));
+    expect(garage.listTeams().map((saved) => saved.name)).toEqual(['Pack']);
+    expect(names(garage)).toEqual(['New', 'Old']);
+  });
+
+  it('brings a team back as it was, and numbers the name of an import that clashes', () => {
+    const { garage } = createGarage();
+    garage.saveTeam(team('Pack', 2));
+    expect(garage.findTeam('Pack')?.loadouts).toHaveLength(2);
+    expect(garage.importTeam(team('Pack'))).toBe('Pack (2)');
+    expect(garage.listTeams().map((saved) => saved.name)).toEqual(['Pack', 'Pack (2)']);
+  });
+});

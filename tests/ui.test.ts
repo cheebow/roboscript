@@ -138,6 +138,19 @@ describe('the start-up screen', () => {
     expect(document.querySelector('.boot-item.current .boot-item-name')?.textContent).toBe('PROGRAM');
   });
 
+  it('offers the team battle, and starts it when chosen', () => {
+    const storage = memoryStorage();
+    const chosen: string[] = [];
+    const boot = new BootScreen(storage, (choice) => chosen.push(choice));
+    boot.show();
+    const screen = document.getElementById('boot')!;
+    key(screen, 'x');
+    const names = [...screen.querySelectorAll('.boot-item-name')].map((item) => item.textContent);
+    expect(names).toContain('TEAM BATTLE');
+    key(screen, '4');
+    expect(chosen).toEqual(['team']);
+  });
+
   it('tells a returning player what changed, once, and keeps quiet for a new one', () => {
     // A returning player: the boot choice was saved before there was any news.
     const storage = memoryStorage();
@@ -184,6 +197,26 @@ describe('the start-up screen', () => {
     boot.show();
     key(document.getElementById('boot')!, 'x');
     expect(document.querySelector('.boot-log')?.textContent).toContain('Ready.');
+  });
+});
+
+describe('the inspector', () => {
+  it('rebuilds its tabs for the robots it is given, and can be pointed at one', async () => {
+    const { Inspector } = await import('../src/ui/inspector');
+    const tabs = document.createElement('div');
+    const fields = document.createElement('div');
+    document.body.append(tabs, fields);
+    const inspector = new Inspector(tabs, fields, ['ALPHA', 'BRAVO']);
+    expect([...tabs.children].map((tab) => tab.textContent)).toEqual(['ALPHA', 'BRAVO']);
+    inspector.setRobots(['ALPHA-1', 'ALPHA-2', 'ALPHA-3', 'BRAVO-1', 'BRAVO-2', 'BRAVO-3']);
+    expect(tabs.children).toHaveLength(6);
+    expect(inspector.selected).toBe(0);
+    inspector.select(4);
+    expect(inspector.selected).toBe(4);
+    expect(tabs.children[4].classList.contains('selected')).toBe(true);
+    // An index out of range changes nothing.
+    inspector.select(9);
+    expect(inspector.selected).toBe(4);
   });
 });
 

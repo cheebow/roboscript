@@ -1,4 +1,5 @@
 import type { Assignment, DriveSetting } from '../sim/ai_context';
+import type { TeamReading } from '../sim/robot';
 import type { MatchResult, Simulation } from '../sim/simulation';
 import type { Bearing, Cover } from '../sim/surroundings';
 import type { Vec2 } from '../sim/types';
@@ -62,6 +63,11 @@ export interface RobotSnapshot {
   hidden: boolean;
   /** Regaining hp on this tick. */
   recovering: boolean;
+  /** The robot's team and its number within it, in a team match; null otherwise. */
+  team: number | null;
+  selfId: number | null;
+  /** What its program reads of its team (ally_signal, base_hp, ...); null outside a team match. */
+  teamSense: TeamReading | null;
   /** Source lines the AI executed on this tick, in order; the last is the action it took. */
   executedLines: readonly number[];
   /** What the AI assigned to its variables on this tick, in order. */
@@ -84,6 +90,8 @@ export interface Snapshot {
   /** Match time in sec. */
   time: number;
   robots: RobotSnapshot[];
+  /** The HP each castle has left, in the order of the match's bases; empty without castles. */
+  bases: readonly number[];
   bullets: BulletSnapshot[];
   /** Visual effects still running on this tick. */
   effects: EffectSnapshot[];
@@ -142,11 +150,15 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         touchingEnemy,
         hidden: robot.hidden,
         recovering: robot.recovering,
+        team: robot.team,
+        selfId: robot.selfId,
+        teamSense: robot.team === null ? null : { ...robot.teamSense },
         executedLines: [...(robot.action?.executedLines ?? [])],
         assignments: (robot.action?.assignments ?? []).map((assignment) => ({ ...assignment })),
         variables: Object.fromEntries(robot.variables),
       };
     }),
+    bases: simulation.bases.map((base) => base.hp),
     bullets: simulation.bullets.map((bullet) => ({
       x: bullet.position.x,
       y: bullet.position.y,

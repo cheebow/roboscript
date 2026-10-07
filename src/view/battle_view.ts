@@ -5,7 +5,7 @@ import type { RobotStats } from '../data/robot_defaults';
 import type { EffectLifetimes } from '../debug/effects';
 import type { BulletSnapshot, RobotSnapshot, Snapshot } from '../debug/snapshot';
 import type { MatchEndReason, MatchResult } from '../sim/simulation';
-import type { Arena } from '../sim/types';
+import type { Arena, Base } from '../sim/types';
 import {
   drawCoverMark,
   drawIncomingBulletMark,
@@ -43,6 +43,8 @@ const RESULT_FONT_PX = 22;
 // Sizes in arena units.
 const HP_BAR_HEIGHT = 3;
 const HP_BAR_GAP = 8;
+/** From a castle's inner edge out to its HP bar. */
+const BASE_BAR_GAP = 4;
 /** A guarding robot is ringed this far outside its edge. */
 const GUARD_RING_GAP = 4;
 const GUARD_RING_PX = 2;
@@ -61,6 +63,12 @@ const RESULT_Y = 50;
 export interface RenderOptions {
   /** Index of the robot whose view of the enemy is drawn, or null to draw no debug overlay. */
   sensorOf: number | null;
+  /** The team of each robot, for a team match: teammates are drawn in shades of one side of the palette. */
+  teams?: readonly number[];
+  /** The names of the teams, for the result; the robots' ids otherwise. */
+  teamNames?: readonly string[];
+  /** The castles of a castle match; the snapshot's `bases` carry the HP they have at the shown tick. */
+  bases?: readonly Base[];
   /** Which of that robot's marks to draw besides: those its program has to do with. */
   marks: ProgramFeatures;
   /** Per robot, in spawn order: whether to draw the way to its hiding place (its program has to do with cover). */
@@ -78,6 +86,8 @@ export class BattleView {
   private readonly sprites = new Map<string, RobotSprites>();
   /** Screen pixels per arena unit. */
   private scale = 1;
+  /** The teams of the match being drawn, while one with teams is: they pick the robots' colours. */
+  private teams: readonly number[] | undefined;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -97,6 +107,7 @@ export class BattleView {
     options: RenderOptions,
   ): void {
     if (!this.fit(arena)) return;
+    this.teams = options.teams;
     const ctx = this.context;
     const pixel = 1 / this.scale;
     const debug = options.sensorOf !== null;
@@ -114,6 +125,8 @@ export class BattleView {
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
       ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
+
+    options.bases?.forEach((base, index) => this.drawBase(base, snapshot.bases[index] ?? base.maxHp, pixel, arena.width));
 
     if (options.goal !== undefined) this.drawGoal(options.goal);
 
@@ -137,7 +150,7 @@ export class BattleView {
       if (options.marks.bullets) drawIncomingBulletMark(ctx, watcher, watcherColor, pixel);
       if (options.marks.lead) drawLeadMark(ctx, watcher, watcherColor, pixel);
     }
-    if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width);
+    if (snapshot.result !== null) this.drawResult(snapshot.result, arena.width, options.teamNames);
 
     ctx.lineWidth = pixel;
     ctx.strokeStyle = COLORS.border;
@@ -172,13 +185,34 @@ export class BattleView {
   }
 
   private colorOf(robotIndex: number): string {
-    return paletteOf(robotIndex).body;
+    return paletteOf(robotIndex, this.teams).body;
+  }
+
+  /** The castle of one team: a block in that team's colour, with the HP it has left as a bar along its inner edge. */
+  private drawBase(base: Base, hp: number, pixel: number, arenaWidth: number): void {
+    const ctx = this.context;
+    const { rect } = base;
+    const teamIndex = this.teams?.indexOf(base.team) ?? -1;
+    const color = teamIndex < 0 ? COLORS.obstacleEdge : this.colorOf(teamIndex);
+    ctx.fillStyle = COLORS.obstacle;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.lineWidth = pixel * 2;
+    ctx.strokeStyle = color;
+    ctx.strokeRect(rect.x + pixel, rect.y + pixel, rect.width - pixel * 2, rect.height - pixel * 2);
+    // The HP bar stands along the castle's inner edge, facing the field.
+    const onLeft = rect.x + rect.width / 2 < arenaWidth / 2;
+    const barX = onLeft ? rect.x + rect.width + BASE_BAR_GAP : rect.x - BASE_BAR_GAP - HP_BAR_HEIGHT;
+    ctx.fillStyle = COLORS.hpBack;
+    ctx.fillRect(barX, rect.y, HP_BAR_HEIGHT, rect.height);
+    ctx.fillStyle = color;
+    const left = Math.max(hp, 0) / base.maxHp;
+    ctx.fillRect(barX, rect.y + rect.height * (1 - left), HP_BAR_HEIGHT, rect.height * left);
   }
 
   /** The sprites of the robot at the given index with the given parts, whole or wrecked. Painted the first time they are asked for. */
   private spritesOf(robotIndex: number, loadout: Loadout, alive: boolean): RobotSprites {
-    const palette = alive ? paletteOf(robotIndex) : WRECK_PALETTE;
-    const key = [alive ? robotIndex : 'wreck', ...SLOTS.map((slot) => loadout[slot])].join('/');
+    const palette = alive ? paletteOf(robotIndex, this.teams) : WRECK_PALETTE;
+    const key = [alive ? palette.body : 'wreck', ...SLOTS.map((slot) => loadout[slot])].join('/');
     let sprites = this.sprites.get(key);
     if (sprites === undefined) {
       sprites = createRobotSprites(palette, loadout);
@@ -318,13 +352,13 @@ export class BattleView {
     ctx.restore();
   }
 
-  private drawResult(result: MatchResult, width: number): void {
+  private drawResult(result: MatchResult, width: number, teamNames?: readonly string[]): void {
     const ctx = this.context;
     ctx.font = this.font(RESULT_FONT_PX);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = COLORS.text;
-    ctx.fillText(formatResult(result), width / 2, RESULT_Y);
+    ctx.fillText(formatResult(result, teamNames), width / 2, RESULT_Y);
   }
 
   /** A font that appears `screenPixels` tall whatever the current scale. */
@@ -379,7 +413,12 @@ export function centreInside(x: number, halfWidth: number, width: number): numbe
   return Math.min(Math.max(x, halfWidth), Math.max(width - halfWidth, halfWidth));
 }
 
-export function formatResult(result: MatchResult): string {
+/** `teamNames` name the teams of a team match, by team index; a winner that has no name is called TEAM n. */
+export function formatResult(result: MatchResult, teamNames?: readonly string[]): string {
+  if (result.winnerTeam !== undefined) {
+    if (result.winnerTeam === null) return t('battle.draw');
+    return t('battle.teamWinner', { name: teamNames?.[result.winnerTeam] ?? `TEAM ${result.winnerTeam + 1}` });
+  }
   return result.winnerId === null ? t('battle.draw') : t('battle.winner', { name: result.winnerId });
 }
 
@@ -390,6 +429,6 @@ export function formatReason(reason: MatchEndReason): string {
 }
 
 /** Who won and how the match ended, for a status line. */
-export function formatOutcome(result: MatchResult): string {
-  return t('program.result', { result: formatResult(result), reason: formatReason(result.reason) });
+export function formatOutcome(result: MatchResult, teamNames?: readonly string[]): string {
+  return t('program.result', { result: formatResult(result, teamNames), reason: formatReason(result.reason) });
 }

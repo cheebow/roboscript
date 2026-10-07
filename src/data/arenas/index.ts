@@ -56,3 +56,8 @@ export const DEFAULT_ARENA = DEFAULT_ARENA_DEFINITION.arena;
 export function findArena(id: string | null): ArenaDefinition {
   return ARENAS.find((arena) => arena.id === id) ?? DEFAULT_ARENA_DEFINITION;
 }
+
+/** The castle arena with the given id, or the first castle arena if there is none. */
+export function findCastleArena(id: string | null): CastleArenaDefinition {
+  return CASTLE_ARENAS.find((arena) => arena.id === id) ?? CASTLE_ARENAS[0];
+}

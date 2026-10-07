@@ -68,6 +68,7 @@ export function drawEffects(
         drawDeflection(ctx, effect, progress);
         break;
       case 'destroyed':
+      case 'baseDestroyed':
         drawBurst(ctx, effect, progress);
         break;
       case 'detected':

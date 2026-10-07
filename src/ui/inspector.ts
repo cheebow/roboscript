@@ -24,16 +24,22 @@ const fieldNames = () => [
 export class Inspector {
   private selectedIndex = 0;
   private readonly fields: FieldList;
-  private readonly tabs: HTMLButtonElement[];
+  private tabs: HTMLButtonElement[] = [];
 
-  constructor(tabsContainer: HTMLElement, fieldsContainer: HTMLElement, robotIds: readonly string[]) {
+  constructor(
+    private readonly tabsContainer: HTMLElement,
+    fieldsContainer: HTMLElement,
+    robotIds: readonly string[],
+  ) {
     this.fields = new FieldList(fieldsContainer, fieldNames());
-    this.tabs = robotIds.map((id, index) => {
-      const tab = createButton('tab', id, '', () => this.select(index));
-      return tab;
-    });
-    tabsContainer.replaceChildren(...this.tabs);
-    this.select(this.selectedIndex);
+    this.setRobots(robotIds);
+  }
+
+  /** Puts these robots' tabs in place of the ones there, and starts on the first. */
+  setRobots(robotIds: readonly string[]): void {
+    this.tabs = robotIds.map((id, index) => createButton('tab', id, '', () => this.select(index)));
+    this.tabsContainer.replaceChildren(...this.tabs);
+    this.select(0);
   }
 
   /** Index of the robot being inspected. */
@@ -42,7 +48,7 @@ export class Inspector {
   }
 
   update(snapshot: Snapshot): void {
-    const robot = snapshot.robots[this.selectedIndex];
+    const robot = snapshot.robots[this.selectedIndex] ?? snapshot.robots[0];
     const enemy = snapshot.robots.find((other) => other.id === robot.targetId);
     this.fields.set([
       robot.id,
@@ -61,7 +67,8 @@ export class Inspector {
     ]);
   }
 
-  private select(index: number): void {
+  select(index: number): void {
+    if (index < 0 || index >= this.tabs.length) return;
     this.selectedIndex = index;
     this.tabs.forEach((tab, tabIndex) => tab.classList.toggle('selected', tabIndex === index));
   }

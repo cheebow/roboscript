@@ -1,6 +1,6 @@
 import type { RobotStats } from '../data/robot_defaults';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
-import type { Arena } from '../sim/types';
+import type { Arena, Base } from '../sim/types';
 import type { DebugEvent } from './debug_event';
 import { DebugLogger } from './debug_logger';
 import { type EffectLifetimes, EffectTracker } from './effects';
@@ -11,6 +11,10 @@ export interface Recording {
   arena: Arena;
   /** Each robot's stats, in spawn order. */
   stats: readonly RobotStats[];
+  /** The team of each robot, in a team match. */
+  teams?: readonly number[];
+  /** The castles of a castle match; each snapshot carries the HP they had. */
+  bases?: readonly Base[];
   tickRate: number;
   seed: number;
   /** snapshots[n] is the state after n ticks; snapshots[0] is the starting position. */
@@ -31,6 +35,8 @@ export function recordMatch(config: Omit<SimulationConfig, 'logger'>, effectLife
   return {
     arena: config.arena,
     stats: config.robots.map((robot) => robot.stats),
+    teams: config.teams,
+    bases: config.bases,
     tickRate: config.tickRate,
     seed: config.seed,
     snapshots,

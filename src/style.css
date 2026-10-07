@@ -127,8 +127,22 @@ button {
 #app:not([data-screen='tutorial']) #tutorial,
 #app:not([data-screen='challenge']) #challenge,
 #app:is([data-screen='tutorial'], [data-screen='challenge']) :is(#project, .picker),
+/* The team battle has a garage of teams only later: the duel garage stays out of it. */
+#app[data-screen='team'] :is(#garage-title, #garage),
+/* The team-size picker belongs to the team battle alone. */
+#app:not([data-screen='team']) #team-size-box,
 /* The tutorial and the challenges are left by their LEAVE button or the start menu (⏻), not by the tabs. */
 #app:is([data-screen='tutorial'], [data-screen='challenge']) #screens .tab:not(#boot-button) {
+  display: none;
+}
+
+/* The machine picker of the team battle: small numbered tabs in the editor's heading. */
+#machine-picker {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 8px;
+}
+#machine-picker[hidden] {
   display: none;
 }
 

@@ -241,6 +241,11 @@ export class RobotController {
     this.teamReading = reading;
   }
 
+  /** What the robot knows of its team this tick, as its program reads it. */
+  get teamSense(): TeamReading {
+    return this.teamReading;
+  }
+
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
     let lookedAtHit = false;

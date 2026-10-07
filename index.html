@@ -33,6 +33,7 @@
         </span>
         <span id="message"></span>
         <div id="controls">
+          <label class="picker" id="team-size-box" data-i18n-title="toolbar.teamSize.title" title="Robots a side; the castle and the team cost grow with the team"><span data-i18n="toolbar.teamSize">ROBOTS</span> <select id="team-size"></select></label>
           <label class="picker"><span data-i18n="toolbar.map">MAP</span> <select id="arena"></select></label>
           <button id="run" class="tool-button" type="button" data-i18n="toolbar.run" data-i18n-title="toolbar.run.title" title="Run a match with the code (Cmd/Ctrl+Enter)">RUN</button>
           <button id="pause" class="tool-button" type="button">PAUSE</button>
@@ -46,13 +47,14 @@
       <section id="project" class="panel">
         <h2 data-i18n="panel.project">PROJECT</h2>
         <div id="project-tree" class="panel-body"></div>
-        <h2 data-i18n="panel.garage">GARAGE</h2>
+        <h2 id="garage-title" data-i18n="panel.garage">GARAGE</h2>
         <div id="garage" class="panel-body"></div>
       </section>
 
       <section id="editor" class="panel">
         <h2>
           <span id="editor-title"></span>
+          <span id="machine-picker" hidden></span>
           <span class="editor-actions">
             <span id="template-menu" class="menu">
               <button id="load-template" class="menu-button" type="button" data-i18n="editor.loadTemplate" data-i18n-title="editor.loadTemplate.title" title="Replace the code with a template (undo with Cmd/Ctrl+Z)">LOAD TEMPLATE</button>
@@ -64,6 +66,8 @@
         <div id="config" class="panel-body" hidden></div>
         <div id="enemy-code" class="panel-body" hidden></div>
         <div id="tutorial-code" class="panel-body" hidden></div>
+        <div id="team-code" class="panel-body" hidden></div>
+        <div id="team-enemy-code" class="panel-body" hidden></div>
       </section>
 
       <div id="vsplit" class="splitter splitter-v" data-i18n-title="splitter.vertical.title" title="Drag to change the width of the editor; double-click to reset"></div>

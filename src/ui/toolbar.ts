@@ -41,6 +41,13 @@ export class Toolbar {
     requireElement<HTMLSelectElement>('arena').value = id;
   }
 
+  /** Puts these arenas in the picker in place of the ones there, as when the team battle brings its own maps. */
+  setArenas(choices: Choices): void {
+    const picker = requireElement<HTMLSelectElement>('arena');
+    picker.replaceChildren(...choices.options.map((choice) => new Option(choice.name, choice.id)));
+    picker.value = choices.selectedId;
+  }
+
   setMessage(text: string): void {
     if (this.message.textContent !== text) this.message.textContent = text;
   }

@@ -103,8 +103,20 @@ export class PartsView {
     container.replaceChildren(card, parts, total, stats);
   }
 
-  /** Shows the robot with the given parts, drawn in the given colours. `ai` names what drives it; the parts of `fixed` slots cannot be changed. */
-  show(robotId: string, ai: string, loadout: Loadout, palette: RobotPalette, fixed: ReadonlySet<Slot> = NOTHING_FIXED): void {
+  /**
+   * Shows the robot with the given parts, drawn in the given colours. `ai`
+   * names what drives it; the parts of `fixed` slots cannot be changed.
+   * `pooledCost` replaces the robot's own cost line, for a team whose
+   * machines share one budget.
+   */
+  show(
+    robotId: string,
+    ai: string,
+    loadout: Loadout,
+    palette: RobotPalette,
+    fixed: ReadonlySet<Slot> = NOTHING_FIXED,
+    pooledCost?: { text: string; over: boolean },
+  ): void {
     this.identity[0].textContent = robotId;
     this.identity[1].textContent = ai;
     drawRobotPreview(this.preview, loadout, palette);
@@ -120,8 +132,8 @@ export class PartsView {
     }
 
     const cost = costOf(loadout);
-    this.cost.textContent = `${cost} / ${COST_LIMIT}`;
-    this.cost.classList.toggle('over-limit', cost > COST_LIMIT);
+    this.cost.textContent = pooledCost?.text ?? `${cost} / ${COST_LIMIT}`;
+    this.cost.classList.toggle('over-limit', pooledCost?.over ?? cost > COST_LIMIT);
 
     const stats = statsOf(loadout);
     const standard = statsOf(STANDARD_LOADOUT);

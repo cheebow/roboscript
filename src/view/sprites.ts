@@ -117,7 +117,23 @@ export const WRECK_PALETTE: RobotPalette = {
 };
 
 /** The palette of the robot at the given spawn index. */
-export function paletteOf(robotIndex: number): RobotPalette {
+/** The palettes of a team match, by team: team 0 in cool colours, team 1 in warm ones. */
+const TEAM_PALETTES: readonly (readonly number[])[] = [
+  [0, 2, 5],
+  [1, 3, 4],
+];
+
+/**
+ * The colours of the robot at the given index. With `teams`, teammates share
+ * a side of the palette: team 0 cool, team 1 warm, each machine its own shade.
+ */
+export function paletteOf(robotIndex: number, teams?: readonly number[]): RobotPalette {
+  const team = teams?.[robotIndex];
+  if (teams !== undefined && team !== undefined) {
+    const nth = teams.slice(0, robotIndex).filter((other) => other === team).length;
+    const side = TEAM_PALETTES[team % TEAM_PALETTES.length];
+    return ROBOT_PALETTES[side[nth % side.length]];
+  }
   return ROBOT_PALETTES[robotIndex % ROBOT_PALETTES.length];
 }
 

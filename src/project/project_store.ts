@@ -84,6 +84,92 @@ export class ProjectStore {
   }
 }
 
+// The castle-match (team battle) project lives beside the duel one, under keys of its own:
+// the duel project is never touched by anything the team battle saves.
+const TEAM_DIRECTORY = 'roboscript/projects/team';
+export const TEAM_INFO_KEY = `${TEAM_DIRECTORY}/team.json`;
+const TEAM_SOURCE_KEYS = [`${TEAM_DIRECTORY}/alpha.bot`, `${TEAM_DIRECTORY}/bravo.bot`];
+
+/** What the team battle keeps besides the two programs. */
+export interface TeamInfo {
+  version: number;
+  /** Robots a side (1-3); absent until the player changes it. */
+  teamSize?: number;
+  /** Id of the castle arena the player chose. */
+  arena?: string;
+  /** The parts of each team's machines: loadouts[team][machine]. */
+  loadouts?: unknown[][];
+}
+
+const DEFAULT_TEAM_INFO: TeamInfo = { version: 1 };
+
+/** Saves and loads the team battle's programs and settings; the duel project's keys stay untouched. */
+export class TeamStore {
+  /** `defaultSources` are what each team's editor starts with. */
+  constructor(
+    private readonly storage: KeyValueStorage,
+    private readonly defaultSources: readonly string[],
+  ) {}
+
+  loadSource(team: number): string {
+    return this.storage.getItem(teamSourceKey(team)) ?? this.defaultSources[team];
+  }
+
+  saveSource(team: number, source: string): void {
+    this.storage.setItem(teamSourceKey(team), source);
+  }
+
+  loadLoadout(team: number, machine: number): Loadout {
+    return readLoadout(this.loadInfo().loadouts?.[team]?.[machine]);
+  }
+
+  saveLoadout(team: number, machine: number, loadout: Loadout): void {
+    const loadouts = [...(this.loadInfo().loadouts ?? [])].map((each) => (Array.isArray(each) ? [...each] : []));
+    while (loadouts.length <= team) loadouts.push([]);
+    loadouts[team][machine] = loadout;
+    this.saveInfo({ loadouts });
+  }
+
+  saveArena(arenaId: string): void {
+    this.saveInfo({ arena: arenaId });
+  }
+
+  saveTeamSize(teamSize: number): void {
+    this.saveInfo({ teamSize });
+  }
+
+  loadInfo(): TeamInfo {
+    const text = this.storage.getItem(TEAM_INFO_KEY);
+    if (text === null) return DEFAULT_TEAM_INFO;
+    try {
+      const value: unknown = JSON.parse(text);
+      return isTeamInfo(value) ? value : DEFAULT_TEAM_INFO;
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      return DEFAULT_TEAM_INFO;
+    }
+  }
+
+  private saveInfo(changes: Partial<TeamInfo>): void {
+    this.storage.setItem(TEAM_INFO_KEY, JSON.stringify({ ...this.loadInfo(), ...changes }));
+  }
+}
+
+function teamSourceKey(team: number): string {
+  const key = TEAM_SOURCE_KEYS[team];
+  if (key === undefined) throw new Error(`No program is kept for team ${team}`);
+  return key;
+}
+
+function isTeamInfo(value: unknown): value is TeamInfo {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.arena !== undefined && typeof candidate.arena !== 'string') return false;
+  if (candidate.teamSize !== undefined && typeof candidate.teamSize !== 'number') return false;
+  if (candidate.loadouts !== undefined && !Array.isArray(candidate.loadouts)) return false;
+  return typeof candidate.version === 'number';
+}
+
 function sourceKey(robotIndex: number): string {
   const key = SOURCE_KEYS[robotIndex];
   if (key === undefined) throw new Error(`No program is kept for robot ${robotIndex}`);

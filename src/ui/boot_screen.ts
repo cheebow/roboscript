@@ -11,8 +11,8 @@ import { createCredits } from './credits';
 import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
-export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'arena' | 'contest' | 'help' | 'language';
-const CHOICES: readonly BootChoice[] = ['tutorial', 'challenge', 'program', 'arena', 'contest', 'help', 'language'];
+export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'team' | 'arena' | 'contest' | 'help' | 'language';
+const CHOICES: readonly BootChoice[] = ['tutorial', 'challenge', 'program', 'team', 'arena', 'contest', 'help', 'language'];
 
 export const BOOT_KEY = 'roboscript/boot.json';
 

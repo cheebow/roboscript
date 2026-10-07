@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
+    en: 'TEAM BATTLE, new in the start menu: one program drives a whole team of 1 to 3 robots, defending its own castle and bringing the enemy one down. New words came with it: signal and ally_signal (the team radio), self_id, allies_alive, ally_distance, base_hp, enemy_base_distance and more — and sensor_range, max_speed and max_hp, which tell differently equipped machines apart in any match.',
+    ja: '起動メニューに「チームバトル」が入りました。1 本のプログラムで 1〜3 台のチームを動かし、自分の城を守りながら敵の城を落とします。新しい語も入りました: signal と ally_signal（チームの無線）、self_id、allies_alive、ally_distance、base_hp、enemy_base_distance など。sensor_range / max_speed / max_hp は、どの試合でも装備の違う機体を書き分けるのに使えます。',
+  },
+  {
+    date: '2026-10-07',
     en: 'Two pages outside the game: an introduction (about.html) and the whole help on one page (help.html), to read before you play or to link to.',
     ja: 'ゲームの外に 2 ページできました。紹介ページ（about.html）と、ヘルプを 1 ページで読めるページ（help.html）です。遊ぶ前に読んだり、リンクで人に渡せたりします。',
   },

@@ -42,6 +42,22 @@ const SENSOR_NAMES = [
 /** Shown with the values a program reads, but not words of RoboScript: a program cannot read them. */
 const NOT_WORDS: ReadonlySet<string> = new Set(['label', 'last_seen_x', 'last_seen_y']);
 
+/** The words of a team match, shown only while the robot is on a team. */
+const TEAM_SENSOR_NAMES = [
+  'self_id',
+  'allies_alive',
+  'ally_signal',
+  'ally_distance',
+  'ally_angle',
+  'ally_hp',
+  'base_hp',
+  'base_distance',
+  'base_angle',
+  'enemy_base_hp',
+  'enemy_base_distance',
+  'enemy_base_angle',
+] as const;
+
 /**
  * Shows what one robot's program can read at the displayed moment, under the
  * names used in RoboScript: the program's own variables, then the sensor
@@ -49,6 +65,8 @@ const NOT_WORDS: ReadonlySet<string> = new Set(['label', 'last_seen_x', 'last_se
  */
 export class WatchPanel {
   private readonly sensors: FieldList;
+  private readonly teamSensors: FieldList;
+  private readonly teamContainer = createElement('div', 'watch-sensors');
   private readonly variablesContainer = createElement('div', 'watch-variables');
   private variables: FieldList | null = null;
   private variableNames = '';
@@ -59,16 +77,22 @@ export class WatchPanel {
     private readonly robotName: HTMLElement,
   ) {
     const sensorsContainer = createElement('div', 'watch-sensors');
-    container.replaceChildren(this.variablesContainer, sensorsContainer);
+    container.replaceChildren(this.variablesContainer, this.teamContainer, sensorsContainer);
     // In Japanese the labels are short translations; the word itself is the tooltip, so the program's word can still be found.
     this.sensors = new FieldList(
       sensorsContainer,
       SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: NOT_WORDS.has(word) ? t('watch.notAWord') : word })),
     );
+    this.teamSensors = new FieldList(
+      this.teamContainer,
+      TEAM_SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: word })),
+    );
+    this.teamContainer.hidden = true;
   }
 
   update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>): void {
     if (this.robotName.textContent !== robot.id) this.robotName.textContent = robot.id;
+    this.showTeam(robot);
     const { lastSeen, incomingBullet, cover } = robot;
     this.sensors.set([
       String(robot.enemyVisible),
@@ -105,6 +129,28 @@ export class WatchPanel {
       formatNumber(robot.wallRight),
     ]);
     this.showVariables(variables);
+  }
+
+  /** The team words, while the robot is on a team; the rows disappear outside a team match. */
+  private showTeam(robot: RobotSnapshot): void {
+    const sense = robot.teamSense;
+    const hidden = sense === null;
+    if (this.teamContainer.hidden !== hidden) this.teamContainer.hidden = hidden;
+    if (sense === null) return;
+    this.teamSensors.set([
+      String(robot.selfId ?? 1),
+      String(sense.alliesAlive),
+      formatNumber(sense.allySignal),
+      formatNumber(sense.allyDistance),
+      formatNumber(sense.allyAngle),
+      formatNumber(sense.allyHp),
+      formatNumber(sense.baseHp),
+      formatNumber(sense.baseDistance),
+      formatNumber(sense.baseAngle),
+      formatNumber(sense.enemyBaseHp),
+      formatNumber(sense.enemyBaseDistance),
+      formatNumber(sense.enemyBaseAngle),
+    ]);
   }
 
   /** The rows are rebuilt only when the set of variables changes; otherwise only the values are refreshed. */

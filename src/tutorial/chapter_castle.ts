@@ -39,7 +39,7 @@ Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent
       },
       hints: [
         {
-          en: `While \`enemy_base_distance\` is more than \`weapon_range - 50\`: \`face enemy_base\`, \`drive forward\`. Once it is less: \`drive stop\`, \`face enemy_base\`, \`aim ahead\`, \`fire\`.`,
+          en: `While \`enemy_base_distance\` is more than \`weapon_range - 50\`: \`face enemy_base\`, \`drive forward\`. Once it is less: \`drive stop\`, \`face enemy_base\`, \`aim ahead\`, \`fire\`. End the marching branch with \`wait\`.`,
           ja: `\`enemy_base_distance\` が \`weapon_range - 50\` より大きい間は \`face enemy_base\` と \`drive forward\`。小さくなったら \`drive stop\`、\`face enemy_base\`、\`aim ahead\`、\`fire\` です。`,
         },
       ],
@@ -52,6 +52,7 @@ Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent
     else
         face enemy_base
         drive forward
+        wait
 `,
       start: `# March on the enemy castle, and shell it from inside your range.
 loop
@@ -115,6 +116,7 @@ else
         label MARCH
         face enemy_base
         drive forward
+        wait
 `,
       stage: castleStage(3, SITTING_TEAM, 102),
       check: { kind: 'match', goal: { kind: 'win' }, uses: ['self_id'] },
@@ -155,13 +157,14 @@ Watch \`ally_signal\` change in the WATCH panel while you debug: that is the pro
         label HELP
         face ally
         drive forward
+        wait
     else
         label WATCH
         drive stop
         aim enemy
         wait
 `,
-      stage: castleStage(3, CASTLE_RUSH, 103, { gun: 'pistol' }),
+      stage: castleStage(3, CASTLE_RUSH, 103, { gun: 'pistol', body: 'light' }),
       check: { kind: 'match', goal: { kind: 'win' }, uses: ['signal', 'ally_signal'] },
     },
     {

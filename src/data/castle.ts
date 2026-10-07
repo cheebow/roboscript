@@ -8,12 +8,13 @@ import type { Loadout } from './parts';
 export const MAX_TEAM_SIZE = 3;
 
 /**
- * A castle's HP: one robot's worth (10 standard shots) per robot fielded, so
- * the castle feels equally tough whatever the team size. Three focused
- * robots, like one alone, need about 8 s of uninterrupted fire.
+ * A castle's HP: a base of 100 plus 100 per robot fielded. A lone robot
+ * faces today's 200; a full team's castle (400) falls to one slipped-through
+ * machine in about 13 s of pistol fire — playtesting wanted the castle to be
+ * a real target before the robots have ground each other down.
  */
 export function castleHpFor(teamSize: number): number {
-  return 200 * teamSize;
+  return 100 * teamSize + 100;
 }
 
 /**

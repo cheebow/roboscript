@@ -289,6 +289,7 @@ export const CHALLENGES: readonly Challenge[] = [
         label MARCH
         face enemy_base
         drive forward
+        wait
 `,
   },
   {
@@ -341,6 +342,7 @@ export const CHALLENGES: readonly Challenge[] = [
         label MARCH
         face enemy_base
         drive forward
+        wait
 `,
   },
 ];

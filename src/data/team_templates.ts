@@ -31,6 +31,7 @@ loop
         label MARCH
         face enemy_base
         drive forward
+        wait
 `;
 
 /** Machine 1 stays home to guard the castle; the rest push. One program, split by self_id. */
@@ -50,6 +51,7 @@ loop
             label GO_HOME
             face base
             drive forward
+            wait
         else
             label WATCH
             drive stop
@@ -72,6 +74,7 @@ loop
             label MARCH
             face enemy_base
             drive forward
+            wait
 `;
 
 /** Whoever sees an enemy calls the team on the radio; the rest answer the call and converge. */
@@ -103,6 +106,7 @@ loop
             label ANSWER
             face ally
             drive forward
+            wait
         else if enemy_base_distance < weapon_range - 50
             label SIEGE
             drive stop
@@ -113,6 +117,7 @@ loop
             label MARCH
             face enemy_base
             drive forward
+            wait
 `;
 
 /**
@@ -133,6 +138,7 @@ loop
         else
             face base
             drive forward
+            wait
     else
         label WATCH
         drive stop
@@ -160,6 +166,7 @@ loop
             else
                 face base
                 drive forward
+                wait
         else
             label HOLD
             drive stop
@@ -180,6 +187,7 @@ loop
         label MARCH
         face enemy_base
         drive forward
+        wait
 `;
 
 /** The team programs offered in the castle match, besides the single-robot templates. */

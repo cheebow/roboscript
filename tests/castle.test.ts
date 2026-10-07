@@ -135,12 +135,12 @@ describe('the end of a castle match', () => {
 
 describe('the numbers of the castle match', () => {
   it('scales the castle and the cost pool with the team size', () => {
-    // One robot: today's single-robot cost limit, and a castle one robot's worth of HP.
+    // One robot: today's single-robot cost limit, and the castle at its old 200.
     expect(teamCostLimitFor(1)).toBe(COST_LIMIT);
     expect(castleHpFor(1)).toBe(200);
     // A full team: each further robot adds less than a full budget.
     expect(teamCostLimitFor(MAX_TEAM_SIZE)).toBe(32);
-    expect(castleHpFor(MAX_TEAM_SIZE)).toBe(600);
+    expect(castleHpFor(MAX_TEAM_SIZE)).toBe(400);
   });
 
   it('seats a smaller match on the first spawns of each side, mirrored', () => {

@@ -12,7 +12,7 @@ import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
 export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'team' | 'arena' | 'contest' | 'help' | 'language';
-const CHOICES: readonly BootChoice[] = ['tutorial', 'challenge', 'program', 'team', 'arena', 'contest', 'help', 'language'];
+const CHOICES: readonly BootChoice[] = ['tutorial', 'challenge', 'program', 'arena', 'contest', 'team', 'help', 'language'];
 
 export const BOOT_KEY = 'roboscript/boot.json';
 

@@ -147,7 +147,8 @@ describe('the start-up screen', () => {
     key(screen, 'x');
     const names = [...screen.querySelectorAll('.boot-item-name')].map((item) => item.textContent);
     expect(names).toContain('TEAM BATTLE');
-    key(screen, '4');
+    // After the duel's own screens: the sixth line of the menu.
+    key(screen, '6');
     expect(chosen).toEqual(['team']);
   });
 

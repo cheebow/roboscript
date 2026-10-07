@@ -108,6 +108,38 @@ describe('the end of a castle match', () => {
     { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 200 },
   ];
 
+  it('goes on past a wiped-out team until its castle falls', () => {
+    // ALPHA, in range of BRAVO and of the castle behind itself, guns BRAVO
+    // down and then turns on the castle: BRAVO's end does not end the match.
+    const arena: Arena = { ...FIELD, spawns: [{ x: 350, y: 300, rotation: 0 }, { x: 700, y: 300, rotation: 180 }] };
+    const hunter = compileBrain(
+      'loop\n    if enemy_visible\n        aim enemy\n        fire\n    else\n        face enemy_base\n        aim ahead\n        fire\n',
+    );
+    const simulation = castleMatch([hunter, new FixedBrain()], { bases: ENDS, arena });
+    while (simulation.result === null && simulation.robots[1].alive) simulation.step();
+    expect(simulation.robots[1].alive).toBe(false);
+    expect(simulation.result).toBeNull();
+    runToEnd(simulation);
+    expect(simulation.bases.find((base) => base.team === 1)?.hp).toBe(0);
+    expect(simulation.result).toMatchObject({ winnerTeam: 0, reason: 'base destroyed' });
+  });
+
+  it('can be won by a wiped-out team whose castle stands healthier at the end', () => {
+    // BRAVO spawns facing ALPHA's castle and shells it until ALPHA guns it
+    // down; nobody touches BRAVO's castle. At the end of time the healthier
+    // castle wins, robots or no robots.
+    const TALL_ENDS = ENDS.map((base) => ({ ...base, maxHp: 400 }));
+    const arena: Arena = { ...FIELD, spawns: [{ x: 400, y: 300, rotation: 0 }, { x: 700, y: 300, rotation: 0 }] };
+    const shell = compileBrain('loop\n    aim ahead\n    fire\n');
+    const hunt = compileBrain('loop\n    if enemy_visible\n        aim enemy\n        fire\n    else\n        wait\n');
+    const simulation = castleMatch([hunt, shell], { bases: TALL_ENDS, maxMatchTime: 20, arena });
+    runToEnd(simulation);
+    expect(simulation.robots[1].alive).toBe(false);
+    const [alphaCastle, bravoCastle] = [0, 1].map((team) => simulation.bases.find((base) => base.team === team));
+    expect(alphaCastle!.hp).toBeLessThan(bravoCastle!.hp);
+    expect(simulation.result).toMatchObject({ winnerTeam: 1, reason: 'timeout' });
+  });
+
   it('at the end of time, the healthier castle wins', () => {
     // ALPHA is turned to face left, so its shots wear down team 1's castle at the left wall; nobody else fires.
     const arena: Arena = { ...FIELD, spawns: [{ x: 300, y: 300, rotation: 180 }, { x: 700, y: 300, rotation: 180 }] };

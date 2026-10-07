@@ -276,6 +276,75 @@ loop
             wait
 `;
 
+/** Machine 1 walks in front and soaks the first fire; the hit is the signal for the rest to run for the castle. */
+export const CASTLE_DECOY = `# CastleDecoy: machine 1 walks in front; the moment it is hit it turns decoy, and the rest run for the castle.
+loop
+    if self_id == 1
+        # The leader: being hit means the enemy has shown itself - call the run.
+        if hit
+            signal 1
+        if ally_signal == 1 and bullet_incoming
+            # The decoy holds the enemy's eyes: brace what is coming...
+            label BRACE
+            guard
+        else if ally_signal == 1
+            # ...and shoot back, as loudly as it can.
+            label DECOY
+            if enemy_visible
+                drive stop
+                aim enemy
+                fire
+            else
+                face enemy_base
+                drive forward
+                wait
+        else if enemy_base_distance < weapon_range - 50
+            # Nobody has shot the leader: walk up and shell the castle itself.
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
+        else if blocked
+            turn left
+        else
+            label LEAD
+            face enemy_base
+            drive forward
+            wait
+    else if ally_signal == 1 or allies_alive == 0
+        # The call is out (or the leader fell): the castle, now.
+        if enemy_base_distance < weapon_range - 50
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
+        else if enemy_visible and enemy_distance < weapon_range - 50
+            # Only what blocks the way gets shot.
+            label CLEAR
+            drive stop
+            aim enemy
+            fire
+        else if blocked
+            turn left
+        else
+            label RUN
+            face enemy_base
+            drive forward
+            wait
+    else if ally_distance > 150
+        # No call yet: stay on the leader's heels.
+        label FOLLOW
+        face ally
+        drive forward
+        wait
+    else
+        label WAIT
+        drive stop
+        wait
+`;
+
 /** The team programs offered in the castle match, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
@@ -285,6 +354,7 @@ export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rally', name: 'CastleRally', source: CASTLE_RALLY },
   { id: 'castle_runner', name: 'CastleRunner', source: CASTLE_RUNNER },
   { id: 'castle_formation', name: 'CastleFormation', source: CASTLE_FORMATION },
+  { id: 'castle_decoy', name: 'CastleDecoy', source: CASTLE_DECOY },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

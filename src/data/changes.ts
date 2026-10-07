@@ -11,6 +11,21 @@ export interface Change {
 
 export const CHANGES: readonly Change[] = [
   {
+    date: '2026-10-08',
+    en: "A new team template: CastleDecoy walks its leader into the enemy's fire, and the moment it is hit, the rest run for the castle.",
+    ja: 'チームのテンプレートに CastleDecoy が加わりました。1 番機が先頭を歩いて敵の弾を引き受け、被弾した瞬間、残りの機体が城へ走り出します。',
+  },
+  {
+    date: '2026-10-08',
+    en: "The commentary earned its press badge: it reads each side's plan from the opening moves, calls a wiped-out team, a castle on the brink and the last robot standing, sums the match up in a lull, and says why a judgement went the way it did.",
+    ja: '実況が賢くなりました。開始直後の動きから布陣を読み、全滅・残り 1 台・落城寸前を呼び、膠着したら戦況をまとめ、判定決着では理由（城の差か、残り HP か）まで伝えます。',
+  },
+  {
+    date: '2026-10-08',
+    en: "The castle is the goal: a team now stays in the match while its castle stands, even with every robot gone, and a castle has one robot's worth of HP (200) at every team size — storming it is usually faster than grinding the team down.",
+    ja: '城攻めのルールが「城がすべて」になりました。全滅しても城が立っているかぎり試合は続き、城の HP は台数によらずロボット 1 台ぶん（200）。敵を倒すより、城を攻める方が早い——そういう調整です。',
+  },
+  {
     date: '2026-10-07',
     en: 'Robots move like they mean it: tracks roll, wheels turn, walker legs step and hover skirts shimmer while a robot drives.',
     ja: 'ロボットの絵が走るようになりました。走行中はキャタピラが回り、車輪が回転し、Walker の脚は踏み替え、Hover のスカートは揺らぎます。',

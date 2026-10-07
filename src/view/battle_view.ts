@@ -383,9 +383,10 @@ export function formatResult(result: MatchResult): string {
   return result.winnerId === null ? t('battle.draw') : t('battle.winner', { name: result.winnerId });
 }
 
-/** How a match ended, in words: destroyed, time up, out of ammo. */
+/** How a match ended, in words: destroyed, time up, out of ammo, castle destroyed. */
 export function formatReason(reason: MatchEndReason): string {
-  return t(`reason.${reason === 'out of ammo' ? 'outOfAmmo' : reason}`);
+  const key = reason === 'out of ammo' ? 'outOfAmmo' : reason === 'base destroyed' ? 'baseDestroyed' : reason;
+  return t(`reason.${key}`);
 }
 
 /** Who won and how the match ended, for a status line. */

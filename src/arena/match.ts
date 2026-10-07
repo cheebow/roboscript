@@ -203,7 +203,7 @@ export function playArenaSeries(
     matches: 0,
     wins: [0, 0],
     draws: 0,
-    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
+    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0, 'base destroyed': 0 },
   };
   for (const { arena, seed, first } of fixtures) {
     const fought = playFixture(entrants, first, other(first), arena, seed);

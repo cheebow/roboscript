@@ -29,7 +29,7 @@ describe('playSeries', () => {
 
   it('counts the wins of each contender in the order they were given', () => {
     const matches = SEEDS.length * 2;
-    const reasons = { destroyed: matches, timeout: 0, 'out of ammo': 0 };
+    const reasons = { destroyed: matches, timeout: 0, 'out of ammo': 0, 'base destroyed': 0 };
     expect(series([shooter(), sitter()])).toEqual({ matches, wins: [matches, 0], draws: 0, reasons });
     expect(series([sitter(), shooter()])).toEqual({ matches, wins: [0, matches], draws: 0, reasons });
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, DEFAULT_ARENA, DEFAULT_ARENA_DEFINITION, findArena } from '../src/data/arenas';
+import { ARENAS, CASTLE_ARENAS, DEFAULT_ARENA, DEFAULT_ARENA_DEFINITION, findArena } from '../src/data/arenas';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { TEMPLATES } from '../src/data/templates';
 import { circleIntersectsRect } from '../src/sim/math';
@@ -97,6 +97,56 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
           // Two that dodge everything may use up their ammo; that ends the match as well.
           expect(simulation.result?.reason, `${player.name} vs ${enemy.name}, seed ${seed}`).not.toBe('timeout');
         }
+      }
+    }
+  });
+});
+
+describe.each(CASTLE_ARENAS)('castle arena $name', ({ id, arena, bases }) => {
+  it('keeps the duel and battle royale pickers free of it', () => {
+    expect(ARENAS.some((other) => other.id === id)).toBe(false);
+  });
+
+  it('has every obstacle and both castles inside the field', () => {
+    for (const { x, y, width, height } of [...arena.obstacles, ...bases.map((base) => base.rect)]) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(x + width).toBeLessThanOrEqual(arena.width);
+      expect(y + height).toBeLessThanOrEqual(arena.height);
+    }
+  });
+
+  it('looks the same turned half around, castles included', () => {
+    const turn = ({ x, y, width, height }: Rect) => ({
+      x: arena.width - x - width,
+      y: arena.height - y - height,
+      width,
+      height,
+    });
+    expect(sorted(arena.obstacles.map(turn))).toEqual(sorted(arena.obstacles));
+    expect(sorted(bases.map((base) => turn(base.rect)))).toEqual(sorted(bases.map((base) => base.rect)));
+  });
+
+  it('starts three robots a side, mirrored, each facing the enemy castle', () => {
+    expect(arena.spawns).toHaveLength(6);
+    const [right, left] = [arena.spawns.slice(0, 3), arena.spawns.slice(3)];
+    for (const [index, spawn] of right.entries()) {
+      expect(spawn.rotation).toBe(180);
+      expect(left[index]).toEqual({ x: arena.width - spawn.x, y: spawn.y, rotation: 0 });
+    }
+  });
+
+  it('starts every robot clear of the obstacles, the castles and its teammates', () => {
+    for (const spawn of arena.spawns) {
+      for (const block of [...arena.obstacles, ...bases.map((base) => base.rect)]) {
+        expect(circleIntersectsRect(spawn, ROBOT_DEFAULTS.radius, block)).toBe(false);
+      }
+    }
+    const apart = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.hypot(a.x - b.x, a.y - b.y) >= ROBOT_DEFAULTS.radius * 2;
+    for (const a of arena.spawns) {
+      for (const b of arena.spawns) {
+        if (a !== b) expect(apart(a, b)).toBe(true);
       }
     }
   });

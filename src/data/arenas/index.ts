@@ -1,6 +1,10 @@
-import type { Arena } from '../../sim/types';
+import type { Arena, Base } from '../../sim/types';
 import { BARE_GROUND } from './bare_ground';
 import { BUNKERS } from './bunkers';
+import { CASTLE_BASTION } from './castle_bastion';
+import { CASTLE_BASES } from './castle_common';
+import { CASTLE_LANES } from './castle_lanes';
+import { CASTLE_PLAIN } from './castle_plain';
 import { CENTER_BLOCK } from './center_block';
 import { CORRIDOR } from './corridor';
 import { CROSS } from './cross';
@@ -27,6 +31,17 @@ export const ARENAS: readonly ArenaDefinition[] = [
   { id: 'bunkers', name: 'Bunkers', arena: BUNKERS },
   { id: 'cross', name: 'Cross', arena: CROSS },
   { id: 'zigzag', name: 'Zigzag', arena: ZIGZAG },
+];
+
+/** An arena for the castle match, with the two teams' castles. Kept apart from ARENAS: the duel and battle royale pickers never offer these. */
+export interface CastleArenaDefinition extends ArenaDefinition {
+  bases: readonly Base[];
+}
+
+export const CASTLE_ARENAS: readonly CastleArenaDefinition[] = [
+  { id: 'castle_plain', name: 'Castle Plain', arena: CASTLE_PLAIN, bases: CASTLE_BASES },
+  { id: 'castle_lanes', name: 'Castle Lanes', arena: CASTLE_LANES, bases: CASTLE_BASES },
+  { id: 'castle_bastion', name: 'Castle Bastion', arena: CASTLE_BASTION, bases: CASTLE_BASES },
 ];
 
 export const DEFAULT_ARENA_DEFINITION = ARENAS[0];

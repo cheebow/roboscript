@@ -121,7 +121,7 @@ describe('a hit on a guarding robot', () => {
 
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 

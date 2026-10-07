@@ -44,7 +44,7 @@ export function playSeries(config: SeriesConfig): SeriesResult {
     matches: 0,
     wins: [0, 0],
     draws: 0,
-    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0 },
+    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0, 'base destroyed': 0 },
   };
   const lineUps: [Contender, Contender][] = [
     [first, second],

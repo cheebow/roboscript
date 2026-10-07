@@ -24,6 +24,7 @@ export const EFFECT_LIFETIMES = {
   deflected: 8,
   destroyed: 15,
   detected: 12,
+  baseDestroyed: 15,
 } as const;
 /** Playback runs this many ticks past the end, so the effects of the last tick can finish. */
 export const REPLAY_TAIL_TICKS = Math.max(...Object.values(EFFECT_LIFETIMES));

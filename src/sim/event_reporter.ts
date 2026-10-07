@@ -1,6 +1,7 @@
 import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import type { AIAction, ProgramStatus } from './ai_context';
 import type { MatchResult } from './simulation';
+import { winnersOf } from './winners';
 
 export interface DebugEventSink {
   log(event: DebugEvent): void;
@@ -97,8 +98,14 @@ export class EventReporter {
     this.emit('hit', shooterId, `${targetId} damage=${damage} hp=${remainingHp}${guarded ? ' (guarded)' : ''}`);
   }
 
+  /** An enemy bullet wore down a team's castle. */
+  hitBase(shooterId: string, team: number, damage: number, remainingHp: number): void {
+    this.emit('hit', shooterId, `castle of team ${team} damage=${damage} hp=${remainingHp}`);
+  }
+
   matchEnded(result: MatchResult): void {
-    const outcome = result.winnerId === null ? 'draw' : `winner: ${result.winnerId}`;
+    const winners = winnersOf(result);
+    const outcome = winners === null ? 'draw' : `winner: ${winners.join(' & ')}`;
     this.emit('system', null, `${outcome} (${result.reason})`);
   }
 

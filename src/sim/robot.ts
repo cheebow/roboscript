@@ -35,12 +35,20 @@ export interface RobotOptions {
   weapon: Weapon;
   /** The robot's own random numbers, for its program; apart from the match's, so drawing them changes nothing else. */
   dice: MatchRng;
+  /** The robot's team, in a team match. */
+  team?: number;
+  /** The robot's number within its team (1, 2, 3...), in a team match. */
+  selfId?: number;
 }
 
 export class RobotController {
   readonly id: string;
   readonly stats: RobotStats;
   readonly weapon: Weapon;
+  /** The robot's team, in a team match; null outside one. */
+  readonly team: number | null;
+  /** The robot's number within its team (1, 2, 3...), in a team match; null outside one. */
+  readonly selfId: number | null;
   position: Vec2;
   /** deg, where the hull faces. */
   rotation: number;
@@ -107,6 +115,8 @@ export class RobotController {
     this.brain = options.brain;
     this.sensor = options.sensor;
     this.dice = options.dice;
+    this.team = options.team ?? null;
+    this.selfId = options.selfId ?? null;
   }
 
   get alive(): boolean {

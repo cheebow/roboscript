@@ -10,7 +10,7 @@ import { RobotController } from './robot';
 import { ConeSensor, measure } from './sensor';
 import type { Bearing, Cover, Surroundings } from './surroundings';
 import { findIncomingBullet } from './threats';
-import type { Arena, Vec2 } from './types';
+import type { Arena, Base, Vec2 } from './types';
 import { Gun } from './weapon';
 
 export interface RobotSetup {
@@ -25,8 +25,20 @@ export interface SimulationConfig {
   /** sec */
   maxMatchTime: number;
   seed: number;
-  /** Two robots for a duel; up to four for a battle royale. The arena needs a spawn point for each. */
+  /** Two robots for a duel; up to four for a battle royale, six for a castle match. The arena needs a spawn point for each. */
   robots: readonly RobotSetup[];
+  /**
+   * The team of each robot, in the order of `robots`, for a team match:
+   * teammates do not count as enemies, and their bullets pass through each
+   * other. Without it, every robot is on its own.
+   */
+  teams?: readonly number[];
+  /**
+   * The teams' castles, for a castle match. A castle blocks movement, bullets
+   * and sight like an obstacle; enemy bullets wear it down, and a team whose
+   * castle falls loses at once.
+   */
+  bases?: readonly Base[];
   /** Receives debug events. The match plays the same with or without it. */
   logger?: DebugEventSink;
 }
@@ -38,7 +50,7 @@ const LINE_OF_SIGHT_TOLERANCE = 1e-6;
  * `out of ammo`: nobody can shoot any more and no bullet is in the air, so
  * nothing can change the outcome; like a timeout, it goes by the HP left.
  */
-export type MatchEndReason = 'destroyed' | 'timeout' | 'out of ammo';
+export type MatchEndReason = 'destroyed' | 'timeout' | 'out of ammo' | 'base destroyed';
 
 /**
  * Robots no further apart than this many robot radii see each other past a
@@ -56,7 +68,7 @@ function diceSeed(seed: number, index: number): number {
 }
 
 /** `deflected`: a bullet hit a robot that was guarding. `detected`: a robot caught sight of the enemy. */
-export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected';
+export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
@@ -65,11 +77,20 @@ export interface TickEvent {
   y: number;
   /** The index of the robot it happened to, for the events that are a robot's own. */
   robot?: number;
+  /** The index in `bases` of the castle it happened to. */
+  base?: number;
+}
+
+/** A castle as it stands during the match: its definition plus the HP it has left. */
+export interface BaseState extends Base {
+  hp: number;
 }
 
 export interface MatchResult {
-  /** null means DRAW. */
+  /** null means DRAW, and in a team match, always null: see winnerTeam. */
   winnerId: string | null;
+  /** In a team match, the team that won; null for a draw. Not there in other matches. */
+  winnerTeam?: number | null;
   reason: MatchEndReason;
   /**
    * Each robot's place, 1 for the best, by id. The last one standing comes
@@ -88,6 +109,8 @@ export class Simulation {
   readonly tickRate: number;
   readonly seed: number;
   readonly robots: RobotController[];
+  /** The castles of a castle match, with the HP each has left; empty otherwise. */
+  readonly bases: BaseState[];
   bullets: Bullet[] = [];
   /** Number of ticks completed. */
   tick = 0;
@@ -104,12 +127,35 @@ export class Simulation {
   private nextBulletId = 0;
   /** The tick on which each robot was destroyed, by id. */
   private readonly destroyedAt = new Map<string, number>();
+  /** Each robot's team, by its index; every robot on a team of its own outside a team match. */
+  private readonly teamOf: readonly number[];
+  private readonly teamMatch: boolean;
+  /**
+   * What stands in the way of driving, bullets and sight: the arena's
+   * obstacles, plus the castles. Without castles this IS `arena` itself, so
+   * that a match without them plays out exactly as before (and the cover map
+   * cached by the obstacles array stays shared).
+   */
+  private readonly terrain: Arena;
 
   constructor(config: SimulationConfig) {
     if (config.arena.spawns.length < config.robots.length) {
       throw new Error('Arena does not have a spawn point for every robot');
     }
+    if (config.teams !== undefined && config.teams.length !== config.robots.length) {
+      throw new Error('A team match needs a team for every robot');
+    }
+    if (config.bases !== undefined && config.bases.length > 0 && config.teams === undefined) {
+      throw new Error('Castles belong to teams: a castle match needs teams');
+    }
     this.arena = config.arena;
+    this.teamMatch = config.teams !== undefined;
+    this.teamOf = config.teams ?? config.robots.map((_, index) => index);
+    this.bases = (config.bases ?? []).map((base) => ({ ...base, rect: { ...base.rect }, hp: base.maxHp }));
+    this.terrain =
+      this.bases.length === 0
+        ? config.arena
+        : { ...config.arena, obstacles: [...config.arena.obstacles, ...this.bases.map((base) => base.rect)] };
     this.tickRate = config.tickRate;
     this.seed = config.seed;
     this.rng = new MatchRng(config.seed);
@@ -128,6 +174,8 @@ export class Simulation {
           ),
           weapon: new Gun(stats, config.tickRate),
           dice: new MatchRng(diceSeed(config.seed, index)),
+          team: this.teamMatch ? this.teamOf[index] : undefined,
+          selfId: this.teamMatch ? this.teamOf.slice(0, index + 1).filter((team) => team === this.teamOf[index]).length : undefined,
         }),
     );
     this.reporter = config.logger === undefined ? null : new EventReporter(config.logger, config.tickRate);
@@ -219,15 +267,19 @@ export class Simulation {
     const { position, rotation } = robot;
     const { radius } = robot.stats;
     const bearingTo = (target: Vec2): Bearing => ({ position: { ...target }, ...measure(position, rotation, target) });
-    const wallAt = (offset: number) => wallDistance(this.arena, position, rotation + offset, radius);
+    const wallAt = (offset: number) => wallDistance(this.terrain, position, rotation + offset, radius);
 
-    const bullet = findIncomingBullet(this.bullets, robot.id, position, radius, this.arena);
+    // A teammate's bullets pass through: they are no threat.
+    const threats = this.teamMatch
+      ? this.bullets.filter((each) => each.ownerId === robot.id || !this.sameTeam(each.ownerId, robot.id))
+      : this.bullets;
+    const bullet = findIncomingBullet(threats, robot.id, position, radius, this.terrain);
     const findCover = this.coverFinderOf(robot);
     let cover: Cover | null | undefined;
     return {
       blocked: this.hitsTerrain(robot.stepTarget('forward', this.tickDuration), radius),
       blockedBehind: this.hitsTerrain(robot.stepTarget('backward', this.tickDuration), radius),
-      touchingEnemy: this.robots.some((other) => other !== robot && other.alive && this.areTouching(robot, other)),
+      touchingEnemy: this.enemiesOf(robot).some((enemy) => this.areTouching(robot, enemy)),
       wallAhead: wallAt(0),
       wallBehind: wallAt(180),
       wallLeft: wallAt(-90),
@@ -254,7 +306,7 @@ export class Simulation {
     const threat = lastSeen === null ? null : { ...lastSeen };
     return () => {
       if (threat === null) return null;
-      const found = findCover(this.arena, radius, position, threat);
+      const found = findCover(this.terrain, radius, position, threat);
       if (found === null) return null;
       const [next] = found.route;
       const angle = next === undefined ? 0 : measure(position, rotation, next).angle;
@@ -303,17 +355,23 @@ export class Simulation {
     const { radius, bulletRadius } = viewer;
     const close = distance(from, to) <= radius * CLOSE_RANGE_RADII;
     const clearance = (close ? bulletRadius : radius) - LINE_OF_SIGHT_TOLERANCE;
-    return this.arena.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
+    return this.terrain.obstacles.every((obstacle) => segmentRectDistance(from, to, obstacle) >= clearance);
   }
 
-  /** The other robots still in the match. */
+  /** The robots of other teams still in the match: in a match without teams, every other robot still in it. */
   private enemiesOf(robot: RobotController): RobotController[] {
-    return this.robots.filter((other) => other !== robot && other.alive);
+    const team = this.teamOf[this.robots.indexOf(robot)];
+    return this.robots.filter((other, index) => other !== robot && other.alive && this.teamOf[index] !== team);
   }
 
-  /** Whether a robot of the given radius at the given position would overlap a wall or an obstacle. */
+  private sameTeam(a: string, b: string): boolean {
+    const index = (id: string) => this.robots.findIndex((robot) => robot.id === id);
+    return this.teamOf[index(a)] === this.teamOf[index(b)];
+  }
+
+  /** Whether a robot of the given radius at the given position would overlap a wall, an obstacle or a castle. */
   private hitsTerrain(position: Vec2, radius: number): boolean {
-    const { width, height, obstacles } = this.arena;
+    const { width, height, obstacles } = this.terrain;
     if (position.x < radius || position.x > width - radius) return true;
     if (position.y < radius || position.y > height - radius) return true;
     return obstacles.some((obstacle) => circleIntersectsRect(position, radius, obstacle));
@@ -351,18 +409,34 @@ export class Simulation {
   }
 
   private stepBullets(): void {
+    const baseRects = this.bases.map((base) => base.rect);
     this.bullets = this.bullets.filter((bullet) => {
       // Read afresh for every bullet: a robot destroyed by one bullet of this tick is no longer in the way of the next.
+      // A teammate's bullet passes through: only the robots of other teams are in its way (and its owner, which it never hits).
       const targets = this.robots
-        .filter((robot) => robot.alive)
+        .filter((robot) => robot.alive && (!this.teamMatch || robot.id === bullet.ownerId || !this.sameTeam(robot.id, bullet.ownerId)))
         .map((robot) => ({ id: robot.id, position: robot.position, radius: robot.stats.radius }));
-      const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets);
-      if (outcome.kind === 'hit' || outcome.kind === 'wall') {
+      const outcome = stepBullet(bullet, this.tickDuration, this.arena, targets, baseRects);
+      if (outcome.kind === 'hit' || outcome.kind === 'wall' || outcome.kind === 'base') {
         this.tickEvents.push({ kind: 'impact', ...bullet.position });
       }
       if (outcome.kind === 'hit') this.applyHit(bullet, outcome.targetId);
+      if (outcome.kind === 'base') this.applyBaseHit(bullet, outcome.baseIndex);
       return outcome.kind === 'flying';
     });
+  }
+
+  /** Every bullet stops at a castle; only an enemy's wears it down. */
+  private applyBaseHit(bullet: Bullet, baseIndex: number): void {
+    const base = this.bases[baseIndex];
+    const shooter = this.robots.findIndex((robot) => robot.id === bullet.ownerId);
+    if (this.teamOf[shooter] === base.team || base.hp <= 0) return;
+    base.hp = Math.max(0, base.hp - bullet.damage);
+    this.reporter?.hitBase(bullet.ownerId, base.team, bullet.damage, base.hp);
+    if (base.hp === 0) {
+      const { rect } = base;
+      this.tickEvents.push({ kind: 'baseDestroyed', x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, base: baseIndex });
+    }
   }
 
   private applyHit(bullet: Bullet, targetId: string): void {
@@ -381,6 +455,7 @@ export class Simulation {
   }
 
   private judge(): MatchResult | null {
+    if (this.teamMatch) return this.judgeTeams();
     const survivors = this.robots.filter((robot) => robot.alive);
     if (survivors.length <= 1) {
       const places = this.places((robot) => (robot.alive ? Number.POSITIVE_INFINITY : (this.destroyedAt.get(robot.id) ?? 0)));
@@ -397,6 +472,57 @@ export class Simulation {
     );
     const firsts = this.robots.filter((robot) => places[robot.id] === 1);
     return { winnerId: firsts.length === 1 ? firsts[0].id : null, reason, places };
+  }
+
+  /**
+   * A team match ends when a team's castle falls or its last robot does; a
+   * team still in on both counts beats one that is out, and teams out on the
+   * same tick draw. At the end of time, or when nobody can shoot, castle HP
+   * decides first, then the HP of the robots still standing. Teammates share
+   * their team's place.
+   */
+  private judgeTeams(): MatchResult | null {
+    const teams = [...new Set(this.teamOf)];
+    const members = (team: number) => this.robots.filter((_, index) => this.teamOf[index] === team);
+    const baseOf = (team: number) => this.bases.find((base) => base.team === team);
+    const baseFell = (team: number) => {
+      const base = baseOf(team);
+      return base !== undefined && base.hp <= 0;
+    };
+    const wiped = (team: number) => members(team).every((robot) => !robot.alive);
+    const out = (team: number) => baseFell(team) || wiped(team);
+    const lastedUntil = (team: number) =>
+      baseFell(team) ? this.tick : Math.max(...members(team).map((robot) => this.destroyedAt.get(robot.id) ?? 0));
+    const hpLeft = (team: number) => members(team).reduce((sum, robot) => sum + (robot.alive ? robot.hp : 0), 0);
+
+    let reason: MatchEndReason;
+    /** Compared entry by entry; a longer lead decides before anything after it. */
+    let score: (team: number) => number[];
+    if (teams.some(out)) {
+      reason = teams.some(baseFell) ? 'base destroyed' : 'destroyed';
+      score = (team) => (out(team) ? [0, lastedUntil(team)] : [1, 0]);
+    } else {
+      const survivors = this.robots.filter((robot) => robot.alive);
+      const spent = this.bullets.length === 0 && survivors.every((robot) => robot.weapon.ammo === 0);
+      if (!spent && this.tick < this.maxTicks) return null;
+      reason = spent ? 'out of ammo' : 'timeout';
+      score = (team) => [1, baseOf(team)?.hp ?? 0, hpLeft(team)];
+    }
+
+    const beats = (a: number[], b: number[]) => {
+      for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const gap = (a[i] ?? 0) - (b[i] ?? 0);
+        if (gap !== 0) return gap > 0;
+      }
+      return false;
+    };
+    const scores = new Map(teams.map((team) => [team, score(team)]));
+    const placeOf = (team: number) =>
+      1 + teams.filter((other) => beats(scores.get(other) ?? [], scores.get(team) ?? [])).length;
+    const teamPlaces = new Map(teams.map((team) => [team, placeOf(team)]));
+    const places = Object.fromEntries(this.robots.map((robot, index) => [robot.id, teamPlaces.get(this.teamOf[index]) ?? 1]));
+    const firsts = teams.filter((team) => teamPlaces.get(team) === 1);
+    return { winnerId: null, winnerTeam: firsts.length === 1 ? firsts[0] : null, reason, places };
   }
 
   /** Places from a score for each robot, the highest first; equal scores share a place. */

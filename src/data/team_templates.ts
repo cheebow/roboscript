@@ -64,10 +64,44 @@ loop
             drive forward
 `;
 
+/** Whoever sees an enemy calls the team on the radio; the rest answer the call and converge. */
+export const CASTLE_CALL = `# CastleCall: whoever sees an enemy calls the team with signal 1; the rest head for the caller. No call: march on the enemy castle.
+# The radio holds one number for the whole team, and keeps it until someone sends another:
+# a caller that loses sight takes its call back with signal 0 (a destroyed caller cannot).
+set called = 0
+loop
+    if enemy_visible
+        # Found one: keep calling while it is in sight, and fight it.
+        signal 1
+        set called = 1
+        label FIGHT
+        if enemy_distance < weapon_range - 50
+            drive stop
+            aim enemy
+            fire
+        else
+            turn enemy
+            drive forward
+    else
+        if called == 1
+            signal 0
+            set called = 0
+        if ally_signal == 1
+            # A teammate is calling: head for the nearest one and join its fight.
+            label ANSWER
+            face ally
+            drive forward
+        else
+            label MARCH
+            face enemy_base
+            drive forward
+`;
+
 /** The team programs offered in the castle match, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
   { id: 'castle_split', name: 'CastleSplit', source: CASTLE_SPLIT },
+  { id: 'castle_call', name: 'CastleCall', source: CASTLE_CALL },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

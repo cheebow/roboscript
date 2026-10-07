@@ -89,21 +89,49 @@ describe('the team templates', () => {
     }
   });
 
-  it('plays a full castle match to an end against each other', () => {
+  it('plays a full castle match to an end, every pair of different templates', () => {
+    for (const first of TEAM_TEMPLATES) {
+      for (const second of TEAM_TEMPLATES) {
+        if (first === second) continue;
+        const prepared = prepareCastleFight(
+          [
+            { name: 'ALPHA', source: first.source, loadouts: THREE.map(() => LIGHT) },
+            { name: 'BRAVO', source: second.source, loadouts: THREE.map(() => LIGHT) },
+          ],
+          CASTLE_ARENAS[0],
+          3,
+          7,
+        );
+        if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+        const simulation = new Simulation(prepared.fight.config);
+        runToEnd(simulation);
+        expect(simulation.result?.winnerTeam, `${first.name} vs ${second.name}`).not.toBeUndefined();
+      }
+    }
+  }, 30_000);
+
+  it('CastleCall answers a call: a robot that sees nothing heads for the teammate that does', () => {
+    // On the lanes map the outer machines cannot see what the middle one meets first.
     const prepared = prepareCastleFight(
       [
-        { name: 'ALPHA', source: TEAM_TEMPLATES[0].source, loadouts: THREE.map(() => LIGHT) },
-        { name: 'BRAVO', source: TEAM_TEMPLATES[1].source, loadouts: THREE.map(() => LIGHT) },
+        { name: 'ALPHA', source: TEAM_TEMPLATES[2].source, loadouts: THREE.map(() => LIGHT) },
+        { name: 'BRAVO', source: TEAM_TEMPLATES[0].source, loadouts: THREE.map(() => LIGHT) },
       ],
-      CASTLE_ARENAS[0],
+      CASTLE_ARENAS[1],
       3,
-      7,
+      3,
     );
     if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
     const simulation = new Simulation(prepared.fight.config);
-    runToEnd(simulation);
-    expect(simulation.result?.winnerTeam).not.toBeUndefined();
-  });
+    const labels = new Set<string>();
+    for (let i = 0; i < 30 * 20 && simulation.result === null; i++) {
+      simulation.step();
+      for (const robot of simulation.robots.slice(0, 3)) labels.add(robot.label);
+    }
+    // The protocol showed itself: somebody called (FIGHT) and somebody answered.
+    expect(labels.has('FIGHT')).toBe(true);
+    expect(labels.has('ANSWER')).toBe(true);
+  }, 30_000);
 });
 
 describe('TeamStore', () => {

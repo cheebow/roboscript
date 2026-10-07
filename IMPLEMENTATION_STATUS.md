@@ -394,7 +394,7 @@ tests/                     *.test.ts（43 ファイル。`npm test`）、helpers
 - **パーツ**: config は選んだ機体の装備＋「チーム合計 cost / 10n+2」のメーター。超過は RUN を止めてエラー（`castle.costOverLimit`）。
 - **描画**: 記録に `teams` / `bases`、スナップショットに城の残り HP と各機の `teamSense`。戦闘画面に城（チーム色の枠＋縦の HP バー）が出て、ロボットの色はチームで寒色 / 暖色に分かれる（`paletteOf(index, teams)`）。勝敗表示は「勝者: ALPHA チーム」（`winnersOf` / `formatResult(result, teamNames)`）。
 - **ウォッチ**: チーム戦のときだけ、チームの語 12 個の欄が追加で出る（デュエルでは出ない）。
-- **チームのテンプレート**: `CastleRush`（全員突撃）と `CastleSplit`（1 番機が守り、残りが攻める。`self_id` の見本）。チームバトルの LOAD TEMPLATE には、チーム用 2 つ＋いつもの 8 つが並ぶ。
+- **チームのテンプレート**: `CastleRush`（全員突撃）、`CastleSplit`（1 番機が守り、残りが攻める。`self_id` の見本）、`CastleCall`（見つけた機体が `signal 1` で呼び、見えていない機体が `face ally` で駆けつける。無線の見本 — ユーザーの要望で追加）。チームバトルの LOAD TEMPLATE には、チーム用 3 つ＋いつもの 8 つが並ぶ。
 - **まだないもの**(後続 Phase): ガレージ・共有のチーム対応（32）、観戦と実況・分析のチーム対応（33）、チュートリアルとチャレンジ（34）。行番号のマーク（◆）はチームバトルでは保存しない。
 - **テスト**: `tests/castle_match.test.ts`（`prepareCastleFight` の編成・コスト・拒否、テンプレートが最後まで戦うこと、`TeamStore` の往復とデュエルのキーに書かないこと）、`tests/ui.test.ts` に起動メニューの項目と Inspector のタブ再構築。
 

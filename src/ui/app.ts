@@ -32,6 +32,7 @@ import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { ActionMenu } from './action_menu';
 import { type BootChoice, BootScreen } from './boot_screen';
+import { stageTeams } from '../tutorial/types';
 import { TutorialPanel } from './tutorial_panel';
 import { ChallengePanel } from './challenge_panel';
 import type { Coach } from './coach';
@@ -566,6 +567,8 @@ class App {
   private coachedStageChanged(): void {
     this.leaveMatch();
     this.idleSnapshot = this.captureCoachedIdle();
+    // A castle stage fields several machines a side: the inspector gets a tab for each.
+    this.inspector.setRobots(this.coachRobotIds());
     this.showFile(codeFileOf(PLAYER_INDEX));
   }
 
@@ -583,9 +586,13 @@ class App {
     workspace.flush();
     workspace.stale = false;
     const { loadout } = coach;
-    const cost = costOf(loadout);
-    if (cost > COST_LIMIT) {
-      this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: [appEvent('error', t('program.costOverLimit', { cost, limit: COST_LIMIT }), null, workspace.robotId)] }]);
+    // A castle stage fields the same parts on every machine: the team's pooled cost is what counts.
+    const stageSize = coach.stage.teamSize;
+    const cost = costOf(loadout) * (stageSize ?? 1);
+    const limit = stageSize === undefined ? COST_LIMIT : teamCostLimitFor(stageSize);
+    if (cost > limit) {
+      const message = stageSize === undefined ? t('program.costOverLimit', { cost, limit }) : t('castle.costOverLimit', { team: ROBOT_IDS[PLAYER_INDEX], cost, limit });
+      this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: [appEvent('error', message, null, workspace.robotId)] }]);
       coach.matchRefused();
       return;
     }
@@ -602,7 +609,7 @@ class App {
     this.matchLoadouts = loadouts;
     const played = recordMatch(config, EFFECT_LIFETIMES);
     const recording = coach.played(played);
-    const replay = createReplay(recording, this.speed, ROBOT_IDS[PLAYER_INDEX]);
+    const replay = createReplay(recording, this.speed, recording.snapshots[0].robots[PLAYER_INDEX].id);
     this.replay = replay;
     this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
@@ -1084,7 +1091,18 @@ class App {
 
   /** The robot a team's editor follows: its picked machine; the robot itself in a duel. */
   private editorRobotId(team: number): string {
-    return this.teamMode ? robotIdOf(ROBOT_IDS[team], this.teamSize, this.pickedMachine(team)) : ROBOT_IDS[team];
+    if (this.teamMode) return robotIdOf(ROBOT_IDS[team], this.teamSize, this.pickedMachine(team));
+    // A coached castle stage: each side's editor follows its first machine.
+    const coached = this.coach?.stage?.teamSize;
+    if (coached !== undefined) return robotIdOf(ROBOT_IDS[team], coached, 1);
+    return ROBOT_IDS[team];
+  }
+
+  /** The robots of the coached stage's match: a castle stage fields teams, the rest the usual pair. */
+  private coachRobotIds(): string[] {
+    const teamSize = this.coach?.stage?.teamSize;
+    if (teamSize === undefined) return [...ROBOT_IDS];
+    return ROBOT_IDS.flatMap((name) => Array.from({ length: teamSize }, (_, machine) => robotIdOf(name, teamSize, machine + 1)));
   }
 
   /** The parts the next team match is fought with, flat in spawn order. */
@@ -1313,15 +1331,20 @@ class App {
     const stage = coach?.stage;
     const team = this.teamMode;
     const idleArena = stage?.arena ?? (team ? this.castleArena.arena : this.arena.arena);
+    const stageSize = stage?.teamSize ?? 1;
     const idleLoadouts =
       coach === null || stage === undefined
         ? team
           ? this.flatTeamLoadouts()
           : this.loadouts
-        : [coach.loadout, { ...STANDARD_LOADOUT, ...stage.botLoadout }];
+        : [
+            ...Array.from({ length: stageSize }, () => coach.loadout),
+            ...Array.from({ length: stageSize }, () => ({ ...STANDARD_LOADOUT, ...stage.botLoadout })),
+          ];
     const idleStats = stage === undefined && !team ? this.stats : idleLoadouts.map((loadout) => statsOf(loadout));
     const stats = replay?.recording.stats ?? idleStats;
     const loadouts = replay === null ? idleLoadouts : this.matchLoadouts;
+    const castleStage = stage !== undefined && stage.teamSize !== undefined;
     this.battleView.render(view, replay?.recording.arena ?? idleArena, stats, loadouts, {
       goal: stage?.goal,
       sensorOf: debugging ? this.inspector.selected : null,
@@ -1329,9 +1352,9 @@ class App {
       // The way to cover is shown for any robot whose program has to do with cover, in RUN as well.
       coverRoutes: replay === null ? NO_COVER_ROUTES : this.features.map((features) => features.cover),
       overrun: replay?.overrun ?? 0,
-      teams: replay?.recording.teams ?? this.teamsNow(),
-      teamNames: team ? ROBOT_IDS : undefined,
-      bases: replay?.recording.bases ?? (team ? this.castleArena.basesFor(this.teamSize) : undefined),
+      teams: replay?.recording.teams ?? (team ? this.teamsNow() : stage !== undefined ? stageTeams(stage) : undefined),
+      teamNames: team || castleStage ? ROBOT_IDS : undefined,
+      bases: replay?.recording.bases ?? (team ? this.castleArena.basesFor(this.teamSize) : stage?.bases),
     });
     this.inspector.update(view);
     const watched = view.robots[this.inspector.selected] ?? view.robots[0];
@@ -1353,10 +1376,11 @@ class App {
       this.analysisView.show(null, null);
     }
     if (this.analysisShown) this.analysisView.update(replay?.tick ?? 0);
-    // Beside the lines, while debugging the code that was run: how many times each ran in the match (the picked machine's).
+    // Beside the lines, while debugging the code that was run: how many times each ran in the match (the followed machine's).
+    const recordingIds = replay?.recording.snapshots[0].robots.map((robot) => robot.id) ?? [];
     this.workspaces.forEach((workspace, editorIndex) => {
-      const countsIndex = this.robotIndexOf(editorIndex, this.pickedMachine(editorIndex));
-      const counts = debugging && !workspace.stale ? (analyzed?.counts[countsIndex] ?? null) : null;
+      const countsIndex = recordingIds.indexOf(this.editorRobotId(editorIndex));
+      const counts = debugging && !workspace.stale && countsIndex >= 0 ? (analyzed?.counts[countsIndex] ?? null) : null;
       workspace.editor.showRunCounts(counts);
     });
     this.toolbar.setMessage(this.message());

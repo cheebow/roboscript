@@ -52,6 +52,12 @@ export function judge(goal: Goal, recording: Recording, stage: Stage | undefined
     }
     case 'win': {
       const result = snapshots[last].result;
+      // A castle match is won by a team; the player's is team 0.
+      if (result?.winnerTeam !== undefined) {
+        if (result.winnerTeam === 0) return { done: true, tick: last };
+        if (result.winnerTeam === null) return { done: false, why: { en: 'A draw: win to clear it.', ja: '引き分けでした。勝つとクリアです。' } };
+        return { done: false, why: { en: 'The BRAVO team won this time.', ja: '今回は BRAVO チームの勝ちでした。' } };
+      }
       if (result?.winnerId === 'ALPHA') return { done: true, tick: last };
       if (result?.winnerId === null) return { done: false, why: { en: 'A draw: win to clear it.', ja: '引き分けでした。勝つとクリアです。' } };
       return { done: false, why: { en: 'BRAVO won this time.', ja: '今回は BRAVO の勝ちでした。' } };

@@ -26,12 +26,27 @@ export function linesOf(source: string): number {
 /** How a try went: the goal, the conditions it must meet, and the stars. */
 export function judgeChallenge(challenge: Challenge, source: string, recording: Recording): ChallengeResult {
   const outcome = judge(challenge.goal, recording, challenge.stage);
-  const tick = outcome.done ? outcome.tick : recording.snapshots.length - 1;
-  const alpha = analyze(recording, ['ALPHA', 'BRAVO']).robots[0];
+  const last = recording.snapshots.length - 1;
+  const tick = outcome.done ? outcome.tick : last;
+  const ids = recording.snapshots[0].robots.map((robot) => robot.id);
+  const analysis = analyze(recording, ids);
+  // In a castle challenge, "ALPHA" is the player's whole team: its numbers are the team's together.
+  const mineAt = (index: number) => (recording.teams === undefined ? index === 0 : recording.teams[index] === 0);
+  const mine = analysis.robots.filter((_, index) => mineAt(index));
+  const alpha = {
+    damageTaken: mine.reduce((sum, robot) => sum + robot.damageTaken, 0),
+    recovered: mine.reduce((sum, robot) => sum + robot.recovered, 0),
+    guarded: mine.reduce((sum, robot) => sum + robot.guarded, 0),
+    shots: mine.reduce((sum, robot) => sum + robot.shots, 0),
+  };
+  const baseHpAt = (team: number, at: number) => {
+    const index = recording.bases?.findIndex((base) => base.team === team) ?? -1;
+    return index < 0 ? null : (recording.snapshots[at].bases[index] ?? null);
+  };
   const record = {
     lines: linesOf(source),
     seconds: tick / recording.tickRate,
-    hp: recording.snapshots[tick].robots[0].hp,
+    hp: recording.snapshots[tick].robots.reduce((sum, robot, index) => sum + (mineAt(index) ? robot.hp : 0), 0),
   };
   const holds = (condition: Condition): boolean => {
     switch (condition.kind) {
@@ -49,6 +64,10 @@ export function judgeChallenge(challenge: Challenge, source: string, recording: 
         return alpha.guarded >= condition.min;
       case 'shots':
         return alpha.shots <= condition.max;
+      case 'castleHp':
+        return (baseHpAt(0, last) ?? 0) >= condition.min;
+      case 'castleDestroyed':
+        return (baseHpAt(1, last) ?? 1) <= 0;
     }
   };
   if (!outcome.done) return { cleared: false, tick, stars: 0, starsMet: [false, false], why: outcome.why, record };
@@ -83,6 +102,10 @@ export function describeCondition(condition: Condition): Text {
       return { en: `guarding against ${condition.min} hits or more`, ja: `${condition.min} 回以上ガードで受ける` };
     case 'shots':
       return { en: `in ${condition.max} shots or fewer`, ja: `${condition.max} 発以内` };
+    case 'castleHp':
+      return { en: `with your castle at ${condition.min} HP or more`, ja: `自分の城の HP を ${condition.min} 以上残す` };
+    case 'castleDestroyed':
+      return { en: 'bringing the enemy castle down', ja: '敵の城を落とす' };
   }
 }
 

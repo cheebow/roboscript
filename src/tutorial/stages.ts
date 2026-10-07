@@ -1,3 +1,6 @@
+import { CASTLE_ARENAS } from '../data/arenas';
+import { castleSpawnsFor } from '../data/arenas/castle_common';
+import type { Loadout } from '../data/parts';
 import type { Arena } from '../sim/types';
 import type { Stage } from './types';
 
@@ -207,3 +210,16 @@ export const SNIPE: Stage = {
   bot: SHOOTER_BOT,
   seed: 26,
 };
+
+/** A castle match on the plain castle map: the player's team on the right, the training team on the left. */
+export function castleStage(teamSize: number, bot: string, seed: number, botLoadout?: Partial<Loadout>): Stage {
+  const definition = CASTLE_ARENAS[0];
+  return {
+    arena: { ...definition.arena, spawns: castleSpawnsFor(teamSize) },
+    bot,
+    botLoadout,
+    teamSize,
+    bases: definition.basesFor(teamSize),
+    seed,
+  };
+}

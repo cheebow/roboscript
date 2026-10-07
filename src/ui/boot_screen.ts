@@ -2,6 +2,7 @@ import { ARENAS } from '../data/arenas';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { PARTS, SLOTS } from '../data/parts';
 import { TEMPLATES } from '../data/templates';
+import { TEAM_TEMPLATES } from '../data/team_templates';
 import { RULES_VERSION } from '../data/rules_version';
 import { type MessageKey, t } from '../i18n/messages';
 import { type Change, changesSince, latestChangeDate } from '../data/changes';
@@ -126,7 +127,7 @@ export class BootScreen {
       { label: `MEM   program memory, ${MATCH_DEFAULTS.lineBudget} lines a tick`, result: 'OK' },
       { label: `PARTS ${slots}`, result: `${PARTS.length} found` },
       { label: `ARENA ${ARENAS.length} maps`, result: 'OK' },
-      { label: `BOTS  ${TEMPLATES.length} built-in robots`, result: 'OK' },
+      { label: `BOTS  ${TEMPLATES.length} built-in robots, ${TEAM_TEMPLATES.length} teams`, result: 'OK' },
       { label: `CLOCK ${MATCH_DEFAULTS.tickRate} ticks a second`, result: 'OK' },
       '',
       'Ready.',

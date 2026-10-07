@@ -7,7 +7,8 @@ import { COWARD_BOT } from '../data/templates/coward_bot';
 import { DUMB_BOT } from '../data/templates/dumb_bot';
 import { SENTRY_BOT } from '../data/templates/sentry_bot';
 import { STRAFE_BOT } from '../data/templates/strafe_bot';
-import { DUEL, SHELTER, SHOT_AT, SNIPE, TARGET_BOT } from '../tutorial/stages';
+import { CASTLE_RUSH, CASTLE_TURTLE } from '../data/team_templates';
+import { DUEL, SHELTER, SHOT_AT, SNIPE, TARGET_BOT, castleStage } from '../tutorial/stages';
 import { CHAMPION, CHAMPION_LOADOUT } from './champion';
 import type { Challenge } from './types';
 
@@ -258,5 +259,88 @@ export const CHALLENGES: readonly Challenge[] = [
     start: START,
     answer: SENTRY_BOT,
     answerParts: { legs: 'sprint', gun: 'cannon', sensor: 'scope' },
+  },
+  {
+    id: 'castle-solo',
+    title: { en: 'Castle for one', ja: 'ひとり城攻め' },
+    brief: {
+      en: 'A castle match of one robot a side. The enemy runs straight for your castle: stop it on the way, or out-race it to its own. Either way, win.',
+      ja: '片側 1 台の城攻めです。相手はまっすぐこちらの城へ走ってきます。途中で止めるか、先に向こうの城を落とすか。どちらでも、勝ちましょう。',
+    },
+    stage: castleStage(1, CASTLE_RUSH, 131, { gun: 'pistol' }),
+    goal: { kind: 'win' },
+    stars: [{ kind: 'seconds', max: 30 }, { kind: 'hp', min: 120 }],
+    start: START,
+    answer: `loop
+    if blocked
+        turn left
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        drive stop
+        aim enemy
+        fire
+    else if enemy_base_distance < weapon_range - 50
+        label SIEGE
+        drive stop
+        face enemy_base
+        aim ahead
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+`,
+  },
+  {
+    id: 'castle-hold',
+    title: { en: 'The unbroken castle', ja: '鉄壁の城' },
+    brief: {
+      en: 'Three rushers are coming for your castle. Hold the line and win — and for the stars, hardly let them scratch it.',
+      ja: '3 台の突撃が、こちらの城へ向かってきます。守りきって勝ちましょう。星の条件は、城をほとんど削らせないことです。',
+    },
+    stage: castleStage(3, CASTLE_RUSH, 132),
+    goal: { kind: 'win' },
+    stars: [{ kind: 'castleHp', min: 450 }, { kind: 'castleHp', min: 560 }],
+    start: START,
+    answer: `loop
+    if enemy_visible and enemy_distance < weapon_range
+        label GUARD
+        drive stop
+        aim enemy
+        fire
+    else
+        label WATCH
+        drive stop
+        aim enemy
+        wait
+`,
+  },
+  {
+    id: 'castle-fall',
+    title: { en: 'Bring the castle down', ja: '城を落とせ' },
+    brief: {
+      en: 'Two defenders sit by their castle and never leave it. Killing them ends nothing you need: the challenge is cleared only when their CASTLE falls. Short-sighted as they are, a long gun can shell the castle from beyond their eyes.',
+      ja: '2 台の守りが城のそばに座り込んでいます。倒すだけでは足りません。この課題は、相手の「城」を落として初めてクリアです。守りは目が短いので、長い銃なら見つからない距離から城を撃てます。',
+    },
+    stage: castleStage(2, CASTLE_TURTLE, 133, { sensor: 'short' }),
+    goal: { kind: 'win' },
+    require: [{ kind: 'castleDestroyed' }],
+    stars: [{ kind: 'seconds', max: 45 }, { kind: 'noHit' }],
+    parts: { body: 'light', gun: 'cannon', sensor: 'short' },
+    start: START,
+    answer: `loop
+    if blocked
+        turn left
+    else if enemy_base_distance < weapon_range - 50
+        label SIEGE
+        drive stop
+        face enemy_base
+        aim ahead
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+`,
   },
 ];

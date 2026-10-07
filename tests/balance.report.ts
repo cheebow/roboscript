@@ -143,3 +143,59 @@ it('reports every loadout within the cost limit', () => {
   lines.push('', `Range over the loadouts: ${Math.min(...rates)}% to ${Math.max(...rates)}%`, '');
   console.log(lines.join('\n'));
 });
+
+/**
+ * The castle bracket: every ordered pair of different team templates fights
+ * over the castle maps, 3 a side with the default kit. Printed, not judged:
+ * for tuning CASTLE_HP, the team cost pool and the templates.
+ */
+it('castle: how the team templates fare against each other', async () => {
+  const { prepareCastleFight } = await import('../src/arena/castle_match');
+  const { CASTLE_ARENAS } = await import('../src/data/arenas');
+  const { TEAM_DEFAULT_LOADOUT } = await import('../src/data/castle');
+  const { TEAM_TEMPLATES } = await import('../src/data/team_templates');
+  const { Simulation } = await import('../src/sim/simulation');
+  const KIT = [TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT];
+  const CASTLE_SEEDS = [1, 2, 3];
+
+  const wins = new Map<string, number>();
+  const played = new Map<string, number>();
+  const reasons = new Map<string, number>();
+  let totalTicks = 0;
+  let matches = 0;
+  for (const first of TEAM_TEMPLATES) {
+    for (const second of TEAM_TEMPLATES) {
+      if (first === second) continue;
+      for (const { arena, basesFor, id } of CASTLE_ARENAS) {
+        for (const seed of CASTLE_SEEDS) {
+          const prepared = prepareCastleFight(
+            [
+              { name: 'A', source: first.source, loadouts: KIT },
+              { name: 'B', source: second.source, loadouts: KIT },
+            ],
+            { id, name: id, arena, basesFor },
+            3,
+            seed,
+          );
+          if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+          const simulation = new Simulation(prepared.fight.config);
+          while (simulation.result === null) simulation.step();
+          const result = simulation.result;
+          reasons.set(result.reason, (reasons.get(result.reason) ?? 0) + 1);
+          totalTicks += simulation.tick;
+          matches++;
+          for (const [team, template] of [first, second].entries()) {
+            played.set(template.name, (played.get(template.name) ?? 0) + 1);
+            const score = result.winnerTeam === null ? 0.5 : result.winnerTeam === team ? 1 : 0;
+            wins.set(template.name, (wins.get(template.name) ?? 0) + score);
+          }
+        }
+      }
+    }
+  }
+  console.log(`\ncastle bracket: ${matches} matches, mean ${(totalTicks / matches / MATCH_DEFAULTS.tickRate).toFixed(1)} s`);
+  console.log('reasons:', Object.fromEntries(reasons));
+  for (const [name, count] of played) {
+    console.log(`${name.padEnd(14)} win rate ${(((wins.get(name) ?? 0) / count) * 100).toFixed(0).padStart(3)}% of ${count}`);
+  }
+}, 600_000);

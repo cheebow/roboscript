@@ -1,5 +1,6 @@
 import { ADVANCED_CHAPTERS } from './chapters_advanced';
 import { BASIC_CHAPTERS } from './chapters_basic';
+import { CASTLE_CHAPTER } from './chapter_castle';
 import { judge, missingWord, type Outcome } from './checks';
 import { recordMatch } from '../debug/recorder';
 import { EFFECT_LIFETIMES } from '../data/match_defaults';
@@ -9,7 +10,7 @@ import type { Chapter, Step } from './types';
 import { type Loadout, STANDARD_LOADOUT } from '../data/parts';
 
 /** Every chapter of the tutorial, in order. */
-export const CHAPTERS: readonly Chapter[] = [...BASIC_CHAPTERS, ...ADVANCED_CHAPTERS];
+export const CHAPTERS: readonly Chapter[] = [...BASIC_CHAPTERS, ...ADVANCED_CHAPTERS, CASTLE_CHAPTER];
 
 /** Every step, in order, with the chapter it is in. */
 export const STEPS: readonly { chapter: Chapter; step: Step }[] = CHAPTERS.flatMap((chapter) => chapter.steps.map((step) => ({ chapter, step })));

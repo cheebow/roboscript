@@ -16,7 +16,11 @@ export type Condition =
   /** ALPHA took at least this many hits while guarding. */
   | { kind: 'guarded'; min: number }
   /** ALPHA fired at most this many shots. */
-  | { kind: 'shots'; max: number };
+  | { kind: 'shots'; max: number }
+  /** The own castle has at least this much HP left at the end (castle challenges). */
+  | { kind: 'castleHp'; min: number }
+  /** The enemy castle was brought down (castle challenges). */
+  | { kind: 'castleDestroyed' };
 
 export interface Challenge {
   id: string;

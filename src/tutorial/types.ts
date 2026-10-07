@@ -1,5 +1,5 @@
 import type { Loadout } from '../data/parts';
-import type { Arena, Vec2 } from '../sim/types';
+import type { Arena, Base, Vec2 } from '../sim/types';
 
 /** A text in both languages of the screen. Written with a little markup: see renderMarkup. */
 export interface Text {
@@ -15,8 +15,22 @@ export interface Stage {
   botLoadout?: Partial<Loadout>;
   /** A circle on the field for ALPHA to reach. */
   goal?: Vec2 & { radius: number };
+  /**
+   * A castle match: this many robots a side, the player's program driving
+   * every machine of team 0 (ALPHA-1...) and the bot's every machine of team
+   * 1. The arena must carry a spawn for each, and `bases` the two castles.
+   */
+  teamSize?: number;
+  bases?: readonly Base[];
   /** Every match of the step is the same match, so that only the code makes a difference. */
   seed: number;
+}
+
+/** The team of each robot of a stage's match, in spawn order; undefined for the usual duel. */
+export function stageTeams(stage: Stage): number[] | undefined {
+  const { teamSize } = stage;
+  if (teamSize === undefined) return undefined;
+  return Array.from({ length: teamSize * 2 }, (_, index) => Math.floor(index / teamSize));
 }
 
 /** What has to happen in a match for a step to be done. */

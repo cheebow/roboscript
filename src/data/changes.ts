@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
+    en: 'Learning the castle match: tutorial chapter 10 teaches it step by step (one program, self_id, the signal radio), three castle challenges joined the list, and two new team templates — CastleTurtle walls in, CastleRally falls back when a teammate is lost.',
+    ja: '城攻めが学べるようになりました。チュートリアル第 10 章が 1 本のプログラム・self_id・signal の無線を順に教え、城のチャレンジが 3 問増え、チームのテンプレートに CastleTurtle（籠城）と CastleRally（味方が落ちたら戻る）が加わりました。',
+  },
+  {
+    date: '2026-10-07',
     en: 'The team battle can be watched: pick two saved teams, hear the commentary call the castles, and share the match with a #castle= link. The analysis knows teams and castles too.',
     ja: 'チームバトルに「観戦」が付きました。保存した 2 チームを選んで戦わせ、城を呼ぶ実況付きで見られます。試合は #castle= リンクで人に渡せ、分析もチームと城が分かるようになりました。',
   },

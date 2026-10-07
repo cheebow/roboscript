@@ -21,8 +21,8 @@ loop
         face enemy_base
         aim ahead
         fire
-    else if enemy_visible and enemy_distance < 150
-        # Right in the way: clear it out, then march on.
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        # In the way, or shooting at us from ahead: clear it out, then march on.
         label FIGHT
         drive stop
         aim enemy
@@ -115,11 +115,80 @@ loop
             drive forward
 `;
 
+/**
+ * Everyone stays home and defends. A match nobody ends goes to the team with
+ * the healthier castle, so a wall of defenders forces the enemy to come.
+ */
+export const CASTLE_TURTLE = `# CastleTurtle: the whole team walls in its own castle. Time up goes by castle HP, so the enemy has to come to us.
+loop
+    if enemy_visible and enemy_distance < weapon_range
+        label GUARD
+        drive stop
+        aim enemy
+        fire
+    else if base_distance > 220
+        label GO_HOME
+        if blocked
+            turn left
+        else
+            face base
+            drive forward
+    else
+        label WATCH
+        drive stop
+        aim enemy
+        wait
+`;
+
+/** Attacks while the team is whole; a fallen teammate sends everyone home to defend. */
+export const CASTLE_RALLY = `# CastleRally: attack while the team is whole; once a teammate falls (allies_alive drops), the rest fall back and hold the castle.
+def fight()
+    drive stop
+    aim enemy
+    fire
+
+loop
+    if allies_alive < 2
+        # Somebody is down: no more pushing, the castle comes first.
+        if enemy_visible and enemy_distance < weapon_range
+            label GUARD
+            fight()
+        else if base_distance > 220
+            label FALL_BACK
+            if blocked
+                turn left
+            else
+                face base
+                drive forward
+        else
+            label HOLD
+            drive stop
+            aim enemy
+            wait
+    else if blocked
+        turn left
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        fight()
+    else if enemy_base_distance < weapon_range - 50
+        label SIEGE
+        drive stop
+        face enemy_base
+        aim ahead
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+`;
+
 /** The team programs offered in the castle match, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
   { id: 'castle_split', name: 'CastleSplit', source: CASTLE_SPLIT },
   { id: 'castle_call', name: 'CastleCall', source: CASTLE_CALL },
+  { id: 'castle_turtle', name: 'CastleTurtle', source: CASTLE_TURTLE },
+  { id: 'castle_rally', name: 'CastleRally', source: CASTLE_RALLY },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

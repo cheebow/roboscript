@@ -190,6 +190,24 @@ loop
         wait
 `;
 
+/** Nothing but the castle: it never fires at a robot. The purest race — trade castles and win by being faster. */
+export const CASTLE_RUNNER = `# CastleRunner: nothing but the castle. It never fires at a robot: it runs, and it shells.
+loop
+    if blocked
+        turn left
+    else if enemy_base_distance < weapon_range - 50
+        label SIEGE
+        drive stop
+        face enemy_base
+        aim ahead
+        fire
+    else
+        label RUN
+        face enemy_base
+        drive forward
+        wait
+`;
+
 /** The team programs offered in the castle match, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
@@ -197,6 +215,7 @@ export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_call', name: 'CastleCall', source: CASTLE_CALL },
   { id: 'castle_turtle', name: 'CastleTurtle', source: CASTLE_TURTLE },
   { id: 'castle_rally', name: 'CastleRally', source: CASTLE_RALLY },
+  { id: 'castle_runner', name: 'CastleRunner', source: CASTLE_RUNNER },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

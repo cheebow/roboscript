@@ -84,6 +84,13 @@ export interface LabelNode {
   label: string;
 }
 
+/** Puts a number on the team's radio, read by everyone as ally_signal from the next tick on. Takes no time. */
+export interface SignalNode {
+  kind: 'signal';
+  line: number;
+  value: Expression;
+}
+
 /** Sets how the hull drives from now on. Takes no time: the driving goes on alongside the actions. */
 export interface DriveNode {
   kind: 'drive';
@@ -120,6 +127,7 @@ export type StatementNode =
   | ActionNode
   | FaceNode
   | LabelNode
+  | SignalNode
   | DriveNode
   | CallNode
   | ReturnNode

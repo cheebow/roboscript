@@ -82,6 +82,13 @@ loop
     else
         label SEARCH
         turn left`,
+  'command:signal': `loop
+    if enemy_visible
+        signal 1
+    else if ally_signal == 1
+        face ally
+        drive forward
+    wait`,
   'command:drive': `drive forward
 loop
     if blocked
@@ -146,6 +153,20 @@ loop
     if blocked
         face back
     wait`,
+  'direction:ally': `loop
+    if ally_distance > 300
+        face ally
+        drive forward
+    wait`,
+  'direction:base': `loop
+    if base_hp < 300
+        face base
+        drive forward
+    wait`,
+  'direction:enemy_base': `face enemy_base
+loop
+    drive forward
+    fire`,
   'direction:hit': `loop
     if hit
         face hit
@@ -265,6 +286,23 @@ loop
     else
         turn enemy
         drive forward`,
+  'sensor:sensor_range': `loop
+    if sensor_range > 800
+        label SCOUT
+    else
+        label GUNNER
+    wait`,
+  'sensor:max_speed': `loop
+    if max_speed > 120
+        label RUNNER
+    else
+        label WALKER
+    wait`,
+  'sensor:max_hp': `loop
+    if hp < max_hp / 2
+        face cover
+        drive forward
+    wait`,
   'sensor:enemy_speed': `loop
     if enemy_speed > 0
         aim lead
@@ -305,6 +343,75 @@ loop
     else
         face cover
         drive forward`,
+
+  'sensor:self_id': `loop
+    if self_id == 1
+        label GUARD
+    else
+        label ATTACK
+    wait`,
+  'sensor:allies_alive': `loop
+    if allies_alive == 0
+        label ALONE
+        face base
+        drive forward
+    wait`,
+  'sensor:ally_signal': `loop
+    if ally_signal == 2
+        face ally
+        drive forward
+    wait`,
+  'sensor:ally_distance': `loop
+    if ally_distance > 400
+        face ally
+        drive forward
+    else
+        drive stop
+    wait`,
+  'sensor:ally_angle': `loop
+    if ally_angle > 90 or ally_angle < -90
+        turn ally
+    wait`,
+  'sensor:ally_hp': `loop
+    if ally_hp < 60 and ally_hp > 0
+        signal 2
+    wait`,
+  'sensor:base_hp': `loop
+    if base_hp < 300
+        signal 9
+        face base
+        drive forward
+    wait`,
+  'sensor:base_distance': `loop
+    if base_distance > 250
+        face base
+        drive forward
+    else
+        drive stop
+    wait`,
+  'sensor:base_angle': `loop
+    if abs(base_angle) > 90
+        turn base
+    wait`,
+  'sensor:enemy_base_hp': `loop
+    if enemy_base_hp > 0 and not enemy_visible
+        face enemy_base
+        drive forward
+    fire`,
+  'sensor:enemy_base_distance': `loop
+    if enemy_base_distance < weapon_range
+        drive stop
+        aim ahead
+        fire
+    else
+        drive forward
+    wait`,
+  'sensor:enemy_base_angle': `loop
+    if abs(enemy_base_angle) > 10
+        turn enemy_base
+    else
+        drive forward
+    wait`,
 
   // Functions of the language
   'builtin:abs': `loop

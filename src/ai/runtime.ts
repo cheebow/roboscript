@@ -197,6 +197,13 @@ export class ScriptBrain implements RobotBrain {
         return this.context.hitAngle;
       case 'back':
         return 0;
+      // Without a teammate or a castle, the angles read 0: there is nothing to face, so the face ends at once.
+      case 'ally':
+        return this.context.allyAngle;
+      case 'base':
+        return this.context.baseAngle;
+      case 'enemy_base':
+        return this.context.enemyBaseAngle;
     }
   }
 
@@ -210,6 +217,9 @@ export class ScriptBrain implements RobotBrain {
       case 'label':
         action.label = statement.label;
         action.sourceLines.label = statement.line;
+        return null;
+      case 'signal':
+        action.signal = this.valueOf(statement.value);
         return null;
       case 'drive':
         // A setting, not an action: the hull keeps driving while the program goes on.

@@ -324,6 +324,11 @@ class Parser {
         expectEnd(rest, `label ${argument.text}`);
         return { kind: 'label', line: lineNumber, label: argument.text };
       }
+      case 'signal': {
+        const value = line.tokens.slice(1);
+        if (value.length === 0) throw new LineError(t('parse.expectSignalValue'));
+        return { kind: 'signal', line: lineNumber, value: new ExpressionParser(value, this.scope).parseWholeExpression() };
+      }
       case 'state':
         // The command of earlier versions, which only knew five names.
         throw new LineError(t('parse.stateIsLabel', { name: argument?.text ?? 'NAME' }));

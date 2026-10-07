@@ -11,7 +11,7 @@ import {
 import { isBuiltin } from '../ai/builtins';
 
 const CONTROL_WORDS = new Set(['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'and', 'or', 'not', 'true', 'false']);
-const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'set']);
+const COMMAND_WORDS = new Set(['drive', 'turn', 'aim', 'fire', 'guard', 'wait', 'label', 'signal', 'set']);
 /** The commands that are followed by a direction. */
 const DIRECTED_WORDS = new Set(['drive', 'turn', 'aim']);
 

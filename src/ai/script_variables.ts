@@ -36,21 +36,36 @@ export const NUMBER_VARIABLES = {
   lead_angle: (context: AIContext) => context.leadAngle,
   gun_angle: (context: AIContext) => context.gunAngle,
   weapon_range: (context: AIContext) => context.weaponRange,
+  sensor_range: (context: AIContext) => context.sensorRange,
+  max_speed: (context: AIContext) => context.maxSpeed,
+  max_hp: (context: AIContext) => context.maxHp,
   enemy_speed: (context: AIContext) => context.enemySpeed,
   enemy_heading: (context: AIContext) => context.enemyHeading,
   reload: (context: AIContext) => context.reload,
   hit_angle: (context: AIContext) => context.hitAngle,
+  self_id: (context: AIContext) => context.selfId,
+  allies_alive: (context: AIContext) => context.alliesAlive,
+  ally_signal: (context: AIContext) => context.allySignal,
+  ally_distance: (context: AIContext) => context.allyDistance,
+  ally_angle: (context: AIContext) => context.allyAngle,
+  ally_hp: (context: AIContext) => context.allyHp,
+  base_hp: (context: AIContext) => context.baseHp,
+  base_distance: (context: AIContext) => context.baseDistance,
+  base_angle: (context: AIContext) => context.baseAngle,
+  enemy_base_hp: (context: AIContext) => context.enemyBaseHp,
+  enemy_base_distance: (context: AIContext) => context.enemyBaseDistance,
+  enemy_base_angle: (context: AIContext) => context.enemyBaseAngle,
 };
 
 export type BooleanVariableName = keyof typeof BOOLEAN_VARIABLES;
 export type NumberVariableName = keyof typeof NUMBER_VARIABLES;
 
 export const DRIVE_SETTINGS: readonly string[] = ['forward', 'backward', 'stop'] satisfies DriveSetting[];
-export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover', 'hit'] satisfies TurnDirection[];
+export const TURN_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'cover', 'hit', 'ally', 'base', 'enemy_base'] satisfies TurnDirection[];
 /** What the hull can be turned to face until it does: the turn directions that are a place, not a side. */
-export type FaceTarget = Extract<TurnDirection, 'enemy' | 'cover' | 'hit' | 'back'>;
+export type FaceTarget = Extract<TurnDirection, 'enemy' | 'cover' | 'hit' | 'back' | 'ally' | 'base' | 'enemy_base'>;
 /** `back` is the way opposite to where the hull faced when the `face` began: there is no turning towards it a tick at a time. */
-export const FACE_TARGETS: readonly string[] = ['enemy', 'cover', 'hit', 'back'] satisfies FaceTarget[];
+export const FACE_TARGETS: readonly string[] = ['enemy', 'cover', 'hit', 'back', 'ally', 'base', 'enemy_base'] satisfies FaceTarget[];
 export const AIM_DIRECTIONS: readonly string[] = ['left', 'right', 'enemy', 'lead', 'ahead'] satisfies AimDirection[];
 
 /** Words with a meaning of their own, which a program may not use as a variable name. */
@@ -73,6 +88,7 @@ export const KEYWORDS: readonly string[] = [
   'guard',
   'wait',
   'label',
+  'signal',
   'and',
   'or',
   'not',

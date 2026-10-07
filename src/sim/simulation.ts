@@ -6,7 +6,7 @@ import { type DebugEventSink, EventReporter } from './event_reporter';
 import { circleIntersectsRect, distance, radToDeg, segmentRectDistance } from './math';
 import { wallDistance } from './range_finder';
 import { MatchRng } from './rng';
-import { RobotController } from './robot';
+import { RobotController, type TeamReading } from './robot';
 import { ConeSensor, measure } from './sensor';
 import type { Bearing, Cover, Surroundings } from './surroundings';
 import { findIncomingBullet } from './threats';
@@ -131,6 +131,13 @@ export class Simulation {
   private readonly teamOf: readonly number[];
   private readonly teamMatch: boolean;
   /**
+   * Each team's radio: the number last sent with `signal`, by team. Writes
+   * land after everyone has thought, in robot order, so all read the same
+   * tick-start value and the highest-numbered sender of a tick wins. Outside
+   * a team match every robot is its own team: the radio is a note to itself.
+   */
+  private readonly signals = new Map<number, number>();
+  /**
    * What stands in the way of driving, bullets and sight: the arena's
    * obstacles, plus the castles. Without castles this IS `arena` itself, so
    * that a match without them plays out exactly as before (and the cover map
@@ -200,7 +207,13 @@ export class Simulation {
     for (const robot of standing) this.sense(robot);
     // Every sensor has been read: each robot now learns whether the others' missed it.
     for (const robot of standing) this.recover(robot);
+    // What each learns of its team, before any of them thinks: a signal sent this tick is read the next.
+    for (const robot of standing) robot.noteTeam(this.teamReadingOf(robot));
     const actions = this.robots.map((robot) => (robot.alive ? this.think(robot) : null));
+    // The radio takes the signals once everyone has thought: in robot order, so the last writer of a tick wins.
+    actions.forEach((action, index) => {
+      if (action !== null && action.signal !== null) this.signals.set(this.teamOf[index], action.signal);
+    });
 
     // Every robot moves at once: each makes room by where the others stood at the start of the tick,
     // so that none has the way first by its place in the list.
@@ -252,6 +265,43 @@ export class Simulation {
     if (visible && !wasVisible) {
       this.tickEvents.push({ kind: 'detected', ...robot.position, robot: this.robots.indexOf(robot) });
     }
+  }
+
+  /** What the robot knows of its team as the tick starts: the nearest living teammate, the radio, and both castles. */
+  private teamReadingOf(robot: RobotController): TeamReading {
+    const index = this.robots.indexOf(robot);
+    const team = this.teamOf[index];
+    const { position, rotation } = robot;
+    const bearingTo = (target: Vec2) => measure(position, rotation, target);
+    const centerOf = ({ rect }: BaseState) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
+
+    const allies = this.robots.filter((other, i) => other !== robot && this.teamOf[i] === team && other.alive);
+    const nearest =
+      allies.length === 0
+        ? null
+        : allies.reduce((best, ally) => (distance(position, ally.position) < distance(position, best.position) ? ally : best));
+    const toAlly = nearest === null ? null : bearingTo(nearest.position);
+
+    const ownBase = this.bases.find((base) => base.team === team) ?? null;
+    const enemyBases = this.bases.filter((base) => base.team !== team);
+    const enemyBase =
+      enemyBases.length === 0
+        ? null
+        : enemyBases.reduce((best, base) => (distance(position, centerOf(base)) < distance(position, centerOf(best)) ? base : best));
+
+    return {
+      alliesAlive: allies.length,
+      allySignal: this.signals.get(team) ?? 0,
+      allyDistance: toAlly?.distance ?? 0,
+      allyAngle: toAlly?.angle ?? 0,
+      allyHp: nearest?.hp ?? 0,
+      baseHp: ownBase?.hp ?? 0,
+      baseDistance: ownBase === null ? 0 : bearingTo(centerOf(ownBase)).distance,
+      baseAngle: ownBase === null ? 0 : bearingTo(centerOf(ownBase)).angle,
+      enemyBaseHp: enemyBase?.hp ?? 0,
+      enemyBaseDistance: enemyBase === null ? 0 : bearingTo(centerOf(enemyBase)).distance,
+      enemyBaseAngle: enemyBase === null ? 0 : bearingTo(centerOf(enemyBase)).angle,
+    };
   }
 
   /** Hp comes back to a robot every enemy's sensor misses for long enough. Reported when it starts and stops. */

@@ -97,6 +97,8 @@ export class RobotController {
   private hitFrom: number | null = null;
   private hitSensed: HitReading = NO_HIT_READING;
   private lastAction: AIAction | null = null;
+  /** What the robot knows of its team this tick: teammate, radio, castles. Set before anyone thinks. */
+  private teamReading: TeamReading = NO_TEAM;
   /** deg on the field: where a turn of this tick's action stops (`back`, or `left` / `right` by an angle). */
   private turnHeading: number | null = null;
   /** deg on the hull: where an aim `left` / `right` by an angle of this tick's action stops. */
@@ -234,6 +236,11 @@ export class RobotController {
     return this.knownVariables;
   }
 
+  /** What the robot learns of its team at the start of the tick, before anyone thinks. */
+  noteTeam(reading: TeamReading): void {
+    this.teamReading = reading;
+  }
+
   /** Asks the brain what to do this tick. The brain only ever sees the AIContext. */
   think(): AIAction {
     let lookedAtHit = false;
@@ -368,6 +375,13 @@ export class RobotController {
         return clamp(this.hitSensed.hitAngle, -maxStep, maxStep);
       case 'back':
         return this.turnHeading === null ? 0 : clamp(normalizeAngle(this.turnHeading - this.rotation), -maxStep, maxStep);
+      // Without a teammate or a castle, the angles read 0: the hull stays as it is.
+      case 'ally':
+        return clamp(this.teamReading.allyAngle, -maxStep, maxStep);
+      case 'base':
+        return clamp(this.teamReading.baseAngle, -maxStep, maxStep);
+      case 'enemy_base':
+        return clamp(this.teamReading.enemyBaseAngle, -maxStep, maxStep);
     }
   }
 
@@ -429,10 +443,45 @@ export class RobotController {
       },
       hitAngle,
       touchingEnemy: around.touchingEnemy,
+      selfId: this.selfId ?? 1,
+      ...this.teamReading,
+      sensorRange: this.stats.sensorRange,
+      maxSpeed: this.stats.moveSpeed,
+      maxHp: this.stats.maxHp,
       random: () => this.dice.next(),
     };
   }
 }
+
+/** What a robot knows of its team on one tick: the nearest living teammate, the radio, and both castles. */
+export interface TeamReading {
+  alliesAlive: number;
+  allySignal: number;
+  allyDistance: number;
+  allyAngle: number;
+  allyHp: number;
+  baseHp: number;
+  baseDistance: number;
+  baseAngle: number;
+  enemyBaseHp: number;
+  enemyBaseDistance: number;
+  enemyBaseAngle: number;
+}
+
+/** Outside a team match, and before the first tick: no teammate, no castles, a silent radio. */
+export const NO_TEAM: TeamReading = {
+  alliesAlive: 0,
+  allySignal: 0,
+  allyDistance: 0,
+  allyAngle: 0,
+  allyHp: 0,
+  baseHp: 0,
+  baseDistance: 0,
+  baseAngle: 0,
+  enemyBaseHp: 0,
+  enemyBaseDistance: 0,
+  enemyBaseAngle: 0,
+};
 
 /** How the gun stands to the enemy, as found when the robot looked around. */
 export interface GunReading {

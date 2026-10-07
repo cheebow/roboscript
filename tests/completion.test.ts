@@ -9,7 +9,7 @@ function offered(textWithCursor: string, explicit = false): string[] | null {
 }
 
 const FUNCTIONS = ['abs', 'min', 'max', 'sqrt', 'random'];
-const STATEMENTS = ['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'set', 'label', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
+const STATEMENTS = ['if', 'else', 'loop', 'while', 'break', 'def', 'return', 'set', 'label', 'signal', 'drive', 'turn', 'face', 'aim', 'fire', 'guard', 'wait'];
 const NUMBERS = [
   'enemy_distance',
   'enemy_angle',
@@ -28,10 +28,25 @@ const NUMBERS = [
   'lead_angle',
   'gun_angle',
   'weapon_range',
+  'sensor_range',
+  'max_speed',
+  'max_hp',
   'enemy_speed',
   'enemy_heading',
   'reload',
   'hit_angle',
+  'self_id',
+  'allies_alive',
+  'ally_signal',
+  'ally_distance',
+  'ally_angle',
+  'ally_hp',
+  'base_hp',
+  'base_distance',
+  'base_angle',
+  'enemy_base_hp',
+  'enemy_base_distance',
+  'enemy_base_angle',
 ];
 const SENSORS = [
   'enemy_visible',
@@ -84,8 +99,8 @@ describe('completionsAt: arguments', () => {
     expect(offered('drive b|')).toEqual(['backward']);
     expect(offered('aim |')).toEqual(['left', 'right', 'enemy', 'lead', 'ahead']);
     expect(offered('aim l|')).toEqual(['left', 'lead']);
-    expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover', 'hit']);
-    expect(offered('face |')).toEqual(['enemy', 'cover', 'hit', 'back']);
+    expect(offered('turn |')).toEqual(['left', 'right', 'enemy', 'cover', 'hit', 'ally', 'base', 'enemy_base']);
+    expect(offered('face |')).toEqual(['enemy', 'cover', 'hit', 'back', 'ally', 'base', 'enemy_base']);
     expect(offered('turn left |', true)).toBeNull();
   });
 
@@ -101,7 +116,7 @@ describe('completionsAt: arguments', () => {
   it('marks the words that need something after them', () => {
     const options = completionsAt('', 0, true)?.options ?? [];
     const needingMore = options.filter((option) => option.insert === `${option.word} `).map((option) => option.word);
-    expect(needingMore).toEqual(['if', 'while', 'def', 'set', 'label', 'drive', 'turn', 'face', 'aim']);
+    expect(needingMore).toEqual(['if', 'while', 'def', 'set', 'label', 'signal', 'drive', 'turn', 'face', 'aim']);
     expect(options.filter((option) => option.insert === option.word).map((option) => option.word)).toEqual([
       'else',
       'loop',
@@ -127,7 +142,7 @@ describe('completionsAt: conditions', () => {
     expect(offered('if |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
     expect(offered('set shots = 0\nwhile |')).toEqual([...SENSORS, ...FUNCTIONS, 'not', 'shots']);
     expect(offered('if blocked and |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
-    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
+    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
   });
 
   it('waits for a letter after an opening parenthesis', () => {
@@ -220,7 +235,7 @@ describe('completionsAt: functions', () => {
   it('offers values between the parentheses of a call, after each comma too', () => {
     // The program's own abs takes the place of the language's.
     expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'min', 'max', 'sqrt', 'random', 'approach', 'abs', 'stop']);
-    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading']);
+    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
     expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });
 

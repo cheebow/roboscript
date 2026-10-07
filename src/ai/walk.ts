@@ -31,6 +31,7 @@ function walkStatement(statement: StatementNode, visitor: Visitor): void {
       walk(statement.body, visitor);
       return;
     case 'set':
+    case 'signal':
       walkExpression(statement.value, line, visitor);
       return;
     case 'call':

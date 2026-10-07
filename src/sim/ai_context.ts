@@ -7,7 +7,8 @@ export type DriveDirection = 'forward' | 'backward';
 export type DriveSetting = DriveDirection | 'stop';
 /** Which way the hull turns: `cover` is towards the hiding place, `hit` towards where the bullet that last hit the robot came from. */
 /** `back` turns towards the heading in `AIAction.heading`: what `face back` set out to face. `left` / `right` stop there too, when one is given. */
-export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover' | 'hit' | 'back';
+/** `ally` is towards the nearest living teammate, `base` towards the robot's own castle, `enemy_base` towards the enemy's. */
+export type TurnDirection = 'left' | 'right' | 'enemy' | 'cover' | 'hit' | 'back' | 'ally' | 'base' | 'enemy_base';
 /** Which way the turret turns: `lead` is where the enemy will be when a bullet gets there, `ahead` the front of the hull. */
 export type AimDirection = 'left' | 'right' | 'enemy' | 'lead' | 'ahead';
 
@@ -75,6 +76,30 @@ export interface AIContext {
   readonly touchingEnemy: boolean;
   /** The enemy's sensor does not see the robot: too far, outside its cone, or behind an obstacle. */
   readonly hidden: boolean;
+  /** The robot's number within its team (1, 2, 3...). 1 outside a team match. */
+  readonly selfId: number;
+  /** Living teammates, not counting the robot itself. 0 outside a team match. */
+  readonly alliesAlive: number;
+  /** The team's radio: the number last sent with `signal`, as it stood at the start of the tick. 0 until something is sent. */
+  readonly allySignal: number;
+  /** Distance, relative angle (deg, positive = to the right) and HP of the nearest living teammate. 0 without one. */
+  readonly allyDistance: number;
+  readonly allyAngle: number;
+  readonly allyHp: number;
+  /** The own castle's HP left, and the distance and relative angle to its centre. 0 without a castle. */
+  readonly baseHp: number;
+  readonly baseDistance: number;
+  readonly baseAngle: number;
+  /** The same for the enemy's castle (the nearest one, with more than one enemy team). */
+  readonly enemyBaseHp: number;
+  readonly enemyBaseDistance: number;
+  readonly enemyBaseAngle: number;
+  /** How far the robot's own sensor reaches. */
+  readonly sensorRange: number;
+  /** Units a second the robot's own legs drive. */
+  readonly maxSpeed: number;
+  /** The HP the robot started with. */
+  readonly maxHp: number;
   /**
    * A number in [0, 1) from the robot's own stream of random numbers, drawn
    * from the match's seed: the same match draws the same numbers. For the
@@ -100,6 +125,8 @@ export interface AIAction {
   fire: boolean;
   /** Brace for this tick: hits do less damage. */
   guard: boolean;
+  /** The number to put on the team's radio, read by everyone from the next tick on; null sends nothing. */
+  signal: number | null;
   /** A name for what the robot is doing, to show and to log. It changes nothing else; null keeps the current one. */
   label: string | null;
   /** Source lines the AI executed on this tick, in order. */
@@ -148,6 +175,7 @@ export function createIdleAction(): AIAction {
     gunAngle: null,
     fire: false,
     guard: false,
+    signal: null,
     label: null,
     executedLines: [],
     sourceLines: { drive: null, turn: null, aim: null, fire: null, guard: null, label: null },

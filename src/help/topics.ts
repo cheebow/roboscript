@@ -63,13 +63,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上の **マップ** で戦う場所を選びます。
 
 プログラムにエラーがあると、試合は始まりません。エラーのある行が赤くなり、ログに理由が出ます。` } },
-      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 13, and you can try them in any order. The last is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
+      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 16, and you can try them in any order; three of them are castle matches. The last is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
 
 - Each challenge has **conditions to clear it** (beat the enemy, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met adds one more, up to ★★★.
 - Some challenges **fix a part** (a Pistol, the Short sensor…); choose the other slots within the cost limit under **PARTS**.
 - Every try of a challenge is the same match: only your code and parts make a difference.
 - Your code and your best are kept for each challenge. Bests are compared by stars, then HP left, then time. Blank lines and lines with only a comment are not counted as lines.
-- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 13 問あり、どれからでも挑戦できます。最後の 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
+- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 16 問あり（うち 3 問は城攻め）、どれからでも挑戦できます。最後の 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
 
 - それぞれに **クリア条件**（敵に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアすると ★ が 1 つ。星の条件を 1 つ満たすごとに ★ がもう 1 つ増え、最高で ★★★ です。
 - **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのスロットは、**パーツ** を押してコストの範囲で選べます。
@@ -100,6 +100,19 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上で **リーグ戦**（全員と 2 回ずつ）か **トーナメント**（2 勝で勝ち上がり）を選んで始めます。
 - 結果は戦闘画面の上の **結果ボード** に出ます。丸を押すと、その試合を見られます。左上の「◀ 結果ボード」で戻ります。
 - **結果** メニューから、結果をファイルに保存したり、人の結果ファイルを開いたりできます。` } },
+      { id: 'team-screen', title: { en: `The team battle (castles)`, ja: `チームバトル（城攻め）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu: each side defends a **castle**, and **one program drives the whole team**.
+
+- A team loses the moment its castle's HP reaches 0, or its last robot falls. At time-out the healthier castle wins.
+- Pick **1 to 5 robots a side** and a castle map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
+- Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and castle words**.
+- While debugging, pick the machine to follow on the **STATE** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
+- **WATCH** (next to EDITOR in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **城** を守り、**1 本のプログラムがチーム全体を動かします**。
+
+- 城の HP が 0 になった瞬間、そのチームの負けです（全滅でも負け）。時間切れなら城の HP が多いほうの勝ち。
+- 上部バーで **片側 1〜5 台** と城のマップを選びます。コストはチームで 1 つの枠（10 × 台数 + 2）で、機体ごとの装備は \`config\` の番号タブ（1 2 3 …）で選びます。
+- どの機体も同じプログラムの自分のコピーを実行し、変数もセンサーも機体ごとに別です。\`self_id\`、無線（\`signal\`）、装備の語（\`sensor_range\` など）で役割を分けます（「チームと城の語」を参照）。
+- デバッグ中に追いかける機体は **状態** の欄のタブで選びます。ログの行を押すと、その行を実行した機体に切り替わります。ウォッチには無線などチームの語も並びます。
+- 上部バーの **観戦** では、保存したチーム同士を実況つきで戦わせ、試合をリンクで人に渡せます。この画面のガレージは **チーム** の棚で、ロボットと同じように共有できます（\`#team=\` リンクとファイル）。` } },
       { id: 'garage-help', title: { en: `The garage`, ja: `ガレージ` }, body: { en: `The shelf where you keep robots (program and parts) under a name. It is at the bottom left of the program screen.
 
 - Type a name and press **SAVE ALPHA** / **SAVE BRAVO**. If a robot of that name is already there, the button turns into "replace?": press it again to replace that robot.
@@ -402,6 +415,53 @@ loop
 - 条件や式の中で呼ぶ関数には、時間のかかる行動と \`loop\` / \`while\` は書けません。
 - 関数の中だけで使えるのは引数だけです。\`set\` した変数は、プログラム全体で共有されます。
 - 関数が自分自身を呼ぶこと（再帰）はできません。` } },
+      { id: 'team-words', title: { en: `Team and castle words`, ja: `チームと城の語` }, body: { en: `The words of the team battle. Outside it they read 0 (and \`self_id\` reads 1), so a duel program can use them safely.
+
+- **\`self_id\`** is the machine's number (1, 2, …): one program, roles split by number.
+- **\`signal 3\`** puts a number on the team's **radio**; from the next tick everyone reads it as **\`ally_signal\`**, until a new number is sent. Everyone reads the tick's starting value, and of two senders in one tick the higher number wins. What each number means is up to your program.
+- **\`base_hp\`**, **\`base_distance\`**, **\`base_angle\`** are about your own castle; the \`enemy_base_\` words about the enemy's. \`face base\` / \`face enemy_base\` turn towards them.
+- **\`ally_distance\`**, **\`ally_angle\`**, **\`ally_hp\`** are about the nearest living teammate (known even behind obstacles — the team keeps in touch by radio); \`face ally\` turns towards it. **\`allies_alive\`** counts the living teammates, yourself not included.
+- **\`sensor_range\`**, **\`max_speed\`**, **\`max_hp\`** read your own machine's parts, so roles can follow equipment.
+
+\`\`\`
+loop
+    if enemy_visible
+        signal 1
+        drive stop
+        aim enemy
+        fire
+    else if ally_signal == 1
+        face ally
+        drive forward
+        wait
+    else
+        face enemy_base
+        drive forward
+        wait
+\`\`\``, ja: `チームバトルの語です。チームバトルの外では 0 が入る（\`self_id\` は 1）ので、ふだんのプログラムに書いてあっても安全です。
+
+- **\`self_id\`** は自分の番号（1、2、…）。1 本のプログラムを番号で書き分けます。
+- **\`signal 3\`** はチームの **無線** に数を 1 つ載せます。次の tick から全員が **\`ally_signal\`** で読め、新しい数を送るまで残ります。全員が tick の始めの値を読み、同じ tick に 2 台が送ったら番号の大きい機体が勝ちます。数の意味はプログラムで決めます。
+- **\`base_hp\`**・**\`base_distance\`**・**\`base_angle\`** は自分の城、\`enemy_base_\` の語は敵の城のことです。\`face base\` / \`face enemy_base\` でそちらを向けます。
+- **\`ally_distance\`**・**\`ally_angle\`**・**\`ally_hp\`** は一番近い生きている味方のことです（無線でつながっている決まりなので、障害物の陰でも分かります）。\`face ally\` でそちらへ。**\`allies_alive\`** は自分を除く生きている味方の数です。
+- **\`sensor_range\`**・**\`max_speed\`**・**\`max_hp\`** は自分の機体の装備を読むので、役割を装備に合わせられます。
+
+\`\`\`
+loop
+    if enemy_visible
+        signal 1
+        drive stop
+        aim enemy
+        fire
+    else if ally_signal == 1
+        face ally
+        drive forward
+        wait
+    else
+        face enemy_base
+        drive forward
+        wait
+\`\`\`` } },
       { id: 'debugging-help', title: { en: `Debugging`, ja: `デバッグのしかた` }, body: { en: `- Run with **DEBUG**, and the line that runs next (yellow) and the lines run so far in this tick (pale green) are shown.
 - \`1▶\` goes on one line, \`◀1\` back one. \`1▷\` (step over) runs through any function the line calls.
 - **Click a line number** to mark the line ◆ and jump to the next moment it runs. The seek bar shows every moment it ran; \`◆▶\` / \`◀◆\` go to the next / previous.

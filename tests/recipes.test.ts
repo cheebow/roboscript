@@ -349,3 +349,59 @@ describe('the recipes of the help: making it easy to follow', () => {
     expect(labels.at(-1)).toBe('ATTACK');
   });
 });
+
+describe('the recipes of the help: as a team', () => {
+  /** A 2 v 2 castle match: the recipe on both player machines, sitting ducks on the other side. */
+  function castleMatch(source: string, stats: [RobotStats, RobotStats]): Simulation {
+    const brainA = compileBrain(source);
+    const brainB = compileBrain(source);
+    const bases = [
+      { team: 0, rect: { x: 960, y: 220, width: 40, height: 160 }, maxHp: 300 },
+      { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 300 },
+    ];
+    return createSimulation([brainA, new FixedBrain()], {
+      arena: { ...DUEL_ARENA, spawns: [
+        { x: 850, y: 200, rotation: 180 },
+        { x: 850, y: 400, rotation: 180 },
+        { x: 150, y: 200, rotation: 0 },
+        { x: 150, y: 400, rotation: 0 },
+      ] },
+      robots: [
+        { id: 'ALPHA-1', brain: brainA, stats: stats[0] },
+        { id: 'ALPHA-2', brain: brainB, stats: stats[1] },
+        { id: 'BRAVO-1', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+        { id: 'BRAVO-2', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+      ],
+      teams: [0, 0, 1, 1],
+      bases,
+    });
+  }
+
+  it('call-team: the one that sees calls, and the one that does not answers the call', () => {
+    // Machine 1 sees the enemies (standard sensor); machine 2 is short-sighted and sees nothing from the start line.
+    const shortSighted: RobotStats = { ...ROBOT_DEFAULTS, sensorRange: 300 };
+    const simulation = castleMatch(recipe('call-team'), [ROBOT_DEFAULTS, shortSighted]);
+    runTicks(simulation, 3);
+    const [seer, helper] = simulation.robots;
+    expect(seer.teamSense.allySignal === 1 || seer.action?.signal === 1).toBe(true);
+    expect(helper.teamSense.allySignal).toBe(1);
+    // The helper heads for its teammate: after a while it has closed the gap between them.
+    const apart = () => Math.hypot(seer.position.x - helper.position.x, seer.position.y - helper.position.y);
+    const before = apart();
+    runTicks(simulation, 60);
+    expect(apart()).toBeLessThan(before);
+  });
+
+  it('equip-roles: the far-sighted machine stands watch while the short-sighted one marches', () => {
+    const shortSighted: RobotStats = { ...ROBOT_DEFAULTS, sensorRange: 300 };
+    const simulation = castleMatch(recipe('equip-roles'), [ROBOT_DEFAULTS, shortSighted]);
+    const watcherStart = { ...simulation.robots[0].position };
+    runTicks(simulation, 45);
+    const [watcher, pusher] = simulation.robots;
+    expect(watcher.label).toBe('WATCHER');
+    expect(Math.hypot(watcher.position.x - watcherStart.x, watcher.position.y - watcherStart.y)).toBeLessThan(1);
+    expect(pusher.label).toBe('MARCH');
+    // The pusher marched west, towards the enemy castle.
+    expect(pusher.position.x).toBeLessThan(800);
+  });
+});

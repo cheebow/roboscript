@@ -379,6 +379,66 @@ loop
       },
     ],
   },
+  {
+    title: { en: 'As a team (the castle match)', ja: 'チームで（城攻め）' },
+    recipes: [
+      {
+        id: 'call-team',
+        title: { en: 'Call the team when you find the enemy', ja: '見つけたら呼ぶ、呼ばれたら駆けつける' },
+        text: {
+          en: 'One number on the radio is a protocol: here 1 means "I see an enemy". Whoever sees one keeps calling and fights; whoever sees nothing but hears the call heads for its nearest teammate; and with no call, everyone marches on the castle. A caller that loses sight takes the call back with `signal 0`.',
+          ja: '無線の数 1 つが取り決め（プロトコル）になります。ここでは 1 を「敵を見つけた」の意味にします。見えている機体は呼び続けて戦い、見えていない機体は呼ばれたら一番近い味方のところへ走り、だれも呼んでいなければ城へ進みます。見失ったら `signal 0` で呼びを取り下げます。',
+        },
+        code: `set called = 0
+loop
+    if enemy_visible
+        signal 1
+        set called = 1
+        drive stop
+        aim enemy
+        fire
+    else
+        if called == 1
+            signal 0
+            set called = 0
+        if ally_signal == 1
+            face ally
+            drive forward
+            wait
+        else
+            face enemy_base
+            drive forward
+            wait`,
+      },
+      {
+        id: 'equip-roles',
+        title: { en: 'Roles that follow the parts', ja: '役割を装備に合わせる' },
+        text: {
+          en: 'One program, different machines: `sensor_range` reads your own machine\'s sensor, so the far-sighted machine hangs back and covers while the short-sighted ones push the castle. Swap the parts on the config tabs and the roles follow, with no code to change.',
+          ja: '同じプログラムでも、機体が違えば動きを変えられます。`sensor_range` は自分の機体のセンサーを読むので、目のいい機体は後ろに残って援護し、目の短い機体が城へ押し込みます。config のタブで装備を入れ替えれば、コードを直さなくても役割が付いてきます。',
+        },
+        code: `loop
+    if sensor_range > 800
+        label WATCHER
+        drive stop
+        aim enemy
+        if enemy_visible and enemy_distance < weapon_range
+            fire
+        else
+            wait
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        drive stop
+        aim enemy
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+        wait`,
+      },
+    ],
+  },
 ];
 
 export const RECIPES: readonly Recipe[] = RECIPE_GROUPS.flatMap((group) => group.recipes);

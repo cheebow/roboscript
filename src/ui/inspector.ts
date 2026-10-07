@@ -26,10 +26,12 @@ export class Inspector {
   private readonly fields: FieldList;
   private tabs: HTMLButtonElement[] = [];
 
+  /** `onPick` is called when the player picks a tab themself, not when `select` is called. */
   constructor(
     private readonly tabsContainer: HTMLElement,
     fieldsContainer: HTMLElement,
     robotIds: readonly string[],
+    private readonly onPick?: (index: number) => void,
   ) {
     this.fields = new FieldList(fieldsContainer, fieldNames());
     this.setRobots(robotIds);
@@ -37,7 +39,12 @@ export class Inspector {
 
   /** Puts these robots' tabs in place of the ones there, and starts on the first. */
   setRobots(robotIds: readonly string[]): void {
-    this.tabs = robotIds.map((id, index) => createButton('tab', id, '', () => this.select(index)));
+    this.tabs = robotIds.map((id, index) =>
+      createButton('tab', id, '', () => {
+        this.select(index);
+        this.onPick?.(index);
+      }),
+    );
     this.tabsContainer.replaceChildren(...this.tabs);
     this.select(0);
   }

@@ -422,7 +422,7 @@ export const en = {
   'toolbar.teamSize.option': '{n} vs {n}',
   'toolbar.teamSize.title': 'Robots a side; the castle and the team cost grow with the team',
   'team.editorTitle': 'TEAM {team} — {file}',
-  'team.machine.title': 'Follow machine {n}, and show its parts',
+  'team.machine.title': "Machine {n}'s parts; the watch and the stepping follow it too",
   'castle.teamCost': 'team cost {cost} / {limit}',
   // Inspector / config
   'inspector.id': 'ID',
@@ -993,7 +993,7 @@ export const ja: Record<MessageKey, string> = {
   'toolbar.teamSize.option': '{n} 対 {n}',
   'toolbar.teamSize.title': '片側の台数。城の HP とコストの枠も台数で変わる',
   'team.editorTitle': '{team} チーム — {file}',
-  'team.machine.title': '{n} 号機を追いかけ、その装備を見る',
+  'team.machine.title': '{n} 号機の装備を見る（ウォッチと行の追跡もこの機体になる）',
   'castle.teamCost': 'チーム合計 {cost} / {limit}',
   'inspector.id': 'ID',
   'inspector.hp': 'HP',

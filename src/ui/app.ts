@@ -278,7 +278,9 @@ class App {
       saveProblem: () => {},
       lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
     });
-    this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS);
+    this.inspector = new Inspector(requireElement('inspector-tabs'), requireElement('inspector-fields'), ROBOT_IDS, (index) =>
+      this.inspectorPicked(index),
+    );
     if (this.store === null) {
       this.events = [appEvent('warning', t('program.storageUnavailable'))];
     }
@@ -480,9 +482,14 @@ class App {
     this.refreshMachinePicker();
   }
 
-  /** The numbered tabs beside the editor's title, to follow and outfit one of the shown team's machines. */
+  /**
+   * The numbered tabs beside the editor's title, to pick which machine's
+   * parts the config shows. The program is the whole team's, so the tabs
+   * appear only over the config; while the code is shown, the machine to
+   * follow is picked on the inspector's tabs instead.
+   */
   private refreshMachinePicker(): void {
-    if (!this.teamMode) {
+    if (!this.teamMode || this.shownFile.file !== 'config') {
       this.machinePicker.hidden = true;
       return;
     }
@@ -498,12 +505,22 @@ class App {
     this.machinePicker.hidden = false;
   }
 
-  /** Follows the given machine of the team whose file is shown: stepping, the watch and the parts are its from here. */
+  /** Picks the machine of the team whose config is shown: the parts, the watch and the stepping are its from here. */
   private pickMachine(team: number, machine: number): void {
     this.picked[team] = machine;
     this.inspector.select(this.robotIndexOf(team, machine));
     // Shows the same file again: the title, the parts and the followed program move to the machine.
     this.showFile(this.shownFile);
+  }
+
+  /** The player picked a robot on the inspector: in the team battle, its team's editor follows that machine from here. */
+  private inspectorPicked(index: number): void {
+    if (!this.teamMode) return;
+    const team = Math.floor(index / this.teamSize);
+    this.picked[team] = (index % this.teamSize) + 1;
+    // Stepping keeps following the open file's team, through whichever of its machines is now picked.
+    this.replay?.focusOn(this.editorRobotId(this.shownFile.robotIndex));
+    if (this.shownFile.file === 'config' && this.shownFile.robotIndex === team) this.showFile(this.shownFile);
   }
 
   /** Puts the match of the program screen (or the tutorial) away, back to the robots waiting. */

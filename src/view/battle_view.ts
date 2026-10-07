@@ -141,7 +141,7 @@ export class BattleView {
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: snapshot.result.winnerId === null }),
+      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }),
     );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
@@ -411,6 +411,11 @@ export function placeMarks(
  */
 export function centreInside(x: number, halfWidth: number, width: number): number {
   return Math.min(Math.max(x, halfWidth), Math.max(width - halfWidth, halfWidth));
+}
+
+/** Whether nobody won: in a team match the winner is a team, never a single robot. */
+function isDraw(result: MatchResult): boolean {
+  return result.winnerTeam !== undefined ? result.winnerTeam === null : result.winnerId === null;
 }
 
 /** `teamNames` name the teams of a team match, by team index; a winner that has no name is called TEAM n. */

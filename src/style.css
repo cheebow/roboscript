@@ -1162,7 +1162,8 @@ button {
 }
 
 .log-robot {
-  width: 5ch;
+  /* Wide enough for a team battle's machine names, "ALPHA-1". */
+  width: 8ch;
 }
 
 .log-type {

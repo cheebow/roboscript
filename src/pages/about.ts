@@ -6,7 +6,7 @@ import './pages.css';
 import debugGif from '../../docs/images/debug.gif';
 import { ARENAS } from '../data/arenas';
 import { CHALLENGES } from '../challenge/challenges';
-import { PARTS } from '../data/parts';
+import { COST_LIMIT, PARTS } from '../data/parts';
 import { TEMPLATES } from '../data/templates';
 import { RECIPES } from '../help/recipes';
 import { createElement } from '../ui/dom';
@@ -54,39 +54,39 @@ interface Pillar {
 
 const PILLARS: readonly Pillar[] = [
   {
-    title: { en: 'Write it in a small language', ja: '小さな言語で書く' },
+    title: { en: 'Program it', ja: 'プログラミングする' },
     text: {
-      en: 'if, loops, variables, functions and sensors: a language you can read at a glance. The editor suggests the words and explains them; the tutorial starts from nothing.',
-      ja: 'if・繰り返し・変数・関数とセンサーだけの、読めば分かる言語です。エディタが語を補完して説明し、チュートリアルはゼロから始まります。',
+      en: 'You write the robot\'s moves in a programming language made for this game. There is little to learn: if, loop, variables, functions and the sensors. Read a program and you know what the robot will do. When in doubt, the editor offers the words that fit, with what they mean.',
+      ja: 'ロボットの動きは、このゲームのためのプログラミング言語で書きます。覚えるのは if や loop、変数、関数、センサーくらい。プログラムを読めば、ロボットが何をするか分かります。迷ったら、エディタが次に書ける語を意味つきで出してくれます。',
     },
   },
   {
     title: { en: 'Send it into battle', ja: '戦わせる' },
     text: {
-      en: 'You never steer: everything the robot does comes from the program. The same robots, map and seed always make the same match, so a shared match replays exactly, for anyone.',
-      ja: '試合中の操作はありません。ロボットの動きは、すべてプログラムが決めます。同じロボット・マップ・seed なら必ず同じ試合になるので、共有した試合は誰の手元でも同じに再生されます。',
+      en: 'Your program alone drives the robot: there is no steering during a match. Win or lose, the reason is somewhere in the code. The same setup always makes the same match, so a shared link replays it exactly on anyone\'s screen.',
+      ja: 'ロボットを動かすのはプログラムだけ。試合中の操作はありません。勝っても負けても、理由は必ずコードの中にあります。同じ条件なら必ず同じ試合になるので、リンクで共有した試合は、相手の画面でもそっくりそのまま再生されます。',
     },
   },
   {
     title: { en: 'Wind back and debug', ja: '巻き戻してデバッグする' },
     text: {
-      en: 'A match is recorded whole: step a line at a time, backwards too, and jump to the moments a line ran. Watch the variables and sensors as they were on any tick.',
-      ja: '試合はまるごと記録されます。1 行ずつ進めるのも、戻すのも、その行が実行された瞬間へ飛ぶのも自由です。どの tick の変数とセンサーでも、そのまま見られます。',
+      en: 'The whole match is recorded. Pause it, step a line at a time — backwards too — or jump to the moments a line ran, with the variables and the sensors as they were right then. "Why did it lose?" has an answer you can walk to.',
+      ja: '試合はまるごと記録されています。止めて 1 行ずつ進めるのも、戻すのも、気になる行が実行された瞬間へ飛ぶのも自由。そのときの変数とセンサーの値もそのまま見えるので、「なんで負けたの？」まで追いかけられます。',
     },
   },
 ];
 
 function features(): PageText[] {
   return [
-    { en: 'A step-by-step tutorial', ja: 'ゼロから学べるチュートリアル' },
-    { en: `${CHALLENGES.length} challenges with stars to collect`, ja: `星を集めるチャレンジ ${CHALLENGES.length} 問` },
-    { en: `${TEMPLATES.length} built-in robots to read and fight`, ja: `読める・戦える内蔵ロボット ${TEMPLATES.length} 台` },
-    { en: `${PARTS.length} parts to build with, under a cost limit`, ja: `コストの中で組む ${PARTS.length} 種のパーツ` },
-    { en: `${ARENAS.length} maps, leagues and tournaments`, ja: `${ARENAS.length} つのマップ、リーグ戦とトーナメント` },
-    { en: `${RECIPES.length} recipes: short programs to copy and change`, ja: `写して直せるレシピ ${RECIPES.length} 個` },
-    { en: 'Share a robot or a match as a link', ja: 'ロボットも試合も、リンクで共有' },
-    { en: 'In English and Japanese', ja: '日本語と英語' },
-    { en: 'Runs in the browser, works offline', ja: 'ブラウザで動き、オフラインでも遊べる' },
+    { en: 'A tutorial that starts from zero', ja: 'ゼロから学べるチュートリアル' },
+    { en: `${CHALLENGES.length} challenges, with stars to collect`, ja: `チャレンジ ${CHALLENGES.length} 問（星を集めよう）` },
+    { en: `${TEMPLATES.length} built-in robots, their programs open to read`, ja: `内蔵ロボット ${TEMPLATES.length} 台（プログラムも読めます）` },
+    { en: `${PARTS.length} parts to build from, within a cost of ${COST_LIMIT}`, ja: `パーツ ${PARTS.length} 種（コスト ${COST_LIMIT} の中で組みます）` },
+    { en: `${ARENAS.length} maps, leagues and tournaments`, ja: `マップ ${ARENAS.length} つ、リーグ戦とトーナメント` },
+    { en: `${RECIPES.length} recipes to copy and make your own`, ja: `レシピ ${RECIPES.length} 個（写して、直して、自分のものに）` },
+    { en: 'Share robots and matches as links', ja: 'ロボットも試合も、リンクひとつで共有' },
+    { en: 'In Japanese and English', ja: '日本語と英語に対応' },
+    { en: 'Runs in the browser, offline too', ja: 'ブラウザで動いて、オフラインでも遊べる' },
   ];
 }
 
@@ -128,8 +128,8 @@ export function renderAbout(): HTMLElement {
 
   const readFirst = createElement('div', 'about-read-first');
   const readText = createElement('span', '', inLanguage({
-    en: 'Want to read before you play? The whole help, the guide to the language and the recipes are on a page of their own: ',
-    ja: '先に中身を読みたい人へ。ヘルプ・言語の解説・レシピ集を、そのまま読めるページがあります: ',
+    en: 'Want to know what is inside before you play? How to play, the guide to the language and the recipes can all be read without opening the game: ',
+    ja: '遊ぶ前に中身を知りたいときは、こちらへ。使い方も、スクリプトの解説も、レシピ集も、ゲームを開かずに読めます: ',
   }));
   const readLink = createElement('a', '', inLanguage({ en: 'the help page', ja: 'ヘルプのページ' }));
   readLink.href = './help.html';

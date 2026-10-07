@@ -36,7 +36,8 @@ export interface SimulationConfig {
   /**
    * The teams' castles, for a castle match. A castle blocks movement, bullets
    * and sight like an obstacle; enemy bullets wear it down, and a team whose
-   * castle falls loses at once.
+   * castle falls loses at once. The castle is the goal: a team with a castle
+   * stays in the match even with every robot destroyed.
    */
   bases?: readonly Base[];
   /** Receives debug events. The match plays the same with or without it. */
@@ -529,9 +530,11 @@ export class Simulation {
   }
 
   /**
-   * A team match ends when a team's castle falls or its last robot does; a
-   * team still in on both counts beats one that is out, and teams out on the
-   * same tick draw. At the end of time, or when nobody can shoot, castle HP
+   * In a castle match only the castle decides: a team is out when its castle
+   * falls, however many robots it has lost, and a wiped-out team plays on
+   * behind its walls. Without castles a team is out when its last robot
+   * falls. A team still in beats one that is out, and teams out on the same
+   * tick draw. At the end of time, or when nobody can shoot, castle HP
    * decides first, then the HP of the robots still standing. Teammates share
    * their team's place.
    */
@@ -544,7 +547,7 @@ export class Simulation {
       return base !== undefined && base.hp <= 0;
     };
     const wiped = (team: number) => members(team).every((robot) => !robot.alive);
-    const out = (team: number) => baseFell(team) || wiped(team);
+    const out = (team: number) => (baseOf(team) === undefined ? wiped(team) : baseFell(team));
     const lastedUntil = (team: number) =>
       baseFell(team) ? this.tick : Math.max(...members(team).map((robot) => this.destroyedAt.get(robot.id) ?? 0));
     const hpLeft = (team: number) => members(team).reduce((sum, robot) => sum + (robot.alive ? robot.hp : 0), 0);

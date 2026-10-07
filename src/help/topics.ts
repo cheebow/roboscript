@@ -102,13 +102,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - **結果** メニューから、結果をファイルに保存したり、人の結果ファイルを開いたりできます。` } },
       { id: 'team-screen', title: { en: `The team battle (castles)`, ja: `チームバトル（城攻め）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu: each side defends a **castle**, and **one program drives the whole team**.
 
-- A team loses the moment its castle's HP reaches 0, or its last robot falls. At time-out the healthier castle wins.
+- A team loses the moment its castle's HP reaches 0 — and only then: it is in the match as long as its castle stands, even with every robot gone. At time-out the healthier castle wins.
 - Pick **1 to 5 robots a side** and a castle map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
 - Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and castle words**.
 - While debugging, pick the machine to follow on the **STATE** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
 - **WATCH** (next to EDITOR in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **城** を守り、**1 本のプログラムがチーム全体を動かします**。
 
-- 城の HP が 0 になった瞬間、そのチームの負けです（全滅でも負け）。時間切れなら城の HP が多いほうの勝ち。
+- 城の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。城が立っているかぎり、全滅してもチームは戦いの中にいます。時間切れなら城の HP が多いほうの勝ち。
 - 上部バーで **片側 1〜5 台** と城のマップを選びます。コストはチームで 1 つの枠（10 × 台数 + 2）で、機体ごとの装備は \`config\` の番号タブ（1 2 3 …）で選びます。
 - どの機体も同じプログラムの自分のコピーを実行し、変数もセンサーも機体ごとに別です。\`self_id\`、無線（\`signal\`）、装備の語（\`sensor_range\` など）で役割を分けます（「チームと城の語」を参照）。
 - デバッグ中に追いかける機体は **状態** の欄のタブで選びます。ログの行を押すと、その行を実行した機体に切り替わります。ウォッチには無線などチームの語も並びます。

@@ -1,5 +1,5 @@
 // Chapter 10 of the tutorial: the castle match (the team battle).
-import { CASTLE_RUSH } from '../data/team_templates';
+import { CASTLE_SPLIT } from '../data/team_templates';
 import { TARGET_BOT, castleStage } from './stages';
 import type { Chapter } from './types';
 
@@ -14,7 +14,7 @@ export const CASTLE_CHAPTER: Chapter = {
       id: 'castle-first',
       title: { en: `A castle to bring down`, ja: `城を落とす` },
       body: {
-        en: `In the **team battle** (in the start menu) each side defends a **castle**. A team loses the moment its castle's HP reaches 0 — or its last robot falls. When time runs out, the healthier castle wins.
+        en: `In the **team battle** (in the start menu) each side defends a **castle**. A team loses the moment its castle's HP reaches 0 — and only then: as long as the castle stands, the team is in the match, even with every robot gone. When time runs out, the healthier castle wins.
 
 New words come with it:
 
@@ -23,7 +23,7 @@ New words come with it:
 - **\`face enemy_base\`** / **\`face base\`** … turn until you face a castle
 
 Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent just sits there: march on its castle, and shoot whatever stands in the way.`,
-        ja: `**チームバトル**（起動メニューにあります）では、どちらの側も **城** を守ります。城の HP が 0 になった瞬間、そのチームの負けです（全滅でも負け）。時間切れなら、城の HP が多いほうの勝ちです。
+        ja: `**チームバトル**（起動メニューにあります）では、どちらの側も **城** を守ります。城の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。城が立っているかぎり、ロボットが全滅してもチームは戦いの中にいます。時間切れなら、城の HP が多いほうの勝ちです。
 
 新しい語があります。
 
@@ -34,8 +34,8 @@ Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent
 弾は城で止まり、城を削れるのは **敵の** 弾だけです。今回の相手はその場に座っているだけ。城へ向かって進み、じゃまなものは撃ちましょう。`,
       },
       task: {
-        en: `Use \`enemy_base_distance\` to march into range, then win: bring the castle down, or clear away its keeper.`,
-        ja: `\`enemy_base_distance\` を使って射程まで進み、勝ちましょう。城を落としても、守りを倒しても勝ちです。`,
+        en: `Use \`enemy_base_distance\` to march into range and bring the castle down. Its keeper is only in the way: beating it wins nothing.`,
+        ja: `\`enemy_base_distance\` を使って射程まで進み、城を落として勝ちましょう。守りを倒しても、城が残っているうちは勝ちではありません。`,
       },
       hints: [
         {
@@ -127,44 +127,56 @@ else
       body: {
         en: `Teammates share one **radio**. **\`signal 1\`** puts a number on it; from the next tick, everyone reads it as **\`ally_signal\`**, until a new number is sent. What each number means is up to your program.
 
-This opponent rushes your castle. Stand your ground by it, and when a machine sees an enemy, have it **call the team**: \`signal 1\`. A machine that sees nothing but hears the call heads for its nearest teammate with **\`face ally\`**.
+This opponent splits up: one keeper stays home, two machines come for your castle. March on the enemy castle together, with a rule on the radio: whoever gets an enemy in range **calls the team** — \`signal 1\` — and keeps calling while it fights. A machine that hears the call heads for its nearest teammate with **\`face ally\`**: every call is answered by every free gun. And a finished call must be **taken back** — the caller sends \`signal 0\` once no enemy is in sight — or the team would keep answering it forever. Remembering whether it was you who called takes a variable.
 
 Watch \`ally_signal\` change in the WATCH panel while you debug: that is the protocol you designed, running.`,
         ja: `味方は 1 本の **無線** でつながっています。**\`signal 1\`** で数を載せると、次の tick から全員が **\`ally_signal\`** で読めます（新しい数を送るまで残ります）。数の意味はプログラムで決めます。
 
-今回の相手はこちらの城へ突撃してきます。城のそばで構えて、敵を見つけた機体が **チームを呼ぶ** ようにしましょう: \`signal 1\`。見えていない機体は、呼ばれたら **\`face ally\`** で一番近い味方のところへ駆けつけます。
+今回の相手は兵力を割いてきます: 1 台を城に残し、2 台がこちらの城へ向かってきます。こちらは全員そろって敵の城へ進軍し、無線にルールをひとつ決めましょう: 敵を射程にとらえた機体が **チームを呼ぶ** — \`signal 1\` — 戦っている間は呼び続けます。呼ばれた機体は **\`face ally\`** で一番近い味方のところへ駆けつけます。手のあいた銃は全部、呼ばれた場所に集まるわけです。そして、終わった呼び出しは **取り消す** こと — 敵が見えなくなったら呼んだ機体が \`signal 0\` を送ります。そうしないと、チームは永遠に駆けつけ続けます。「呼んだのが自分かどうか」を覚えておくのには変数を使います。
 
 デバッグ中にウォッチの \`ally_signal\` が変わるのを見てください。自分で設計した無線のやりとりが動いています。`,
       },
       task: {
-        en: `Defend your castle and win, using \`signal\` and \`ally_signal\`.`,
-        ja: `\`signal\` と \`ally_signal\` を使って、城を守りきって勝ちましょう。`,
+        en: `March on the enemy castle together and bring it down, calling every fight with \`signal\` and \`ally_signal\`.`,
+        ja: `\`signal\` と \`ally_signal\` で戦いのたびにチームを呼び集めながら、そろって攻め込み、敵の城を落としましょう。`,
       },
       hints: [
         {
-          en: `Seeing an enemy: \`signal 1\`, stop, aim, fire. Else, if \`ally_signal == 1\`: \`face ally\`, \`drive forward\`. Else: stop, \`aim enemy\`, wait.`,
-          ja: `敵が見えたら \`signal 1\`、止まって狙って撃つ。見えないときは、\`ally_signal == 1\` なら \`face ally\` と \`drive forward\`、どちらでもなければ止まって \`aim enemy\`、\`wait\` です。`,
+          en: `An enemy in range: \`signal 1\`, remember you called (\`set called = 1\`), stop, aim, fire. Otherwise, first take back your own call (\`signal 0\`); then, if \`ally_signal == 1\`: \`face ally\`, \`drive forward\`. No call: the marching and shelling of the first step.`,
+          ja: `敵が射程にいたら \`signal 1\`、呼んだことを覚えて（\`set called = 1\`）、止まって狙って撃つ。そうでなければ、まず自分の呼び出しを取り消す（\`signal 0\`）。そのうえで \`ally_signal == 1\` なら \`face ally\` と \`drive forward\`、呼ばれていなければ最初のステップの「進んで撃つ」です。`,
         },
       ],
-      answer: `loop
+      answer: `set called = 0
+loop
     if enemy_visible and enemy_distance < weapon_range
         signal 1
+        set called = 1
         label FIGHT
         drive stop
         aim enemy
         fire
-    else if ally_signal == 1
-        label HELP
-        face ally
-        drive forward
-        wait
     else
-        label WATCH
-        drive stop
-        aim enemy
-        wait
+        if called == 1
+            signal 0
+            set called = 0
+        if ally_signal == 1
+            label ANSWER
+            face ally
+            drive forward
+            wait
+        else if enemy_base_distance < weapon_range - 50
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
+        else
+            label MARCH
+            face enemy_base
+            drive forward
+            wait
 `,
-      stage: castleStage(3, CASTLE_RUSH, 103, { gun: 'pistol', body: 'light' }),
+      stage: castleStage(3, CASTLE_SPLIT, 103, { gun: 'pistol', body: 'light' }),
       check: { kind: 'match', goal: { kind: 'win' }, uses: ['signal', 'ally_signal'] },
     },
     {

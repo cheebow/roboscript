@@ -2,7 +2,7 @@ import type { Arena, Base } from '../../sim/types';
 import { BARE_GROUND } from './bare_ground';
 import { BUNKERS } from './bunkers';
 import { CASTLE_BASTION } from './castle_bastion';
-import { CASTLE_BASES } from './castle_common';
+import { castleBasesFor } from './castle_common';
 import { CASTLE_LANES } from './castle_lanes';
 import { CASTLE_PLAIN } from './castle_plain';
 import { CENTER_BLOCK } from './center_block';
@@ -33,15 +33,19 @@ export const ARENAS: readonly ArenaDefinition[] = [
   { id: 'zigzag', name: 'Zigzag', arena: ZIGZAG },
 ];
 
-/** An arena for the castle match, with the two teams' castles. Kept apart from ARENAS: the duel and battle royale pickers never offer these. */
+/**
+ * An arena for the castle match. The castles scale with the team size, so
+ * they are asked for rather than carried. Kept apart from ARENAS: the duel
+ * and battle royale pickers never offer these.
+ */
 export interface CastleArenaDefinition extends ArenaDefinition {
-  bases: readonly Base[];
+  basesFor: (teamSize: number) => Base[];
 }
 
 export const CASTLE_ARENAS: readonly CastleArenaDefinition[] = [
-  { id: 'castle_plain', name: 'Castle Plain', arena: CASTLE_PLAIN, bases: CASTLE_BASES },
-  { id: 'castle_lanes', name: 'Castle Lanes', arena: CASTLE_LANES, bases: CASTLE_BASES },
-  { id: 'castle_bastion', name: 'Castle Bastion', arena: CASTLE_BASTION, bases: CASTLE_BASES },
+  { id: 'castle_plain', name: 'Castle Plain', arena: CASTLE_PLAIN, basesFor: castleBasesFor },
+  { id: 'castle_lanes', name: 'Castle Lanes', arena: CASTLE_LANES, basesFor: castleBasesFor },
+  { id: 'castle_bastion', name: 'Castle Bastion', arena: CASTLE_BASTION, basesFor: castleBasesFor },
 ];
 
 export const DEFAULT_ARENA_DEFINITION = ARENAS[0];

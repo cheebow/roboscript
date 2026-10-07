@@ -102,7 +102,9 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
   });
 });
 
-describe.each(CASTLE_ARENAS)('castle arena $name', ({ id, arena, bases }) => {
+describe.each(CASTLE_ARENAS)('castle arena $name', ({ id, arena, basesFor }) => {
+  const bases = basesFor(3);
+
   it('keeps the duel and battle royale pickers free of it', () => {
     expect(ARENAS.some((other) => other.id === id)).toBe(false);
   });

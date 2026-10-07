@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CASTLE_ARENAS } from '../src/data/arenas';
-import { CASTLE_HP, TEAM_SIZE } from '../src/data/castle';
+import { castleSpawnsFor } from '../src/data/arenas/castle_common';
+import { MAX_TEAM_SIZE, castleHpFor, teamCostLimitFor } from '../src/data/castle';
+import { COST_LIMIT } from '../src/data/parts';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import type { RobotBrain } from '../src/sim/ai_context';
@@ -131,18 +133,42 @@ describe('the end of a castle match', () => {
   });
 });
 
+describe('the numbers of the castle match', () => {
+  it('scales the castle and the cost pool with the team size', () => {
+    // One robot: today's single-robot cost limit, and a castle one robot's worth of HP.
+    expect(teamCostLimitFor(1)).toBe(COST_LIMIT);
+    expect(castleHpFor(1)).toBe(200);
+    // A full team: each further robot adds less than a full budget.
+    expect(teamCostLimitFor(MAX_TEAM_SIZE)).toBe(32);
+    expect(castleHpFor(MAX_TEAM_SIZE)).toBe(600);
+  });
+
+  it('seats a smaller match on the first spawns of each side, mirrored', () => {
+    for (let teamSize = 1; teamSize <= MAX_TEAM_SIZE; teamSize++) {
+      const spawns = castleSpawnsFor(teamSize);
+      expect(spawns).toHaveLength(teamSize * 2);
+      for (let i = 0; i < teamSize; i++) {
+        expect(spawns[teamSize + i]).toEqual({ x: 1000 - spawns[i].x, y: spawns[i].y, rotation: 0 });
+      }
+    }
+    // One robot a side starts level with its castle.
+    expect(castleSpawnsFor(1).map((spawn) => spawn.y)).toEqual([300, 300]);
+  });
+});
+
 describe('the castle arenas', () => {
   it('offers three, each with a castle for both teams at full strength', () => {
     expect(CASTLE_ARENAS).toHaveLength(3);
-    for (const { bases } of CASTLE_ARENAS) {
+    for (const { basesFor } of CASTLE_ARENAS) {
+      const bases = basesFor(MAX_TEAM_SIZE);
       expect(bases.map((base) => base.team).sort()).toEqual([0, 1]);
-      for (const base of bases) expect(base.maxHp).toBe(CASTLE_HP);
+      for (const base of bases) expect(base.maxHp).toBe(castleHpFor(MAX_TEAM_SIZE));
     }
   });
 
   it('plays a deterministic 3 vs 3: the same seed gives the same match', () => {
     const play = () => {
-      const { arena, bases } = CASTLE_ARENAS[0];
+      const { arena, basesFor } = CASTLE_ARENAS[0];
       const rush = () => compileBrain('loop\n    drive forward\n    fire\n');
       const simulation = new Simulation({
         arena,
@@ -155,7 +181,7 @@ describe('the castle arenas', () => {
           stats: NO_SPREAD_STATS,
         })),
         teams: [0, 0, 0, 1, 1, 1],
-        bases,
+        bases: basesFor(3),
       });
       runToEnd(simulation);
       return { result: simulation.result, tick: simulation.tick, hp: simulation.bases.map((base) => base.hp) };
@@ -166,7 +192,7 @@ describe('the castle arenas', () => {
   });
 
   it('numbers the robots of each team 1 to 3', () => {
-    const { arena, bases } = CASTLE_ARENAS[0];
+    const { arena, basesFor } = CASTLE_ARENAS[0];
     const simulation = new Simulation({
       arena,
       tickRate: MATCH_DEFAULTS.tickRate,
@@ -178,9 +204,9 @@ describe('the castle arenas', () => {
         stats: NO_SPREAD_STATS,
       })),
       teams: [0, 0, 0, 1, 1, 1],
-      bases,
+      bases: basesFor(3),
     });
     expect(simulation.robots.map((robot) => robot.selfId)).toEqual([1, 2, 3, 1, 2, 3]);
-    expect(TEAM_SIZE).toBe(3);
+    expect(MAX_TEAM_SIZE).toBe(3);
   });
 });

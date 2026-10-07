@@ -119,8 +119,10 @@ export class TeamStore {
     this.storage.setItem(teamSourceKey(team), source);
   }
 
-  loadLoadout(team: number, machine: number): Loadout {
-    return readLoadout(this.loadInfo().loadouts?.[team]?.[machine]);
+  /** The saved parts of a team's machine, or null where nothing was saved: the default is the caller's to choose. */
+  loadLoadout(team: number, machine: number): Loadout | null {
+    const saved = this.loadInfo().loadouts?.[team]?.[machine];
+    return saved === undefined ? null : readLoadout(saved);
   }
 
   saveLoadout(team: number, machine: number, loadout: Loadout): void {

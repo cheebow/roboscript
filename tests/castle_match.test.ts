@@ -62,6 +62,26 @@ describe('prepareCastleFight', () => {
   });
 });
 
+describe('the default team kit', () => {
+  it('fits a full team inside the team cost limit, with room to upgrade', async () => {
+    const { TEAM_DEFAULT_LOADOUT } = await import('../src/data/castle');
+    expect(costOf(TEAM_DEFAULT_LOADOUT) * 3).toBeLessThan(teamCostLimitFor(3));
+  });
+});
+
+describe('a castle match standing ready', () => {
+  it('shows full castles and living teammates before the first tick', () => {
+    const prepared = prepareCastleFight(sides(), CASTLE_ARENAS[0], 3, 1);
+    if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+    const simulation = new Simulation(prepared.fight.config);
+    const sense = simulation.robots[0].teamSense;
+    expect(sense.alliesAlive).toBe(2);
+    expect(sense.baseHp).toBe(castleHpFor(3));
+    expect(sense.enemyBaseHp).toBe(castleHpFor(3));
+    expect(sense.allyDistance).toBeGreaterThan(0);
+  });
+});
+
 describe('the team templates', () => {
   it('compile', () => {
     for (const template of TEAM_TEMPLATES) {
@@ -107,7 +127,8 @@ describe('TeamStore', () => {
     expect(again.loadSource(0)).toBe('loop\n    wait');
     expect(again.loadSource(1)).toBe('b');
     expect(again.loadLoadout(1, 2)).toEqual(LIGHT);
-    expect(again.loadLoadout(0, 0)).toEqual(STANDARD_LOADOUT);
+    // Nothing saved for this machine: the default is the caller's to choose.
+    expect(again.loadLoadout(0, 0)).toBeNull();
     expect(again.loadInfo().teamSize).toBe(2);
     expect(again.loadInfo().arena).toBe('castle_lanes');
   });

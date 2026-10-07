@@ -185,6 +185,10 @@ export class Simulation {
           selfId: this.teamMatch ? this.teamOf.slice(0, index + 1).filter((team) => team === this.teamOf[index]).length : undefined,
         }),
     );
+    // What each robot knows of its team as the match stands ready: a snapshot
+    // at tick 0 (and the waiting view before a match) shows full castles and
+    // living teammates, not zeros.
+    for (const robot of this.robots) robot.noteTeam(this.teamReadingOf(robot));
     this.reporter = config.logger === undefined ? null : new EventReporter(config.logger, config.tickRate);
     this.reporter?.matchStarted(config.seed);
   }

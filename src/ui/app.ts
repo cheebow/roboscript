@@ -9,7 +9,7 @@ import { randomSeed } from '../arena/seed';
 import { scatterSpawns } from '../arena/spawns';
 import { ARENAS, CASTLE_ARENAS, findArena, findCastleArena } from '../data/arenas';
 import { castleSpawnsFor } from '../data/arenas/castle_common';
-import { MAX_TEAM_SIZE, teamCostLimitFor } from '../data/castle';
+import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
 import { TEAM_TEMPLATES, findTeamTemplate } from '../data/team_templates';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -199,7 +199,7 @@ class App {
   private castleArena = findCastleArena(this.teamStore?.loadInfo().arena ?? null);
   /** The parts of each team's machines: teamLoadouts[team][machine]. */
   private readonly teamLoadouts: Loadout[][] = [0, 1].map((team) =>
-    Array.from({ length: MAX_TEAM_SIZE }, (_, machine) => this.teamStore?.loadLoadout(team, machine) ?? STANDARD_LOADOUT),
+    Array.from({ length: MAX_TEAM_SIZE }, (_, machine) => this.teamStore?.loadLoadout(team, machine) ?? TEAM_DEFAULT_LOADOUT),
   );
   /** The machine each team's editor follows and outfits (1-based). */
   private readonly picked = [1, 1];

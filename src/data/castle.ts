@@ -1,3 +1,5 @@
+import type { Loadout } from './parts';
+
 // The numbers of the castle match, gathered here for tuning. A side fields
 // `teamSize` robots (1 to MAX_TEAM_SIZE, the same on both sides), and the
 // castle and cost numbers scale with it.
@@ -23,3 +25,10 @@ export function castleHpFor(teamSize: number): number {
 export function teamCostLimitFor(teamSize: number): number {
   return 10 * teamSize + 2;
 }
+
+/**
+ * What a team's machines carry until the player refits them: a light body
+ * and a pistol keep a machine at cost 10, so even a full team of three (30)
+ * starts inside its limit of 32, with room to upgrade one machine.
+ */
+export const TEAM_DEFAULT_LOADOUT: Loadout = { body: 'light', legs: 'standard', gun: 'pistol', sensor: 'standard' };

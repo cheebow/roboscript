@@ -8,13 +8,15 @@ import type { Loadout } from './parts';
 export const MAX_TEAM_SIZE = 5;
 
 /**
- * A castle's HP: a base of 100 plus 100 per robot fielded. A lone robot
- * faces today's 200; a full team's castle (400) falls to one slipped-through
- * machine in about 13 s of pistol fire — playtesting wanted the castle to be
- * a real target before the robots have ground each other down.
+ * A castle's HP: one robot's worth (200), whatever the team size. Low enough
+ * that storming the castle is usually faster than grinding the team down —
+ * the castle is the goal, and the bracket report shows racing for it and
+ * intercepting the racers in real tension at every size. Scaling it with the
+ * team (an earlier 100 + 100 per robot) kept the race from ever mattering
+ * past 1 a side.
  */
-export function castleHpFor(teamSize: number): number {
-  return 100 * teamSize + 100;
+export function castleHpFor(_teamSize: number): number {
+  return 200;
 }
 
 /**

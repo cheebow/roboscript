@@ -34,6 +34,9 @@ export function prepareCastleFight(
   if (!Number.isInteger(teamSize) || teamSize < 1 || teamSize > MAX_TEAM_SIZE) {
     return { ok: false, problems: [`A castle match takes 1 to ${MAX_TEAM_SIZE} robots a side, not ${teamSize}`] };
   }
+  if (sides.some((side) => side.loadouts.length < teamSize)) {
+    return { ok: false, problems: [`A side of ${teamSize} needs a loadout for every machine`] };
+  }
   const problems: string[] = [];
   const limit = teamCostLimitFor(teamSize);
   const teamBrains: RobotBrain[][] = [];

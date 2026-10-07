@@ -2,7 +2,7 @@ import type { Base, Rect, SpawnPoint } from '../../sim/types';
 import { MAX_TEAM_SIZE, castleHpFor } from '../castle';
 import { ARENA_HEIGHT, ARENA_WIDTH } from './common';
 
-// What every castle arena shares: a castle at each end wall and up to three
+// What every castle arena shares: a castle at each end wall and up to five
 // spawns in front of it. Team 0 (the player's) holds the right end, team 1
 // the left, mirroring the duel spawns.
 
@@ -25,8 +25,13 @@ export function castleBasesFor(teamSize: number): Base[] {
 }
 
 const SPAWN_INSET = 130;
-/** The first robot of a side starts level with its castle; the others above and below it. */
-const SPAWN_YS = [300, 150, 450];
+/**
+ * The first robot of a side starts level with its castle; the others above
+ * and below it, further out as the team grows. The rows clear every castle
+ * arena's walls and shields, and the first three are the rows of old, so a
+ * shared match of up to three a side replays exactly as it did.
+ */
+const SPAWN_YS = [300, 150, 450, 90, 510];
 
 /**
  * All six spawns, team 0's three first: what a castle arena carries, so the

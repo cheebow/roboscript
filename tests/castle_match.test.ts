@@ -58,6 +58,8 @@ describe('prepareCastleFight', () => {
     const broken = { ...alpha, source: 'turn sideways\n' };
     expect(prepareCastleFight([broken, bravo], CASTLE_ARENAS[0], 3, 1).ok).toBe(false);
     expect(prepareCastleFight(sides(), CASTLE_ARENAS[0], 0, 1).ok).toBe(false);
+    expect(prepareCastleFight(sides(), CASTLE_ARENAS[0], 6, 1).ok).toBe(false);
+    // Three loadouts cannot field four machines.
     expect(prepareCastleFight(sides(), CASTLE_ARENAS[0], 4, 1).ok).toBe(false);
   });
 });

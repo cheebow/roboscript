@@ -129,9 +129,9 @@ describe.each(CASTLE_ARENAS)('castle arena $name', ({ id, arena, basesFor }) => 
     expect(sorted(bases.map((base) => turn(base.rect)))).toEqual(sorted(bases.map((base) => base.rect)));
   });
 
-  it('starts three robots a side, mirrored, each facing the enemy castle', () => {
-    expect(arena.spawns).toHaveLength(6);
-    const [right, left] = [arena.spawns.slice(0, 3), arena.spawns.slice(3)];
+  it('starts five robots a side, mirrored, each facing the enemy castle', () => {
+    expect(arena.spawns).toHaveLength(10);
+    const [right, left] = [arena.spawns.slice(0, 5), arena.spawns.slice(5)];
     for (const [index, spawn] of right.entries()) {
       expect(spawn.rotation).toBe(180);
       expect(left[index]).toEqual({ x: arena.width - spawn.x, y: spawn.y, rotation: 0 });

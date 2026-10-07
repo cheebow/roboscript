@@ -4,8 +4,8 @@ import type { Loadout } from './parts';
 // `teamSize` robots (1 to MAX_TEAM_SIZE, the same on both sides), and the
 // castle and cost numbers scale with it.
 
-/** The most robots a team may field in a castle match. */
-export const MAX_TEAM_SIZE = 3;
+/** The most robots a team may field in a castle match: futsal-sized, the most the field and the radio stay readable at. */
+export const MAX_TEAM_SIZE = 5;
 
 /**
  * A castle's HP: a base of 100 plus 100 per robot fielded. A lone robot

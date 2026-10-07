@@ -103,6 +103,27 @@ const ROBOT_PALETTES: readonly RobotPalette[] = [
     treadLight: TREAD_LIGHT,
     sensor: SENSOR,
   },
+  // The fourth and fifth shades of each team battle side.
+  {
+    body: '#5fc4de',
+    shade: '#3f96ad',
+    light: '#9adeee',
+    gun: GUN,
+    hatch: '#112830',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
+  {
+    body: '#bd8e57',
+    shade: '#8f6a40',
+    light: '#dcb98a',
+    gun: GUN,
+    hatch: '#2a2012',
+    tread: TREAD,
+    treadLight: TREAD_LIGHT,
+    sensor: SENSOR,
+  },
 ];
 
 export const WRECK_PALETTE: RobotPalette = {
@@ -117,10 +138,10 @@ export const WRECK_PALETTE: RobotPalette = {
 };
 
 /** The palette of the robot at the given spawn index. */
-/** The palettes of a team match, by team: team 0 in cool colours, team 1 in warm ones. */
+/** The palettes of a team match, by team: team 0 in cool colours, team 1 in warm ones, one shade per machine. */
 const TEAM_PALETTES: readonly (readonly number[])[] = [
-  [0, 2, 5],
-  [1, 3, 4],
+  [0, 2, 5, 7, 8],
+  [1, 3, 4, 6, 9],
 ];
 
 /**

@@ -138,9 +138,12 @@ describe('the numbers of the castle match', () => {
     // One robot: today's single-robot cost limit, and the castle at its old 200.
     expect(teamCostLimitFor(1)).toBe(COST_LIMIT);
     expect(castleHpFor(1)).toBe(200);
-    // A full team: each further robot adds less than a full budget.
-    expect(teamCostLimitFor(MAX_TEAM_SIZE)).toBe(32);
-    expect(castleHpFor(MAX_TEAM_SIZE)).toBe(400);
+    // Each further robot adds less than a full budget, up to the futsal-sized five.
+    expect(teamCostLimitFor(3)).toBe(32);
+    expect(castleHpFor(3)).toBe(400);
+    expect(MAX_TEAM_SIZE).toBe(5);
+    expect(teamCostLimitFor(MAX_TEAM_SIZE)).toBe(52);
+    expect(castleHpFor(MAX_TEAM_SIZE)).toBe(600);
   });
 
   it('seats a smaller match on the first spawns of each side, mirrored', () => {
@@ -207,6 +210,5 @@ describe('the castle arenas', () => {
       bases: basesFor(3),
     });
     expect(simulation.robots.map((robot) => robot.selfId)).toEqual([1, 2, 3, 1, 2, 3]);
-    expect(MAX_TEAM_SIZE).toBe(3);
   });
 });

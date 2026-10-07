@@ -208,6 +208,74 @@ loop
         wait
 `;
 
+/**
+ * A football line-up: a keeper on the castle, defenders on a line before it,
+ * attackers away at the enemy castle. Built for five; smaller teams field
+ * the front of the line-up.
+ */
+export const CASTLE_FORMATION = `# CastleFormation: machine 1 keeps the castle, 2 and 3 hold a line before it, the rest attack. A line-up by self_id.
+def fight()
+    drive stop
+    aim enemy
+    fire
+
+loop
+    if self_id == 1
+        # The keeper stands on the castle and shields it with its hull.
+        if enemy_visible and enemy_distance < weapon_range
+            label KEEPER
+            fight()
+        else if base_distance > 120
+            label GO_HOME
+            if blocked
+                turn left
+            else
+                face base
+                drive forward
+                wait
+        else
+            label KEEPER
+            drive stop
+            aim enemy
+            wait
+    else if self_id <= 3
+        # The defenders hold a line before the castle.
+        if enemy_visible and enemy_distance < weapon_range
+            label DEFEND
+            fight()
+        else if base_distance > 260
+            label LINE_UP
+            if blocked
+                turn left
+            else
+                face base
+                drive forward
+                wait
+        else
+            label DEFEND
+            drive stop
+            aim enemy
+            wait
+    else
+        # The attackers go for the enemy castle.
+        if blocked
+            turn left
+        else if enemy_visible and enemy_distance < weapon_range - 50
+            label FIGHT
+            fight()
+        else if enemy_base_distance < weapon_range - 50
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
+        else
+            label MARCH
+            face enemy_base
+            drive forward
+            wait
+`;
+
 /** The team programs offered in the castle match, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
@@ -216,6 +284,7 @@ export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_turtle', name: 'CastleTurtle', source: CASTLE_TURTLE },
   { id: 'castle_rally', name: 'CastleRally', source: CASTLE_RALLY },
   { id: 'castle_runner', name: 'CastleRunner', source: CASTLE_RUNNER },
+  { id: 'castle_formation', name: 'CastleFormation', source: CASTLE_FORMATION },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

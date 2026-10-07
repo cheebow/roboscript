@@ -155,47 +155,49 @@ it('castle: how the team templates fare against each other', async () => {
   const { TEAM_DEFAULT_LOADOUT } = await import('../src/data/castle');
   const { TEAM_TEMPLATES } = await import('../src/data/team_templates');
   const { Simulation } = await import('../src/sim/simulation');
-  const KIT = [TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT];
   const CASTLE_SEEDS = [1, 2, 3];
 
-  const wins = new Map<string, number>();
-  const played = new Map<string, number>();
-  const reasons = new Map<string, number>();
-  let totalTicks = 0;
-  let matches = 0;
-  for (const first of TEAM_TEMPLATES) {
-    for (const second of TEAM_TEMPLATES) {
-      if (first === second) continue;
-      for (const { arena, basesFor, id } of CASTLE_ARENAS) {
-        for (const seed of CASTLE_SEEDS) {
-          const prepared = prepareCastleFight(
-            [
-              { name: 'A', source: first.source, loadouts: KIT },
-              { name: 'B', source: second.source, loadouts: KIT },
-            ],
-            { id, name: id, arena, basesFor },
-            3,
-            seed,
-          );
-          if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
-          const simulation = new Simulation(prepared.fight.config);
-          while (simulation.result === null) simulation.step();
-          const result = simulation.result;
-          reasons.set(result.reason, (reasons.get(result.reason) ?? 0) + 1);
-          totalTicks += simulation.tick;
-          matches++;
-          for (const [team, template] of [first, second].entries()) {
-            played.set(template.name, (played.get(template.name) ?? 0) + 1);
-            const score = result.winnerTeam === null ? 0.5 : result.winnerTeam === team ? 1 : 0;
-            wins.set(template.name, (wins.get(template.name) ?? 0) + score);
+  for (const teamSize of [3, 5]) {
+    const kit = Array.from({ length: teamSize }, () => TEAM_DEFAULT_LOADOUT);
+    const wins = new Map<string, number>();
+    const played = new Map<string, number>();
+    const reasons = new Map<string, number>();
+    let totalTicks = 0;
+    let matches = 0;
+    for (const first of TEAM_TEMPLATES) {
+      for (const second of TEAM_TEMPLATES) {
+        if (first === second) continue;
+        for (const { arena, basesFor, id } of CASTLE_ARENAS) {
+          for (const seed of CASTLE_SEEDS) {
+            const prepared = prepareCastleFight(
+              [
+                { name: 'A', source: first.source, loadouts: kit },
+                { name: 'B', source: second.source, loadouts: kit },
+              ],
+              { id, name: id, arena, basesFor },
+              teamSize,
+              seed,
+            );
+            if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+            const simulation = new Simulation(prepared.fight.config);
+            while (simulation.result === null) simulation.step();
+            const result = simulation.result;
+            reasons.set(result.reason, (reasons.get(result.reason) ?? 0) + 1);
+            totalTicks += simulation.tick;
+            matches++;
+            for (const [team, template] of [first, second].entries()) {
+              played.set(template.name, (played.get(template.name) ?? 0) + 1);
+              const score = result.winnerTeam === null ? 0.5 : result.winnerTeam === team ? 1 : 0;
+              wins.set(template.name, (wins.get(template.name) ?? 0) + score);
+            }
           }
         }
       }
     }
+    console.log(`\ncastle bracket (${teamSize} a side): ${matches} matches, mean ${(totalTicks / matches / MATCH_DEFAULTS.tickRate).toFixed(1)} s`);
+    console.log('reasons:', Object.fromEntries(reasons));
+    for (const [name, count] of played) {
+      console.log(`${name.padEnd(16)} win rate ${(((wins.get(name) ?? 0) / count) * 100).toFixed(0).padStart(3)}% of ${count}`);
+    }
   }
-  console.log(`\ncastle bracket: ${matches} matches, mean ${(totalTicks / matches / MATCH_DEFAULTS.tickRate).toFixed(1)} s`);
-  console.log('reasons:', Object.fromEntries(reasons));
-  for (const [name, count] of played) {
-    console.log(`${name.padEnd(14)} win rate ${(((wins.get(name) ?? 0) / count) * 100).toFixed(0).padStart(3)}% of ${count}`);
-  }
-}, 600_000);
+}, 900_000);

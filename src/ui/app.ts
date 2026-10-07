@@ -50,6 +50,7 @@ import { ContestMode } from './contest_mode';
 import { DebugLogView } from './debug_log';
 import { createButton, createElement, requireElement } from './dom';
 import { GarageController } from './garage_controller';
+import { TeamBattleMode } from './team_battle_mode';
 import { TeamGarageController } from './team_garage_controller';
 import { describeError } from './format';
 import { Inspector } from './inspector';
@@ -70,8 +71,8 @@ type Mode = 'run' | 'debug';
  * anywhere play a league or a tournament.
  */
 const SCREENS = ['program', 'arena', 'contest'] as const;
-/** The screens: the three of the tabs, and the tutorial, the challenges and the team battle, reached from the start menu. */
-type Screen = (typeof SCREENS)[number] | 'tutorial' | 'challenge' | 'team';
+/** The screens: the three of the tabs, the tutorial and the challenges, and the team battle's two faces (editing and watching). */
+type Screen = (typeof SCREENS)[number] | 'tutorial' | 'challenge' | 'team' | 'teamwatch';
 
 const MS_PER_SECOND = 1000;
 const PLAYER_INDEX = 0;
@@ -196,6 +197,8 @@ class App {
   private teamWorkspaces: RobotWorkspace[] | null = null;
   /** The garage of teams, made with the team editors. */
   private teamGarage: TeamGarageController | null = null;
+  /** The team battle's watching, made the first time it is shown. */
+  private teamWatch: TeamBattleMode | null = null;
   /** Robots a side in the team battle. */
   private teamSize = clampTeamSize(this.teamStore?.loadInfo().teamSize);
   /** The castle arena the team battle is fought in. */
@@ -313,6 +316,8 @@ class App {
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
     }
+    requireElement('screen-team-edit').addEventListener('click', () => this.showScreen('team'));
+    requireElement('screen-team-watch').addEventListener('click', () => this.showScreen('teamwatch'));
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
     this.splitters = new Splitters(requireElement('app'), requireElement('editor'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
@@ -366,8 +371,6 @@ class App {
   private openShareLink(): boolean {
     const link = readShareLink(window.location.hash);
     if (link === null) return false;
-    // A castle-match link plays in the team battle's watching, which comes with a later phase.
-    if (link.kind === 'castle') return false;
     history.replaceState(null, '', window.location.pathname + window.location.search);
     this.boot.hide();
     if (link.kind === 'robot') {
@@ -376,6 +379,9 @@ class App {
     } else if (link.kind === 'team') {
       this.showScreen('team');
       void this.teamGarage?.importCode(link.code);
+    } else if (link.kind === 'castle') {
+      this.showScreen('teamwatch');
+      void this.ensureTeamWatch().importMatch(link.code);
     } else {
       this.showScreen('arena');
       void this.arenaMode.importMatch(link.code);
@@ -429,13 +435,14 @@ class App {
     return this.analyzed;
   }
 
-  /** Opens or closes the analysis of the match watched in the arena or a contest. */
+  /** Opens or closes the analysis of the match watched in the arena, a contest or the team battle. */
   private toggleWatchedAnalysis(): void {
     if (!this.analysisOverlay.hidden) {
       this.analysisOverlay.hidden = true;
       return;
     }
-    const screen = this.screen === 'arena' ? this.arenaMode : this.screen === 'contest' ? this.contestMode : null;
+    const screen =
+      this.screen === 'arena' ? this.arenaMode : this.screen === 'contest' ? this.contestMode : this.screen === 'teamwatch' ? this.teamWatch : null;
     const replay = screen?.replay ?? null;
     if (screen === null || replay === null) return;
     this.watchedAnalysis.show(analyze(replay.recording, screen.fightNames()), replay.recording.arena);
@@ -467,13 +474,21 @@ class App {
       else this.idleSnapshot = this.captureIdle();
       this.showFile(codeFileOf(PLAYER_INDEX));
     }
+    // The team battle's two faces share the toolbar's castle maps and team size.
+    this.toolbar.setArenas(
+      this.castleScreen ? { options: CASTLE_ARENAS, selectedId: this.castleArena.id } : { options: ARENAS, selectedId: this.arena.id },
+    );
     requireElement('app').dataset.screen = screen;
     // The editor stands beside another column on the tutorial and challenge screens: its width is fitted again.
     this.splitters?.refresh();
     for (const each of SCREENS) requireElement(`screen-${each}`).classList.toggle('selected', each === screen);
+    requireElement('screen-team-edit').classList.toggle('selected', screen === 'team');
+    requireElement('screen-team-watch').classList.toggle('selected', screen === 'teamwatch');
     // Robots may have been saved or deleted since the arena was last shown.
     if (screen === 'arena') this.arenaMode.refresh();
     if (screen === 'contest') this.contestMode.shown();
+    // Teams may have been saved or renamed since the watching was last shown.
+    if (screen === 'teamwatch') this.ensureTeamWatch().refresh();
   }
 
   /** Fits the fixed panels to the battle's form: the duel's two robots, or the team battle's machines, maps and sizes. */
@@ -611,6 +626,7 @@ class App {
   private shownReplay(): ReplayManager | null {
     if (this.screen === 'arena') return this.arenaMode.replay;
     if (this.screen === 'contest') return this.contestMode.replay;
+    if (this.screen === 'teamwatch') return this.teamWatch?.replay ?? null;
     return this.replay;
   }
 
@@ -888,11 +904,12 @@ class App {
     }
   }
 
-  /** Takes effect from the next RUN / DEBUG; shown at once while there is no match. */
+  /** Takes effect from the next RUN / DEBUG (or FIGHT); shown at once while there is no match. */
   private selectArena(id: string): void {
-    if (this.teamMode) {
+    if (this.castleScreen) {
       this.castleArena = findCastleArena(id);
-      this.idleSnapshot = this.captureIdle();
+      if (this.teamMode) this.idleSnapshot = this.captureIdle();
+      this.teamWatch?.formChanged();
       try {
         this.teamStore?.saveArena(this.castleArena.id);
         this.noteSave('team-map', null);
@@ -912,7 +929,7 @@ class App {
     }
   }
 
-  /** The team battle fields this many robots a side from the next RUN / DEBUG; the castle and the cost pool grow with it. */
+  /** The team battle fields this many robots a side from the next RUN / DEBUG (or FIGHT); the castle and the cost pool grow with it. */
   private setTeamSize(teamSize: number): void {
     this.teamSize = clampTeamSize(teamSize);
     try {
@@ -920,10 +937,13 @@ class App {
     } catch {
       // Storage may be full or blocked: the size then holds until the page is left.
     }
-    this.leaveMatch();
-    this.enterBattleForm();
-    this.idleSnapshot = this.captureIdle();
-    this.showFile(this.shownFile);
+    if (this.teamMode) {
+      this.leaveMatch();
+      this.enterBattleForm();
+      this.idleSnapshot = this.captureIdle();
+      this.showFile(this.shownFile);
+    }
+    this.teamWatch?.formChanged();
   }
 
   private captureIdle(): Snapshot {
@@ -951,6 +971,8 @@ class App {
     if (this.replay !== null) this.replay.speed = speed;
     if (this.arenaMode.replay !== null) this.arenaMode.replay.speed = speed;
     if (this.contestMode.replay !== null) this.contestMode.replay.speed = speed;
+    const teamReplay = this.teamWatch?.replay ?? null;
+    if (teamReplay !== null) teamReplay.speed = speed;
   }
 
   /**
@@ -1093,6 +1115,32 @@ class App {
     return this.teamWorkspaces;
   }
 
+  /** Whether a castle-battle screen is shown: the team battle's editing or its watching, which share the maps and the size. */
+  private get castleScreen(): boolean {
+    return this.screen === 'team' || this.screen === 'teamwatch';
+  }
+
+  /** The team battle's watching, made the first time it is shown. */
+  private ensureTeamWatch(): TeamBattleMode {
+    this.ensureTeamWorkspaces();
+    this.teamWatch ??= new TeamBattleMode(requireElement('team-lineup-slots'), requireElement('team-result-rows'), {
+      arena: () => this.castleArena,
+      teamSize: () => this.teamSize,
+      garageTeams: () => this.teamGarage?.list() ?? [],
+      speed: () => this.speed,
+      chooseArena: (id) => {
+        this.selectArena(id);
+        this.toolbar.setArena(id);
+      },
+      keepTeams: (teams) => {
+        if (this.teamGarage === null) throw new Error(t('garage.noStorage'));
+        return this.teamGarage.keep(teams);
+      },
+      storage: this.storage,
+    });
+    return this.teamWatch;
+  }
+
   /** Puts a saved team's program and parts in place of a team's own. Does not change the match's team size. */
   private loadTeam(team: number, saved: { source: string; loadouts: readonly Loadout[] }): void {
     this.ensureTeamWorkspaces()[team].load(saved.source);
@@ -1190,9 +1238,17 @@ class App {
     this.coach?.update();
     if (this.screen === 'arena') this.showArena(elapsed);
     else if (this.screen === 'contest') this.showContest(elapsed);
+    else if (this.screen === 'teamwatch') this.showTeamWatch(elapsed);
     else this.showProgram(elapsed);
     requestAnimationFrame(this.frame);
   };
+
+  /** One frame of the team battle's watching: the castle match being watched, or the picked teams waiting. */
+  private showTeamWatch(elapsed: number): void {
+    const watch = this.ensureTeamWatch();
+    watch.update();
+    this.showWatched(elapsed, watch);
+  }
 
   /** One frame of the arena mode: the fight being watched, or the picked robots waiting. */
   private showArena(elapsed: number): void {
@@ -1207,15 +1263,19 @@ class App {
   }
 
   /** Draws the match a watching screen shows, and sets the toolbar and the transport to it. */
-  private showWatched(elapsed: number, screen: ArenaMode | ContestMode): void {
+  private showWatched(elapsed: number, screen: ArenaMode | ContestMode | TeamBattleMode): void {
     const { replay } = screen;
     replay?.advance(elapsed);
-    const { snapshot, arena, stats, loadouts } = screen.scene();
+    const scene = screen.scene();
+    const { snapshot, arena, stats, loadouts } = scene;
     this.battleView.render(snapshot, arena, stats, loadouts, {
       sensorOf: null,
       marks: NO_FEATURES,
       coverRoutes: screen.coverRoutes(),
       overrun: replay?.overrun ?? 0,
+      teams: scene.teams,
+      bases: scene.bases,
+      teamNames: scene.teamNames,
     });
     this.toolbar.setMessage(screen.message());
     this.showSeed(replay?.recording.seed ?? null);

@@ -22,6 +22,16 @@ export function readHit(event: DebugEvent): LoggedHit | null {
   return { tick: event.tick, shooterId: event.robotId, targetId: match[1], damage: Number(match[2]), hp: Number(match[3]), guarded: match[4] !== undefined };
 }
 
+const CASTLE_HIT = /^castle of team (\d+) damage=(\d+) hp=(\d+)$/;
+
+/** The castle hit a log event tells of; null for any other event. */
+export function readCastleHit(event: DebugEvent): { tick: number; shooterId: string; team: number; damage: number; hp: number } | null {
+  if (event.type !== 'hit' || event.robotId === null) return null;
+  const match = CASTLE_HIT.exec(event.message);
+  if (match === null) return null;
+  return { tick: event.tick, shooterId: event.robotId, team: Number(match[1]), damage: Number(match[2]), hp: Number(match[3]) };
+}
+
 /** How one robot did in a match. */
 export interface RobotAnalysis {
   id: string;
@@ -30,6 +40,8 @@ export interface RobotAnalysis {
   hits: number;
   damageDealt: number;
   damageTaken: number;
+  /** Damage it dealt to castles, counted apart from the robots'. */
+  castleDamage: number;
   /** Hits taken while guarding. */
   guarded: number;
   /** HP got back by resting out of sight. */
@@ -51,9 +63,21 @@ export interface HitPlace {
   at: Vec2;
 }
 
+/** How one castle stood through the match. */
+export interface BaseAnalysis {
+  team: number;
+  maxHp: number;
+  /** HP at each sample of the match, like the robots'. */
+  hp: number[];
+}
+
 export interface MatchAnalysis {
   robots: RobotAnalysis[];
   hits: HitPlace[];
+  /** The team of each robot, in a team match. */
+  teams?: readonly number[];
+  /** The castles of a castle match, with their HP over the match. */
+  bases?: BaseAnalysis[];
   /** Ticks between two samples of the HP. */
   sampleEvery: number;
   ticks: number;
@@ -77,18 +101,26 @@ export function analyze(recording: Recording, names: readonly string[]): MatchAn
     hits: 0,
     damageDealt: 0,
     damageTaken: 0,
+    castleDamage: 0,
     guarded: 0,
     recovered: 0,
     distance: 0,
     sighted: 0,
     hp: [],
   }));
+  const bases: BaseAnalysis[] | undefined = recording.bases?.map((base) => ({ team: base.team, maxHp: base.maxHp, hp: [] }));
 
   const hits: HitPlace[] = [];
   for (const event of events) {
     if (event.type === 'action' && event.message === 'fire' && event.robotId !== null) {
       const shooter = robots[indexOf(event.robotId)];
       if (shooter !== undefined) shooter.shots++;
+      continue;
+    }
+    const castleHit = readCastleHit(event);
+    if (castleHit !== null) {
+      const shooter = robots[indexOf(castleHit.shooterId)];
+      if (shooter !== undefined) shooter.castleDamage += castleHit.damage;
       continue;
     }
     const hit = readHit(event);
@@ -107,6 +139,9 @@ export function analyze(recording: Recording, names: readonly string[]): MatchAn
   const standing = ids.map(() => 0);
   const seeing = ids.map(() => 0);
   for (let tick = 0; tick <= last; tick++) {
+    if (bases !== undefined && (tick % sampleEvery === 0 || tick === last)) {
+      bases.forEach((base, index) => base.hp.push(snapshots[tick].bases[index] ?? base.maxHp));
+    }
     const now = snapshots[tick].robots;
     now.forEach((robot, index) => {
       const analysis = robots[index];
@@ -124,7 +159,7 @@ export function analyze(recording: Recording, names: readonly string[]): MatchAn
   robots.forEach((analysis, index) => {
     analysis.sighted = standing[index] === 0 ? 0 : seeing[index] / standing[index];
   });
-  return { robots, hits, sampleEvery, ticks: last, tickRate };
+  return { robots, hits, teams: recording.teams, bases, sampleEvery, ticks: last, tickRate };
 }
 
 /** How many times each line of a robot's program ran in the match, by line number. */

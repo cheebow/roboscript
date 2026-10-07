@@ -14,6 +14,11 @@ export interface CommentaryLine {
 const VARIANTS = {
   start: 3,
   startRoyale: 2,
+  startTeam: 2,
+  castleHit: 2,
+  castleHalf: 2,
+  castleDestroyed: 2,
+  wonTeam: 2,
   sighted: 3,
   firstHit: 3,
   bigHit: 3,
@@ -49,7 +54,12 @@ const LAST_SECONDS = 10;
  * changes nothing; the same match is always told the same way (the wording is
  * picked by the match's seed).
  */
-export function commentaryOf(recording: Recording, names: readonly string[], maxMatchTime: number): CommentaryLine[] {
+export function commentaryOf(
+  recording: Recording,
+  names: readonly string[],
+  maxMatchTime: number,
+  teamNames?: readonly string[],
+): CommentaryLine[] {
   const { snapshots, tickRate, seed } = recording;
   const lines: CommentaryLine[] = [];
   const say = (tick: number, kind: Kind, weight: number, params: Record<string, string | number> = {}) => {
@@ -57,9 +67,35 @@ export function commentaryOf(recording: Recording, names: readonly string[], max
     lines.push({ tick, text: t(`commentary.${kind}.${variant}` as MessageKey, params), weight });
   };
   const nameOf = (id: string) => names[snapshots[0].robots.findIndex((robot) => robot.id === id)] ?? id;
-  const duel = names.length === 2;
+  const teamMatch = recording.teams !== undefined;
+  const teamNameOf = (team: number) => teamNames?.[team] ?? `TEAM ${team + 1}`;
+  const duel = names.length === 2 && !teamMatch;
 
-  say(0, duel ? 'start' : 'startRoyale', 3, { first: names[0], second: names[1] ?? '', names: names.join(' / '), count: names.length });
+  if (teamMatch) say(0, 'startTeam', 3, { first: teamNameOf(0), second: teamNameOf(1), count: names.length / 2 });
+  else say(0, duel ? 'start' : 'startRoyale', 3, { first: names[0], second: names[1] ?? '', names: names.join(' / '), count: names.length });
+
+  // The castles: the first blow on each, its half, and its fall.
+  (recording.bases ?? []).forEach((base, index) => {
+    let whole = true;
+    let overHalf = true;
+    for (let tick = 1; tick < snapshots.length; tick++) {
+      const hp = snapshots[tick].bases[index] ?? base.maxHp;
+      const before = snapshots[tick - 1].bases[index] ?? base.maxHp;
+      if (hp >= before) continue;
+      const params = { team: teamNameOf(base.team) };
+      if (hp <= 0) {
+        say(tick, 'castleDestroyed', 4, params);
+        break;
+      }
+      if (whole) {
+        whole = false;
+        say(tick, 'castleHit', 2, params);
+      } else if (overHalf && hp <= base.maxHp / 2) {
+        overHalf = false;
+        say(tick, 'castleHalf', 3, params);
+      }
+    }
+  });
 
   // From the hits in the log: who hit whom, how hard, and whether it was braced against.
   const hitsBy = new Map<string, number>();
@@ -122,7 +158,10 @@ export function commentaryOf(recording: Recording, names: readonly string[], max
   const end = snapshots.length - 1;
   const result = snapshots[end].result;
   if (result !== null) {
-    if (result.winnerId === null) say(end, 'drew', 4);
+    if (result.winnerTeam !== undefined) {
+      if (result.winnerTeam === null) say(end, 'drew', 4);
+      else say(end, 'wonTeam', 4, { name: teamNameOf(result.winnerTeam) });
+    } else if (result.winnerId === null) say(end, 'drew', 4);
     else say(end, 'won', 4, { name: nameOf(result.winnerId) });
   }
 

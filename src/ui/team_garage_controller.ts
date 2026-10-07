@@ -64,6 +64,15 @@ export class TeamGarageController {
     return this.garage?.listTeams() ?? [];
   }
 
+  /** Keeps teams received with a match, each under a name of its own; the names they are kept under. Throws without storage. */
+  keep(teams: readonly SavedTeam[]): string[] {
+    const { garage } = this;
+    if (garage === null) throw new Error(t('garage.noStorage'));
+    const names = teams.map((team) => garage.importTeam(team));
+    this.show();
+    return names;
+  }
+
   /** Keeps the team, its program and its machines' parts as they are now, under the name typed. */
   private save(typedName: string, team: number): void {
     const name = garageName(typedName);

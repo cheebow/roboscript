@@ -8,7 +8,7 @@ import type { Recording } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import type { Snapshot } from '../debug/snapshot';
 import { t } from '../i18n/messages';
-import type { Arena } from '../sim/types';
+import type { Arena, Base } from '../sim/types';
 import { formatOutcome } from '../view/battle_view';
 
 /** What the battle view draws on the arena and contest screens. */
@@ -17,6 +17,11 @@ export interface ArenaScene {
   arena: Arena;
   stats: readonly RobotStats[];
   loadouts: readonly Loadout[];
+  /** The team of each robot and the castles, for a castle match. */
+  teams?: readonly number[];
+  bases?: readonly Base[];
+  /** The names of the teams, for the result. */
+  teamNames?: readonly string[];
 }
 
 /** Plays a recorded match back at the given speed, following the named robot's program. */
@@ -35,12 +40,15 @@ export class WatchedMatch {
   fight: Fight | null = null;
   /** The commentary of the match, worked out from its recording. */
   commentary: readonly CommentaryLine[] = [];
+  /** The names of the teams of a castle match; undefined otherwise. */
+  private teamNames: readonly string[] | undefined;
 
-  /** Records the fight and plays it from the start. */
-  watch(fight: Fight, speed: number): void {
+  /** Records the fight and plays it from the start. `teamNames` name the teams of a castle match. */
+  watch(fight: Fight, speed: number, teamNames?: readonly string[]): void {
     this.fight = fight;
+    this.teamNames = teamNames;
     const recording = recordMatch(fight.config, EFFECT_LIFETIMES);
-    this.commentary = commentaryOf(recording, fight.names, fight.config.maxMatchTime);
+    this.commentary = commentaryOf(recording, fight.names, fight.config.maxMatchTime, teamNames);
     this.replay = createReplay(recording, speed, fight.names[0]);
     this.replay.restart();
   }
@@ -49,6 +57,7 @@ export class WatchedMatch {
     this.replay = null;
     this.fight = null;
     this.commentary = [];
+    this.teamNames = undefined;
   }
 
   /** What to draw: the match, or `idle` while there is none. */
@@ -56,7 +65,15 @@ export class WatchedMatch {
     const { replay, fight } = this;
     if (replay === null || fight === null) return idle;
     const { recording } = replay;
-    return { snapshot: replay.view, arena: recording.arena, stats: recording.stats, loadouts: fight.loadouts };
+    return {
+      snapshot: replay.view,
+      arena: recording.arena,
+      stats: recording.stats,
+      loadouts: fight.loadouts,
+      teams: recording.teams,
+      bases: recording.bases,
+      teamNames: this.teamNames,
+    };
   }
 
   /** Per robot, whether to draw its way to cover: for those whose program looks for it. */
@@ -69,7 +86,7 @@ export class WatchedMatch {
     const { replay } = this;
     if (replay === null) return null;
     const { result } = replay.snapshot;
-    if (result !== null) return formatOutcome(result);
+    if (result !== null) return formatOutcome(result, this.teamNames);
     return replay.playing ? t('program.playing') : t('program.paused');
   }
 }

@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
+    en: 'The team battle can be watched: pick two saved teams, hear the commentary call the castles, and share the match with a #castle= link. The analysis knows teams and castles too.',
+    ja: 'チームバトルに「観戦」が付きました。保存した 2 チームを選んで戦わせ、城を呼ぶ実況付きで見られます。試合は #castle= リンクで人に渡せ、分析もチームと城が分かるようになりました。',
+  },
+  {
+    date: '2026-10-07',
     en: 'Teams can be kept and shared: the team battle has a garage of teams, and a team travels as a share code, a link (#team=) or a .roboscript.json file, like a robot does.',
     ja: 'チームを保存して渡せるようになりました。チームバトルにチームのガレージが付き、ロボットと同じように、共有コード・リンク（#team=）・ファイル（.roboscript.json）で人に渡せます。',
   },

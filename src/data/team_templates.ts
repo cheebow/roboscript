@@ -4,20 +4,28 @@
 
 import type { Template } from './templates';
 
-/** Everyone pushes for the enemy castle, shooting whatever shows itself on the way. */
-export const CASTLE_RUSH = `# CastleRush: the whole team pushes for the enemy castle; enemies on the way are shot, and the castle once in range.
+/**
+ * Everyone runs straight for the enemy castle and shells it; enemies are
+ * shot only when they stand right in the way. Walls are felt along with a
+ * turn, as the single-robot templates do.
+ */
+export const CASTLE_RUSH = `# CastleRush: the whole team runs for the enemy castle and shells it. Enemies are shot only when they block the way.
 loop
-    if enemy_visible and enemy_distance < weapon_range - 50
-        label FIGHT
-        drive stop
-        aim enemy
-        fire
+    if blocked
+        # A wall or a corner in the way: feel along it.
+        turn left
     else if enemy_base_distance < weapon_range - 50
-        # In range of the castle: stand, point everything at it, and shell it.
+        # In range of the castle: stand and shell it.
         label SIEGE
         drive stop
         face enemy_base
         aim ahead
+        fire
+    else if enemy_visible and enemy_distance < 150
+        # Right in the way: clear it out, then march on.
+        label FIGHT
+        drive stop
+        aim enemy
         fire
     else
         label MARCH
@@ -48,8 +56,10 @@ loop
             aim enemy
             wait
     else
-        # The attackers push for the enemy castle.
-        if enemy_visible and enemy_distance < weapon_range - 50
+        # The attackers push for the enemy castle, fighting whatever shows itself.
+        if blocked
+            turn left
+        else if enemy_visible and enemy_distance < weapon_range - 50
             label FIGHT
             fight()
         else if enemy_base_distance < weapon_range - 50
@@ -86,11 +96,19 @@ loop
         if called == 1
             signal 0
             set called = 0
-        if ally_signal == 1
+        if blocked
+            turn left
+        else if ally_signal == 1
             # A teammate is calling: head for the nearest one and join its fight.
             label ANSWER
             face ally
             drive forward
+        else if enemy_base_distance < weapon_range - 50
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
         else
             label MARCH
             face enemy_base

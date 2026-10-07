@@ -119,3 +119,24 @@ describe('patternsOf', () => {
     expect(() => patternsOf({ ...STANDARD_LOADOUT, gun: 'laser' })).toThrow('No picture of the gun part "laser"');
   });
 });
+
+describe('the tread animation', () => {
+  it('gives every kind of legs a second frame, and leaves the rest of the robot still', async () => {
+    const { PART_PATTERNS, patternsOf } = await import('../src/view/sprites');
+    const { STANDARD_LOADOUT } = await import('../src/data/parts');
+    for (const legs of Object.keys(PART_PATTERNS.legs)) {
+      const { hull, hullMoving, turret } = patternsOf({ ...STANDARD_LOADOUT, legs });
+      expect(hullMoving, legs).not.toEqual(hull);
+      // Only tread dots change between the frames: everything else stays put.
+      hull.forEach((row, y) => {
+        [...row].forEach((dot, x) => {
+          const other = hullMoving[y][x];
+          if (dot === other) return;
+          expect('tT', `${legs} ${x},${y}`).toContain(dot);
+          expect('tT', `${legs} ${x},${y}`).toContain(other);
+        });
+      });
+      expect(patternsOf({ ...STANDARD_LOADOUT, legs }).turret).toEqual(turret);
+    }
+  });
+});

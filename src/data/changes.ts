@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-07',
+    en: 'Robots move like they mean it: tracks roll, wheels turn, walker legs step and hover skirts shimmer while a robot drives.',
+    ja: 'ロボットの絵が走るようになりました。走行中はキャタピラが回り、車輪が回転し、Walker の脚は踏み替え、Hover のスカートは揺らぎます。',
+  },
+  {
+    date: '2026-10-07',
     en: 'The team battle now goes up to 5 a side, futsal-style — enough for a keeper, defenders and attackers. The new CastleFormation template shows such a line-up, and each side of the palette gained two shades.',
     ja: 'チームバトルが片側 5 台まで選べるようになりました。キーパー・ディフェンダー・アタッカーの布陣が組める規模です。その見本のテンプレート CastleFormation が入り、チームの配色も各系統 5 階調になりました。',
   },

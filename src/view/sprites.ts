@@ -296,24 +296,37 @@ function patternOf(loadout: Loadout, slot: Slot): Pattern {
   return pattern;
 }
 
-/** What a robot with the given parts is drawn from: its hull, and the turret on it. */
-export function patternsOf(loadout: Loadout): { hull: Pattern; turret: Pattern } {
+/**
+ * The legs pattern's second frame of animation: the dark and the light tread
+ * dots swapped. On tracks the studs crawl a dot, on wheels the hubs turn, on
+ * a walker's legs the feet step, on a hover's skirt the air shimmers.
+ */
+function stepped(pattern: Pattern): Pattern {
+  return pattern.map((row) => [...row].map((dot) => (dot === 't' ? 'T' : dot === 'T' ? 't' : dot)).join(''));
+}
+
+/** What a robot with the given parts is drawn from: its hull (with the legs mid-step), and the turret on it. */
+export function patternsOf(loadout: Loadout): { hull: Pattern; hullMoving: Pattern; turret: Pattern } {
+  const legs = patternOf(loadout, 'legs');
+  const above = [patternOf(loadout, 'body'), patternOf(loadout, 'sensor')];
   return {
-    hull: overlay([patternOf(loadout, 'legs'), patternOf(loadout, 'body'), patternOf(loadout, 'sensor')]),
+    hull: overlay([legs, ...above]),
+    hullMoving: overlay([stepped(legs), ...above]),
     turret: patternOf(loadout, 'gun'),
   };
 }
 
-/** The two parts a robot is drawn from, each turned its own way. */
+/** The parts a robot is drawn from, each turned its own way; `hullMoving` is the hull with the legs mid-step. */
 export interface RobotSprites {
   hull: HTMLCanvasElement;
+  hullMoving: HTMLCanvasElement;
   turret: HTMLCanvasElement;
 }
 
 /** Paints a robot with the given parts, one canvas pixel per dot. Draw the sprites scaled by DOT, without smoothing. */
 export function createRobotSprites(palette: RobotPalette, loadout: Loadout): RobotSprites {
-  const { hull, turret } = patternsOf(loadout);
-  return { hull: paint(hull, palette), turret: paint(turret, palette) };
+  const { hull, hullMoving, turret } = patternsOf(loadout);
+  return { hull: paint(hull, palette), hullMoving: paint(hullMoving, palette), turret: paint(turret, palette) };
 }
 
 function paint(pattern: Pattern, palette: RobotPalette): HTMLCanvasElement {

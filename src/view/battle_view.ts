@@ -57,6 +57,8 @@ const GUARD_LABEL_GAP = 13;
 const LABEL_GAP = 15;
 /** A bullet is drawn as a square of this size, with a dimmer one trailing behind it. */
 const BULLET_SIZE = DOT * 2;
+/** ticks: how long each frame of the tread animation is shown while a robot drives. */
+const TREAD_STEP_TICKS = 4;
 /** Near the top edge, clear of the robots, which tend to meet in the middle. */
 const RESULT_Y = 50;
 
@@ -141,7 +143,7 @@ export class BattleView {
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
     snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }),
+      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }),
     );
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes);
 
@@ -242,6 +244,7 @@ export class BattleView {
     loadout: Loadout,
     arena: Arena,
     showState: boolean,
+    tick: number,
     overrun: number,
     /** The robot's place once the match is over, and whether nobody won; null while it goes on. */
     standing: { place: number; draw: boolean } | null,
@@ -253,7 +256,9 @@ export class BattleView {
     const place = standing?.place ?? null;
     const beaten = !robot.alive || (place !== null && place > 1);
     const sprites = this.spritesOf(index, loadout, !beaten);
-    this.drawPart(sprites.hull, x, y, robot.rotation);
+    // A driving robot's legs animate: the tread dots step every few ticks, in time with the match.
+    const stepping = !beaten && robot.moved && Math.floor((tick + overrun) / TREAD_STEP_TICKS) % 2 === 1;
+    this.drawPart(stepping ? sprites.hullMoving : sprites.hull, x, y, robot.rotation);
     this.drawPart(sprites.turret, x, y, robot.gunHeading);
 
     const lineHeight = LABEL_LINE_PX / this.scale;

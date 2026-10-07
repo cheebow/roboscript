@@ -15,6 +15,8 @@ export interface RobotSnapshot {
   gunHeading: number;
   /** How the hull is set to drive. */
   driving: DriveSetting;
+  /** The hull drove somewhere on this tick: what the treads animate on. */
+  moved: boolean;
   hp: number;
   alive: boolean;
   /** What the robot's program calls what it is doing. */
@@ -119,6 +121,7 @@ export function captureSnapshot(simulation: Simulation, effects: EffectSnapshot[
         rotation: robot.rotation,
         gunHeading: robot.gunHeading,
         driving: robot.driving,
+        moved: robot.moved,
         hp: robot.hp,
         alive: robot.alive,
         label: robot.label,

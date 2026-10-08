@@ -7,7 +7,6 @@ import { randomSeed } from '../arena/seed';
 import { type Bracket, tournamentSteps } from '../arena/tournament';
 import { type ArenaDefinition, DEFAULT_ARENA } from '../data/arenas';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
-import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
 import { t } from '../i18n/messages';
 import { type ContestEntry, type ContestOrigin, CONTEST_KEY, addEntry, readContest, removeEntry, writeContest } from '../project/contest_store';
@@ -18,10 +17,9 @@ import { decodeRobot } from '../share/codec';
 import { type SharedFile, acceptDrops, chooseFile, contestFileText, downloadText, fileName, readSharedFile } from '../share/file';
 import { Simulation } from '../sim/simulation';
 import { paletteOf } from '../view/sprites';
-import { type ArenaScene, WatchedMatch } from './watched_match';
-import type { CommentaryLine } from '../arena/commentary';
+import type { ArenaScene } from './watched_match';
+import { WatchScreen } from './watch_screen';
 import { ActionMenu, type MenuItem } from './action_menu';
-import { Notice } from './notice';
 import { RobotIntake } from './robot_intake';
 import { createButton, createElement } from './dom';
 import { createLeagueBoard } from './league_board';
@@ -77,15 +75,11 @@ const EMPTY_SCENE: ArenaScene = {
  * shown as a board over the battle view, and any of its matches can be
  * watched there. Results can be saved to a file and opened from one.
  */
-export class ContestMode {
-  /** The match of the contest being watched; none while the board is shown or before any. */
-  private readonly watched = new WatchedMatch();
+export class ContestMode extends WatchScreen {
   private entries: ContestEntry[];
   private format: Format = 'league';
   /** The board of the last contest of each format, played here or opened from a file. */
   private readonly boards = new Map<Format, ShownBoard>();
-  /** What the last action did, or why it could not: under the panel's buttons. */
-  private readonly notice = new Notice();
   /** The contest being computed, match by match; null while there is none. */
   private run: DrivenRun | null = null;
 
@@ -105,6 +99,7 @@ export class ContestMode {
     private readonly board: HTMLElement,
     private readonly setting: ContestSetting,
   ) {
+    super();
     this.entries = readContest(setting.storage?.getItem(CONTEST_KEY) ?? null);
 
     const formats = createElement('div', 'contest-formats');
@@ -160,28 +155,9 @@ export class ContestMode {
     this.showFormat();
   }
 
-  /** What to draw: the match being watched, or an empty arena. */
-  scene(): ArenaScene {
-    return this.watched.scene(EMPTY_SCENE);
-  }
-
-  /** The replay of the match being watched; null while there is none. */
-  get replay(): ReplayManager | null {
-    return this.watched.replay;
-  }
-
-  coverRoutes(): readonly boolean[] {
-    return this.watched.coverRoutes();
-  }
-
-  /** The commentary of the match being watched. */
-  commentary(): readonly CommentaryLine[] {
-    return this.watched.commentary;
-  }
-
-  /** The names the robots of the match being watched fight under; empty while there is none. */
-  fightNames(): readonly string[] {
-    return this.watched.fight?.names ?? [];
+  /** An empty arena, under the board. */
+  protected idleScene(): ArenaScene {
+    return EMPTY_SCENE;
   }
 
   /** The line for the toolbar. */

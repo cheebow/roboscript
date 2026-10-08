@@ -31,6 +31,14 @@ beforeAll(async () => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D);
   vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => frames.push(frame));
   window.localStorage.clear();
+  // Three built-in robots on the contest's list, so that a league can start.
+  const { CONTEST_KEY, writeContest } = await import('../src/project/contest_store');
+  const { STANDARD_LOADOUT } = await import('../src/data/parts');
+  const { TEMPLATES } = await import('../src/data/templates');
+  window.localStorage.setItem(
+    CONTEST_KEY,
+    writeContest(TEMPLATES.slice(0, 3).map((template) => ({ robot: { name: template.name, source: template.source, loadout: STANDARD_LOADOUT }, origin: 'built-in' as const }))),
+  );
   const { startApp } = await import('../src/ui/app');
   startApp();
   runFrames();
@@ -90,10 +98,37 @@ describe('the app, on the real page', () => {
     const fight = [...document.querySelectorAll<HTMLButtonElement>('#team-lineup-slots button')].find((button) => button.textContent === document.querySelector('#team-lineup-slots .lineup-buttons button')?.textContent);
     fight?.click();
     runFrames(10);
+    // Each side's line tells its robots standing and its base's HP.
+    const statuses = [...document.querySelectorAll('#team-lineup-slots .lineup-status')].map((status) => status.textContent ?? '');
+    expect(statuses).toHaveLength(2);
+    for (const status of statuses) expect(status).toMatch(/\d+\/\d+.*\d+$/);
     click('screen-team-edit');
     runFrames();
     expect(document.getElementById('app')?.dataset.screen).toBe('team');
   });
+
+  it('fights in the arena, plays a series there, and keeps the results', async () => {
+    click('screen-arena');
+    runFrames();
+    const lineupButtons = () => [...document.querySelectorAll<HTMLButtonElement>('#lineup-slots .lineup-buttons button')];
+    lineupButtons()[0].click();
+    runFrames(10);
+    expect(document.querySelectorAll('#result-rows .result-row').length).toBe(0);
+    // The series is computed match by match, then listed.
+    lineupButtons()[1].click();
+    await vi.waitFor(() => expect(document.querySelector('#result-rows .series')).not.toBeNull(), { timeout: 20_000 });
+    // The fight left mid-way still counts once the series is listed.
+    expect(document.querySelectorAll('#result-rows .result-row').length).toBeGreaterThan(1);
+  }, 30_000);
+
+  it('plays a league in the contest and shows its board', async () => {
+    click('screen-contest');
+    runFrames();
+    const start = [...document.querySelectorAll<HTMLButtonElement>('#contest-body .lineup-buttons button')][0];
+    start.click();
+    await vi.waitFor(() => expect(document.getElementById('board')?.hidden).toBe(false), { timeout: 30_000 });
+    expect(document.querySelector('#board .board-title')?.textContent).not.toBe('');
+  }, 40_000);
 
   it('goes back and forth between the duel and the team battle', () => {
     click('boot-button');

@@ -20,7 +20,6 @@ import { randomSeed } from '../arena/seed';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { COST_LIMIT, SLOTS, costOf, partIn, statsOf } from '../data/parts';
-import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
 import { type SavedRobot, copyRobot, sameRobot } from '../project/garage';
 import type { KeyValueStorage } from '../project/project_store';
@@ -34,13 +33,11 @@ import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
 import { createImportRow, entrantOptions } from './lineup_parts';
-import { Notice } from './notice';
-import { createShareBox } from './share_box';
+import { WatchScreen, finalResult, prependResult, readLineup, resultLine, restorePicked, saveLineup } from './watch_screen';
 import { shareLink } from '../share/link';
 import { describeError, formatSeconds } from './format';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
-import { type ArenaScene, WatchedMatch } from './watched_match';
-import type { CommentaryLine } from '../arena/commentary';
+import type { ArenaScene } from './watched_match';
 
 /** What the arena mode needs to know of the rest of the app. */
 export interface ArenaSetting {
@@ -89,10 +86,7 @@ interface SlotView {
  * ones fight, and the match is watched. No code is shown or edited here. Keeps the
  * line-up, the match being shown and the list of results.
  */
-export class ArenaMode {
-  /** The match being shown; none until the first FIGHT. */
-  private readonly watched = new WatchedMatch();
-
+export class ArenaMode extends WatchScreen {
   private entrants: Entrant[] = [];
   /** The id of the entrant in each slot. */
   private picked: string[] = [...DEFAULT_ENTRANT_IDS];
@@ -110,8 +104,6 @@ export class ArenaMode {
   private nextSeed = randomSeed();
   /** The picked robots where the next FIGHT will start them, shown while there is no match. */
   private idle: ArenaScene;
-  /** What the last import or share did, or why it could not: under the line-up's buttons. */
-  private readonly notice = new Notice();
   /** The series being computed, match by match; null while there is none. */
   private run: DrivenRun | null = null;
 
@@ -120,6 +112,7 @@ export class ArenaMode {
     results: HTMLElement,
     private readonly setting: ArenaSetting,
   ) {
+    super();
     this.slots = Array.from({ length: MAX_ENTRANTS }, (_, index) => this.createSlot(index));
     this.slotElements = this.slots.map((slot, index) => this.slotElement(slot, index));
     const countRow = createElement('div', 'lineup-count');
@@ -166,25 +159,14 @@ export class ArenaMode {
 
   /** The line-up kept from before: how many robots, and which in each slot. Robots no longer there are put right by refresh. */
   private readLineup(): void {
-    try {
-      const value: unknown = JSON.parse(this.setting.storage?.getItem(LINEUP_KEY) ?? 'null');
-      if (typeof value !== 'object' || value === null) return;
-      const { count, picked } = value as Record<string, unknown>;
-      if ((COUNTS as readonly number[]).includes(count as number)) this.count = count as number;
-      if (Array.isArray(picked)) {
-        this.picked = this.picked.map((id, index) => (typeof picked[index] === 'string' ? (picked[index] as string) : id));
-      }
-    } catch {
-      // Nothing usable kept: the line-up starts as it always did.
-    }
+    const kept = readLineup(this.setting.storage, LINEUP_KEY);
+    if (kept === null) return;
+    if ((COUNTS as readonly number[]).includes(kept.count as number)) this.count = kept.count as number;
+    this.picked = restorePicked(this.picked, kept.picked);
   }
 
   private saveLineup(): void {
-    try {
-      this.setting.storage?.setItem(LINEUP_KEY, JSON.stringify({ version: 1, count: this.count, picked: this.picked }));
-    } catch {
-      // Storage may be full or blocked: the line-up is then kept until the page is left.
-    }
+    saveLineup(this.setting.storage, LINEUP_KEY, { count: this.count, picked: this.picked });
   }
 
   /** Shows the slots that take part, and what only a duel can do. */
@@ -215,29 +197,9 @@ export class ArenaMode {
     this.idle = this.captureIdle();
   }
 
-  /** What to draw: the match being shown, or the picked robots where they would start. */
-  scene(): ArenaScene {
-    return this.watched.scene(this.idle);
-  }
-
-  /** The replay of the match being shown; null until the first FIGHT. */
-  get replay(): ReplayManager | null {
-    return this.watched.replay;
-  }
-
-  /** Per robot of the match being shown, whether its program has to do with cover: the way there is drawn for those. */
-  coverRoutes(): readonly boolean[] {
-    return this.watched.coverRoutes();
-  }
-
-  /** The commentary of the match being watched. */
-  commentary(): readonly CommentaryLine[] {
-    return this.watched.commentary;
-  }
-
-  /** The names the robots of the match being watched fight under; empty while there is none. */
-  fightNames(): readonly string[] {
-    return this.watched.fight?.names ?? [];
+  /** The picked robots where the next FIGHT would start them. */
+  protected idleScene(): ArenaScene {
+    return this.idle;
   }
 
   /** The line for the toolbar: who fights whom, and how it stands. */
@@ -322,43 +284,19 @@ export class ArenaMode {
     return true;
   }
 
-  /** A result's entry with a share button beside it; pressing the button shows the match's share code under the row. */
-  private shareableRow(entry: HTMLElement, match: FoughtMatch): HTMLElement {
-    const row = createElement('div', 'result-row');
-    const share = createButton('garage-action', t('share.button'), t('arena.share.title'));
-    let box: HTMLElement | null = null;
-    /** Set while the code is being made: a second press meanwhile is not a second request. */
-    let making = false;
-    share.addEventListener('click', () => {
-      if (box !== null) {
-        box.remove();
-        box = null;
-        return;
-      }
-      if (making) return;
-      making = true;
+  /** A result's entry with the match's share code a press away. */
+  private shareRow(entry: HTMLElement, match: FoughtMatch): HTMLElement {
+    return this.shareableRow(entry, async () => {
       const robots = match.entrants.map((entrant) => copyRobot(entrant));
-      encodeMatch({ robots, arenaId: match.arena.id, seed: match.seed })
-        .then((code) => {
-          const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
-            downloadText(fileName(`${robots.map((robot) => robot.name).join('-vs-')}`), matchFileText({ robots, arenaId: match.arena.id, seed: match.seed })),
-          );
-          const names = robots.map((robot) => robot.name).join(t('arena.vsJoin'));
-          const link = { url: shareLink('match', code, window.location.href), title: t('share.matchTitle', { names }), text: t('share.matchText', { names }) };
-          box = createShareBox(code, 'garage-share result-share', [saveFile], link);
-          row.after(box);
-        })
-        .catch(() => {
-          this.notice.show(t('arena.couldNotShare'), true);
-        })
-        .finally(() => {
-          making = false;
-        });
+      const shared = { robots, arenaId: match.arena.id, seed: match.seed };
+      const code = await encodeMatch(shared);
+      const names = robots.map((robot) => robot.name).join(t('arena.vsJoin'));
+      return {
+        code,
+        link: { url: shareLink('match', code, window.location.href), title: t('share.matchTitle', { names }), text: t('share.matchText', { names }) },
+        saveFile: () => downloadText(fileName(robots.map((robot) => robot.name).join('-vs-')), matchFileText(shared)),
+      };
     });
-    const line = createElement('div', 'result-line');
-    line.append(entry, share);
-    row.append(line);
-    return row;
   }
 
   /** Called every frame while the arena mode is shown. */
@@ -461,7 +399,7 @@ export class ArenaMode {
       const text = t('arena.seriesRow', { number: `${index + 1}`.padStart(2), outcome, reason: '', seconds, map: maps[index].name });
       const fought: FoughtMatch = { entrants, arena: maps[index], seed: fixtures[index].seed };
       const entry = createButton('result fought', text, t('arena.show.title'), () => this.show(fought));
-      series.append(this.shareableRow(entry, fought));
+      series.append(this.shareRow(entry, fought));
     });
     // The robots by how often they won, then came second, and so on.
     const standing = names.map((name, at) => ({ name, counts: counts[at] })).sort((a, b) => {
@@ -567,14 +505,13 @@ export class ArenaMode {
     this.unannounced = null;
     if (match === null || replay === null || fight === null) return;
     const { recording } = replay;
-    const result = recording.snapshots[recording.snapshots.length - 1].result;
+    const result = finalResult(recording);
     if (result === null) return;
 
     this.fights++;
-    const seconds = (recording.snapshots.length - 1) / recording.tickRate;
-    const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
+    const text = resultLine(this.fights, describeOutcome(result, fight.names), result, recording, match.arena.name);
     const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
-    this.addResult(this.shareableRow(entry, match));
+    this.addResult(this.shareRow(entry, match));
   }
 
   /** A series between the picked robots over all the maps, whichever is chosen in the toolbar. */
@@ -611,7 +548,7 @@ export class ArenaMode {
       const { seed, first } = fixtures[index];
       const fought: FoughtMatch = { entrants: inOrder(entrants, first), arena: maps[index], seed };
       entry.addEventListener('click', () => this.show(fought));
-      series.append(this.shareableRow(entry, fought));
+      series.append(this.shareRow(entry, fought));
     });
     const draws = result.draws === 0 ? '' : t('arena.seriesDraws', { count: result.draws });
     const total = t('arena.seriesTotal', { first: names[0], firstWins: result.wins[0], secondWins: result.wins[1], second: names[1], draws });
@@ -621,8 +558,7 @@ export class ArenaMode {
 
   /** The newest result goes on top. */
   private addResult(entry: HTMLElement): void {
-    this.results.prepend(entry);
-    this.results.scrollTop = 0;
+    prependResult(this.results, entry);
   }
 }
 

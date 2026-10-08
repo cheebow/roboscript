@@ -1,5 +1,4 @@
 import { castleFieldConfig, prepareCastleFight, robotIdOf } from '../arena/castle_match';
-import type { CommentaryLine } from '../arena/commentary';
 import { randomSeed } from '../arena/seed';
 import { type CastleArenaDefinition, findCastleArena } from '../data/arenas';
 import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor, teamCostOf } from '../data/castle';
@@ -7,7 +6,6 @@ import { ROBOT_IDS } from '../data/match_defaults';
 import { statsOf } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
 import { TEAM_TEMPLATES } from '../data/team_templates';
-import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
 import { t } from '../i18n/messages';
 import { type SavedTeam, copyTeam, sameTeam } from '../project/garage';
@@ -17,15 +15,13 @@ import { type SharedCastleMatchFile, acceptDrops, castleMatchFileText, downloadT
 import { shareLink } from '../share/link';
 import { IDLE_BRAIN } from '../sim/ai_context';
 import { Simulation } from '../sim/simulation';
-import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
-import { describeError, formatSeconds } from './format';
+import { describeError } from './format';
 import { createImportRow, entrantOptions } from './lineup_parts';
-import { Notice } from './notice';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
-import { createShareBox } from './share_box';
-import { type ArenaScene, WatchedMatch } from './watched_match';
+import type { ArenaScene } from './watched_match';
+import { WatchScreen, finalResult, prependResult, readLineup, resultLine, restorePicked, saveLineup } from './watch_screen';
 
 /** What the team battle's watching needs to know of the rest of the app. */
 export interface TeamWatchSetting {
@@ -78,8 +74,7 @@ interface SlotView {
  * the built-in ones fight a castle match, and the match is watched with its
  * commentary. No code is shown or edited here.
  */
-export class TeamBattleMode {
-  private readonly watched = new WatchedMatch();
+export class TeamBattleMode extends WatchScreen {
   private entrants: TeamEntrant[] = [];
   private picked: string[] = [...DEFAULT_PICKED];
   private readonly slots: SlotView[];
@@ -90,13 +85,13 @@ export class TeamBattleMode {
   private watchingNames: [string, string] | null = null;
   private nextSeed = randomSeed();
   private idle: ArenaScene;
-  private readonly notice = new Notice();
 
   constructor(
     lineup: HTMLElement,
     results: HTMLElement,
     private readonly setting: TeamWatchSetting,
   ) {
+    super();
     this.slots = [0, 1].map((team) => this.createSlot(team));
     const slotElements = this.slots.map((slot, team) => this.slotElement(slot, team));
     const fight = createButton('tool-button', t('arena.fight'), t('arena.fight.title'), () => this.startFight());
@@ -144,24 +139,9 @@ export class TeamBattleMode {
     this.refresh();
   }
 
-  scene(): ArenaScene {
-    return this.watched.scene(this.idle);
-  }
-
-  get replay(): ReplayManager | null {
-    return this.watched.replay;
-  }
-
-  coverRoutes(): readonly boolean[] {
-    return this.watched.coverRoutes();
-  }
-
-  commentary(): readonly CommentaryLine[] {
-    return this.watched.commentary;
-  }
-
-  fightNames(): readonly string[] {
-    return this.watched.fight?.names ?? [];
+  /** The picked teams where the next FIGHT would start them. */
+  protected idleScene(): ArenaScene {
+    return this.idle;
   }
 
   /** The line for the toolbar: which teams fight, and how the match stands. */
@@ -361,7 +341,7 @@ export class TeamBattleMode {
     this.unannounced = null;
     if (match === null || replay === null) return;
     const { recording } = replay;
-    const result = recording.snapshots[recording.snapshots.length - 1].result;
+    const result = finalResult(recording);
     if (result === null) return;
 
     this.fights++;
@@ -370,64 +350,32 @@ export class TeamBattleMode {
       result.winnerTeam === null || result.winnerTeam === undefined
         ? t('arena.drew', { first: names[0], second: names[1] })
         : t('arena.beat', { winner: names[result.winnerTeam], loser: names[1 - result.winnerTeam] });
-    const seconds = (recording.snapshots.length - 1) / recording.tickRate;
-    const text = t('arena.result', {
-      number: this.fights,
-      outcome,
-      reason: formatReason(result.reason),
-      seconds: formatSeconds(seconds),
-      map: match.arena.name,
-    });
+    const text = resultLine(this.fights, outcome, result, recording, match.arena.name);
     const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
-    this.addResult(this.shareableRow(entry, match));
+    this.addResult(this.shareRow(entry, match));
   }
 
-  /** A result's entry with a share button beside it; pressing the button shows the match's share code under the row. */
-  private shareableRow(entry: HTMLElement, match: FoughtCastleMatch): HTMLElement {
-    const row = createElement('div', 'result-row');
-    const share = createButton('garage-action', t('share.button'), t('arena.share.title'));
-    let box: HTMLElement | null = null;
-    let making = false;
-    share.addEventListener('click', () => {
-      if (box !== null) {
-        box.remove();
-        box = null;
-        return;
-      }
-      if (making) return;
-      making = true;
+  /** A result's entry with the match's share code a press away. */
+  private shareRow(entry: HTMLElement, match: FoughtCastleMatch): HTMLElement {
+    return this.shareableRow(entry, async () => {
       const shared: SharedCastleMatchFile = {
         teams: [copyTeam(match.sides[0]), copyTeam(match.sides[1])],
         arenaId: match.arena.id,
         teamSize: match.teamSize,
         seed: match.seed,
       };
-      encodeCastleMatch(shared)
-        .then((code) => {
-          const saveFile = createButton('tool-button share-action', t('garage.saveFile'), t('arena.saveFile.title'), () =>
-            downloadText(fileName(shared.teams.map((team) => team.name).join('-vs-')), castleMatchFileText(shared)),
-          );
-          const names = shared.teams.map((team) => team.name).join(t('arena.vsJoin'));
-          const link = { url: shareLink('castle', code, window.location.href), title: t('share.matchTitle', { names }), text: t('share.matchText', { names }) };
-          box = createShareBox(code, 'garage-share result-share', [saveFile], link);
-          row.after(box);
-        })
-        .catch(() => {
-          this.notice.show(t('arena.couldNotShare'), true);
-        })
-        .finally(() => {
-          making = false;
-        });
+      const code = await encodeCastleMatch(shared);
+      const names = shared.teams.map((team) => team.name).join(t('arena.vsJoin'));
+      return {
+        code,
+        link: { url: shareLink('castle', code, window.location.href), title: t('share.matchTitle', { names }), text: t('share.matchText', { names }) },
+        saveFile: () => downloadText(fileName(shared.teams.map((team) => team.name).join('-vs-')), castleMatchFileText(shared)),
+      };
     });
-    const line = createElement('div', 'result-line');
-    line.append(entry, share);
-    row.append(line);
-    return row;
   }
 
   private addResult(entry: HTMLElement): void {
-    this.results.prepend(entry);
-    this.results.scrollTop = 0;
+    prependResult(this.results, entry);
   }
 
   private watchedSize(): number {
@@ -446,24 +394,11 @@ export class TeamBattleMode {
   }
 
   private readLineup(): void {
-    try {
-      const value: unknown = JSON.parse(this.setting.storage?.getItem(LINEUP_KEY) ?? 'null');
-      if (typeof value !== 'object' || value === null) return;
-      const { picked } = value as Record<string, unknown>;
-      if (Array.isArray(picked)) {
-        this.picked = this.picked.map((id, index) => (typeof picked[index] === 'string' ? (picked[index] as string) : id));
-      }
-    } catch {
-      // Nothing usable kept: the line-up starts as it always did.
-    }
+    this.picked = restorePicked(this.picked, readLineup(this.setting.storage, LINEUP_KEY)?.picked);
   }
 
   private saveLineup(): void {
-    try {
-      this.setting.storage?.setItem(LINEUP_KEY, JSON.stringify({ version: 1, picked: this.picked }));
-    } catch {
-      // Storage may be full or blocked: the line-up is then kept until the page is left.
-    }
+    saveLineup(this.setting.storage, LINEUP_KEY, { picked: this.picked });
   }
 }
 

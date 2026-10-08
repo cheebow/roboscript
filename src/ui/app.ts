@@ -53,6 +53,7 @@ import { GarageController } from './garage_controller';
 import { TeamBattleMode } from './team_battle_mode';
 import { TEAM_EDITOR_ELEMENT_IDS, TeamEditor } from './team_editor';
 import { describeError } from './format';
+import type { WatchingScreen } from './watch_screen';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
@@ -426,8 +427,7 @@ class App {
       this.analysisOverlay.hidden = true;
       return;
     }
-    const screen =
-      this.screen === 'arena' ? this.arenaMode : this.screen === 'contest' ? this.contestMode : this.screen === 'teamwatch' ? this.teamWatch : null;
+    const screen = this.watchingScreen();
     const replay = screen?.replay ?? null;
     if (screen === null || replay === null) return;
     this.watchedAnalysis.show(analyze(replay.recording, screen.fightNames()), replay.recording.arena);
@@ -608,12 +608,18 @@ class App {
     return captureSnapshot(new Simulation({ ...config, robots: config.robots.map((robot) => ({ ...robot, brain: IDLE_BRAIN })) }));
   }
 
+  /** The watching screen being shown; null on a screen where code is written. */
+  private watchingScreen(): WatchingScreen | null {
+    if (this.screen === 'arena') return this.arenaMode;
+    if (this.screen === 'contest') return this.contestMode;
+    if (this.screen === 'teamwatch') return this.teamWatch;
+    return null;
+  }
+
   /** The replay of the screen being shown: the one the transport and PAUSE act on. */
   private shownReplay(): ReplayManager | null {
-    if (this.screen === 'arena') return this.arenaMode.replay;
-    if (this.screen === 'contest') return this.contestMode.replay;
-    if (this.screen === 'teamwatch') return this.teamWatch?.replay ?? null;
-    return this.replay;
+    const watching = this.watchingScreen();
+    return watching === null ? this.replay : watching.replay;
   }
 
   private createWorkspace(robotId: string, robotIndex: number): RobotWorkspace {
@@ -923,11 +929,9 @@ class App {
 
   private setSpeed(speed: number): void {
     this.speed = speed;
-    if (this.replay !== null) this.replay.speed = speed;
-    if (this.arenaMode.replay !== null) this.arenaMode.replay.speed = speed;
-    if (this.contestMode.replay !== null) this.contestMode.replay.speed = speed;
-    const teamReplay = this.teamWatch?.replay ?? null;
-    if (teamReplay !== null) teamReplay.speed = speed;
+    for (const replay of [this.replay, this.arenaMode.replay, this.contestMode.replay, this.teamWatch?.replay ?? null]) {
+      if (replay !== null) replay.speed = speed;
+    }
   }
 
   /**
@@ -1186,7 +1190,7 @@ class App {
   }
 
   /** Draws the match a watching screen shows, and sets the toolbar and the transport to it. */
-  private showWatched(elapsed: number, screen: ArenaMode | ContestMode | TeamBattleMode): void {
+  private showWatched(elapsed: number, screen: WatchingScreen): void {
     const { replay } = screen;
     replay?.advance(elapsed);
     const scene = screen.scene();

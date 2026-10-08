@@ -12,8 +12,8 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-08',
-    en: 'The field shows more of what happens: a new number on the radio spreads as a radio wave from the sender and lights reception bars on every teammate, a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
-    ja: '戦闘画面の見せ方が増えました。無線に新しい数が載ると送信機から電波の輪が広がり、味方全員に受信マークが点きます。基地が削られると大きめの火花が散り、回復中のロボットからは + マークが立ちのぼります。',
+    en: 'The field shows more of what happens: a new number on the radio runs as a pulse down a line from the sender to each teammate and lights reception bars where it lands, a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
+    ja: '戦闘画面の見せ方が増えました。無線に新しい数が載ると、送信機から味方へ線が伸びてデータのパルスが流れ、届いた機体に受信バーが点きます。基地が削られると大きめの火花が散り、回復中のロボットからは + マークが立ちのぼります。',
   },
   {
     date: '2026-10-08',

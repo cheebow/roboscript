@@ -83,6 +83,8 @@ export interface TickEvent {
   y: number;
   /** The index of the robot it happened to, for the events that are a robot's own. */
   robot?: number;
+  /** The index of the robot it came from, for the events that travel between robots (a signal heard). */
+  from?: number;
   /** The index in `bases` of the castle it happened to. */
   base?: number;
 }
@@ -229,7 +231,7 @@ export class Simulation {
         this.tickEvents.push({ kind: 'signal', ...this.robots[index].position, robot: index });
         this.robots.forEach((mate, mateIndex) => {
           if (mateIndex !== index && mate.alive && this.teamOf[mateIndex] === team) {
-            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex });
+            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex, from: index });
           }
         });
       }

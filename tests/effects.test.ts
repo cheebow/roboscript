@@ -206,7 +206,7 @@ describe('signal and base-hit events', () => {
     const [sender, mate] = simulation.robots;
     expect(simulation.tickEvents).toEqual([
       { kind: 'signal', ...sender.position, robot: 0 },
-      { kind: 'signalHeard', ...mate.position, robot: 1 },
+      { kind: 'signalHeard', ...mate.position, robot: 1, from: 0 },
     ]);
     // The same number sent again is not news.
     simulation.step();

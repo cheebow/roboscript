@@ -40,18 +40,30 @@ const DEFLECT_DOTS = 16;
 const DETECT_START_RADIUS = 22;
 const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
-// A new number on the radio: rings that spread from the sender, one after the other, as a radio wave.
-const SIGNAL_START_RADIUS = 14;
-const SIGNAL_GROWTH = 56;
-const SIGNAL_DOTS = 10;
-/** The second ring starts this far into the first one's life. */
-const SIGNAL_SECOND_RING = 0.35;
-// The teammate hears it: reception bars that light up one by one above the robot.
+// A new number on the radio: a dotted line runs out to each teammate and a
+// pulse of data travels along it; where it arrives, reception bars light up.
+// The sender itself shows a small antenna mark. (Rings were tried first, but
+// read as the detection and guard rings.)
+/** Where the sender's antenna mark sits above the robot's centre. */
+const SEND_Y = -18;
+const SEND_ARC_RADIUS = 6;
+/** px between the dots of the line a signal travels along. */
+const LINK_SPACING = 10;
+/** How faint the line is next to the pulse riding it. */
+const LINK_ALPHA = 0.35;
+/** The pulse arrives this far into the effect's life; the bars have the rest. */
+const LINK_ARRIVE = 0.5;
+/** Dots trailing the pulse's head, each dimmer than the one before. */
+const PULSE_TRAIL = 3;
+// The reception bars at the receiving end.
 const HEARD_BARS = 3;
 const HEARD_X = 14;
 const HEARD_Y = -20;
-/** The bars stay full until this share of their life, then fade out. */
-const HEARD_FADE_FROM = 0.7;
+/** Dots across and extra dots up: every bar is this wide, and one step taller than the one before. */
+const HEARD_BAR_WIDTH = 2;
+const HEARD_BAR_STEP = 2;
+/** The radio marks stay full until this share of their life, then fade out. */
+const RADIO_FADE_FROM = 0.7;
 // An enemy bullet wore the castle down: a heavier spark than an ordinary impact.
 const BASE_HIT_REACH = 2;
 
@@ -152,27 +164,66 @@ function drawDetection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, pr
   drawRing(ctx, effect, DETECT_START_RADIUS + DETECT_GROWTH * progress, DETECT_DOTS, Math.PI / DETECT_DOTS);
 }
 
-/** A radio wave: rings in the sender's colour, the second following the first, spreading from where it was sent. */
+/** How far into their life the radio marks are solid, and how they fade after. */
+function radioAlpha(progress: number): number {
+  return progress < RADIO_FADE_FROM ? 1 : 1 - (progress - RADIO_FADE_FROM) / (1 - RADIO_FADE_FROM);
+}
+
+/** The sender broadcasts: a small antenna mark above the robot, riding along with it. */
 function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
+  const anchor = anchorOf(effect, scene);
+  const centre = { x: anchor.x, y: anchor.y + SEND_Y };
   ctx.fillStyle = robotPalette(effect, scene).light;
-  const rings = [progress, progress < SIGNAL_SECOND_RING ? null : (progress - SIGNAL_SECOND_RING) / (1 - SIGNAL_SECOND_RING)];
-  for (const ring of rings) {
-    if (ring === null) continue;
-    ctx.globalAlpha = 1 - ring;
-    drawRing(ctx, effect, SIGNAL_START_RADIUS + SIGNAL_GROWTH * ring, SIGNAL_DOTS, Math.PI / SIGNAL_DOTS);
+  ctx.globalAlpha = radioAlpha(progress);
+  dot(ctx, centre.x, centre.y);
+  for (let index = 0; index < 5; index++) {
+    const angle = -Math.PI * 0.75 + (Math.PI * 0.5 * index) / 4;
+    dot(ctx, centre.x + Math.cos(angle) * SEND_ARC_RADIUS, centre.y + Math.sin(angle) * SEND_ARC_RADIUS);
   }
 }
 
-/** The teammate hears it: reception bars that ride along above the robot, light up one by one, and fade at the end. */
+/**
+ * The signal reaches a teammate: a dotted line from the sender, a pulse of
+ * data running along it, and reception bars where it arrives. Both ends
+ * follow their robots.
+ */
 function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
-  const { x, y } = anchorOf(effect, scene);
-  ctx.fillStyle = robotPalette(effect, scene).light;
-  ctx.globalAlpha = progress < HEARD_FADE_FROM ? 1 : 1 - (progress - HEARD_FADE_FROM) / (1 - HEARD_FADE_FROM);
-  const lit = Math.min(HEARD_BARS, 1 + Math.floor(progress * 2 * HEARD_BARS));
+  const to = anchorOf(effect, scene);
+  const from = effect.from !== undefined ? (scene.robots?.[effect.from] ?? null) : null;
+  const colour = (effect.from !== undefined ? paletteOf(effect.from, scene.teams) : robotPalette(effect, scene)).light;
+  ctx.fillStyle = colour;
+  if (from !== null) {
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    const steps = Math.max(1, Math.round(length / LINK_SPACING));
+    const at = (share: number) => ({ x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share });
+    // The line, faint, from sender to receiver.
+    ctx.globalAlpha = radioAlpha(progress) * LINK_ALPHA;
+    for (let step = 0; step <= steps; step++) {
+      const place = at(step / steps);
+      dot(ctx, place.x, place.y);
+    }
+    // The pulse, bright, with a short tail: the number on its way over.
+    const travelled = Math.min(1, progress / LINK_ARRIVE);
+    for (let tail = 0; tail < PULSE_TRAIL; tail++) {
+      const share = travelled - (tail * LINK_SPACING) / Math.max(length, 1);
+      if (share < 0) continue;
+      ctx.globalAlpha = radioAlpha(progress) * (1 - tail / PULSE_TRAIL);
+      const place = at(share);
+      dot(ctx, place.x, place.y);
+      if (tail === 0) for (const [dx, dy] of PLUS) dot(ctx, place.x + dx * DOT, place.y + dy * DOT);
+    }
+  }
+  // The bars light up once the pulse is in: nothing yet while it is still on its way.
+  const arrived = from === null ? progress : Math.max(0, (progress - LINK_ARRIVE) / (1 - LINK_ARRIVE));
+  if (arrived <= 0) return;
+  ctx.globalAlpha = radioAlpha(progress);
+  const lit = Math.min(HEARD_BARS, 1 + Math.floor(arrived * 2 * HEARD_BARS));
   for (let bar = 0; bar < lit; bar++) {
-    // Each bar is one dot taller than the one before, like reception bars.
-    for (let height = 0; height <= bar; height++) {
-      dot(ctx, x + HEARD_X + bar * DOT * 2, y + HEARD_Y - height * DOT);
+    // Each bar is a step taller than the one before, like reception bars.
+    for (let height = 0; height < HEARD_BAR_STEP * (bar + 1); height++) {
+      for (let across = 0; across < HEARD_BAR_WIDTH; across++) {
+        dot(ctx, to.x + HEARD_X + bar * DOT * (HEARD_BAR_WIDTH + 1) + across * DOT, to.y + HEARD_Y - height * DOT);
+      }
     }
   }
 }

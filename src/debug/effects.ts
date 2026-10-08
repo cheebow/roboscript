@@ -12,6 +12,8 @@ export interface EffectSnapshot {
   age: number;
   /** The index of the robot it is about, for the effects that are a robot's own. */
   robot?: number;
+  /** The index of the robot it came from, for the effects that travel between robots. */
+  from?: number;
 }
 
 interface ActiveEffect extends TickEvent {
@@ -32,6 +34,13 @@ export class EffectTracker {
   update(tick: number, events: readonly TickEvent[]): EffectSnapshot[] {
     this.active.push(...events.map((event) => ({ ...event, startTick: tick })));
     this.active = this.active.filter((effect) => tick - effect.startTick < this.lifetimes[effect.kind]);
-    return this.active.map(({ kind, x, y, startTick, robot }) => ({ kind, x, y, age: tick - startTick, ...(robot === undefined ? {} : { robot }) }));
+    return this.active.map(({ kind, x, y, startTick, robot, from }) => ({
+      kind,
+      x,
+      y,
+      age: tick - startTick,
+      ...(robot === undefined ? {} : { robot }),
+      ...(from === undefined ? {} : { from }),
+    }));
   }
 }

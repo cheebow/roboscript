@@ -319,6 +319,7 @@ button {
 }
 
 .notice.problem {
+  cursor: pointer;
   border-left-color: var(--error);
   color: var(--error);
 }
@@ -798,6 +799,18 @@ button {
   flex: 1;
 }
 
+/* Every machine of a team, small, in a row on its slot in the team battle's watching. */
+.lineup-parts .machine-preview {
+  width: 24px;
+  height: 24px;
+  margin: 0 2px 0 0;
+  vertical-align: middle;
+}
+.lineup-parts .machine-count {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 /* A 16-dot sprite, enlarged dot for dot. */
 .robot-preview {
   width: 64px;
@@ -1001,6 +1014,29 @@ button {
 
 /* The program's own variables sit above the sensor values, set apart by a rule,
    so that they stay in view without scrolling. */
+/* The foldable headings of the watch's long lists. */
+.watch-section {
+  display: block;
+  width: 100%;
+  margin: 6px 0 2px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: left;
+  cursor: pointer;
+}
+.watch-section:hover {
+  color: var(--text);
+}
+.watch-section-block[hidden],
+.watch-sensors[hidden] {
+  display: none;
+}
+
 .watch-variables:not(:empty) {
   border-bottom: 1px solid var(--border);
 }

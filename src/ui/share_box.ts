@@ -11,6 +11,17 @@ export interface ShareLink {
 
 /** Where "POST ON X" opens: X's page for writing a post, with the words and the link in it. */
 const X_POST = 'https://x.com/intent/post';
+/** ms a copy button says it copied before it goes back to what it was: long enough to see, short enough to copy again. */
+const COPIED_FOR = 2000;
+
+/** Has the button say it copied, then go back to its own label. */
+function sayCopied(button: HTMLButtonElement): void {
+  const label = button.dataset.label ?? button.textContent ?? '';
+  button.dataset.label = label;
+  button.textContent = t('share.copied');
+  window.clearTimeout(Number(button.dataset.timer ?? 0));
+  button.dataset.timer = String(window.setTimeout(() => (button.textContent = label), COPIED_FOR));
+}
 
 /**
  * How to give something away, the easiest first: with a link, buttons to post
@@ -28,7 +39,7 @@ export function createShareBox(code: string, className: string, others: readonly
   const copyCode = createButton('tool-button share-action', t('share.copyCode'), t('share.copyCode.title'), () => {
     field.select();
     navigator.clipboard?.writeText(code).then(
-      () => (copyCode.textContent = t('share.copied')),
+      () => sayCopied(copyCode),
       () => {
         // Left selected: the player can copy it by hand.
       },
@@ -43,7 +54,7 @@ export function createShareBox(code: string, className: string, others: readonly
     });
     const copyLink = createButton('tool-button share-action', t('share.copyLink'), t('share.copyLink.title'), () => {
       navigator.clipboard?.writeText(link.url).then(
-        () => (copyLink.textContent = t('share.copied')),
+        () => sayCopied(copyLink),
         () => {
           // No clipboard: the link goes in the field, to be copied by hand.
           field.value = link.url;

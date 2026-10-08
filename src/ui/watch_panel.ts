@@ -1,8 +1,12 @@
 import type { RobotSnapshot } from '../debug/snapshot';
-import { t } from '../i18n/messages';
-import { createElement } from './dom';
+import { type MessageKey, t } from '../i18n/messages';
+import type { KeyValueStorage } from '../project/project_store';
+import { createButton, createElement } from './dom';
 import { FieldList } from './field_list';
 import { NO_VALUE, formatNumber } from './format';
+
+/** Which sections of the watch the player folded, kept across visits. */
+const FOLDED_KEY = 'roboscript/watch.json';
 
 const SENSOR_NAMES = [
   'enemy_visible',
@@ -68,6 +72,9 @@ export class WatchPanel {
   private readonly sensors: FieldList;
   private readonly teamSensors: FieldList;
   private readonly teamContainer = createElement('div', 'watch-sensors');
+  /** The team section, heading and all: there only while the robot is on a team. */
+  private readonly teamSection: HTMLElement;
+  private readonly folded: Set<string>;
   private readonly variablesContainer = createElement('div', 'watch-variables');
   private variables: FieldList | null = null;
   private variableNames = '';
@@ -76,9 +83,13 @@ export class WatchPanel {
   constructor(
     container: HTMLElement,
     private readonly robotName: HTMLElement,
+    private readonly storage: KeyValueStorage | null = null,
   ) {
+    this.folded = readFolded(storage);
     const sensorsContainer = createElement('div', 'watch-sensors');
-    container.replaceChildren(this.variablesContainer, this.teamContainer, sensorsContainer);
+    this.teamSection = this.section('team', 'watch.section.team', this.teamContainer);
+    // The program's own variables are what the player looks for first: always open. The long lists below fold.
+    container.replaceChildren(this.variablesContainer, this.teamSection, this.section('sensors', 'watch.section.sensors', sensorsContainer));
     // In Japanese the labels are short translations; the word itself is the tooltip, so the program's word can still be found.
     this.sensors = new FieldList(
       sensorsContainer,
@@ -88,7 +99,32 @@ export class WatchPanel {
       this.teamContainer,
       TEAM_SENSOR_NAMES.map((word) => ({ name: t(`watch.${word}`), title: word })),
     );
-    this.teamContainer.hidden = true;
+    this.teamSection.hidden = true;
+  }
+
+  /** A foldable section: a heading that folds and unfolds the body under it, remembered for next time. */
+  private section(id: string, label: MessageKey, body: HTMLElement): HTMLElement {
+    const heading = createButton('watch-section', '', t('watch.section.fold'));
+    const show = () => {
+      const folded = this.folded.has(id);
+      body.hidden = folded;
+      heading.textContent = `${folded ? '▸' : '▾'} ${t(label)}`;
+      heading.setAttribute('aria-expanded', String(!folded));
+    };
+    heading.addEventListener('click', () => {
+      if (this.folded.has(id)) this.folded.delete(id);
+      else this.folded.add(id);
+      show();
+      try {
+        this.storage?.setItem(FOLDED_KEY, JSON.stringify({ version: 1, folded: [...this.folded] }));
+      } catch {
+        // Storage may be full or blocked: the folding holds until the page is left.
+      }
+    });
+    show();
+    const section = createElement('div', 'watch-section-block');
+    section.append(heading, body);
+    return section;
   }
 
   update(robot: RobotSnapshot, variables: Readonly<Record<string, number>>): void {
@@ -136,7 +172,7 @@ export class WatchPanel {
   private showTeam(robot: RobotSnapshot): void {
     const sense = robot.teamSense;
     const hidden = sense === null;
-    if (this.teamContainer.hidden !== hidden) this.teamContainer.hidden = hidden;
+    if (this.teamSection.hidden !== hidden) this.teamSection.hidden = hidden;
     if (sense === null) return;
     this.teamSensors.set([
       String(robot.selfId ?? 1),
@@ -171,4 +207,15 @@ export class WatchPanel {
 /** Whole numbers as they are; others with a few decimals. */
 function formatVariable(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(3);
+}
+
+/** The sections folded on an earlier visit; none when nothing usable is kept. */
+function readFolded(storage: KeyValueStorage | null): Set<string> {
+  try {
+    const value: unknown = JSON.parse(storage?.getItem(FOLDED_KEY) ?? 'null');
+    const folded = typeof value === 'object' && value !== null ? (value as { folded?: unknown }).folded : undefined;
+    return new Set(Array.isArray(folded) ? folded.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
 }

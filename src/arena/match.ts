@@ -22,7 +22,8 @@ export interface Entrant {
   /** Tells the entrants apart: a built-in robot and a saved one may have the same name. */
   id: string;
   name: string;
-  origin: 'garage' | 'built-in';
+  /** Where it comes from: the garage, the built-in robots, or the program screen's editors as they are now. */
+  origin: 'editor' | 'garage' | 'built-in';
   loadout: Loadout;
   /** Its program, run as it is wherever it starts. */
   source: string;

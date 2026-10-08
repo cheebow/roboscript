@@ -57,6 +57,13 @@ describe('the app, on the real page', () => {
     expect(document.getElementById('app')?.dataset.screen).toBe('team');
     expect(document.getElementById('team-code')?.hidden).toBe(false);
     expect(document.querySelectorAll('#team-garage .garage-save-buttons button')).toHaveLength(2);
+    // Play and pause live beside the seek bar alone.
+    expect(document.getElementById('pause')).toBeNull();
+    // The team templates come first; the duel's are one step aside, in a submenu.
+    const entries = [...(document.querySelector('#template-menu > .menu-list')?.children ?? [])];
+    expect(entries.at(-1)?.classList.contains('menu-sub')).toBe(true);
+    expect(entries.slice(0, -1).every((entry) => entry.classList.contains('menu-item'))).toBe(true);
+    expect(entries.length).toBeGreaterThan(2);
     click('run');
     runFrames(10);
     expect(document.getElementById('message')?.textContent ?? '').not.toContain('error');
@@ -102,6 +109,10 @@ describe('the app, on the real page', () => {
     const statuses = [...document.querySelectorAll('#team-lineup-slots .lineup-status')].map((status) => status.textContent ?? '');
     expect(statuses).toHaveLength(2);
     for (const status of statuses) expect(status).toMatch(/\d+\/\d+.*\d+$/);
+    // Every machine of each side is drawn small on its slot, its parts on hover.
+    const machines = document.querySelectorAll<HTMLCanvasElement>('#team-lineup-slots .machine-preview');
+    expect(machines).toHaveLength(10);
+    expect(machines[0].title).toMatch(/1.*\//);
     click('screen-team-edit');
     runFrames();
     expect(document.getElementById('app')?.dataset.screen).toBe('team');
@@ -110,6 +121,9 @@ describe('the app, on the real page', () => {
   it('fights in the arena, plays a series there, and keeps the results', async () => {
     click('screen-arena');
     runFrames();
+    // ALPHA and BRAVO as they are being edited can fight without being saved first.
+    const groups = [...document.querySelectorAll<HTMLOptGroupElement>('#lineup-slots select')[0].querySelectorAll('optgroup')];
+    expect(groups[0].querySelectorAll('option')).toHaveLength(2);
     const lineupButtons = () => [...document.querySelectorAll<HTMLButtonElement>('#lineup-slots .lineup-buttons button')];
     lineupButtons()[0].click();
     runFrames(10);

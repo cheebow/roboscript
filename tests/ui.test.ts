@@ -48,17 +48,69 @@ describe('a notice', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('shows what happened, marks a problem, and fades by itself', () => {
+  it('shows what happened, and fades by itself when it went well', () => {
     const notice = new Notice();
     expect(notice.element.hidden).toBe(true);
     notice.show('saved');
     expect(notice.element.hidden).toBe(false);
     expect(notice.element.classList.contains('problem')).toBe(false);
+    vi.advanceTimersByTime(10_000);
+    expect(notice.element.hidden).toBe(true);
+  });
+
+  it('keeps a problem until the next notice or a click, so that it is read', () => {
+    const notice = new Notice();
+    notice.show('saved');
     notice.show('could not', true);
     expect(notice.element.textContent).toBe('could not');
     expect(notice.element.classList.contains('problem')).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    expect(notice.element.hidden).toBe(false);
+    notice.element.click();
+    expect(notice.element.hidden).toBe(true);
+    notice.show('could not', true);
+    notice.show('saved');
     vi.advanceTimersByTime(10_000);
     expect(notice.element.hidden).toBe(true);
+  });
+});
+
+describe('a share box', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('says it copied, then goes back to its own label', async () => {
+    const { createShareBox } = await import('../src/ui/share_box');
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: () => Promise.resolve() } });
+    const box = createShareBox('CODE', 'share');
+    document.body.append(box);
+    const copy = [...box.querySelectorAll('button')].find((button) => button.title !== '' && button.textContent !== '') as HTMLButtonElement;
+    const label = copy.textContent;
+    vi.useFakeTimers();
+    copy.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(copy.textContent).not.toBe(label);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(copy.textContent).toBe(label);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the watch', () => {
+  it('folds its long lists, and remembers which', async () => {
+    const { WatchPanel } = await import('../src/ui/watch_panel');
+    const storage = memoryStorage();
+    const fields = document.createElement('div');
+    const name = document.createElement('span');
+    document.body.append(fields, name);
+    new WatchPanel(fields, name, storage);
+    const [, sensors] = [...fields.querySelectorAll<HTMLButtonElement>('.watch-section')];
+    expect(sensors.nextElementSibling?.hasAttribute('hidden')).toBe(false);
+    sensors.click();
+    expect(sensors.nextElementSibling?.hasAttribute('hidden')).toBe(true);
+    // Made again, as on the next visit: still folded.
+    const again = document.createElement('div');
+    new WatchPanel(again, name, storage);
+    expect(again.querySelectorAll('.watch-section')[1].nextElementSibling?.hasAttribute('hidden')).toBe(true);
   });
 });
 

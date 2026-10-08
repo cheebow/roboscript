@@ -7,13 +7,14 @@ import { createButton, createElement } from './dom';
 // ones, and take shared matches in as codes and files.
 
 /** Where a line-up's entrants come from, and the heading of each group in the pickers. */
-export const ENTRANT_GROUPS: readonly { origin: 'garage' | 'built-in'; label: MessageKey }[] = [
+export const ENTRANT_GROUPS: readonly { origin: 'editor' | 'garage' | 'built-in'; label: MessageKey }[] = [
+  { origin: 'editor', label: 'arena.group.editor' },
   { origin: 'garage', label: 'arena.group.garage' },
   { origin: 'built-in', label: 'arena.group.builtIn' },
 ];
 
 /** The entrants as a picker's option groups, the garage's first; a group with nothing in it is left out. */
-export function entrantOptions(entrants: readonly { id: string; name: string; origin: 'garage' | 'built-in' }[]): HTMLOptGroupElement[] {
+export function entrantOptions(entrants: readonly { id: string; name: string; origin: 'editor' | 'garage' | 'built-in' }[]): HTMLOptGroupElement[] {
   return ENTRANT_GROUPS.map(({ origin, label }) => {
     const group = document.createElement('optgroup');
     group.label = t(label);

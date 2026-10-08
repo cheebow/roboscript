@@ -141,7 +141,7 @@ class App {
   private readonly tutorial: TutorialPanel;
   private readonly challenges: ChallengePanel;
   private readonly inspector: Inspector;
-  private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'));
+  private readonly watch = new WatchPanel(requireElement('watch-fields'), requireElement('watch-robot'), this.storage);
   private readonly logView = new DebugLogView(requireElement('log-rows'), (event) => this.jumpTo(event));
   /** The analysis of the program screen's match, in the tab beside the log. */
   private readonly analysisView = new AnalysisView((tick) => this.replay?.seek(tick));
@@ -221,7 +221,6 @@ class App {
         selectArena: (id) => this.selectArena(id),
         run: () => this.start('run'),
         debug: () => this.start('debug'),
-        playPause: () => this.togglePlay(),
         reset: () => this.reset(),
       },
       { options: ARENAS, selectedId: this.arena.id },
@@ -274,6 +273,7 @@ class App {
     this.arenaMode = new ArenaMode(requireElement('lineup-slots'), requireElement('result-rows'), {
       arena: () => this.arena,
       garage: () => this.garage.list(),
+      editing: () => ROBOT_IDS.map((name, robotIndex) => ({ name, source: this.ownWorkspaces[robotIndex].source, loadout: this.loadouts[robotIndex] })),
       speed: () => this.speed,
       chooseArena: (id) => {
         this.selectArena(id);
@@ -481,7 +481,11 @@ class App {
     this.inspector.setRobots(this.robotIdsNow());
     if (this.teamMode) {
       this.toolbar.setArenas({ options: CASTLE_ARENAS, selectedId: this.team.castleArena.id });
-      this.templateMenu.setItems([...TEAM_TEMPLATES, ...TEMPLATES].map(({ id, name }) => ({ id, label: name })));
+      // The team templates first; a duel's program also drives every machine of a team, so they stay in reach, one step aside.
+      this.templateMenu.setItems([
+        ...TEAM_TEMPLATES.map(({ id, name }) => ({ id, label: name })),
+        { id: 'solo-templates', label: t('editor.soloTemplates'), items: TEMPLATES.map(({ id, name }) => ({ id, label: name })) },
+      ]);
       requireElement<HTMLSelectElement>('team-size').value = String(this.team.size);
     } else {
       this.toolbar.setArenas({ options: ARENAS, selectedId: this.arena.id });
@@ -1210,7 +1214,6 @@ class App {
     if (replay === null) this.analysisOverlay.hidden = true;
     else if (!this.analysisOverlay.hidden) this.watchedAnalysis.update(replay.tick);
     requireElement('analysis-button').toggleAttribute('disabled', replay === null);
-    this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
         ? null
@@ -1295,7 +1298,6 @@ class App {
     this.toolbar.setMessage(this.message());
     this.toolbar.setMode(replay === null ? null : this.mode);
     this.showSeed(replay?.recording.seed ?? stage?.seed ?? this.seed);
-    this.toolbar.setPlayback(replay !== null, replay?.playing ?? false);
     this.transport.update(
       replay === null
         ? null

@@ -22,8 +22,8 @@ export const CHANGES: readonly Change[] = [
   },
   {
     date: '2026-10-08',
-    en: 'Smoother and clearer: a 20-match series and a contest count up on screen instead of freezing the page, loading from the garage asks for a second press, Esc closes the start menu, and switching the language keeps your screen. The help calls the language\u2019s words "words", the Japanese screen reads in Japanese throughout, and the top bar names its modes, SOLO and TEAM BATTLE.',
-    ja: '使いやすく、分かりやすくしました。連戦や大会は画面を固めずに進み具合を数え、ガレージからの読み込みは 2 度押しで確定、起動メニューは Esc で閉じられ、言語を切り替えても元の画面に戻ります。ヘルプの「語」は「ワード」に統一し、日本語の画面はログの種別まで日本語に。上部バーには「個人戦」「チームバトル」の見出しが付きました。',
+    en: 'Smoother and clearer: the arena can field ALPHA and BRAVO as you are editing them, without saving; a series and a contest count up instead of freezing the page; loading from the garage asks for a second press; an error stays until you click it away; the watch folds its long lists; each team in the watching shows every machine; and play/pause sits by the seek bar alone. Esc closes the start menu, switching the language keeps your screen, the help calls the language\u2019s words "words", and the top bar names its modes, SOLO and TEAM BATTLE.',
+    ja: '使いやすく、分かりやすくしました。アリーナに編集中の ALPHA・BRAVO を保存せずに出せ、連戦や大会は画面を固めずに進み具合を数え、ガレージからの読み込みは 2 度押しで確定、エラーのお知らせはクリックするまで残り、ウォッチの長い一覧はたためて、観戦のチーム欄には全機体が並び、再生/一時停止はシークバー横の 1 つになりました。起動メニューは Esc で閉じられ、言語を切り替えても元の画面に戻り、ヘルプの「語」は「ワード」に統一、上部バーには「個人戦」「チームバトル」の見出しが付きました。',
   },
   {
     date: '2026-10-08',

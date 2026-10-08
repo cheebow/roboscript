@@ -45,6 +45,8 @@ export interface ArenaSetting {
   arena(): ArenaDefinition;
   /** The saved robots, read afresh. */
   garage(): readonly SavedRobot[];
+  /** ALPHA and BRAVO as the program screen has them now, to try without saving them first. */
+  editing(): readonly SavedRobot[];
   /** The playback speed chosen under the battle view. */
   speed(): number;
   /** Makes the arena with the id the chosen one, in the toolbar as well. */
@@ -180,7 +182,11 @@ export class ArenaMode extends WatchScreen {
 
   /** Reads the garage again: robots saved or deleted since show up in, or go from, the line-up. */
   refresh(): void {
-    this.entrants = [...garageEntrants(this.setting.garage()), ...builtInEntrants()];
+    this.entrants = [
+      ...this.setting.editing().map((robot) => ({ id: `editor:${robot.name}`, name: robot.name, origin: 'editor' as const, loadout: robot.loadout, source: robot.source })),
+      ...garageEntrants(this.setting.garage()),
+      ...builtInEntrants(),
+    ];
     this.picked = this.picked.map((id, index) =>
       this.entrants.some((entrant) => entrant.id === id) ? id : DEFAULT_ENTRANT_IDS[index],
     );

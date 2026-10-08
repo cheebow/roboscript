@@ -81,13 +81,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - Choose the **number of robots** (2 / 3 / 4) at the top, then a robot for each slot (those in your garage, and the 8 built-in ones).
 - **FIGHT** plays one match. **SERIES** plays 20 matches over every map at once, and counts the wins (with 3 or 4 robots, how often each came in each place).
 - The results line up at the bottom left; click one to watch it again. **SHARE** beside a result shares that match.
-- Paste a match share code you were given and press **PLAY**, or open a match file with **FILE…**, to watch the same match.
+- Paste a match share code you were given and press **OPEN**, or open a match file with **FILE…**, to watch the same match.
 - During a match, **commentary** runs along the bottom of the battle view. In the battle view's heading, "COMMENTARY" turns it on or off, and "ANALYSIS" shows how the match went.`, ja: `ロボットを選んで戦わせ、試合を見る画面です。
 
 - 上で **台数**（2 / 3 / 4）を選び、枠ごとにロボットを選びます。選べるのは、ガレージに保存したロボットと、内蔵の 8 台です。
 - **対戦** で 1 試合します。**連戦** では全マップで 20 試合をまとめて行い、勝ち数を出します（3〜4 台なら、何位を何回取ったか）。
 - 結果は左下に並び、押すともう一度見られます。結果の横の「共有」で、その試合を共有できます。
-- 人からもらった試合の共有コードを貼って **再生** を押すか、**ファイル…** で試合のファイルを開くと、同じ試合を見られます。
+- 人からもらった試合の共有コードを貼って **開く** を押すか、**ファイル…** で試合のファイルを開くと、同じ試合を見られます。
 - 試合中は、戦闘画面の下に **実況** が流れます。戦闘画面の見出しの「実況」で ON / OFF を切り替え、「分析」でその試合の分析を開けます。` } },
       { id: 'contest-screen', title: { en: `Contests`, ja: `大会` }, body: { en: `The screen for gathering 3 to 8 robots for a league or a tournament.
 

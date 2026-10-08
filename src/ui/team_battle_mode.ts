@@ -3,7 +3,7 @@ import { randomSeed } from '../arena/seed';
 import { type CastleArenaDefinition, findCastleArena } from '../data/arenas';
 import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor, teamCostOf } from '../data/castle';
 import { ROBOT_IDS } from '../data/match_defaults';
-import { statsOf } from '../data/parts';
+import { PARTS, SLOTS, type Loadout, statsOf } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
 import { TEAM_TEMPLATES } from '../data/team_templates';
 import { captureSnapshot } from '../debug/snapshot';
@@ -253,14 +253,22 @@ export class TeamBattleMode extends WatchScreen {
     return element;
   }
 
-  /** Shows the first machine's picture and the team's cost for the slot. */
+  /** Shows the first machine's picture, every machine small with its parts on hover, and the team's cost for the slot. */
   private showEntrant(team: number): void {
     const entrant = this.entrantIn(team);
     const slot = this.slots[team];
     const size = this.setting.teamSize();
     const loadouts = this.sideLoadouts(entrant, size);
-    drawRobotPreview(slot.preview, loadouts[0], paletteOf(team * size, this.teamsNow()));
-    slot.parts.textContent = t('teamwatch.machines', { count: size });
+    const teams = this.teamsNow();
+    drawRobotPreview(slot.preview, loadouts[0], paletteOf(team * size, teams));
+    const machines = loadouts.map((loadout, machine) => {
+      const preview = createRobotPreview();
+      preview.classList.add('machine-preview');
+      drawRobotPreview(preview, loadout, paletteOf(team * size + machine, teams));
+      preview.title = t('teamwatch.machine', { n: machine + 1, parts: partNames(loadout) });
+      return preview;
+    });
+    slot.parts.replaceChildren(...machines, createElement('span', 'machine-count', t('teamwatch.machines', { count: size })));
     const cost = teamCostOf(loadouts, size);
     const limit = teamCostLimitFor(size);
     slot.cost.textContent = t('arena.cost', { cost, limit });
@@ -402,3 +410,8 @@ export class TeamBattleMode extends WatchScreen {
   }
 }
 
+
+/** The parts of a machine by name, slot by slot: "Light / Standard / Pistol / Standard". */
+function partNames(loadout: Loadout): string {
+  return SLOTS.map((slot) => PARTS.find((part) => part.slot === slot && part.id === loadout[slot])?.name ?? loadout[slot]).join(' / ');
+}

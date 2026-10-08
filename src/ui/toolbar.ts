@@ -1,4 +1,3 @@
-import { t } from '../i18n/messages';
 import { requireElement } from './dom';
 
 export interface ToolbarHandlers {
@@ -6,8 +5,6 @@ export interface ToolbarHandlers {
   selectArena(id: string): void;
   run(): void;
   debug(): void;
-  /** Toggles between playing and paused. */
-  playPause(): void;
   reset(): void;
 }
 
@@ -25,14 +22,12 @@ export interface Choices {
 
 export class Toolbar {
   private readonly message = requireElement('message');
-  private readonly pauseButton = requireElement<HTMLButtonElement>('pause');
 
   constructor(handlers: ToolbarHandlers, arenas: Choices) {
     setUpPicker('arena', arenas, handlers.selectArena);
 
     requireElement('run').addEventListener('click', handlers.run);
     requireElement('debug').addEventListener('click', handlers.debug);
-    this.pauseButton.addEventListener('click', handlers.playPause);
     requireElement('reset').addEventListener('click', handlers.reset);
   }
 
@@ -56,13 +51,6 @@ export class Toolbar {
   setMode(mode: 'run' | 'debug' | null): void {
     requireElement('run').classList.toggle('selected', mode === 'run');
     requireElement('debug').classList.toggle('selected', mode === 'debug');
-  }
-
-  /** `available` is false when there is no match to play. */
-  setPlayback(available: boolean, playing: boolean): void {
-    const label = playing ? t('toolbar.pause') : t('toolbar.play');
-    if (this.pauseButton.textContent !== label) this.pauseButton.textContent = label;
-    this.pauseButton.disabled = !available;
   }
 }
 

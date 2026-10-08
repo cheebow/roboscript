@@ -93,7 +93,7 @@ const TEAM_SOURCE_KEYS = [`${TEAM_DIRECTORY}/alpha.bot`, `${TEAM_DIRECTORY}/brav
 /** What the team battle keeps besides the two programs. */
 export interface TeamInfo {
   version: number;
-  /** Robots a side (1-3); absent until the player changes it. */
+  /** Robots a side (1 to MAX_TEAM_SIZE); absent until the player changes it. */
   teamSize?: number;
   /** Id of the castle arena the player chose. */
   arena?: string;

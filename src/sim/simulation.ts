@@ -25,7 +25,7 @@ export interface SimulationConfig {
   /** sec */
   maxMatchTime: number;
   seed: number;
-  /** Two robots for a duel; up to four for a battle royale, six for a castle match. The arena needs a spawn point for each. */
+  /** Two robots for a duel; up to four for a battle royale, up to ten for a castle match. The arena needs a spawn point for each. */
   robots: readonly RobotSetup[];
   /**
    * The team of each robot, in the order of `robots`, for a team match:

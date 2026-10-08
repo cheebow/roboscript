@@ -31,7 +31,7 @@ export function teamCostLimitFor(teamSize: number): number {
 
 /**
  * What a team's machines carry until the player refits them: a light body
- * and a pistol keep a machine at cost 10, so even a full team of three (30)
- * starts inside its limit of 32, with room to upgrade one machine.
+ * and a pistol keep a machine at cost 10, so a full team of five (50)
+ * starts inside its limit of 52, with room to upgrade one machine.
  */
 export const TEAM_DEFAULT_LOADOUT: Loadout = { body: 'light', legs: 'standard', gun: 'pistol', sensor: 'standard' };

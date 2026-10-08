@@ -54,8 +54,6 @@ export interface ArenaSetting {
 
 const LINEUP_KEY = 'roboscript/arena.json';
 
-/** What the battle view shows of the arena mode. */
-
 /** A match that was fought, or is being shown: enough to fight it over again. */
 interface FoughtMatch {
   entrants: Entrant[];
@@ -457,7 +455,6 @@ export class ArenaMode {
     return Array.from({ length: this.count }, (_, index) => this.entrantIn(index));
   }
 
-  /** The two entrants of a duel. */
   /** A series of three or four: every map in turn, each match with a seed (and so corners) of its own; places are counted. */
   private playRoyaleSeries(): void {
     const order = shuffled(ARENAS);
@@ -565,7 +562,6 @@ export class ArenaMode {
     this.fights++;
     const seconds = (recording.snapshots.length - 1) / recording.tickRate;
     const text = t('arena.result', { number: this.fights, outcome: describeOutcome(result, fight.names), reason: formatReason(result.reason), seconds: formatSeconds(seconds), map: match.arena.name });
-    // Only a duel has a share code; the entry of a battle royale says so.
     const entry = createButton('result fought', text, t('arena.showAgain.title'), () => this.show(match));
     this.addResult(this.shareableRow(entry, match));
   }

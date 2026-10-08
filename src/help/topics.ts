@@ -105,7 +105,7 @@ When the program has a mistake, the match does not start: the line turns red, an
 - A team loses the moment its castle's HP reaches 0 — and only then: it is in the match as long as its castle stands, even with every robot gone. At time-out the healthier castle wins.
 - Pick **1 to 5 robots a side** and a castle map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
 - Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and castle words**.
-- While debugging, pick the machine to follow on the **STATE** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
+- While debugging, pick the machine to follow on the **INSPECTOR** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
 - **WATCH** (next to PROGRAM in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **城** を守り、**1 本のプログラムがチーム全体を動かします**。
 
 - 城の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。城が立っているかぎり、全滅してもチームは戦いの中にいます。時間切れなら城の HP が多いほうの勝ち。

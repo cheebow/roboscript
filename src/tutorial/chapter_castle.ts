@@ -191,7 +191,7 @@ Two more things worth knowing:
 - **Parts tell machines apart.** \`sensor_range\`, \`max_speed\` and \`max_hp\` read your own machine's own parts, so roles can follow equipment: \`if sensor_range > 800\` — the far-sighted machine scouts. Fit each machine on its config (the 1 2 3 tabs), within the team's shared cost.
 - **\`allies_alive\`** counts your living teammates: \`if allies_alive == 0\` is "I am the last one".
 
-Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 3 a side) and the map, watch saved teams fight under the commentary, and share a team with a link, like a robot.`,
+Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 5 a side) and the map, watch saved teams fight under the commentary, and share a team with a link, like a robot.`,
         ja: `これが城攻めの全体像です。1 本のプログラム、守る城と落とす城、そして機体をつなぐ無線。
 
 あと 2 つ、覚えておくと良いことを。
@@ -199,7 +199,7 @@ Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 3
 - **装備で機体を書き分けられます。** \`sensor_range\`・\`max_speed\`・\`max_hp\` は自分の機体の装備を読むので、役割を装備に合わせられます: \`if sensor_range > 800\` なら「目のいい機体が偵察」。装備は config（1 2 3 のタブ）で機体ごとに選べて、コストはチームで 1 つの枠です。
 - **\`allies_alive\`** は生きている味方の数です。\`if allies_alive == 0\` は「自分が最後の 1 台」。
 
-起動メニューから **チームバトル** を開きましょう。チームを書き、台数（片側 1〜3）とマップを選び、保存したチーム同士の試合を実況つきで観戦でき、ロボットと同じようにリンクでチームを人に渡せます。`,
+起動メニューから **チームバトル** を開きましょう。チームを書き、台数（片側 1〜5）とマップを選び、保存したチーム同士の試合を実況つきで観戦でき、ロボットと同じようにリンクでチームを人に渡せます。`,
       },
       check: { kind: 'read' },
     },

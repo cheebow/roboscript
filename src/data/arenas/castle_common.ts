@@ -34,7 +34,7 @@ const SPAWN_INSET = 130;
 const SPAWN_YS = [300, 150, 450, 90, 510];
 
 /**
- * All six spawns, team 0's three first: what a castle arena carries, so the
+ * All ten spawns, team 0's five first: what a castle arena carries, so the
  * simulation's spawn check always has enough. A match of fewer robots picks
  * its spawns with `castleSpawnsFor`.
  */

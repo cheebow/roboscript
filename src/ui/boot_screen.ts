@@ -161,7 +161,7 @@ export class BootScreen {
       menu.append(item);
       return item;
     });
-    const help = createElement('div', 'boot-help', t('boot.help'));
+    const help = createElement('div', 'boot-help', t('boot.help', { count: CHOICES.length }));
     this.element.append(menu, ...(news.length > 0 ? [this.newsElement(news)] : []), help, createCredits('boot-credits'));
     this.menu = menu;
     // Shown (or, the first time, skipped): the player is up to date from here on.

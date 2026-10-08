@@ -137,7 +137,6 @@ class App {
   private readonly toolbar: Toolbar;
   private readonly transport: Transport;
   private readonly projectPanel: ProjectPanel;
-  /** One per robot, in spawn order: the player's first. */
   /** The two programs a match is played with, in spawn order: the player's own, or in the tutorial its editor and BRAVO's. */
   private workspaces: RobotWorkspace[];
   /** The player's ALPHA and BRAVO. */
@@ -226,7 +225,6 @@ class App {
   private notice: string | null = null;
   /** What could not be saved the last time it was, by what it is: shown next to the toolbar message until a save of it works. */
   private readonly saveProblems = new Map<string, string>();
-  /** What the garage last did, or why it could not; shown next to the toolbar message until the next RUN, DEBUG or RESET. */
   /** Per robot: what the program of the match being shown has to do with, which decides the marks drawn for it. */
   private features: ProgramFeatures[] = [];
   /** The line whose number was last clicked while debugging. */
@@ -755,7 +753,8 @@ class App {
 
     const prepared = this.prepareTeamFight();
     if (!prepared.ok) {
-      this.showFaults([{ file: codeFileOf(PLAYER_INDEX), events: prepared.problems.map((problem) => appEvent('error', problem)) }]);
+      // These are about the match's set-up (team size, loadouts), not either team's code.
+      this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: prepared.problems.map((problem) => appEvent('error', problem)) }]);
       return;
     }
     const { fight } = prepared;
@@ -936,7 +935,7 @@ class App {
     }
   }
 
-  /** The team battle fields this many robots a side from the next RUN / DEBUG (or FIGHT); the castle and the cost pool grow with it. */
+  /** The team battle fields this many robots a side from the next RUN / DEBUG (or FIGHT); the cost pool grows with it. */
   private setTeamSize(teamSize: number): void {
     this.teamSize = clampTeamSize(teamSize);
     try {
@@ -1149,6 +1148,10 @@ class App {
       chooseArena: (id) => {
         this.selectArena(id);
         this.toolbar.setArena(id);
+      },
+      chooseTeamSize: (size) => {
+        this.setTeamSize(size);
+        requireElement<HTMLSelectElement>('team-size').value = String(this.teamSize);
       },
       keepTeams: (teams) => {
         if (this.teamGarage === null) throw new Error(t('garage.noStorage'));

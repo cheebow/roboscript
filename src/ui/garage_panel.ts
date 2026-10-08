@@ -9,6 +9,21 @@ import { shareLink } from '../share/link';
 /** How the panel's share box links what is kept: as a robot unless told otherwise (the team garage brings its own). */
 export interface GaragePanelOptions {
   link?: (name: string, code: string) => ShareLink;
+  /** The labels of the load buttons, one per robot id; the ids' first letters unless told otherwise. */
+  loadLabels?: readonly string[];
+  /** The texts that speak of what is kept: of robots unless told otherwise (the team garage keeps teams). */
+  texts?: GaragePanelTexts;
+}
+
+/** What the panel says about the kind of thing it keeps. */
+export interface GaragePanelTexts {
+  /** The name field's spoken label. */
+  nameLabel: string;
+  /** Shown while nothing is saved. */
+  empty: string;
+  /** The tooltips of the intake menu and its file entry. */
+  intakeTitle: string;
+  openFileTitle: string;
 }
 
 export interface GarageHandlers {
@@ -60,7 +75,7 @@ export class GaragePanel {
     this.nameInput = createElement('input', 'garage-name-input');
     this.nameInput.type = 'text';
     this.nameInput.placeholder = t('garage.name.placeholder');
-    this.nameInput.setAttribute('aria-label', t('garage.name.label'));
+    this.nameInput.setAttribute('aria-label', options.texts?.nameLabel ?? t('garage.name.label'));
     this.nameInput.spellcheck = false;
     this.nameInput.maxLength = MAX_NAME_LENGTH;
     this.nameInput.title = t('garage.name.limit', { max: MAX_NAME_LENGTH });
@@ -85,11 +100,11 @@ export class GaragePanel {
     save.append(this.nameInput, saveButtons);
 
     const intake = new RobotIntake(
-      { label: t('garage.intake'), title: t('garage.intake.title'), submit: t('garage.import'), submitTitle: t('garage.import.title') },
+      { label: t('garage.intake'), title: options.texts?.intakeTitle ?? t('garage.intake.title'), submit: t('garage.import'), submitTitle: t('garage.import.title') },
       (code) => handlers.importCode(code),
       () => chooseFile((text) => handlers.importFile(text)),
     );
-    intake.setItems([{ id: 'file', label: t('garage.openFile'), title: t('garage.openFile.title') }]);
+    intake.setItems([{ id: 'file', label: t('garage.openFile'), title: options.texts?.openFileTitle ?? t('garage.openFile.title') }]);
     intake.element.classList.add('garage-intake');
     container.replaceChildren(save, this.rows, intake.element);
     acceptDrops(container, (text) => handlers.importFile(text));
@@ -106,7 +121,7 @@ export class GaragePanel {
     this.names = names;
     if (this.sharing !== null && !names.includes(this.sharing)) this.closeShare();
     if (names.length === 0) {
-      this.rows.replaceChildren(createElement('div', 'garage-empty', t('garage.empty')));
+      this.rows.replaceChildren(createElement('div', 'garage-empty', this.options.texts?.empty ?? t('garage.empty')));
       return;
     }
     this.rows.replaceChildren(
@@ -157,7 +172,8 @@ export class GaragePanel {
     row.append(label);
 
     this.robotIds.forEach((robotId, robotIndex) => {
-      const load = createButton('garage-action', robotId[0], t('garage.load.title', { name, robot: robotId }), () => this.handlers.load(name, robotIndex));
+      const loadLabel = this.options.loadLabels?.[robotIndex] ?? robotId[0];
+      const load = createButton('garage-action', loadLabel, t('garage.load.title', { name, robot: robotId }), () => this.handlers.load(name, robotIndex));
       row.append(load);
     });
 

@@ -3,7 +3,7 @@ import type { CommentaryLine } from '../arena/commentary';
 import { randomSeed } from '../arena/seed';
 import { type CastleArenaDefinition, findCastleArena } from '../data/arenas';
 import { castleSpawnsFor } from '../data/arenas/castle_common';
-import { TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
+import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { costOf, statsOf } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
@@ -39,6 +39,8 @@ export interface TeamWatchSetting {
   speed(): number;
   /** Makes the castle arena with the id the chosen one, in the toolbar as well. */
   chooseArena(id: string): void;
+  /** Makes the given team size the chosen one, in the toolbar as well. */
+  chooseTeamSize(size: number): void;
   /** Keeps the teams in the garage of teams and returns the names they are kept under. Throws when it cannot. */
   keepTeams(teams: readonly SavedTeam[]): string[];
   /** Where the line-up is kept; null when storage is unavailable. */
@@ -144,7 +146,7 @@ export class TeamBattleMode {
         id: `built-in:${template.id}`,
         name: template.name,
         source: template.source,
-        loadouts: [TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT, TEAM_DEFAULT_LOADOUT],
+        loadouts: Array.from({ length: MAX_TEAM_SIZE }, () => TEAM_DEFAULT_LOADOUT),
         origin: 'built-in' as const,
       })),
     ];
@@ -244,6 +246,8 @@ export class TeamBattleMode {
     this.refresh();
     const arena = findCastleArena(arenaId);
     this.setting.chooseArena(arena.id);
+    // The toolbar follows the match: its size picker showing another number would belie what is playing.
+    this.setting.chooseTeamSize(teamSize);
     const match: FoughtCastleMatch = { sides: [teams[0], teams[1]], arena, teamSize, seed };
     if (this.show(match)) this.unannounced = match;
     const keptText = keepProblem !== null ? t('arena.notKept', { reason: keepProblem }) : kept.length > 0 ? t('arena.keptAs', { names: kept.join(', ') }) : '';

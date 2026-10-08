@@ -53,6 +53,14 @@ export class TeamGarageController {
           title: t('share.teamTitle', { name }),
           text: t('share.teamText', { name }),
         }),
+        // The teams are told apart by their names (A / B), not by the word TEAM they share.
+        loadLabels: teamNames.map((name) => name[0]),
+        texts: {
+          nameLabel: t('garage.team.nameLabel'),
+          empty: t('garage.team.empty'),
+          intakeTitle: t('garage.team.intakeTitle'),
+          openFileTitle: t('garage.team.openFileTitle'),
+        },
       },
     );
     container.append(this.notice.element);
@@ -147,7 +155,7 @@ export class TeamGarageController {
     }
     const read = readSharedFile(text);
     if (!read.ok || read.file.kind !== 'team') {
-      this.notice.show(t('file.couldNotOpen', { problem: read.ok ? t('share.notATeam') : read.problem }), true);
+      this.notice.show(t('file.couldNotOpen', { problem: read.ok ? t('file.notATeam') : read.problem }), true);
       return;
     }
     this.keepOne(read.file.team, read.file.rules);

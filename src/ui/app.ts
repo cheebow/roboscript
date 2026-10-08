@@ -4,11 +4,11 @@ import { LANGUAGE_KEY, currentLanguage, otherLanguage } from '../i18n/language';
 import { t } from '../i18n/messages';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
-import { castleFieldConfig, prepareCastleFight, robotIdOf } from '../arena/castle_match';
+import { robotIdOf } from '../arena/castle_match';
 import { randomSeed } from '../arena/seed';
 import { scatterSpawns } from '../arena/spawns';
-import { ARENAS, CASTLE_ARENAS, findArena, findCastleArena } from '../data/arenas';
-import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor, teamCostOf } from '../data/castle';
+import { ARENAS, CASTLE_ARENAS, findArena } from '../data/arenas';
+import { MAX_TEAM_SIZE, teamCostLimitFor } from '../data/castle';
 import { TEAM_TEMPLATES, findTeamTemplate } from '../data/team_templates';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -24,7 +24,7 @@ import type { DebugEvent, DebugEventType } from '../debug/debug_event';
 import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
-import { ProjectStore, TeamStore } from '../project/project_store';
+import { ProjectStore } from '../project/project_store';
 import { IDLE_BRAIN, type RobotBrain } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatOutcome } from '../view/battle_view';
@@ -51,7 +51,7 @@ import { DebugLogView } from './debug_log';
 import { createButton, createElement, requireElement } from './dom';
 import { GarageController } from './garage_controller';
 import { TeamBattleMode } from './team_battle_mode';
-import { TeamGarageController } from './team_garage_controller';
+import { TEAM_EDITOR_ELEMENT_IDS, TeamEditor } from './team_editor';
 import { describeError } from './format';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
@@ -80,14 +80,8 @@ const PLAYER_INDEX = 0;
 const AI_LABEL = 'main.bot';
 /** The element that holds each robot's code editor, in spawn order. */
 const EDITOR_ELEMENT_IDS = ['code', 'enemy-code'];
-/** The element that holds each team's code editor in the team battle. */
-const TEAM_EDITOR_ELEMENT_IDS = ['team-code', 'team-enemy-code'];
 /** The programs the robots start with. */
 const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template) => template.source);
-/** The programs the two teams of the team battle start with. */
-const DEFAULT_TEAM_SOURCES = [TEAM_TEMPLATES[1].source, TEAM_TEMPLATES[0].source];
-/** How many robots a side the team battle starts with, until the player picks another size. */
-const DEFAULT_TEAM_SIZE = 3;
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 const NO_MARKS: readonly number[] = [];
@@ -189,26 +183,15 @@ class App {
   private matchLoadouts: readonly Loadout[] = [];
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
 
-  // The team battle's own state, kept apart from the duel's.
-  private readonly teamStore = this.storage === null ? null : new TeamStore(this.storage, DEFAULT_TEAM_SOURCES);
-  /** The two team editors, made the first time the team battle is entered. */
-  private teamWorkspaces: RobotWorkspace[] | null = null;
-  /** The garage of teams, made with the team editors. */
-  private teamGarage: TeamGarageController | null = null;
+  /** The team battle's editing, kept apart from the duel's. */
+  private readonly team = new TeamEditor(this.storage, {
+    codeEdited: (workspace) => this.codeEdited(workspace),
+    lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
+    noteSave: (what, problem) => this.noteSave(what, problem),
+    loadTeam: (team, saved) => this.loadTeam(team, saved),
+  });
   /** The team battle's watching, made the first time it is shown. */
   private teamWatch: TeamBattleMode | null = null;
-  /** Robots a side in the team battle. */
-  private teamSize = clampTeamSize(this.teamStore?.loadInfo().teamSize);
-  /** The castle arena the team battle is fought in. */
-  private castleArena = findCastleArena(this.teamStore?.loadInfo().arena ?? null);
-  /** The parts of each team's machines: teamLoadouts[team][machine]. */
-  private readonly teamLoadouts: Loadout[][] = [0, 1].map((team) =>
-    Array.from({ length: MAX_TEAM_SIZE }, (_, machine) => this.teamStore?.loadLoadout(team, machine) ?? TEAM_DEFAULT_LOADOUT),
-  );
-  /** The machine each team's editor follows and outfits (1-based). */
-  private readonly picked = [1, 1];
-  /** The ids of the machines whose parts changed after the last RUN / DEBUG, in the team battle. */
-  private readonly teamPartsStale = new Set<string>();
   private readonly machinePicker = requireElement('machine-picker');
 
   /** The robots where the next RUN / DEBUG will start them, shown while there is no match. */
@@ -308,7 +291,7 @@ class App {
     teamSizeSelect.replaceChildren(
       ...Array.from({ length: MAX_TEAM_SIZE }, (_, index) => new Option(t('toolbar.teamSize.option', { n: index + 1 }), String(index + 1))),
     );
-    teamSizeSelect.value = String(this.teamSize);
+    teamSizeSelect.value = String(this.team.size);
     teamSizeSelect.addEventListener('change', () => this.setTeamSize(Number.parseInt(teamSizeSelect.value, 10)));
     for (const screen of SCREENS) {
       requireElement(`screen-${screen}`).addEventListener('click', () => this.showScreen(screen));
@@ -380,7 +363,7 @@ class App {
       void this.garage.importCode(link.code);
     } else if (link.kind === 'team') {
       this.showScreen('team');
-      void this.teamGarage?.importCode(link.code);
+      void this.team.garage?.importCode(link.code);
     } else if (link.kind === 'castle') {
       this.showScreen('teamwatch');
       void this.ensureTeamWatch().importMatch(link.code);
@@ -469,7 +452,7 @@ class App {
     if (before !== after || wasTeam !== this.teamMode) {
       this.leaveMatch();
       this.workspaces =
-        after !== null ? [this.tutorialWorkspace, this.ownWorkspaces[1]] : this.teamMode ? this.ensureTeamWorkspaces() : this.ownWorkspaces;
+        after !== null ? [this.tutorialWorkspace, this.ownWorkspaces[1]] : this.teamMode ? this.team.ensureWorkspaces() : this.ownWorkspaces;
       before?.close();
       this.enterBattleForm();
       if (after !== null) after.open();
@@ -478,7 +461,7 @@ class App {
     }
     // The team battle's two faces share the toolbar's castle maps and team size.
     this.toolbar.setArenas(
-      this.castleScreen ? { options: CASTLE_ARENAS, selectedId: this.castleArena.id } : { options: ARENAS, selectedId: this.arena.id },
+      this.castleScreen ? { options: CASTLE_ARENAS, selectedId: this.team.castleArena.id } : { options: ARENAS, selectedId: this.arena.id },
     );
     requireElement('app').dataset.screen = screen;
     // The editor stands beside another column on the tutorial and challenge screens: its width is fitted again.
@@ -497,9 +480,9 @@ class App {
   private enterBattleForm(): void {
     this.inspector.setRobots(this.robotIdsNow());
     if (this.teamMode) {
-      this.toolbar.setArenas({ options: CASTLE_ARENAS, selectedId: this.castleArena.id });
+      this.toolbar.setArenas({ options: CASTLE_ARENAS, selectedId: this.team.castleArena.id });
       this.templateMenu.setItems([...TEAM_TEMPLATES, ...TEMPLATES].map(({ id, name }) => ({ id, label: name })));
-      requireElement<HTMLSelectElement>('team-size').value = String(this.teamSize);
+      requireElement<HTMLSelectElement>('team-size').value = String(this.team.size);
     } else {
       this.toolbar.setArenas({ options: ARENAS, selectedId: this.arena.id });
       this.templateMenu.setItems(TEMPLATES.map(({ id, name }) => ({ id, label: name })));
@@ -520,7 +503,7 @@ class App {
     }
     const team = this.shownFile.robotIndex;
     const pickedNow = this.pickedMachine(team);
-    const tabs = Array.from({ length: this.teamSize }, (_, index) => {
+    const tabs = Array.from({ length: this.team.size }, (_, index) => {
       const machine = index + 1;
       const tab = createButton('tab', String(machine), t('team.machine.title', { n: machine }), () => this.pickMachine(team, machine));
       tab.classList.toggle('selected', machine === pickedNow);
@@ -532,7 +515,7 @@ class App {
 
   /** Picks the machine of the team whose config is shown: the parts, the watch and the stepping are its from here. */
   private pickMachine(team: number, machine: number): void {
-    this.picked[team] = machine;
+    this.team.pick(team, machine);
     this.inspector.select(this.robotIndexOf(team, machine));
     // Shows the same file again: the title, the parts and the followed program move to the machine.
     this.showFile(this.shownFile);
@@ -541,8 +524,8 @@ class App {
   /** The player picked a robot on the inspector: in the team battle, its team's editor follows that machine from here. */
   private inspectorPicked(index: number): void {
     if (!this.teamMode) return;
-    const team = Math.floor(index / this.teamSize);
-    this.picked[team] = (index % this.teamSize) + 1;
+    const { team, machine } = this.team.machineAt(index);
+    this.team.pick(team, machine);
     // Stepping keeps following the open file's team, through whichever of its machines is now picked.
     this.replay?.focusOn(this.editorRobotId(this.shownFile.robotIndex));
     if (this.shownFile.file === 'config' && this.shownFile.robotIndex === team) this.showFile(this.shownFile);
@@ -722,12 +705,12 @@ class App {
   /** Records the team match with both teams' programs and machines, and plays it back. */
   private startTeamMatch(mode: Mode): void {
     this.mode = mode;
-    const workspaces = this.ensureTeamWorkspaces();
+    const workspaces = this.team.ensureWorkspaces();
     for (const workspace of workspaces) {
       workspace.flush();
       workspace.stale = false;
     }
-    this.teamPartsStale.clear();
+    this.team.partsStale.clear();
 
     // Errors are shown on the editors' lines, so each team's program is compiled here first.
     const faults: Fault[] = [];
@@ -740,8 +723,7 @@ class App {
           events: result.errors.map((error) => appEvent('error', formatError(error), error.line, ROBOT_IDS[team])),
         });
       }
-      const limit = teamCostLimitFor(this.teamSize);
-      const cost = teamCostOf(this.teamLoadouts[team], this.teamSize);
+      const { cost, limit } = this.team.costOf(team);
       if (cost > limit) {
         faults.push({
           file: { robotIndex: team, file: 'config' },
@@ -754,7 +736,7 @@ class App {
       return;
     }
 
-    const prepared = this.prepareTeamFight();
+    const prepared = this.team.prepareFight(this.seed);
     if (!prepared.ok) {
       // These are about the match's set-up (team size, loadouts), not either team's code.
       this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: prepared.problems.map((problem) => appEvent('error', problem)) }]);
@@ -774,7 +756,7 @@ class App {
     const mark = this.followed ?? saved;
     if (mark === null) return;
     const { team, machine, line } = mark;
-    const robotId = this.teamMode ? robotIdOf(ROBOT_IDS[team], this.teamSize, machine) : ROBOT_IDS[team];
+    const robotId = this.teamMode ? this.team.robotIdOf(team, machine) : ROBOT_IDS[team];
     const marks = replay.runsOf(robotId, line).map((run) => run.tick);
     this.followed = { team, machine, line, replay, marks };
   }
@@ -844,7 +826,7 @@ class App {
     this.followed = null;
     for (const workspace of this.workspaces) workspace.stale = false;
     this.partsStale.fill(false);
-    this.teamPartsStale.clear();
+    this.team.partsStale.clear();
     if (this.coach !== null) this.idleSnapshot = this.captureCoachedIdle();
     else this.drawSeed();
   }
@@ -869,8 +851,7 @@ class App {
     const { robotIndex } = this.shownFile;
     if (this.teamMode) {
       const machine = this.pickedMachine(robotIndex);
-      const loadout = { ...this.teamLoadouts[robotIndex][machine - 1], [slot]: partId };
-      this.setTeamLoadout(robotIndex, machine, loadout);
+      this.setTeamLoadout(robotIndex, machine, { ...this.team.loadoutOf(robotIndex, machine), [slot]: partId });
       return;
     }
     this.setLoadout(robotIndex, { ...this.loadouts[robotIndex], [slot]: partId });
@@ -878,17 +859,12 @@ class App {
 
   /** Gives one of a team's machines the parts. Takes effect from the next RUN / DEBUG. */
   private setTeamLoadout(team: number, machine: number, loadout: Loadout): void {
-    this.teamLoadouts[team][machine - 1] = loadout;
+    const problem = this.team.setLoadout(team, machine, loadout);
     this.idleSnapshot = this.captureIdle();
-    const robotId = robotIdOf(ROBOT_IDS[team], this.teamSize, machine);
-    if (this.replay !== null) this.teamPartsStale.add(robotId);
+    const robotId = this.team.robotIdOf(team, machine);
+    if (this.replay !== null) this.team.partsStale.add(robotId);
     if (this.shownFile.robotIndex === team && this.shownFile.file === 'config') this.showFile(this.shownFile);
-    try {
-      this.teamStore?.saveLoadout(team, machine - 1, loadout);
-      this.noteSave(`team-parts:${team}:${machine}`, null);
-    } catch (error) {
-      this.noteSave(`team-parts:${team}:${machine}`, t('program.couldNotSaveParts', { robot: robotId, reason: describeError(error) }));
-    }
+    this.noteSave(`team-parts:${team}:${machine}`, problem === null ? null : t('program.couldNotSaveParts', { robot: robotId, reason: problem }));
   }
 
   /** Gives the robot the parts. Takes effect from the next RUN / DEBUG. */
@@ -911,15 +887,10 @@ class App {
   /** Takes effect from the next RUN / DEBUG (or FIGHT); shown at once while there is no match. */
   private selectArena(id: string): void {
     if (this.castleScreen) {
-      this.castleArena = findCastleArena(id);
+      const problem = this.team.setArena(id);
       if (this.teamMode) this.idleSnapshot = this.captureIdle();
       this.teamWatch?.formChanged();
-      try {
-        this.teamStore?.saveArena(this.castleArena.id);
-        this.noteSave('team-map', null);
-      } catch (error) {
-        this.noteSave('team-map', t('program.couldNotSaveMap', { reason: describeError(error) }));
-      }
+      this.noteSave('team-map', problem === null ? null : t('program.couldNotSaveMap', { reason: problem }));
       return;
     }
     this.arena = findArena(id);
@@ -935,12 +906,7 @@ class App {
 
   /** The team battle fields this many robots a side from the next RUN / DEBUG (or FIGHT); the cost pool grows with it. */
   private setTeamSize(teamSize: number): void {
-    this.teamSize = clampTeamSize(teamSize);
-    try {
-      this.teamStore?.saveTeamSize(this.teamSize);
-    } catch {
-      // Storage may be full or blocked: the size then holds until the page is left.
-    }
+    this.team.setSize(teamSize);
     if (this.teamMode) {
       this.leaveMatch();
       this.enterBattleForm();
@@ -951,18 +917,8 @@ class App {
   }
 
   private captureIdle(): Snapshot {
-    if (this.teamMode) return captureSnapshot(new Simulation(this.idleCastleConfig()));
+    if (this.teamMode) return captureSnapshot(new Simulation(this.team.idleConfig(this.seed)));
     return captureSnapshot(new Simulation(this.matchConfig(ROBOT_IDS.map(() => IDLE_BRAIN))));
-  }
-
-  /** The next team match's field with every machine waiting: the castles, the spawns and the parts, without the programs. */
-  private idleCastleConfig(): SimulationConfig {
-    const ids = this.robotIdsNow();
-    const loadouts = this.flatTeamLoadouts();
-    return {
-      ...castleFieldConfig(this.castleArena, this.teamSize, this.seed),
-      robots: ids.map((id, index) => ({ id, brain: IDLE_BRAIN, stats: statsOf(loadouts[index]) })),
-    };
   }
 
   private setSpeed(speed: number): void {
@@ -980,14 +936,14 @@ class App {
    */
   private jumpTo(event: DebugEvent): void {
     const robotIndex = this.robotIdsNow().findIndex((id) => id === event.robotId);
-    const team = robotIndex < 0 ? -1 : this.teamMode ? Math.floor(robotIndex / this.teamSize) : robotIndex;
+    const team = robotIndex < 0 ? -1 : this.teamMode ? this.team.machineAt(robotIndex).team : robotIndex;
     const workspace = team < 0 ? undefined : this.workspaces[team];
     if (event.sourceLine === null || workspace === undefined || workspace.stale || event.robotId === null) {
       this.replay?.seek(event.tick);
       return;
     }
     // The row belongs to one machine: the editor's picker moves to it, so the line shown is the line that ran.
-    if (this.teamMode) this.picked[team] = (robotIndex % this.teamSize) + 1;
+    if (this.teamMode) this.team.pick(team, this.team.machineAt(robotIndex).machine);
     this.replay?.seekToLine(event.tick, event.robotId, event.sourceLine);
     this.showFile(codeFileOf(team));
     workspace.editor.revealLine(event.sourceLine);
@@ -1034,7 +990,7 @@ class App {
   private goToRun(which: 'next' | 'previous'): void {
     const followed = this.followedNow();
     if (followed === null) return;
-    const robotId = this.teamMode ? robotIdOf(ROBOT_IDS[followed.team], this.teamSize, followed.machine) : ROBOT_IDS[followed.team];
+    const robotId = this.teamMode ? this.team.robotIdOf(followed.team, followed.machine) : ROBOT_IDS[followed.team];
     if (which === 'next') followed.replay.seekToNextRun(robotId, followed.line);
     else followed.replay.seekToPreviousRun(robotId, followed.line);
     this.showFile(codeFileOf(followed.team));
@@ -1065,25 +1021,22 @@ class App {
 
   /** Every robot of the next match in spawn order: ALPHA's machines then BRAVO's; the duel's two robots otherwise. */
   private robotIdsNow(): string[] {
-    if (!this.teamMode) return [...ROBOT_IDS];
-    return ROBOT_IDS.flatMap((name) =>
-      Array.from({ length: this.teamSize }, (_, machine) => robotIdOf(name, this.teamSize, machine + 1)),
-    );
+    return this.teamMode ? this.team.robotIds() : [...ROBOT_IDS];
   }
 
   /** The spawn index of a team's machine; the robot's own in a duel. */
   private robotIndexOf(team: number, machine: number): number {
-    return this.teamMode ? team * this.teamSize + machine - 1 : team;
+    return this.teamMode ? this.team.robotIndexOf(team, machine) : team;
   }
 
   /** The machine a team's editor follows, kept within the team size. */
   private pickedMachine(team: number): number {
-    return this.teamMode ? Math.min(this.picked[team], this.teamSize) : 1;
+    return this.teamMode ? this.team.pickedMachine(team) : 1;
   }
 
   /** The robot a team's editor follows: its picked machine; the robot itself in a duel. */
   private editorRobotId(team: number): string {
-    if (this.teamMode) return robotIdOf(ROBOT_IDS[team], this.teamSize, this.pickedMachine(team));
+    if (this.teamMode) return this.team.pickedRobotId(team);
     // A coached castle stage: each side's editor follows its first machine.
     const coached = this.coach?.stage?.teamSize;
     if (coached !== undefined) return robotIdOf(ROBOT_IDS[team], coached, 1);
@@ -1097,34 +1050,6 @@ class App {
     return ROBOT_IDS.flatMap((name) => Array.from({ length: teamSize }, (_, machine) => robotIdOf(name, teamSize, machine + 1)));
   }
 
-  /** The parts the next team match is fought with, flat in spawn order. */
-  private flatTeamLoadouts(): Loadout[] {
-    return this.teamLoadouts.flatMap((machines) => machines.slice(0, this.teamSize));
-  }
-
-  /** The team editors, made the first time the team battle is entered, with the garage of teams beside them. */
-  private ensureTeamWorkspaces(): RobotWorkspace[] {
-    if (this.teamWorkspaces === null) {
-      this.teamWorkspaces = ROBOT_IDS.map(
-        (teamName, team) =>
-          new RobotWorkspace(teamName, requireElement(TEAM_EDITOR_ELEMENT_IDS[team]), this.teamStore?.loadSource(team) ?? DEFAULT_TEAM_SOURCES[team], {
-            save: (code) => this.teamStore?.saveSource(team, code),
-            edited: (workspace) => this.codeEdited(workspace),
-            saveProblem: (problem) => this.noteSave(`team-code:${team}`, problem),
-            lineClicked: (workspace, line) => this.toggleFollowedLine(workspace, line),
-          }),
-      );
-      this.teamGarage = new TeamGarageController(requireElement('team-garage'), [...ROBOT_IDS], this.storage, {
-        team: (team) => ({
-          source: this.teamWorkspaces?.[team].source ?? '',
-          loadouts: this.teamLoadouts[team].slice(0, this.teamSize).map((loadout) => ({ ...loadout })),
-        }),
-        load: (team, saved) => this.loadTeam(team, saved),
-      });
-    }
-    return this.teamWorkspaces;
-  }
-
   /** Whether a castle-battle screen is shown: the team battle's editing or its watching, which share the maps and the size. */
   private get castleScreen(): boolean {
     return this.screen === 'team' || this.screen === 'teamwatch';
@@ -1132,11 +1057,11 @@ class App {
 
   /** The team battle's watching, made the first time it is shown. */
   private ensureTeamWatch(): TeamBattleMode {
-    this.ensureTeamWorkspaces();
+    this.team.ensureWorkspaces();
     this.teamWatch ??= new TeamBattleMode(requireElement('team-lineup-slots'), requireElement('team-result-rows'), {
-      arena: () => this.castleArena,
-      teamSize: () => this.teamSize,
-      garageTeams: () => this.teamGarage?.list() ?? [],
+      arena: () => this.team.castleArena,
+      teamSize: () => this.team.size,
+      garageTeams: () => this.team.garage?.list() ?? [],
       speed: () => this.speed,
       chooseArena: (id) => {
         this.selectArena(id);
@@ -1144,11 +1069,12 @@ class App {
       },
       chooseTeamSize: (size) => {
         this.setTeamSize(size);
-        requireElement<HTMLSelectElement>('team-size').value = String(this.teamSize);
+        requireElement<HTMLSelectElement>('team-size').value = String(this.team.size);
       },
       keepTeams: (teams) => {
-        if (this.teamGarage === null) throw new Error(t('garage.noStorage'));
-        return this.teamGarage.keep(teams);
+        const { garage } = this.team;
+        if (garage === null) throw new Error(t('garage.noStorage'));
+        return garage.keep(teams);
       },
       storage: this.storage,
     });
@@ -1157,23 +1083,9 @@ class App {
 
   /** Puts a saved team's program and parts in place of a team's own. Does not change the match's team size. */
   private loadTeam(team: number, saved: { source: string; loadouts: readonly Loadout[] }): void {
-    this.ensureTeamWorkspaces()[team].load(saved.source);
+    this.team.ensureWorkspaces()[team].load(saved.source);
     saved.loadouts.slice(0, MAX_TEAM_SIZE).forEach((loadout, machine) => this.setTeamLoadout(team, machine + 1, { ...loadout }));
     this.showFile(codeFileOf(team));
-  }
-
-  /** The next team match: both teams' programs and machines, in the chosen castle arena. */
-  private prepareTeamFight() {
-    const workspaces = this.ensureTeamWorkspaces();
-    return prepareCastleFight(
-      [
-        { name: ROBOT_IDS[0], source: workspaces[0].source, loadouts: this.teamLoadouts[0].slice(0, this.teamSize) },
-        { name: ROBOT_IDS[1], source: workspaces[1].source, loadouts: this.teamLoadouts[1].slice(0, this.teamSize) },
-      ],
-      this.castleArena,
-      this.teamSize,
-      this.seed,
-    );
   }
 
   /** The next match: in the chosen arena, from where its seed starts the robots. */
@@ -1210,13 +1122,11 @@ class App {
     if (!isCode) {
       if (team) {
         const machine = this.pickedMachine(file.robotIndex);
-        const loadout = this.teamLoadouts[file.robotIndex][machine - 1];
-        const limit = teamCostLimitFor(this.teamSize);
-        const cost = teamCostOf(this.teamLoadouts[file.robotIndex], this.teamSize);
+        const { cost, limit } = this.team.costOf(file.robotIndex);
         this.partsView.show(
           this.editorRobotId(file.robotIndex),
           AI_LABEL,
-          loadout,
+          this.team.loadoutOf(file.robotIndex, machine),
           paletteOf(this.robotIndexOf(file.robotIndex, machine), this.teamsNow()),
           undefined,
           { text: t('castle.teamCost', { cost, limit }), over: cost > limit },
@@ -1242,8 +1152,7 @@ class App {
 
   /** The team of each robot of the next match, in spawn order; undefined outside the team battle. */
   private teamsNow(): number[] | undefined {
-    if (!this.teamMode) return undefined;
-    return this.robotIdsNow().map((_, index) => Math.floor(index / this.teamSize));
+    return this.teamMode ? this.team.teams() : undefined;
   }
 
   private frame = (now: number): void => {
@@ -1326,12 +1235,12 @@ class App {
     const { coach } = this;
     const stage = coach?.stage;
     const team = this.teamMode;
-    const idleArena = stage?.arena ?? (team ? this.castleArena.arena : this.arena.arena);
+    const idleArena = stage?.arena ?? (team ? this.team.castleArena.arena : this.arena.arena);
     const stageSize = stage?.teamSize ?? 1;
     const idleLoadouts =
       coach === null || stage === undefined
         ? team
-          ? this.flatTeamLoadouts()
+          ? this.team.flatLoadouts()
           : this.loadouts
         : [
             ...Array.from({ length: stageSize }, () => coach.loadout),
@@ -1350,7 +1259,7 @@ class App {
       overrun: replay?.overrun ?? 0,
       teams: replay?.recording.teams ?? (team ? this.teamsNow() : stage !== undefined ? stageTeams(stage) : undefined),
       teamNames: team || castleStage ? ROBOT_IDS : undefined,
-      bases: replay?.recording.bases ?? (team ? this.castleArena.basesFor(this.teamSize) : stage?.bases),
+      bases: replay?.recording.bases ?? (team ? this.team.castleArena.basesFor(this.team.size) : stage?.bases),
     });
     this.inspector.update(view);
     const watched = view.robots[this.inspector.selected] ?? view.robots[0];
@@ -1410,7 +1319,7 @@ class App {
     const parts = [this.notice ?? this.replayStatus()];
     const edited = this.workspaces.filter((workspace) => workspace.stale).map((workspace) => workspace.robotId);
     if (edited.length > 0) parts.push(`[${t('program.staleNote', { robots: edited.join(', ') })}]`);
-    const refitted = this.teamMode ? [...this.teamPartsStale] : ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
+    const refitted = this.teamMode ? [...this.team.partsStale] : ROBOT_IDS.filter((_, robotIndex) => this.partsStale[robotIndex]);
     if (refitted.length > 0) parts.push(`[${t('program.partsNote', { robots: refitted.join(', ') })}]`);
     for (const problem of this.saveProblems.values()) parts.push(`[${problem}]`);
     return parts.join('   ');
@@ -1429,7 +1338,7 @@ class App {
 
   /** Which of its runs the followed line is at, e.g. "ALPHA line 13: run 2 of 5". */
   private describeFollowed({ team, machine, line, replay, marks }: FollowedLine): string {
-    const robotId = this.teamMode ? robotIdOf(ROBOT_IDS[team], this.teamSize, machine) : ROBOT_IDS[team];
+    const robotId = this.teamMode ? this.team.robotIdOf(team, machine) : ROBOT_IDS[team];
     if (marks.length === 0) return t('program.followed.never', { robot: robotId, line });
     const run = replay.runAt(robotId, line);
     return run === null
@@ -1448,12 +1357,6 @@ function codeFileOf(robotIndex: number): ProjectFile {
   return { robotIndex, file: 'main.bot' };
 }
 
-/** A saved team size, if it is a usable one; the default size otherwise. */
-function clampTeamSize(value: unknown): number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_TEAM_SIZE
-    ? value
-    : DEFAULT_TEAM_SIZE;
-}
 
 /** An event raised by the IDE itself rather than by a match. */
 function appEvent(

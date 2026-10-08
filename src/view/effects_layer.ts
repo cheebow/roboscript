@@ -42,26 +42,36 @@ const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
 // A new number on the radio: rings that spread from the sender, one after the other, as a radio wave.
 const SIGNAL_START_RADIUS = 14;
-const SIGNAL_GROWTH = 44;
+const SIGNAL_GROWTH = 56;
 const SIGNAL_DOTS = 10;
 /** The second ring starts this far into the first one's life. */
 const SIGNAL_SECOND_RING = 0.35;
 // The teammate hears it: reception bars that light up one by one above the robot.
 const HEARD_BARS = 3;
-const HEARD_X = 12;
-const HEARD_Y = -14;
+const HEARD_X = 14;
+const HEARD_Y = -20;
+/** The bars stay full until this share of their life, then fade out. */
+const HEARD_FADE_FROM = 0.7;
 // An enemy bullet wore the castle down: a heavier spark than an ordinary impact.
 const BASE_HIT_REACH = 2;
+
+/** What of the scene an effect may follow: the robots as they stand now, and their teams (for their colours). */
+export interface EffectScene {
+  robots?: readonly { x: number; y: number }[];
+  teams?: readonly number[];
+}
 
 /**
  * Draws the effects of a snapshot as coarse dots. `overrun` is how many ticks
  * playback has run past the snapshot, which ages its effects further.
+ * `scene` lets an effect that is a robot's own marker ride along with it.
  */
 export function drawEffects(
   ctx: CanvasRenderingContext2D,
   effects: readonly EffectSnapshot[],
   overrun: number,
   lifetimes: EffectLifetimes,
+  scene: EffectScene = {},
 ): void {
   for (const effect of effects) {
     const age = effect.age + overrun;
@@ -84,13 +94,13 @@ export function drawEffects(
         drawBurst(ctx, effect, progress);
         break;
       case 'detected':
-        drawDetection(ctx, effect, progress);
+        drawDetection(ctx, effect, progress, scene);
         break;
       case 'signal':
-        drawSignal(ctx, effect, progress);
+        drawSignal(ctx, effect, progress, scene);
         break;
       case 'signalHeard':
-        drawHeard(ctx, effect, progress);
+        drawHeard(ctx, effect, progress, scene);
         break;
       case 'baseHit':
         drawBaseHit(ctx, effect, age, progress);
@@ -98,6 +108,16 @@ export function drawEffects(
     }
   }
   ctx.globalAlpha = 1;
+}
+
+/** The robot's own colours, team colours where the match has teams. */
+function robotPalette(effect: EffectSnapshot, scene: EffectScene) {
+  return paletteOf(effect.robot ?? 0, scene.teams);
+}
+
+/** Where the robot the effect belongs to stands now; where the effect started when it is not known. */
+function anchorOf(effect: EffectSnapshot, scene: EffectScene): { x: number; y: number } {
+  return (effect.robot !== undefined ? scene.robots?.[effect.robot] : undefined) ?? effect;
 }
 
 /** A dot snapped to the sprite grid, so effects line up with the robots' pixels. */
@@ -126,15 +146,15 @@ function drawDeflection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, p
   drawRing(ctx, effect, DEFLECT_START_RADIUS + DEFLECT_GROWTH * progress, DEFLECT_DOTS, 0);
 }
 
-function drawDetection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {
-  ctx.fillStyle = paletteOf(effect.robot ?? 0).body;
+function drawDetection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
+  ctx.fillStyle = robotPalette(effect, scene).body;
   ctx.globalAlpha = 1 - progress;
   drawRing(ctx, effect, DETECT_START_RADIUS + DETECT_GROWTH * progress, DETECT_DOTS, Math.PI / DETECT_DOTS);
 }
 
-/** A radio wave: rings in the sender's colour, the second following the first. */
-function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {
-  ctx.fillStyle = paletteOf(effect.robot ?? 0).light;
+/** A radio wave: rings in the sender's colour, the second following the first, spreading from where it was sent. */
+function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
+  ctx.fillStyle = robotPalette(effect, scene).light;
   const rings = [progress, progress < SIGNAL_SECOND_RING ? null : (progress - SIGNAL_SECOND_RING) / (1 - SIGNAL_SECOND_RING)];
   for (const ring of rings) {
     if (ring === null) continue;
@@ -143,15 +163,16 @@ function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progr
   }
 }
 
-/** The teammate hears it: reception bars above the robot, lighting up one by one and fading together. */
-function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number): void {
-  ctx.fillStyle = paletteOf(effect.robot ?? 0).light;
-  ctx.globalAlpha = 1 - progress * progress;
+/** The teammate hears it: reception bars that ride along above the robot, light up one by one, and fade at the end. */
+function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
+  const { x, y } = anchorOf(effect, scene);
+  ctx.fillStyle = robotPalette(effect, scene).light;
+  ctx.globalAlpha = progress < HEARD_FADE_FROM ? 1 : 1 - (progress - HEARD_FADE_FROM) / (1 - HEARD_FADE_FROM);
   const lit = Math.min(HEARD_BARS, 1 + Math.floor(progress * 2 * HEARD_BARS));
   for (let bar = 0; bar < lit; bar++) {
     // Each bar is one dot taller than the one before, like reception bars.
     for (let height = 0; height <= bar; height++) {
-      dot(ctx, effect.x + HEARD_X + bar * DOT * 2, effect.y + HEARD_Y - height * DOT);
+      dot(ctx, x + HEARD_X + bar * DOT * 2, y + HEARD_Y - height * DOT);
     }
   }
 }

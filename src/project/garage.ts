@@ -1,6 +1,7 @@
+import { isRecord } from './json';
 import { t } from '../i18n/messages';
 import { MAX_TEAM_SIZE } from '../data/castle';
-import { type Loadout, readLoadout } from '../data/parts';
+import { type Loadout, SLOTS, readLoadout } from '../data/parts';
 import type { KeyValueStorage } from './project_store';
 
 /** A robot kept under a name: its program and its parts. */
@@ -45,6 +46,17 @@ export function copyRobot(robot: SavedRobot): SavedRobot {
   return { name: robot.name, source: robot.source, loadout: { ...robot.loadout } };
 }
 
+/** Whether the two are the same robot: the same name, program and parts. */
+export function sameRobot(a: SavedRobot, b: SavedRobot): boolean {
+  return a.name === b.name && a.source === b.source && SLOTS.every((slot) => a.loadout[slot] === b.loadout[slot]);
+}
+
+/** Whether the two are the same team: the same name, program, and machines' parts. */
+export function sameTeam(a: SavedTeam, b: SavedTeam): boolean {
+  if (a.name !== b.name || a.source !== b.source || a.loadouts.length !== b.loadouts.length) return false;
+  return a.loadouts.every((loadout, index) => SLOTS.every((slot) => loadout[slot] === b.loadouts[index][slot]));
+}
+
 export const GARAGE_KEY = 'roboscript/garage.json';
 export const MAX_NAME_LENGTH = 16;
 const VERSION = 1;
@@ -61,23 +73,7 @@ export class Garage {
 
   /** The saved robots in the order of their names. Whatever of the saved data cannot be read is left out. */
   list(): SavedRobot[] {
-    const text = this.storage.getItem(GARAGE_KEY);
-    if (text === null) return [];
-    let saved: unknown;
-    try {
-      saved = JSON.parse(text);
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) throw error;
-      return [];
-    }
-    const entries = isRecord(saved) && Array.isArray(saved.robots) ? saved.robots : [];
-    const robots = new Map<string, SavedRobot>();
-    for (const entry of entries) {
-      const robot = readRobot(entry);
-      // Of two robots under one name, the first is the one that counts.
-      if (robot !== null && !robots.has(robot.name)) robots.set(robot.name, robot);
-    }
-    return [...robots.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return readShelf(this.raw()?.robots, readSavedRobot);
   }
 
   find(name: string): SavedRobot | undefined {
@@ -99,13 +95,7 @@ export class Garage {
    * not do is replaced by "Shared". Returns the name it is kept under.
    */
   importRobot(robot: SavedRobot): string {
-    const taken = new Set(this.list().map((saved) => saved.name));
-    const base = garageName(robot.name) ?? t('garage.sharedName');
-    let name = base;
-    for (let n = 2; taken.has(name); n++) {
-      const suffix = ` (${n})`;
-      name = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
-    }
+    const name = freeName(robot.name, this.list());
     this.save({ name, source: robot.source, loadout: { ...robot.loadout } });
     return name;
   }
@@ -117,15 +107,9 @@ export class Garage {
     if (others.length < robots.length) this.write(others);
   }
 
-  /** The saved teams of the castle match, under names of their own, apart from the robots'. */
+  /** The saved teams of the base battle, under names of their own, apart from the robots'. */
   listTeams(): SavedTeam[] {
-    const entries = this.raw()?.teams;
-    const teams = new Map<string, SavedTeam>();
-    for (const entry of Array.isArray(entries) ? entries : []) {
-      const team = readSavedTeam(entry);
-      if (team !== null && garageName(team.name) === team.name && !teams.has(team.name)) teams.set(team.name, team);
-    }
-    return [...teams.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return readShelf(this.raw()?.teams, readSavedTeam);
   }
 
   findTeam(name: string): SavedTeam | undefined {
@@ -143,13 +127,7 @@ export class Garage {
 
   /** Keeps a team received from elsewhere, numbering its name if that is taken, as importRobot does. Returns the name it is kept under. */
   importTeam(team: SavedTeam): string {
-    const taken = new Set(this.listTeams().map((saved) => saved.name));
-    const base = garageName(team.name) ?? t('garage.sharedName');
-    let name = base;
-    for (let n = 2; taken.has(name); n++) {
-      const suffix = ` (${n})`;
-      name = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
-    }
+    const name = freeName(team.name, this.listTeams());
     this.saveTeam({ ...copyTeam(team), name });
     return name;
   }
@@ -184,12 +162,29 @@ export class Garage {
   }
 }
 
-/** A robot kept in the garage: one under a name it could not be saved under is left out. */
-function readRobot(value: unknown): SavedRobot | null {
-  const robot = readSavedRobot(value);
-  return robot !== null && garageName(robot.name) === robot.name ? robot : null;
+/**
+ * A shelf of the garage out of saved data: whatever cannot be read, or is
+ * under a name nothing can be kept under, is left out; of two under one
+ * name, the first counts. Sorted by name.
+ */
+function readShelf<Kept extends { name: string }>(entries: unknown, read: (value: unknown) => Kept | null): Kept[] {
+  const shelf = new Map<string, Kept>();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const kept = read(entry);
+    if (kept !== null && garageName(kept.name) === kept.name && !shelf.has(kept.name)) shelf.set(kept.name, kept);
+  }
+  return [...shelf.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+/** The name something received is kept under: its own if free, else numbered ("Striker (2)"); "Shared" when the name will not do. */
+function freeName(wanted: string, kept: readonly { name: string }[]): string {
+  const taken = new Set(kept.map((each) => each.name));
+  const base = garageName(wanted) ?? t('garage.sharedName');
+  let name = base;
+  for (let n = 2; taken.has(name); n++) {
+    const suffix = ` (${n})`;
+    name = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
+  }
+  return name;
 }
+

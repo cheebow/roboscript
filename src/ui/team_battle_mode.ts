@@ -1,27 +1,27 @@
-import { prepareCastleFight, robotIdOf } from '../arena/castle_match';
+import { castleFieldConfig, prepareCastleFight, robotIdOf } from '../arena/castle_match';
 import type { CommentaryLine } from '../arena/commentary';
 import { randomSeed } from '../arena/seed';
 import { type CastleArenaDefinition, findCastleArena } from '../data/arenas';
-import { castleSpawnsFor } from '../data/arenas/castle_common';
-import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
-import { MATCH_DEFAULTS, ROBOT_IDS } from '../data/match_defaults';
-import { costOf, statsOf } from '../data/parts';
+import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor, teamCostOf } from '../data/castle';
+import { ROBOT_IDS } from '../data/match_defaults';
+import { statsOf } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
 import { TEAM_TEMPLATES } from '../data/team_templates';
 import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
-import { type MessageKey, t } from '../i18n/messages';
-import { type SavedTeam, copyTeam } from '../project/garage';
+import { t } from '../i18n/messages';
+import { type SavedTeam, copyTeam, sameTeam } from '../project/garage';
 import type { KeyValueStorage } from '../project/project_store';
 import { decodeCastleMatch, encodeCastleMatch } from '../share/codec';
-import { type SharedCastleMatchFile, acceptDrops, castleMatchFileText, chooseFile, downloadText, fileName, readSharedFile } from '../share/file';
+import { type SharedCastleMatchFile, acceptDrops, castleMatchFileText, downloadText, fileName, readSharedFile } from '../share/file';
 import { shareLink } from '../share/link';
-import { createIdleAction } from '../sim/ai_context';
+import { IDLE_BRAIN } from '../sim/ai_context';
 import { Simulation } from '../sim/simulation';
 import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
 import { describeError, formatSeconds } from './format';
+import { createImportRow, entrantOptions } from './lineup_parts';
 import { Notice } from './notice';
 import { createRobotPreview, drawRobotPreview } from './robot_preview';
 import { createShareBox } from './share_box';
@@ -73,11 +73,6 @@ interface SlotView {
   status: HTMLElement;
 }
 
-const GROUPS: readonly { origin: TeamEntrant['origin']; label: MessageKey }[] = [
-  { origin: 'garage', label: 'arena.group.garage' },
-  { origin: 'built-in', label: 'arena.group.builtIn' },
-];
-
 /**
  * The team battle's watching: two teams picked from the garage of teams and
  * the built-in ones fight a castle match, and the match is watched with its
@@ -107,27 +102,11 @@ export class TeamBattleMode {
     const fight = createButton('tool-button', t('arena.fight'), t('arena.fight.title'), () => this.startFight());
     const buttons = createElement('div', 'lineup-buttons');
     buttons.append(fight);
-    const importInput = createElement('input', 'garage-name-input');
-    importInput.type = 'text';
-    importInput.placeholder = t('arena.import.placeholder');
-    importInput.setAttribute('aria-label', t('arena.import.placeholder'));
-    importInput.spellcheck = false;
-    const importButton = createButton('tool-button', t('arena.import'), t('arena.import.title'), () => {
-      void this.importMatch(importInput.value).then((played) => {
-        if (played) importInput.value = '';
-      });
+    const importRow = createImportRow({
+      importCode: (code) => this.importMatch(code),
+      openFile: (text) => this.openMatchFile(text),
+      problem: (problem) => this.notice.show(problem, true),
     });
-    importInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') importButton.click();
-    });
-    const openFile = createButton('tool-button', t('arena.openFile'), t('arena.openFile.title'), () =>
-      chooseFile(
-        (text) => this.openMatchFile(text),
-        (problem) => this.notice.show(problem, true),
-      ),
-    );
-    const importRow = createElement('div', 'lineup-import');
-    importRow.append(importInput, importButton, openFile);
     lineup.replaceChildren(...slotElements, buttons, importRow, this.notice.element);
     acceptDrops(lineup, (text) => this.openMatchFile(text), { onProblem: (problem) => this.notice.show(problem, true) });
 
@@ -152,14 +131,7 @@ export class TeamBattleMode {
     ];
     this.picked = this.picked.map((id, index) => (this.entrants.some((entrant) => entrant.id === id) ? id : DEFAULT_PICKED[index]));
     this.slots.forEach((slot, team) => {
-      slot.select.replaceChildren(
-        ...GROUPS.map(({ origin, label }) => {
-          const group = document.createElement('optgroup');
-          group.label = t(label);
-          group.append(...this.entrants.filter((entrant) => entrant.origin === origin).map((entrant) => new Option(entrant.name, entrant.id)));
-          return group;
-        }).filter((group) => group.childElementCount > 0),
-      );
+      slot.select.replaceChildren(...entrantOptions(this.entrants));
       slot.select.value = this.picked[team];
       this.showEntrant(team);
     });
@@ -309,7 +281,7 @@ export class TeamBattleMode {
     const loadouts = this.sideLoadouts(entrant, size);
     drawRobotPreview(slot.preview, loadouts[0], paletteOf(team * size, this.teamsNow()));
     slot.parts.textContent = t('teamwatch.machines', { count: size });
-    const cost = loadouts.reduce((sum, loadout) => sum + costOf(loadout), 0);
+    const cost = teamCostOf(loadouts, size);
     const limit = teamCostLimitFor(size);
     slot.cost.textContent = t('arena.cost', { cost, limit });
     slot.cost.classList.toggle('over-limit', cost > limit);
@@ -342,23 +314,17 @@ export class TeamBattleMode {
     const sides = [this.entrantIn(0), this.entrantIn(1)].map((entrant) => this.sideOf(entrant, size));
     const loadouts = sides.flatMap((side) => side.loadouts);
     const stats = loadouts.map((loadout) => statsOf(loadout));
-    const arena = { ...definition.arena, spawns: castleSpawnsFor(size) };
-    const teams = loadouts.map((_, index) => Math.floor(index / size));
-    const bases = definition.basesFor(size);
+    const field = castleFieldConfig(definition, size, this.nextSeed);
+    const { arena, teams = [], bases = [] } = field;
     const simulation = new Simulation({
-      arena,
-      tickRate: MATCH_DEFAULTS.tickRate,
-      maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-      seed: this.nextSeed,
+      ...field,
       robots: stats.map((robotStats, index) => ({
         id: robotIdOf(index < size ? sides[0].name : sides[1].name, size, (index % size) + 1),
-        brain: { decide: createIdleAction },
+        brain: IDLE_BRAIN,
         stats: robotStats,
       })),
-      teams,
-      bases,
     });
-    return { snapshot: captureSnapshot(simulation), arena, stats, loadouts, teams, bases, teamNames: sides.map((side) => side.name) };
+    return { snapshot: captureSnapshot(simulation), arena, stats, loadouts, teams: [...teams], bases: [...bases], teamNames: sides.map((side) => side.name) };
   }
 
   private startFight(): void {
@@ -501,8 +467,3 @@ export class TeamBattleMode {
   }
 }
 
-/** Whether the entrant is the team: the same name, program, and machines' parts. */
-function sameTeam(entrant: SavedTeam, team: SavedTeam): boolean {
-  if (entrant.name !== team.name || entrant.source !== team.source || entrant.loadouts.length !== team.loadouts.length) return false;
-  return entrant.loadouts.every((loadout, index) => JSON.stringify(loadout) === JSON.stringify(team.loadouts[index]));
-}

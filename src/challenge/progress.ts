@@ -1,3 +1,4 @@
+import { isRecord } from '../project/json';
 import { type Loadout, STANDARD_LOADOUT, readLoadout } from '../data/parts';
 import type { KeyValueStorage } from '../project/project_store';
 
@@ -55,9 +56,6 @@ export function better(best: Best | undefined, next: Best): Best {
   return next.seconds < best.seconds ? next : best;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isBest(value: unknown): value is Best {
   if (!isRecord(value)) return false;

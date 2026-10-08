@@ -1,3 +1,4 @@
+import { isRecord } from '../project/json';
 import { ARENAS, type ArenaDefinition, DEFAULT_ARENA_DEFINITION } from '../data/arenas';
 import { type SavedRobot, copyRobot, readSavedRobot } from '../project/garage';
 import type { MatchEndReason } from '../sim/simulation';
@@ -132,6 +133,3 @@ function isBracket(rounds: readonly Tie[][]): boolean {
   return true;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}

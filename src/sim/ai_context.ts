@@ -166,6 +166,9 @@ export interface RobotBrain {
   decide(context: AIContext): AIAction;
 }
 
+/** A brain that does nothing at all: what an idle field's robots run. */
+export const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
+
 export function createIdleAction(): AIAction {
   return {
     drive: null,

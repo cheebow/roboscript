@@ -1,8 +1,10 @@
+import { readCastleBody, readMatchBody } from './body';
+export type { SharedCastleBody as SharedCastleMatchFile, SharedMatchBody as SharedMatch } from './body';
+import type { SharedCastleBody as SharedCastleMatchFile, SharedMatchBody as SharedMatch } from './body';
 import { type ContestRecord, type ReadRecord, readRecord } from '../arena/contest_record';
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
 import { type SavedRobot, type SavedTeam, readSavedRobot, readSavedTeam } from '../project/garage';
-import { MAX_TEAM_SIZE } from '../data/castle';
 
 /** The name every RoboScript file carries, so that other JSON is not taken for one. */
 const FILE_FORMAT = 'roboscript';
@@ -18,23 +20,9 @@ export type SharedFile =
   | { kind: 'match'; rules: string; match: SharedMatch }
   | { kind: 'castle'; rules: string; match: SharedCastleMatchFile };
 
-/** A castle match as it is shared: both teams (team 0 first), the arena by id, the robots a side, and the seed. */
-export interface SharedCastleMatchFile {
-  teams: [SavedTeam, SavedTeam];
-  arenaId: string;
-  teamSize: number;
-  seed: number;
-}
 
-/** A match as it is shared: its robots in the order they start, its arena by id, and its seed. */
-export interface SharedMatch {
-  robots: SavedRobot[];
-  arenaId: string;
-  seed: number;
-}
 
-/** How many robots a match may have. */
-const MATCH_ROBOTS = { least: 2, most: 4 };
+
 
 export function matchFileText(match: SharedMatch): string {
   return JSON.stringify(
@@ -124,12 +112,9 @@ export function readSharedFile(text: string): { ok: true; file: SharedFile } | {
     return { ok: true, file: { kind: 'contest', rules, savedAt: typeof file.savedAt === 'string' ? file.savedAt : '', contest } };
   }
   if (file.kind === 'match') {
-    const robots = Array.isArray(file.robots) ? file.robots.map(readSavedRobot) : [];
-    if (robots.length < MATCH_ROBOTS.least || robots.length > MATCH_ROBOTS.most || robots.some((robot) => robot === null)) {
-      return { ok: false, problem: t('share.notTwoRobots') };
-    }
-    if (typeof file.arena !== 'string' || !Number.isInteger(file.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
-    return { ok: true, file: { kind: 'match', rules, match: { robots: robots as SavedRobot[], arenaId: file.arena, seed: file.seed as number } } };
+    const body = readMatchBody(file);
+    if (!body.ok) return body;
+    return { ok: true, file: { kind: 'match', rules, match: body.match } };
   }
   if (file.kind === 'team') {
     const team = readSavedTeam(file.team);
@@ -137,20 +122,9 @@ export function readSharedFile(text: string): { ok: true; file: SharedFile } | {
     return { ok: true, file: { kind: 'team', rules, team } };
   }
   if (file.kind === 'castle') {
-    const teams = Array.isArray(file.teams) ? file.teams.map(readSavedTeam) : [];
-    const size = file.size;
-    if (teams.length !== 2 || teams.some((team) => team === null)) return { ok: false, problem: t('share.notTwoTeams') };
-    if (!Number.isInteger(size) || (size as number) < 1 || (size as number) > MAX_TEAM_SIZE) return { ok: false, problem: t('share.notTwoTeams') };
-    if ((teams as SavedTeam[]).some((team) => team.loadouts.length < (size as number))) return { ok: false, problem: t('share.notTwoTeams') };
-    if (typeof file.arena !== 'string' || !Number.isInteger(file.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
-    return {
-      ok: true,
-      file: {
-        kind: 'castle',
-        rules,
-        match: { teams: teams as [SavedTeam, SavedTeam], arenaId: file.arena, teamSize: size as number, seed: file.seed as number },
-      },
-    };
+    const body = readCastleBody(file);
+    if (!body.ok) return body;
+    return { ok: true, file: { kind: 'castle', rules, match: body.match } };
   }
   return { ok: false, problem: t('file.unknownKind') };
 }

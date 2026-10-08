@@ -4,12 +4,11 @@ import { LANGUAGE_KEY, currentLanguage, otherLanguage } from '../i18n/language';
 import { t } from '../i18n/messages';
 import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
-import { prepareCastleFight, robotIdOf } from '../arena/castle_match';
+import { castleFieldConfig, prepareCastleFight, robotIdOf } from '../arena/castle_match';
 import { randomSeed } from '../arena/seed';
 import { scatterSpawns } from '../arena/spawns';
 import { ARENAS, CASTLE_ARENAS, findArena, findCastleArena } from '../data/arenas';
-import { castleSpawnsFor } from '../data/arenas/castle_common';
-import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
+import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor, teamCostOf } from '../data/castle';
 import { TEAM_TEMPLATES, findTeamTemplate } from '../data/team_templates';
 import {
   DEFAULT_PLAYBACK_SPEED,
@@ -26,7 +25,7 @@ import { recordMatch } from '../debug/recorder';
 import { ReplayManager } from '../debug/replay_manager';
 import { type Snapshot, captureSnapshot } from '../debug/snapshot';
 import { ProjectStore, TeamStore } from '../project/project_store';
-import { type RobotBrain, createIdleAction } from '../sim/ai_context';
+import { IDLE_BRAIN, type RobotBrain } from '../sim/ai_context';
 import { Simulation, type SimulationConfig } from '../sim/simulation';
 import { BattleView, formatOutcome } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
@@ -89,7 +88,6 @@ const DEFAULT_SOURCES = DEFAULT_TEMPLATES.map((template) => template.source);
 const DEFAULT_TEAM_SOURCES = [TEAM_TEMPLATES[1].source, TEAM_TEMPLATES[0].source];
 /** How many robots a side the team battle starts with, until the player picks another size. */
 const DEFAULT_TEAM_SIZE = 3;
-const IDLE_BRAIN: RobotBrain = { decide: createIdleAction };
 /** The event types shown in the log outside DEBUG mode. */
 const RUN_LOG_TYPES: ReadonlySet<DebugEventType> = new Set(['system', 'hit', 'warning', 'error']);
 const NO_MARKS: readonly number[] = [];
@@ -743,7 +741,7 @@ class App {
         });
       }
       const limit = teamCostLimitFor(this.teamSize);
-      const cost = this.teamLoadouts[team].slice(0, this.teamSize).reduce((sum, loadout) => sum + costOf(loadout), 0);
+      const cost = teamCostOf(this.teamLoadouts[team], this.teamSize);
       if (cost > limit) {
         faults.push({
           file: { robotIndex: team, file: 'config' },
@@ -967,13 +965,8 @@ class App {
     const ids = this.robotIdsNow();
     const loadouts = this.flatTeamLoadouts();
     return {
-      arena: { ...this.castleArena.arena, spawns: castleSpawnsFor(this.teamSize) },
-      tickRate: MATCH_DEFAULTS.tickRate,
-      maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-      seed: this.seed,
+      ...castleFieldConfig(this.castleArena, this.teamSize, this.seed),
       robots: ids.map((id, index) => ({ id, brain: IDLE_BRAIN, stats: statsOf(loadouts[index]) })),
-      teams: ids.map((_, index) => Math.floor(index / this.teamSize)),
-      bases: this.castleArena.basesFor(this.teamSize),
     };
   }
 
@@ -1224,7 +1217,7 @@ class App {
         const machine = this.pickedMachine(file.robotIndex);
         const loadout = this.teamLoadouts[file.robotIndex][machine - 1];
         const limit = teamCostLimitFor(this.teamSize);
-        const cost = this.teamLoadouts[file.robotIndex].slice(0, this.teamSize).reduce((sum, each) => sum + costOf(each), 0);
+        const cost = teamCostOf(this.teamLoadouts[file.robotIndex], this.teamSize);
         this.partsView.show(
           this.editorRobotId(file.robotIndex),
           AI_LABEL,

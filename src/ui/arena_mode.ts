@@ -15,24 +15,25 @@ import {
 } from '../arena/match';
 import type { SeriesResult } from '../sim/series';
 import { type DrivenRun, driveSteps } from './stepped_run';
-import { type MessageKey, t } from '../i18n/messages';
+import { t } from '../i18n/messages';
 import { randomSeed } from '../arena/seed';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import { COST_LIMIT, SLOTS, costOf, partIn, statsOf } from '../data/parts';
 import type { ReplayManager } from '../debug/replay_manager';
 import { captureSnapshot } from '../debug/snapshot';
-import { type SavedRobot, copyRobot } from '../project/garage';
+import { type SavedRobot, copyRobot, sameRobot } from '../project/garage';
 import type { KeyValueStorage } from '../project/project_store';
 import { RULES_VERSION } from '../data/rules_version';
 import { decodeMatch, encodeMatch } from '../share/codec';
-import { type SharedMatch, acceptDrops, chooseFile, downloadText, fileName, matchFileText, readSharedFile } from '../share/file';
-import { createIdleAction } from '../sim/ai_context';
+import { type SharedMatch, acceptDrops, downloadText, fileName, matchFileText, readSharedFile } from '../share/file';
+import { IDLE_BRAIN } from '../sim/ai_context';
 import type { MatchResult } from '../sim/simulation';
 import { Simulation } from '../sim/simulation';
 import { formatReason } from '../view/battle_view';
 import { paletteOf } from '../view/sprites';
 import { createButton, createElement } from './dom';
+import { createImportRow, entrantOptions } from './lineup_parts';
 import { Notice } from './notice';
 import { createShareBox } from './share_box';
 import { shareLink } from '../share/link';
@@ -72,11 +73,6 @@ const COUNTS = [2, 3, 4] as const;
 const SERIES_MATCHES = 20;
 /** The entrants the slots start with: the first two are the pair the program screen starts with. */
 const DEFAULT_ENTRANT_IDS = ['built-in:sample', 'built-in:dumb_bot', 'built-in:strafe_bot', 'built-in:sentry_bot'];
-const GROUPS: readonly { origin: Entrant['origin']; label: MessageKey }[] = [
-  { origin: 'garage', label: 'arena.group.garage' },
-  { origin: 'built-in', label: 'arena.group.builtIn' },
-];
-
 interface SlotView {
   preview: HTMLCanvasElement;
   select: HTMLSelectElement;
@@ -141,25 +137,11 @@ export class ArenaMode {
     );
     const buttons = createElement('div', 'lineup-buttons');
     buttons.append(fight, this.seriesButton);
-    const importInput = createElement('input', 'garage-name-input');
-    importInput.type = 'text';
-    importInput.placeholder = t('arena.import.placeholder');
-    importInput.setAttribute('aria-label', t('arena.import.placeholder'));
-    importInput.spellcheck = false;
-    const importButton = createButton('tool-button', t('arena.import'), t('arena.import.title'), () => {
-      void this.importMatch(importInput.value).then((played) => {
-        // Kept when it could not be played, to be put right.
-        if (played) importInput.value = '';
-      });
+    const importRow = createImportRow({
+      importCode: (code) => this.importMatch(code),
+      openFile: (text) => this.openMatchFile(text),
+      problem: (problem) => this.notice.show(problem, true),
     });
-    importInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') importButton.click();
-    });
-    const openFile = createButton('tool-button', t('arena.openFile'), t('arena.openFile.title'), () =>
-      chooseFile((text) => this.openMatchFile(text), (problem) => this.notice.show(problem, true)),
-    );
-    const importRow = createElement('div', 'lineup-import');
-    importRow.append(importInput, importButton, openFile);
     lineup.replaceChildren(countRow, ...this.slotElements, buttons, importRow, this.notice.element);
     acceptDrops(lineup, (text) => this.openMatchFile(text), { onProblem: (problem) => this.notice.show(problem, true) });
 
@@ -221,15 +203,7 @@ export class ArenaMode {
       this.entrants.some((entrant) => entrant.id === id) ? id : DEFAULT_ENTRANT_IDS[index],
     );
     this.slots.forEach((slot, index) => {
-      slot.select.replaceChildren(
-        ...GROUPS.map(({ origin, label }) => {
-          const group = document.createElement('optgroup');
-          group.label = t(label);
-          const options = this.entrants.filter((entrant) => entrant.origin === origin);
-          group.append(...options.map((entrant) => new Option(entrant.name, entrant.id)));
-          return group;
-        }).filter((group) => group.childElementCount > 0),
-      );
+      slot.select.replaceChildren(...entrantOptions(this.entrants));
       slot.select.value = this.picked[index];
       this.showEntrant(index);
     });
@@ -559,7 +533,7 @@ export class ArenaMode {
       tickRate: MATCH_DEFAULTS.tickRate,
       maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
       seed: this.nextSeed,
-      robots: names.map((id, index) => ({ id, brain: { decide: createIdleAction }, stats: stats[index] })),
+      robots: names.map((id, index) => ({ id, brain: IDLE_BRAIN, stats: stats[index] })),
     });
     return { snapshot: captureSnapshot(simulation), arena, stats, loadouts };
   }
@@ -678,7 +652,3 @@ function describeOutcome(result: MatchResult, names: readonly string[]): string 
   return byPlace.map((name) => t('arena.place', { place: result.places[name] ?? 0, name })).join('  ');
 }
 
-/** Whether the entrant is the robot: the same name, program and parts. */
-function sameRobot(entrant: Entrant, robot: SavedRobot): boolean {
-  return entrant.name === robot.name && entrant.source === robot.source && SLOTS.every((slot) => entrant.loadout[slot] === robot.loadout[slot]);
-}

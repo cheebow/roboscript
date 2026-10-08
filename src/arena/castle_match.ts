@@ -3,11 +3,12 @@ import { compileScript } from '../ai/roboscript';
 import { formatError } from '../ai/script_error';
 import type { CastleArenaDefinition } from '../data/arenas';
 import { castleSpawnsFor } from '../data/arenas/castle_common';
-import { MAX_TEAM_SIZE, teamCostLimitFor } from '../data/castle';
+import { MAX_TEAM_SIZE, teamCostLimitFor, teamCostOf } from '../data/castle';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
-import { type Loadout, costOf, statsOf } from '../data/parts';
+import { type Loadout, statsOf } from '../data/parts';
 import { t } from '../i18n/messages';
 import type { RobotBrain } from '../sim/ai_context';
+import type { SimulationConfig } from '../sim/simulation';
 import type { Fight, Refusal } from './match';
 
 /** One side of a castle match: a name, one program, and the parts of each of its machines. */
@@ -16,6 +17,25 @@ export interface TeamSide {
   source: string;
   /** One loadout per machine, `teamSize` of them. */
   loadouts: readonly Loadout[];
+}
+
+/**
+ * The frame of a castle match's config: the arena with its spawns, the
+ * clock, the teams and the castles — everything but the robots themselves.
+ */
+export function castleFieldConfig(
+  arena: CastleArenaDefinition,
+  teamSize: number,
+  seed: number,
+): Omit<SimulationConfig, 'robots' | 'logger'> {
+  return {
+    arena: { ...arena.arena, spawns: castleSpawnsFor(teamSize) },
+    tickRate: MATCH_DEFAULTS.tickRate,
+    maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
+    seed,
+    teams: Array.from({ length: teamSize * 2 }, (_, index) => Math.floor(index / teamSize)),
+    bases: arena.basesFor(teamSize),
+  };
 }
 
 /**
@@ -42,7 +62,7 @@ export function prepareCastleFight(
   const teamBrains: RobotBrain[][] = [];
   const teamFeatures: ProgramFeatures[] = [];
   sides.forEach((side) => {
-    const cost = side.loadouts.slice(0, teamSize).reduce((sum, loadout) => sum + costOf(loadout), 0);
+    const cost = teamCostOf(side.loadouts, teamSize);
     if (cost > limit) problems.push(t('castle.costOverLimit', { team: side.name, cost, limit }));
     // Each machine runs its own copy of the program: one compile per machine, so no state is shared.
     const brains: RobotBrain[] = [];
@@ -72,17 +92,12 @@ export function prepareCastleFight(
       loadouts,
       features,
       config: {
-        arena: { ...arena.arena, spawns: castleSpawnsFor(teamSize) },
-        tickRate: MATCH_DEFAULTS.tickRate,
-        maxMatchTime: MATCH_DEFAULTS.maxMatchTime,
-        seed,
+        ...castleFieldConfig(arena, teamSize, seed),
         robots: names.map((id, index) => ({
           id,
           brain: teamBrains[Math.floor(index / teamSize)][index % teamSize],
           stats: statsOf(loadouts[index]),
         })),
-        teams: sides.flatMap((_, team) => Array.from({ length: teamSize }, () => team)),
-        bases: arena.basesFor(teamSize),
       },
     },
   };

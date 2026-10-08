@@ -1,4 +1,4 @@
-import type { Loadout } from './parts';
+import { type Loadout, costOf } from './parts';
 
 // The numbers of the castle match, gathered here for tuning. A side fields
 // `teamSize` robots (1 to MAX_TEAM_SIZE, the same on both sides), and the
@@ -27,6 +27,11 @@ export function castleHpFor(_teamSize: number): number {
  */
 export function teamCostLimitFor(teamSize: number): number {
   return 10 * teamSize + 2;
+}
+
+/** What the machines a team fields cost together: the first `teamSize` loadouts, against teamCostLimitFor. */
+export function teamCostOf(loadouts: readonly Loadout[], teamSize: number): number {
+  return loadouts.slice(0, teamSize).reduce((sum, loadout) => sum + costOf(loadout), 0);
 }
 
 /**

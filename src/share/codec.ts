@@ -1,4 +1,5 @@
-import { MAX_TEAM_SIZE } from '../data/castle';
+import { type SharedCastleBody, type SharedMatchBody, readCastleBody, readMatchBody } from './body';
+import { isRecord } from '../project/json';
 import { RULES_VERSION } from '../data/rules_version';
 import { t } from '../i18n/messages';
 import { type SavedRobot, type SavedTeam, readSavedRobot, readSavedTeam } from '../project/garage';
@@ -20,14 +21,10 @@ export interface SharedRobot {
   rules: string;
 }
 
-export type Decoded = { ok: true; shared: SharedRobot } | { ok: false; problem: string };
+export type DecodedRobot = { ok: true; shared: SharedRobot } | { ok: false; problem: string };
 
 /** A match read from a share code: the two robots in spawn order, the arena and the seed, with the rules it was made under. */
-export interface SharedMatch {
-  /** 2 to 4 robots, in the order they start. */
-  robots: SavedRobot[];
-  arenaId: string;
-  seed: number;
+export interface SharedMatch extends SharedMatchBody {
   rules: string;
 }
 
@@ -47,7 +44,7 @@ export async function encodeRobot(robot: SavedRobot): Promise<string> {
 }
 
 /** The robot in a share code, or what is wrong with the code. */
-export async function decodeRobot(code: string): Promise<Decoded> {
+export async function decodeRobot(code: string): Promise<DecodedRobot> {
   const json = await decodePayload(code);
   if (json === null) return { ok: false, problem: t('share.notACode') };
   if (!isRecord(json) || json.kind !== 'robot') return { ok: false, problem: t('share.notARobot') };
@@ -76,14 +73,9 @@ export async function decodeMatch(code: string): Promise<DecodedMatch> {
   if (json === null) return { ok: false, problem: t('share.notACode') };
   if (!isRecord(json) || json.kind !== 'match') return { ok: false, problem: t('share.notAMatch') };
   if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
-  const robots = Array.isArray(json.robots) ? json.robots.map(readSavedRobot) : [];
-  // A duel, or a battle royale of up to four.
-  if (robots.length < 2 || robots.length > 4 || robots.some((robot) => robot === null)) return { ok: false, problem: t('share.notTwoRobots') };
-  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
-  return {
-    ok: true,
-    shared: { robots: robots as SavedRobot[], arenaId: json.arena, seed: json.seed as number, rules: rulesOf(json) },
-  };
+  const body = readMatchBody(json);
+  if (!body.ok) return body;
+  return { ok: true, shared: { ...body.match, rules: rulesOf(json) } };
 }
 
 /** A team read from a share code, with the rules it was made under. */
@@ -95,12 +87,7 @@ export interface SharedTeam {
 export type DecodedTeam = { ok: true; shared: SharedTeam } | { ok: false; problem: string };
 
 /** A castle match read from a share code: both teams in spawn order (team 0 first), the arena, the size and the seed. */
-export interface SharedCastleMatch {
-  teams: [SavedTeam, SavedTeam];
-  arenaId: string;
-  /** Robots a side. */
-  teamSize: number;
-  seed: number;
+export interface SharedCastleMatch extends SharedCastleBody {
   rules: string;
 }
 
@@ -158,22 +145,9 @@ export async function decodeCastleMatch(code: string): Promise<DecodedCastleMatc
   if (json === null) return { ok: false, problem: t('share.notACode') };
   if (!isRecord(json) || json.kind !== 'castle') return { ok: false, problem: t('share.notACastleMatch') };
   if (json.v !== CODE_VERSION) return { ok: false, problem: t('share.otherVersion', { version: String(json.v) }) };
-  const teams = Array.isArray(json.teams) ? json.teams.map(readSavedTeam) : [];
-  const size = json.size;
-  if (teams.length !== 2 || teams.some((team) => team === null)) return { ok: false, problem: t('share.notTwoTeams') };
-  if (!Number.isInteger(size) || (size as number) < 1 || (size as number) > MAX_TEAM_SIZE) return { ok: false, problem: t('share.notTwoTeams') };
-  if ((teams as SavedTeam[]).some((team) => team.loadouts.length < (size as number))) return { ok: false, problem: t('share.notTwoTeams') };
-  if (typeof json.arena !== 'string' || !Number.isInteger(json.seed)) return { ok: false, problem: t('share.noArenaOrSeed') };
-  return {
-    ok: true,
-    shared: {
-      teams: teams as [SavedTeam, SavedTeam],
-      arenaId: json.arena,
-      teamSize: size as number,
-      seed: json.seed as number,
-      rules: rulesOf(json),
-    },
-  };
+  const body = readCastleBody(json);
+  if (!body.ok) return body;
+  return { ok: true, shared: { ...body.match, rules: rulesOf(json) } };
 }
 
 /** The JSON inside a share code; null when the text is not one. */
@@ -233,6 +207,3 @@ function fromBase64Url(text: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}

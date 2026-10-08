@@ -12,48 +12,23 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-08',
-    en: 'The radio learned addresses: signal 3 to 2 sends a number to machine 2 alone, ally_signal_from says who sent what arrived, and on the field a little envelope flies from the sender to whoever it is for.',
-    ja: '無線に宛先が付きました。signal 3 to 2 と書くと 2 号機だけに数が届き、ally_signal_from で「だれが送ったか」が読めます。戦闘画面では、小さな封筒が送信機から相手まで飛んでいきます。',
+    en: "The castle is now the base, as base_hp and face base always said, and the rule is the base battle: a team stays in the match while its base stands, even with every robot gone, and a base has one robot's worth of HP (200) at every size. The commentary reads each side's plan, calls a base on the brink, and says why a judgement went the way it did. New team template: BaseDecoy. Saved teams, links and files keep working.",
+    ja: '「城」は「基地」に、城攻めは「基地戦」になりました（base_hp や face base と同じ言葉です）。全滅しても基地が立っているかぎり試合は続き、基地の HP は台数によらずロボット 1 台ぶん（200）。実況は布陣を読み、落ちかけた基地を呼び、判定の理由まで伝えます。チームのテンプレートに BaseDecoy が加わりました。保存したチームやリンク、ファイルはそのまま使えます。',
   },
   {
     date: '2026-10-08',
-    en: 'The field shows more of what happens: a new number on the radio sends an envelope up over the sender and a pulse down a line to each teammate, where the envelope pops up as it lands; a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
-    ja: '戦闘画面の見せ方が増えました。無線に新しい数が載ると、送信機の上に封筒マークが浮かび、味方へ伸びる線をデータのパルスが流れて、届いた機体にも封筒が浮かびます。基地が削られると大きめの火花が散り、回復中のロボットからは + マークが立ちのぼります。',
+    en: 'The radio learned addresses: signal 3 to 2 sends a number to machine 2 alone, and ally_signal_from says who sent what arrived. On the field a little envelope flies from the sender to each robot it is for; a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
+    ja: '無線に宛先が付きました。signal 3 to 2 で 2 号機だけに数が届き、ally_signal_from で「だれが送ったか」が読めます。戦闘画面では小さな封筒が送信機から相手まで飛び、削られる基地からは火花が散り、回復中のロボットからは + マークが立ちのぼります。',
   },
   {
     date: '2026-10-08',
-    en: 'Smoother controls: a 20-match series and a contest now count up on screen instead of freezing the page, loading from the garage asks for a second press before replacing your code and parts, Esc closes the start menu, and switching the language brings you back to the screen you were on.',
-    ja: '操作まわりを使いやすくしました。連戦や大会は画面を固めずに「試合 n/20 を計算中…」と数えながら進み、ガレージからの読み込みは 2 度押しで確定するようになりました(コードとパーツの置き換えなので)。起動メニューは Esc で閉じられ、言語を切り替えても元の画面に戻ります。',
+    en: 'Smoother and clearer: a 20-match series and a contest count up on screen instead of freezing the page, loading from the garage asks for a second press, Esc closes the start menu, and switching the language keeps your screen. The help calls the language\u2019s words "words", the Japanese screen reads in Japanese throughout, and the top bar names its modes, SOLO and TEAM BATTLE.',
+    ja: '使いやすく、分かりやすくしました。連戦や大会は画面を固めずに進み具合を数え、ガレージからの読み込みは 2 度押しで確定、起動メニューは Esc で閉じられ、言語を切り替えても元の画面に戻ります。ヘルプの「語」は「ワード」に統一し、日本語の画面はログの種別まで日本語に。上部バーには「個人戦」「チームバトル」の見出しが付きました。',
   },
   {
     date: '2026-10-08',
-    en: 'The castle is now the base, as the words base_hp and face base always said: the mode is TEAM BATTLE, its rule the base battle, and the team templates are BaseRush, BaseSplit and friends. Saved teams, links and files all keep working.',
-    ja: '「城」は「基地」になりました。base_hp や face base が最初からそう言っていた通りです。モード名はチームバトル、ルール名は基地戦、チームのテンプレートは BaseRush・BaseSplit などに。保存したチームやリンク、ファイルはそのまま使えます。',
-  },
-  {
-    date: '2026-10-08',
-    en: 'Words tidied up: the help calls the language’s words "words" throughout, the log’s kind column, GOAL and GUARD read in Japanese on the Japanese screen, the common-mistakes table quotes the real messages, and the top bar got a SOLO heading beside TEAM BATTLE, whose first tab is now PROGRAM.',
-    ja: '言葉まわりを見直しました。ヘルプの「語」は「ワード」に統一、日本語の画面ではログの種別や GOAL・ガードも日本語に、「よくあるエラー」の表は実際のメッセージを引用するように。上部バーには「個人戦」の見出しが付き、チームバトル側のタブは「プログラム」になりました。',
-  },
-  {
-    date: '2026-10-08',
-    en: 'Tutorial chapter 10 no longer jams: its teams now fit the shared cost pool, a cost problem says so instead of pointing at the code, and The unbroken base was rebuilt to be winnable — meet the rushers away from your base.',
-    ja: 'チュートリアル 10 章が途中で詰まらなくなりました。チームの装備がコストの枠に収まるようになり、コスト超過のときはコードではなくコストの案内が出ます。チャレンジ「鉄壁の基地」もクリアできる形に作り直しました。基地から離れて迎え撃つのがコツです。',
-  },
-  {
-    date: '2026-10-08',
-    en: "A new team template: CastleDecoy walks its leader into the enemy's fire, and the moment it is hit, the rest run for the castle.",
-    ja: 'チームのテンプレートに CastleDecoy が加わりました。1 番機が先頭を歩いて敵の弾を引き受け、被弾した瞬間、残りの機体が城へ走り出します。',
-  },
-  {
-    date: '2026-10-08',
-    en: "The commentary earned its press badge: it reads each side's plan from the opening moves, calls a wiped-out team, a castle on the brink and the last robot standing, sums the match up in a lull, and says why a judgement went the way it did.",
-    ja: '実況が賢くなりました。開始直後の動きから布陣を読み、全滅・残り 1 台・落城寸前を呼び、膠着したら戦況をまとめ、判定決着では理由（城の差か、残り HP か）まで伝えます。',
-  },
-  {
-    date: '2026-10-08',
-    en: "The castle is the goal: a team now stays in the match while its castle stands, even with every robot gone, and a castle has one robot's worth of HP (200) at every team size — storming it is usually faster than grinding the team down.",
-    ja: '城攻めのルールが「城がすべて」になりました。全滅しても城が立っているかぎり試合は続き、城の HP は台数によらずロボット 1 台ぶん（200）。敵を倒すより、城を攻める方が早い——そういう調整です。',
+    en: 'Tutorial chapter 10 no longer jams: its teams fit the shared cost pool, and a cost problem says so instead of pointing at the code. The challenge The unbroken base was rebuilt to be winnable — meet the rushers away from your base.',
+    ja: 'チュートリアル 10 章が途中で詰まらなくなりました。チームの装備がコストの枠に収まり、コスト超過のときはコストの案内が出ます。チャレンジ「鉄壁の基地」もクリアできる形に作り直しました。基地から離れて迎え撃つのがコツです。',
   },
   {
     date: '2026-10-07',

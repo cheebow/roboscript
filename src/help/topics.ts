@@ -63,13 +63,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上の **マップ** で戦う場所を選びます。
 
 プログラムにエラーがあると、試合は始まりません。エラーのある行が赤くなり、ログに理由が出ます。` } },
-      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 16, and you can try them in any order; three of them are castle matches. The last is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
+      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 16, and you can try them in any order; three of them are base battles. The last is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
 
 - Each challenge has **conditions to clear it** (beat the enemy, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met adds one more, up to ★★★.
 - Some challenges **fix a part** (a Pistol, the Short sensor…); choose the other slots within the cost limit under **PARTS**.
 - Every try of a challenge is the same match: only your code and parts make a difference.
 - Your code and your best are kept for each challenge. Bests are compared by stars, then HP left, then time. Blank lines and lines with only a comment are not counted as lines.
-- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 16 問あり（うち 3 問は城攻め）、どれからでも挑戦できます。最後の 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
+- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 16 問あり（うち 3 問は基地戦）、どれからでも挑戦できます。最後の 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
 
 - それぞれに **クリア条件**（敵に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアすると ★ が 1 つ。星の条件を 1 つ満たすごとに ★ がもう 1 つ増え、最高で ★★★ です。
 - **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのスロットは、**パーツ** を押してコストの範囲で選べます。
@@ -100,18 +100,18 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上で **リーグ戦**（全員と 2 回ずつ）か **トーナメント**（2 勝で勝ち上がり）を選んで始めます。
 - 結果は戦闘画面の上の **結果ボード** に出ます。丸を押すと、その試合を見られます。左上の「◀ 結果ボード」で戻ります。
 - **結果** メニューから、結果をファイルに保存したり、人の結果ファイルを開いたりできます。` } },
-      { id: 'team-screen', title: { en: `The team battle (castles)`, ja: `チームバトル（城攻め）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu: each side defends a **castle**, and **one program drives the whole team**.
+      { id: 'team-screen', title: { en: `The team battle (bases)`, ja: `チームバトル（基地戦）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu: each side defends a **base**, and **one program drives the whole team**.
 
-- A team loses the moment its castle's HP reaches 0 — and only then: it is in the match as long as its castle stands, even with every robot gone. At time-out the healthier castle wins.
-- Pick **1 to 5 robots a side** and a castle map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
-- Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and castle words**.
+- A team loses the moment its base's HP reaches 0 — and only then: it is in the match as long as its base stands, even with every robot gone. At time-out the healthier base wins.
+- Pick **1 to 5 robots a side** and a base map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
+- Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and base words**.
 - While debugging, pick the machine to follow on the **INSPECTOR** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
-- **WATCH** (next to PROGRAM in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **城** を守り、**1 本のプログラムがチーム全体を動かします**。
+- **WATCH** (next to PROGRAM in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **基地** を守り、**1 本のプログラムがチーム全体を動かします**。
 
-- 城の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。城が立っているかぎり、全滅してもチームは戦いの中にいます。時間切れなら城の HP が多いほうの勝ち。
-- 上部バーで **片側 1〜5 台** と城のマップを選びます。コストはチームで 1 つの枠（10 × 台数 + 2）で、機体ごとの装備は \`config\` の番号タブ（1 2 3 …）で選びます。
-- どの機体も同じプログラムの自分のコピーを実行し、変数もセンサーも機体ごとに別です。\`self_id\`、無線（\`signal\`）、装備の語（\`sensor_range\` など）で役割を分けます（「チームと城の語」を参照）。
-- デバッグ中に追いかける機体は **状態** の欄のタブで選びます。ログの行を押すと、その行を実行した機体に切り替わります。ウォッチには無線などチームの語も並びます。
+- 基地の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。基地が立っているかぎり、全滅してもチームは戦いの中にいます。時間切れなら基地の HP が多いほうの勝ち。
+- 上部バーで **片側 1〜5 台** と基地のマップを選びます。コストはチームで 1 つの枠（10 × 台数 + 2）で、機体ごとの装備は \`config\` の番号タブ（1 2 3 …）で選びます。
+- どの機体も同じプログラムの自分のコピーを実行し、変数もセンサーも機体ごとに別です。\`self_id\`、無線（\`signal\`）、装備のワード（\`sensor_range\` など）で役割を分けます（「チームと基地のワード」を参照）。
+- デバッグ中に追いかける機体は **状態** の欄のタブで選びます。ログの行を押すと、その行を実行した機体に切り替わります。ウォッチには無線などチームのワードも並びます。
 - 上部バーの **観戦** では、保存したチーム同士を実況つきで戦わせ、試合をリンクで人に渡せます。この画面のガレージは **チーム** の棚で、ロボットと同じように共有できます（\`#team=\` リンクとファイル）。` } },
       { id: 'garage-help', title: { en: `The garage`, ja: `ガレージ` }, body: { en: `The shelf where you keep robots (program and parts) under a name. It is at the bottom left of the program screen.
 
@@ -153,7 +153,7 @@ When the program has a mistake, the match does not start: the line turns red, an
 - **脚** はどれもコスト 3 なので、コストを浮かせる用には使えません。強さも同じで、走り方で選びます。直進が速い Sprint、小回りの利く Pivot、その間の Standard、遅いかわりに走りながらでも弾がばらけにくい Walker、浮いて速く走る Hover（すぐには止まれず、滑ります。曲がったあとも少し横に流れます）。
 - パーツ名にマウスを載せると説明が出ます。下には、その組み合わせの性能が標準との差つきで出ます。
 - プログラムに合うパーツを選びましょう: 遠くから撃つなら Cannon と Scope、近づいて撃ちまくるなら Rapid と Heavy、隠れながら戦うなら Sprint や Light。
-- パーツを替えても、使える語は変わりません。` } },
+- パーツを替えても、使えるワードは変わりません。` } },
       { id: 'sharing', title: { en: `Sharing and files`, ja: `共有とファイル` }, body: { en: `There is no server. Robots and matches are given to others as **share links**, **share codes** or **files**.
 
 - **Share links** are the easiest way to post on a social network or send in a message: under **SHARE**, **POST ON X** opens a post with the link and #RoboScript in it, **COPY LINK** copies the link, and on a phone **SHARE VIA APP…** opens the phone's share menu. Opening the link opens the game and takes the robot into the garage, or plays the match in the arena. However long the program, a social network counts the link as a short one.
@@ -183,7 +183,7 @@ When the program has a mistake, the match does not start: the line turns red, an
 While you type in the editor or a field, Space and the arrows are part of the text.`, ja: `- **スペース**: 再生 / 一時停止
 - **← / →**: 1 つ戻る / 進む（デバッグでは 1 行）
 - **Cmd / Ctrl + Enter**: 実行
-- **F1**（エディタで語の上）: その語の解説を開く
+- **F1**（エディタでワードの上）: そのワードの解説を開く
 - **Esc**: メニューやヘルプを閉じる
 - エディタ: Enter / Tab で入力候補を確定、Ctrl + Space で候補を出す、Cmd / Ctrl + / でコメント切り替え、Cmd / Ctrl + Z で元に戻す
 
@@ -257,7 +257,7 @@ loop
 - \`if\`、\`set\`、\`drive\`、\`label\` などは時間がかかりません。1 tick にできる行動は 1 つですが、走行（\`drive\`）は設定なので、行動と同時に続きます。
 - \`if\` / \`else\` / \`loop\` / \`while\` / \`def\` の中身は、次の行から **半角の空白 4 つ** で字下げして書きます。Enter を押すと自動で字下げされます。
 - \`#\` から行末までは **コメント**（メモ）で、何もしません。
-- 語は小文字の英語です。大文字と小文字は区別されます。` } },
+- ワードは小文字の英語です。大文字と小文字は区別されます。` } },
       { id: 'moving', title: { en: `Moving and shooting`, ja: `動く・撃つ` }, body: { en: `- **Turn the body**: \`turn left\` / \`right\` turn 6 degrees at a time. \`turn enemy\` (towards the enemy), \`turn cover\` (along the way to cover) and \`turn hit\` (towards where you were shot from) turn that way as far as they can in a tick.
 - **Turn by an angle**: put the degrees after \`left\` / \`right\`, as in \`turn left 90\`, and the hull keeps turning, however many ticks it takes, until it has turned that far (15 ticks with standard legs). A negative angle turns the other way. The program does nothing else while it turns. \`aim left 30\` turns the turret the same way.
 - **Turn until facing**: \`face enemy\` / \`cover\` / \`hit\` keep turning, however many ticks it takes, until facing that way. \`face back\` turns right round, to face the way opposite to where the robot faced (about a second with standard legs).
@@ -277,7 +277,7 @@ loop
 - **撃つ**: \`fire\` は砲塔の向きへ撃ちます。次の弾の準備中（標準では 0.8 秒に 1 発）や弾切れのときは、何も起きません。走りながら撃つと、止まって撃つときの 5 倍ばらけます。
 - **身構える**: \`guard\` は、その tick に当たった弾のダメージを半分にします（1 試合に 4 回まで。使うたびに、次に撃てるまでが少し延びます）。
 - **待つ**: \`wait\` は何もせずに 1 tick 過ごします。` } },
-      { id: WORDS_TOPIC, title: { en: 'All the words', ja: '語の一覧' }, body: { en: '', ja: '' } },
+      { id: WORDS_TOPIC, title: { en: 'All the words', ja: 'ワードの一覧' }, body: { en: '', ja: '' } },
       { id: 'values', title: { en: `Numbers and variables`, ja: `数と変数` }, body: { en: `- Every value is a **number**. Calculate with \`+ - * /\` and brackets. Dividing by 0 gives 0.
 - **Sensors** are words holding what the robot found out: a number, or true / false (\`enemy_distance\`, \`hp\` and so on). They are listed in "All the words".
 - A **variable** is a box for a number. Put a number in with \`set\`:
@@ -305,7 +305,7 @@ loop
 - Use them in a value or a condition: \`if abs(aim_angle) > 2\` holds when the aim is more than 2 degrees off, to either side.
 - \`random\` draws from numbers made from the seed of the match: the same match draws the same numbers, so a match shared with someone plays out the same for them.
 - A function of your own with the same name comes first.`, ja: `- 値はすべて **数** です。\`+ - * /\` と括弧で計算できます。0 で割ると 0 になります。
-- **センサー** は、ロボットが調べた結果が入った語です。中身は数か、正しい / 正しくないのどちらかです（\`enemy_distance\`、\`hp\` など）。一覧は「語の一覧」にあります。
+- **センサー** は、ロボットが調べた結果が入ったワードです。中身は数か、正しい / 正しくないのどちらかです（\`enemy_distance\`、\`hp\` など）。一覧は「ワードの一覧」にあります。
 - **変数** は数を入れておく箱です。\`set\` で入れます。
 
 \`\`\`
@@ -315,7 +315,7 @@ loop
     set shots = shots + 1
 \`\`\`
 
-- 名前は英字で始まる半角の英数字と \`_\` です。語やセンサーの名前は使えません。
+- 名前は英字で始まる半角の英数字と \`_\` です。ワードやセンサーの名前は使えません。
 - プログラムのどこにも \`set\` のない名前を読むとエラーになります。\`set\` する前に読むと 0 です。
 - 変数の中身は、デバッグ中にウォッチの上の欄で見られます。
 
@@ -415,11 +415,11 @@ loop
 - 条件や式の中で呼ぶ関数には、時間のかかる行動と \`loop\` / \`while\` は書けません。
 - 関数の中だけで使えるのは引数だけです。\`set\` した変数は、プログラム全体で共有されます。
 - 関数が自分自身を呼ぶこと（再帰）はできません。` } },
-      { id: 'team-words', title: { en: `Team and castle words`, ja: `チームと城の語` }, body: { en: `The words of the team battle. Outside it they read 0 (and \`self_id\` reads 1), so a duel program can use them safely.
+      { id: 'team-words', title: { en: `Team and base words`, ja: `チームと基地のワード` }, body: { en: `The words of the team battle. Outside it they read 0 (and \`self_id\` reads 1), so a duel program can use them safely.
 
 - **\`self_id\`** is the machine's number (1, 2, …): one program, roles split by number.
 - **\`signal 3\`** puts a number on the team's **radio**; from the next tick everyone reads it as **\`ally_signal\`**, until a new number is sent. Everyone reads the tick's starting value, and of two senders in one tick the higher number wins. What each number means is up to your program.
-- **\`base_hp\`**, **\`base_distance\`**, **\`base_angle\`** are about your own castle; the \`enemy_base_\` words about the enemy's. \`face base\` / \`face enemy_base\` turn towards them.
+- **\`base_hp\`**, **\`base_distance\`**, **\`base_angle\`** are about your own base; the \`enemy_base_\` words about the enemy's. \`face base\` / \`face enemy_base\` turn towards them.
 - **\`ally_distance\`**, **\`ally_angle\`**, **\`ally_hp\`** are about the nearest living teammate (known even behind obstacles — the team keeps in touch by radio); \`face ally\` turns towards it. **\`allies_alive\`** counts the living teammates, yourself not included.
 - **\`sensor_range\`**, **\`max_speed\`**, **\`max_hp\`** read your own machine's parts, so roles can follow equipment.
 
@@ -438,11 +438,11 @@ loop
         face enemy_base
         drive forward
         wait
-\`\`\``, ja: `チームバトルの語です。チームバトルの外では 0 が入る（\`self_id\` は 1）ので、ふだんのプログラムに書いてあっても安全です。
+\`\`\``, ja: `チームバトルのワードです。チームバトルの外では 0 が入る（\`self_id\` は 1）ので、ふだんのプログラムに書いてあっても安全です。
 
 - **\`self_id\`** は自分の番号（1、2、…）。1 本のプログラムを番号で書き分けます。
 - **\`signal 3\`** はチームの **無線** に数を 1 つ載せます。次の tick から全員が **\`ally_signal\`** で読め、新しい数を送るまで残ります。全員が tick の始めの値を読み、同じ tick に 2 台が送ったら番号の大きい機体が勝ちます。数の意味はプログラムで決めます。
-- **\`base_hp\`**・**\`base_distance\`**・**\`base_angle\`** は自分の城、\`enemy_base_\` の語は敵の城のことです。\`face base\` / \`face enemy_base\` でそちらを向けます。
+- **\`base_hp\`**・**\`base_distance\`**・**\`base_angle\`** は自分の基地、\`enemy_base_\` のワードは敵の基地のことです。\`face base\` / \`face enemy_base\` でそちらを向けます。
 - **\`ally_distance\`**・**\`ally_angle\`**・**\`ally_hp\`** は一番近い生きている味方のことです（無線でつながっている決まりなので、障害物の陰でも分かります）。\`face ally\` でそちらへ。**\`allies_alive\`** は自分を除く生きている味方の数です。
 - **\`sensor_range\`**・**\`max_speed\`**・**\`max_hp\`** は自分の機体の装備を読むので、役割を装備に合わせられます。
 
@@ -482,26 +482,28 @@ When the robot does not do what you meant, look in Watch for the line where a va
 | Expected indented block | Indent the line after \`loop\` or \`if\` with four spaces |
 | Indent does not match any outer block | Make the number of spaces match an outer block |
 | Tabs / full-width spaces are not allowed for indentation | Indent with ordinary spaces |
-| Unknown command / Unknown variable | Check the spelling. A variable has to be \`set\` somewhere |
+| Unknown command "x" / Unknown variable "x" | Check the spelling. A variable has to be \`set\` somewhere |
 | Expected direction after "turn" | Give a direction, as in \`turn left\` |
 | "move" is now "drive" | Use \`drive forward\` (it drives until stopped) |
-| "f" cannot be used as a value: it takes time | Take the actions (\`fire\` and so on) out of a function called in a condition or a calculation |
+| "f" cannot be used as a value: it takes time (line 3) | Take the actions (\`fire\` and so on) out of a function called in a condition or a calculation |
 | "f" calls itself | Make sure functions do not call each other round in a circle |
 | "break" can only be used inside a loop or a while | Move \`break\` into a repeat |
-| The cost is over the limit | Change to lower-cost parts in \`config\`, so the total is 12 or less |
+| parts cost 13, over the limit of 12 | Change to lower-cost parts in \`config\`, so the total fits the limit |
+| ALPHA team: the machines' parts cost 36 together, over the team limit of 32 | In the team battle the cost pool is shared: pick lower-cost parts on the \`config\` tabs, or field fewer robots |
 
 A faulty line turns red, and the editor underlines it. Put the cursor on it to see what is wrong.`, ja: `| ログの文 | よくある原因と直し方 |
 |---|---|
 | 字下げしたブロックが必要 | \`loop\` や \`if\` の次の行を、空白 4 つで字下げする |
 | 字下げが、外側のどのブロックとも合っていない | 字下げの空白の数を、外のブロックとそろえる |
 | 字下げにタブ / 全角スペースは使えない | 半角の空白で字下げし直す |
-| 知らない命令 / 知らない変数 | つづりを確かめる。変数は、どこかで \`set\` しておく |
-| "turn" のあとに方向が必要 | \`turn left\` のように方向を書く |
+| "x" という命令はない / "x" という変数はない | つづりを確かめる。変数は、どこかで \`set\` しておく |
+| "turn" のあとに向きが要る | \`turn left\` のように向きを書く |
 | "move" は "drive" になった | \`drive forward\` を使う（止めるまで走る） |
-| "f" は値として使えない: 時間がかかる | 条件や式の中で呼ぶ関数から、行動（\`fire\` など）を外す |
+| "f" は値として使えない: 時間がかかる（3 行目） | 条件や式の中で呼ぶ関数から、行動（\`fire\` など）を外す |
 | "f" が自分自身を呼んでいる | 関数どうしが呼び合わないようにする |
 | break は loop か while の中でしか使えない | \`break\` を繰り返しの中に移す |
-| コストが上限を超えている | \`config\` でコストの低いパーツに替え、合計を 12 以下にする |
+| パーツのコストが 13 で、上限の 12 を超えている | \`config\` でコストの低いパーツに替え、合計を上限に収める |
+| ALPHA チーム: 機体のパーツのコストが合計 36 で、チームの上限 32 を超えている | チームバトルではコストの枠がチームで 1 つ。\`config\` の番号タブでコストの低いパーツに替えるか、台数を減らす |
 
 エラーのある行は赤くなり、エディタではその行に波線が出ます。カーソルを載せると内容が出ます。` } },
       {

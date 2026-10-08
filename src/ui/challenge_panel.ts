@@ -1,4 +1,4 @@
-import { t } from '../i18n/messages';
+import { type MessageKey, t } from '../i18n/messages';
 import type { KeyValueStorage } from '../project/project_store';
 import type { Recording } from '../debug/recorder';
 import type { ReplayManager } from '../debug/replay_manager';
@@ -267,6 +267,6 @@ function recordText(record: { lines: number; seconds: number; hp: number }): str
 /** "GUN Pistol": the parts named. */
 function describeParts(parts: Partial<Loadout>): string {
   return Object.entries(parts)
-    .map(([slot, id]) => `${slot.toUpperCase()} ${PARTS.find((part) => part.slot === slot && part.id === id)?.name ?? id}`)
+    .map(([slot, id]) => `${t(`slot.${slot}` as MessageKey)} ${PARTS.find((part) => part.slot === slot && part.id === id)?.name ?? id}`)
     .join(', ');
 }

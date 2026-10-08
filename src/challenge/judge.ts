@@ -103,9 +103,9 @@ export function describeCondition(condition: Condition): Text {
     case 'shots':
       return { en: `in ${condition.max} shots or fewer`, ja: `${condition.max} 発以内` };
     case 'castleHp':
-      return { en: `with your castle at ${condition.min} HP or more`, ja: `自分の城の HP を ${condition.min} 以上残す` };
+      return { en: `with your base at ${condition.min} HP or more`, ja: `自分の基地の HP を ${condition.min} 以上残す` };
     case 'castleDestroyed':
-      return { en: 'bringing the enemy castle down', ja: '敵の城を落とす' };
+      return { en: 'bringing the enemy base down', ja: '敵の基地を落とす' };
   }
 }
 

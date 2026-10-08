@@ -1,4 +1,4 @@
-import { t } from '../i18n/messages';
+import { type MessageKey, t } from '../i18n/messages';
 import type { DebugEvent } from '../debug/debug_event';
 import { createElement } from './dom';
 import { formatTimestamp } from './format';
@@ -97,7 +97,7 @@ function createRow(event: DebugEvent): HTMLElement {
   row.append(
     createElement('span', 'log-time', `[${formatTimestamp(event.timestamp)}]`),
     createElement('span', 'log-robot', event.robotId ?? ''),
-    createElement('span', 'log-type', event.type.toUpperCase()),
+    createElement('span', 'log-type', t(`log.type.${event.type}` as MessageKey)),
     createElement('span', 'log-message', event.message),
   );
   return row;

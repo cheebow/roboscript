@@ -1,21 +1,21 @@
-// Ready-made team programs for the castle match. One source drives every
+// Ready-made team programs for the base battle. One source drives every
 // machine of the team; like the single-robot templates, each shows one idea
 // plainly.
 
 import type { Template } from './templates';
 
 /**
- * Everyone runs straight for the enemy castle and shells it; enemies are
+ * Everyone runs straight for the enemy base and shells it; enemies are
  * shot only when they stand right in the way. Walls are felt along with a
  * turn, as the single-robot templates do.
  */
-export const CASTLE_RUSH = `# CastleRush: the whole team runs for the enemy castle and shells it. Enemies are shot only when they block the way.
+export const CASTLE_RUSH = `# BaseRush: the whole team runs for the enemy base and shells it. Enemies are shot only when they block the way.
 loop
     if blocked
         # A wall or a corner in the way: feel along it.
         turn left
     else if enemy_base_distance < weapon_range - 50
-        # In range of the castle: stand and shell it.
+        # In range of the base: stand and shell it.
         label SIEGE
         drive stop
         face enemy_base
@@ -34,8 +34,8 @@ loop
         wait
 `;
 
-/** Machine 1 stays home to guard the castle; the rest push. One program, split by self_id. */
-export const CASTLE_SPLIT = `# CastleSplit: machine 1 guards the castle while the others attack: one program, split by self_id.
+/** Machine 1 stays home to guard the base; the rest push. One program, split by self_id. */
+export const CASTLE_SPLIT = `# BaseSplit: machine 1 guards the base while the others attack: one program, split by self_id.
 def fight()
     drive stop
     aim enemy
@@ -43,7 +43,7 @@ def fight()
 
 loop
     if self_id == 1
-        # The guard stays by its castle and shoots what comes.
+        # The guard stays by its base and shoots what comes.
         if enemy_visible and enemy_distance < weapon_range
             label GUARD
             fight()
@@ -58,7 +58,7 @@ loop
             aim enemy
             wait
     else
-        # The attackers push for the enemy castle, fighting whatever shows itself.
+        # The attackers push for the enemy base, fighting whatever shows itself.
         if blocked
             turn left
         else if enemy_visible and enemy_distance < weapon_range - 50
@@ -78,7 +78,7 @@ loop
 `;
 
 /** Whoever sees an enemy calls the team on the radio; the rest answer the call and converge. */
-export const CASTLE_CALL = `# CastleCall: whoever sees an enemy calls the team with signal 1; the rest head for the caller. No call: march on the enemy castle.
+export const CASTLE_CALL = `# BaseCall: whoever sees an enemy calls the team with signal 1; the rest head for the caller. No call: march on the enemy base.
 # The radio holds one number for the whole team, and keeps it until someone sends another:
 # a caller that loses sight takes its call back with signal 0 (a destroyed caller cannot).
 set called = 0
@@ -122,9 +122,9 @@ loop
 
 /**
  * Everyone stays home and defends. A match nobody ends goes to the team with
- * the healthier castle, so a wall of defenders forces the enemy to come.
+ * the healthier base, so a wall of defenders forces the enemy to come.
  */
-export const CASTLE_TURTLE = `# CastleTurtle: the whole team walls in its own castle. Time up goes by castle HP, so the enemy has to come to us.
+export const CASTLE_TURTLE = `# BaseTurtle: the whole team walls in its own base. Time up goes by base HP, so the enemy has to come to us.
 loop
     if enemy_visible and enemy_distance < weapon_range
         label GUARD
@@ -147,7 +147,7 @@ loop
 `;
 
 /** Attacks while the team is whole; a fallen teammate sends everyone home to defend. */
-export const CASTLE_RALLY = `# CastleRally: attack while the team is whole; once a teammate falls (allies_alive drops), the rest fall back and hold the castle.
+export const CASTLE_RALLY = `# BaseRally: attack while the team is whole; once a teammate falls (allies_alive drops), the rest fall back and hold the base.
 def fight()
     drive stop
     aim enemy
@@ -155,7 +155,7 @@ def fight()
 
 loop
     if allies_alive < 2
-        # Somebody is down: no more pushing, the castle comes first.
+        # Somebody is down: no more pushing, the base comes first.
         if enemy_visible and enemy_distance < weapon_range
             label GUARD
             fight()
@@ -190,8 +190,8 @@ loop
         wait
 `;
 
-/** Nothing but the castle: it never fires at a robot. The purest race — trade castles and win by being faster. */
-export const CASTLE_RUNNER = `# CastleRunner: nothing but the castle. It never fires at a robot: it runs, and it shells.
+/** Nothing but the base: it never fires at a robot. The purest race — trade bases and win by being faster. */
+export const CASTLE_RUNNER = `# BaseRunner: nothing but the base. It never fires at a robot: it runs, and it shells.
 loop
     if blocked
         turn left
@@ -209,11 +209,11 @@ loop
 `;
 
 /**
- * A football line-up: a keeper on the castle, defenders on a line before it,
- * attackers away at the enemy castle. Built for five; smaller teams field
+ * A football line-up: a keeper on the base, defenders on a line before it,
+ * attackers away at the enemy base. Built for five; smaller teams field
  * the front of the line-up.
  */
-export const CASTLE_FORMATION = `# CastleFormation: machine 1 keeps the castle, 2 and 3 hold a line before it, the rest attack. A line-up by self_id.
+export const CASTLE_FORMATION = `# BaseFormation: machine 1 keeps the base, 2 and 3 hold a line before it, the rest attack. A line-up by self_id.
 def fight()
     drive stop
     aim enemy
@@ -221,7 +221,7 @@ def fight()
 
 loop
     if self_id == 1
-        # The keeper stands on the castle and shields it with its hull.
+        # The keeper stands on the base and shields it with its hull.
         if enemy_visible and enemy_distance < weapon_range
             label KEEPER
             fight()
@@ -239,7 +239,7 @@ loop
             aim enemy
             wait
     else if self_id <= 3
-        # The defenders hold a line before the castle.
+        # The defenders hold a line before the base.
         if enemy_visible and enemy_distance < weapon_range
             label DEFEND
             fight()
@@ -257,7 +257,7 @@ loop
             aim enemy
             wait
     else
-        # The attackers go for the enemy castle.
+        # The attackers go for the enemy base.
         if blocked
             turn left
         else if enemy_visible and enemy_distance < weapon_range - 50
@@ -276,8 +276,8 @@ loop
             wait
 `;
 
-/** Machine 1 walks in front and soaks the first fire; the hit is the signal for the rest to run for the castle. */
-export const CASTLE_DECOY = `# CastleDecoy: machine 1 walks in front; the moment it is hit it turns decoy, and the rest run for the castle.
+/** Machine 1 walks in front and soaks the first fire; the hit is the signal for the rest to run for the base. */
+export const CASTLE_DECOY = `# BaseDecoy: machine 1 walks in front; the moment it is hit it turns decoy, and the rest run for the base.
 loop
     if self_id == 1
         # The leader: being hit means the enemy has shown itself - call the run.
@@ -299,7 +299,7 @@ loop
                 drive forward
                 wait
         else if enemy_base_distance < weapon_range - 50
-            # Nobody has shot the leader: walk up and shell the castle itself.
+            # Nobody has shot the leader: walk up and shell the base itself.
             label SIEGE
             drive stop
             face enemy_base
@@ -313,7 +313,7 @@ loop
             drive forward
             wait
     else if ally_signal == 1 or allies_alive == 0
-        # The call is out (or the leader fell): the castle, now.
+        # The call is out (or the leader fell): the base, now.
         if enemy_base_distance < weapon_range - 50
             label SIEGE
             drive stop
@@ -345,16 +345,16 @@ loop
         wait
 `;
 
-/** The team programs offered in the castle match, besides the single-robot templates. */
+/** The team programs offered in the base battle, besides the single-robot templates. */
 export const TEAM_TEMPLATES: readonly Template[] = [
-  { id: 'castle_rush', name: 'CastleRush', source: CASTLE_RUSH },
-  { id: 'castle_split', name: 'CastleSplit', source: CASTLE_SPLIT },
-  { id: 'castle_call', name: 'CastleCall', source: CASTLE_CALL },
-  { id: 'castle_turtle', name: 'CastleTurtle', source: CASTLE_TURTLE },
-  { id: 'castle_rally', name: 'CastleRally', source: CASTLE_RALLY },
-  { id: 'castle_runner', name: 'CastleRunner', source: CASTLE_RUNNER },
-  { id: 'castle_formation', name: 'CastleFormation', source: CASTLE_FORMATION },
-  { id: 'castle_decoy', name: 'CastleDecoy', source: CASTLE_DECOY },
+  { id: 'castle_rush', name: 'BaseRush', source: CASTLE_RUSH },
+  { id: 'castle_split', name: 'BaseSplit', source: CASTLE_SPLIT },
+  { id: 'castle_call', name: 'BaseCall', source: CASTLE_CALL },
+  { id: 'castle_turtle', name: 'BaseTurtle', source: CASTLE_TURTLE },
+  { id: 'castle_rally', name: 'BaseRally', source: CASTLE_RALLY },
+  { id: 'castle_runner', name: 'BaseRunner', source: CASTLE_RUNNER },
+  { id: 'castle_formation', name: 'BaseFormation', source: CASTLE_FORMATION },
+  { id: 'castle_decoy', name: 'BaseDecoy', source: CASTLE_DECOY },
 ];
 
 export function findTeamTemplate(id: string): Template | undefined {

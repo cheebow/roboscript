@@ -1,41 +1,41 @@
-// Chapter 10 of the tutorial: the castle match (the team battle).
+// Chapter 10 of the tutorial: the base battle (the team battle).
 import { CASTLE_SPLIT } from '../data/team_templates';
 import { TARGET_BOT, castleStage } from './stages';
 import type { Chapter } from './types';
 
-/** The castle chapter's training teams. */
+/** The base chapter's training teams. */
 const SITTING_TEAM = TARGET_BOT;
 
 export const CASTLE_CHAPTER: Chapter = {
   id: 'castle',
-  title: { en: `The castle match`, ja: `城攻め（チームバトル）` },
+  title: { en: `The base battle`, ja: `基地戦（チームバトル）` },
   steps: [
     {
       id: 'castle-first',
-      title: { en: `A castle to bring down`, ja: `城を落とす` },
+      title: { en: `A base to bring down`, ja: `基地を落とす` },
       body: {
-        en: `In the **team battle** (in the start menu) each side defends a **castle**. A team loses the moment its castle's HP reaches 0 — and only then: as long as the castle stands, the team is in the match, even with every robot gone. When time runs out, the healthier castle wins.
+        en: `In the **team battle** (in the start menu) each side defends a **base**. A team loses the moment its base's HP reaches 0 — and only then: as long as the base stands, the team is in the match, even with every robot gone. When time runs out, the healthier base wins.
 
 New words come with it:
 
-- **\`enemy_base_distance\`** / **\`enemy_base_angle\`** … to the enemy castle's centre
-- **\`base_hp\`** / **\`enemy_base_hp\`** … the castles' HP
-- **\`face enemy_base\`** / **\`face base\`** … turn until you face a castle
+- **\`enemy_base_distance\`** / **\`enemy_base_angle\`** … to the enemy base's centre
+- **\`base_hp\`** / **\`enemy_base_hp\`** … the bases' HP
+- **\`face enemy_base\`** / **\`face base\`** … turn until you face a base
 
-Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent just sits there: march on its castle, and shoot whatever stands in the way.`,
-        ja: `**チームバトル**（起動メニューにあります）では、どちらの側も **城** を守ります。城の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。城が立っているかぎり、ロボットが全滅してもチームは戦いの中にいます。時間切れなら、城の HP が多いほうの勝ちです。
+Bullets stop at a base, and only **enemy** bullets wear it down. This opponent just sits there: march on its base, and shoot whatever stands in the way.`,
+        ja: `**チームバトル**（起動メニューにあります）では、どちらの側も **基地** を守ります。基地の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。基地が立っているかぎり、ロボットが全滅してもチームは戦いの中にいます。時間切れなら、基地の HP が多いほうの勝ちです。
 
-新しい語があります。
+新しいワードがあります。
 
-- **\`enemy_base_distance\`** / **\`enemy_base_angle\`** … 敵の城の中心まで
-- **\`base_hp\`** / **\`enemy_base_hp\`** … 城の HP
-- **\`face enemy_base\`** / **\`face base\`** … 城の方を向くまで回る
+- **\`enemy_base_distance\`** / **\`enemy_base_angle\`** … 敵の基地の中心まで
+- **\`base_hp\`** / **\`enemy_base_hp\`** … 基地の HP
+- **\`face enemy_base\`** / **\`face base\`** … 基地の方を向くまで回る
 
-弾は城で止まり、城を削れるのは **敵の** 弾だけです。今回の相手はその場に座っているだけ。城へ向かって進み、じゃまなものは撃ちましょう。`,
+弾は基地で止まり、基地を削れるのは **敵の** 弾だけです。今回の相手はその場に座っているだけ。基地へ向かって進み、じゃまなものは撃ちましょう。`,
       },
       task: {
-        en: `Use \`enemy_base_distance\` to march into range and bring the castle down. Its keeper is only in the way: beating it wins nothing.`,
-        ja: `\`enemy_base_distance\` を使って射程まで進み、城を落として勝ちましょう。守りを倒しても、城が残っているうちは勝ちではありません。`,
+        en: `Use \`enemy_base_distance\` to march into range and bring the base down. Its keeper is only in the way: beating it wins nothing.`,
+        ja: `\`enemy_base_distance\` を使って射程まで進み、基地を落として勝ちましょう。守りを倒しても、基地が残っているうちは勝ちではありません。`,
       },
       hints: [
         {
@@ -54,7 +54,7 @@ Bullets stop at a castle, and only **enemy** bullets wear it down. This opponent
         drive forward
         wait
 `,
-      start: `# March on the enemy castle, and shell it from inside your range.
+      start: `# March on the enemy base, and shell it from inside your range.
 loop
     wait
 `,
@@ -91,8 +91,8 @@ else
 **状態** の欄のタブで機体を選ぶと、その機体の値をウォッチで見られます。デバッグ中の行の表示も、選んだ機体のものになります。`,
       },
       task: {
-        en: `Make machine 1 stand guard while the others march on the enemy castle, and win. Use \`self_id\`.`,
-        ja: `\`self_id\` を使って、1 番機は守りに残し、ほかの機体で敵の城へ攻め込んで勝ちましょう。`,
+        en: `Make machine 1 stand guard while the others march on the enemy base, and win. Use \`self_id\`.`,
+        ja: `\`self_id\` を使って、1 号機は守りに残し、ほかの機体で敵の基地へ攻め込んで勝ちましょう。`,
       },
       hints: [
         {
@@ -128,18 +128,18 @@ else
       body: {
         en: `Teammates share one **radio**. **\`signal 1\`** puts a number on it; from the next tick, everyone reads it as **\`ally_signal\`**, until a new number is sent. What each number means is up to your program.
 
-This opponent splits up: one keeper stays home, two machines come for your castle. March on the enemy castle together, with a rule on the radio: whoever gets an enemy in range **calls the team** — \`signal 1\` — and keeps calling while it fights. A machine that hears the call heads for its nearest teammate with **\`face ally\`**: every call is answered by every free gun. And a finished call must be **taken back** — the caller sends \`signal 0\` once no enemy is in sight — or the team would keep answering it forever. Remembering whether it was you who called takes a variable.
+This opponent splits up: one keeper stays home, two machines come for your base. March on the enemy base together, with a rule on the radio: whoever gets an enemy in range **calls the team** — \`signal 1\` — and keeps calling while it fights. A machine that hears the call heads for its nearest teammate with **\`face ally\`**: every call is answered by every free gun. And a finished call must be **taken back** — the caller sends \`signal 0\` once no enemy is in sight — or the team would keep answering it forever. Remembering whether it was you who called takes a variable.
 
 Watch \`ally_signal\` change in the WATCH panel while you debug: that is the protocol you designed, running.`,
         ja: `味方は 1 本の **無線** でつながっています。**\`signal 1\`** で数を載せると、次の tick から全員が **\`ally_signal\`** で読めます（新しい数を送るまで残ります）。数の意味はプログラムで決めます。
 
-今回の相手は兵力を割いてきます: 1 台を城に残し、2 台がこちらの城へ向かってきます。こちらは全員そろって敵の城へ進軍し、無線にルールをひとつ決めましょう: 敵を射程にとらえた機体が **チームを呼ぶ** — \`signal 1\` — 戦っている間は呼び続けます。呼ばれた機体は **\`face ally\`** で一番近い味方のところへ駆けつけます。手のあいた銃は全部、呼ばれた場所に集まるわけです。そして、終わった呼び出しは **取り消す** こと — 敵が見えなくなったら呼んだ機体が \`signal 0\` を送ります。そうしないと、チームは永遠に駆けつけ続けます。「呼んだのが自分かどうか」を覚えておくのには変数を使います。
+今回の相手は兵力を割いてきます: 1 台を基地に残し、2 台がこちらの基地へ向かってきます。こちらは全員そろって敵の基地へ進軍し、無線にルールをひとつ決めましょう: 敵を射程にとらえた機体が **チームを呼ぶ** — \`signal 1\` — 戦っている間は呼び続けます。呼ばれた機体は **\`face ally\`** で一番近い味方のところへ駆けつけます。手のあいた銃は全部、呼ばれた場所に集まるわけです。そして、終わった呼び出しは **取り消す** こと — 敵が見えなくなったら呼んだ機体が \`signal 0\` を送ります。そうしないと、チームは永遠に駆けつけ続けます。「呼んだのが自分かどうか」を覚えておくのには変数を使います。
 
 デバッグ中にウォッチの \`ally_signal\` が変わるのを見てください。自分で設計した無線のやりとりが動いています。`,
       },
       task: {
-        en: `March on the enemy castle together and bring it down, calling every fight with \`signal\` and \`ally_signal\`.`,
-        ja: `\`signal\` と \`ally_signal\` で戦いのたびにチームを呼び集めながら、そろって攻め込み、敵の城を落としましょう。`,
+        en: `March on the enemy base together and bring it down, calling every fight with \`signal\` and \`ally_signal\`.`,
+        ja: `\`signal\` と \`ally_signal\` で戦いのたびにチームを呼び集めながら、そろって攻め込み、敵の基地を落としましょう。`,
       },
       hints: [
         {
@@ -184,7 +184,7 @@ loop
       id: 'castle-next',
       title: { en: `Your team awaits`, ja: `キミのチームを作ろう` },
       body: {
-        en: `That is the whole idea of the castle match: one program, a castle to keep, a castle to take, and a radio between your machines.
+        en: `That is the whole idea of the base battle: one program, a base to keep, a base to take, and a radio between your machines.
 
 Two more things worth knowing:
 
@@ -192,7 +192,7 @@ Two more things worth knowing:
 - **\`allies_alive\`** counts your living teammates: \`if allies_alive == 0\` is "I am the last one".
 
 Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 5 a side) and the map, watch saved teams fight under the commentary, and share a team with a link, like a robot.`,
-        ja: `これが城攻めの全体像です。1 本のプログラム、守る城と落とす城、そして機体をつなぐ無線。
+        ja: `これが基地戦の全体像です。1 本のプログラム、守る基地と落とす基地、そして機体をつなぐ無線。
 
 あと 2 つ、覚えておくと良いことを。
 

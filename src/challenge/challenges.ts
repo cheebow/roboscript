@@ -262,10 +262,10 @@ export const CHALLENGES: readonly Challenge[] = [
   },
   {
     id: 'castle-solo',
-    title: { en: 'Castle for one', ja: 'ひとり城攻め' },
+    title: { en: 'Base battle for one', ja: 'ひとり基地戦' },
     brief: {
-      en: 'A castle match of one robot a side. The enemy runs straight for your castle: stop it on the way, or out-race it to its own. Either way, win.',
-      ja: '片側 1 台の城攻めです。相手はまっすぐこちらの城へ走ってきます。途中で止めるか、先に向こうの城を落とすか。どちらでも、勝ちましょう。',
+      en: 'A base battle of one robot a side. The enemy runs straight for your base: stop it on the way, or out-race it to its own. Either way, win.',
+      ja: '片側 1 台の基地戦です。相手はまっすぐこちらの基地へ走ってきます。途中で止めるか、先に向こうの基地を落とすか。どちらでも、勝ちましょう。',
     },
     stage: castleStage(1, CASTLE_RUSH, 131, { bot: { gun: 'pistol' } }),
     goal: { kind: 'win' },
@@ -294,15 +294,15 @@ export const CHALLENGES: readonly Challenge[] = [
   },
   {
     id: 'castle-hold',
-    title: { en: 'The unbroken castle', ja: '鉄壁の城' },
+    title: { en: 'The unbroken base', ja: '鉄壁の基地' },
     brief: {
-      en: 'Three rushers are coming for your castle. Once they have it in range they shell it and ignore you, so waiting at the walls is too late: go out and meet them. Win — and for the stars, hardly let them scratch the castle.',
-      ja: '3 台の突撃が、こちらの城へ向かってきます。城を射程にとらえた敵は、こちらを無視して城を撃ち続けます。城壁で待っていては手遅れです。前へ出て迎え撃ちましょう。星の条件は、城をほとんど削らせないことです。',
+      en: 'Three rushers are coming for your base. Once they have it in range they shell it and ignore you, so waiting at the walls is too late: go out and meet them. Win — and for the stars, hardly let them scratch the base.',
+      ja: '3 台の突撃が、こちらの基地へ向かってきます。基地を射程にとらえた敵は、こちらを無視して基地を撃ち続けます。基地の前で待っていては手遅れです。前へ出て迎え撃ちましょう。星の条件は、基地をほとんど削らせないことです。',
     },
     // Both teams field light bodies and pistols: three machines inside the team's cost limit, on even terms.
     stage: castleStage(3, CASTLE_RUSH, 132, { bot: { body: 'light', gun: 'pistol' }, player: { body: 'light', gun: 'pistol' } }),
     goal: { kind: 'win' },
-    // Of the castle's 200: at most two hits through for a star, at most one for both.
+    // Of the base's 200: at most two hits through for a star, at most one for both.
     stars: [{ kind: 'castleHp', min: 150 }, { kind: 'castleHp', min: 180 }],
     start: START,
     answer: `loop
@@ -325,10 +325,10 @@ export const CHALLENGES: readonly Challenge[] = [
   },
   {
     id: 'castle-fall',
-    title: { en: 'Bring the castle down', ja: '城を落とせ' },
+    title: { en: 'Bring the base down', ja: '基地を落とせ' },
     brief: {
-      en: 'Two defenders sit by their castle and never leave it. Killing them ends nothing you need: the challenge is cleared only when their CASTLE falls. Short-sighted as they are, a long gun can shell the castle from beyond their eyes.',
-      ja: '2 台の守りが城のそばに座り込んでいます。倒すだけでは足りません。この課題は、相手の「城」を落として初めてクリアです。守りは目が短いので、長い銃なら見つからない距離から城を撃てます。',
+      en: 'Two defenders sit by their base and never leave it. Killing them ends nothing you need: the challenge is cleared only when their BASE falls. Short-sighted as they are, a long gun can shell the base from beyond their eyes.',
+      ja: '2 台の守りが基地のそばに座り込んでいます。倒すだけでは足りません。この課題は、相手の「基地」を落として初めてクリアです。守りは目が短いので、長い銃なら見つからない距離から基地を撃てます。',
     },
     stage: castleStage(2, CASTLE_TURTLE, 133, { bot: { sensor: 'short' } }),
     goal: { kind: 'win' },

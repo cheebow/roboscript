@@ -657,7 +657,7 @@ Each is explained with comments (\`#\`). Put the cursor on a word this tutorial 
 - **StrafeBot** … 横に走りながら、敵の動く先を狙う（\`aim lead\`）
 - **SentryBot** … 止まって、動く先を正確に狙う
 
-どれもコメント（\`#\`）で説明が書いてあります。このチュートリアルで習っていない語は、カーソルを載せると説明が出ます。` },
+どれもコメント（\`#\`）で説明が書いてあります。このチュートリアルで習っていないワードは、カーソルを載せると説明が出ます。` },
     check: { kind: 'read' },
   },
   {

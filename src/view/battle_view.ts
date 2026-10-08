@@ -50,7 +50,6 @@ const GUARD_RING_GAP = 4;
 const GUARD_RING_PX = 2;
 /** A single tick of guarding would be gone before it is seen: the ring and the label fade out over this many ticks. */
 const GUARD_SHOWN_TICKS = 15;
-const GUARD_LABEL = 'GUARD';
 /** From the robot's edge up to the label, above the HP bar. */
 const GUARD_LABEL_GAP = 13;
 /** From the robot's edge down to its name; leaves room for the target frame in between. */
@@ -320,7 +319,7 @@ export class BattleView {
     ctx.textAlign = 'center';
     ctx.textBaseline = marks.guardBaseline;
     ctx.fillStyle = color;
-    this.fillTextInside(GUARD_LABEL, robot.x, marks.guardY, arenaWidth);
+    this.fillTextInside(t('battle.guard'), robot.x, marks.guardY, arenaWidth);
     ctx.globalAlpha = 1;
   }
 
@@ -353,7 +352,7 @@ export class BattleView {
     ctx.font = this.font(LABEL_LINE_PX);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('GOAL', goal.x, goal.y);
+    ctx.fillText(t('battle.goal'), goal.x, goal.y);
     ctx.restore();
   }
 
@@ -427,7 +426,7 @@ function isDraw(result: MatchResult): boolean {
 export function formatResult(result: MatchResult, teamNames?: readonly string[]): string {
   if (result.winnerTeam !== undefined) {
     if (result.winnerTeam === null) return t('battle.draw');
-    return t('battle.teamWinner', { name: teamNames?.[result.winnerTeam] ?? `TEAM ${result.winnerTeam + 1}` });
+    return t('battle.teamWinner', { name: teamNames?.[result.winnerTeam] ?? result.winnerTeam + 1 });
   }
   return result.winnerId === null ? t('battle.draw') : t('battle.winner', { name: result.winnerId });
 }

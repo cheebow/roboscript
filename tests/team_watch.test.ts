@@ -37,7 +37,7 @@ describe('the commentary of a castle match', () => {
     const result = recording.snapshots[recording.snapshots.length - 1].result;
     expect(result?.winnerTeam).not.toBeUndefined();
     if (result?.reason === 'base destroyed') {
-      expect(text).toMatch(/castle|城/i);
+      expect(text).toMatch(/base|基地/i);
     }
     // The ending names a team whenever somebody won.
     if (result?.winnerTeam !== null && result?.winnerTeam !== undefined) {
@@ -51,7 +51,7 @@ describe('the commentary of a castle match', () => {
     const anyCastleDamage = recording.snapshots.some((snapshot) => snapshot.bases.some((hp, i) => hp < (recording.bases?.[i].maxHp ?? 0)));
     const lines = commentaryOf(recording, fight.names, 120, ['Attackers', 'Keepers']);
     const text = lines.map((line) => line.text).join('\n');
-    if (anyCastleDamage) expect(text).toMatch(/castle|城/i);
+    if (anyCastleDamage) expect(text).toMatch(/base|基地/i);
   });
 });
 

@@ -4,7 +4,7 @@ import { randomSeed } from '../arena/seed';
 import { type CastleArenaDefinition, findCastleArena } from '../data/arenas';
 import { castleSpawnsFor } from '../data/arenas/castle_common';
 import { MAX_TEAM_SIZE, TEAM_DEFAULT_LOADOUT, teamCostLimitFor } from '../data/castle';
-import { MATCH_DEFAULTS } from '../data/match_defaults';
+import { MATCH_DEFAULTS, ROBOT_IDS } from '../data/match_defaults';
 import { costOf, statsOf } from '../data/parts';
 import { RULES_VERSION } from '../data/rules_version';
 import { TEAM_TEMPLATES } from '../data/team_templates';
@@ -196,7 +196,7 @@ export class TeamBattleMode {
   message(): string {
     const status = this.watched.status();
     const names = this.watchingNames;
-    if (status === null || names === null) return t('arena.ready');
+    if (status === null || names === null) return t('teamwatch.ready');
     return `${t('arena.vs', { first: names[0], second: names[1] })}   ${status}`;
   }
 
@@ -269,7 +269,7 @@ export class TeamBattleMode {
 
   private createSlot(team: number): SlotView {
     const select = createElement('select', 'lineup-select');
-    select.setAttribute('aria-label', t('arena.robot.label', { number: team + 1 }));
+    select.setAttribute('aria-label', t('team.name', { team: ROBOT_IDS[team] }));
     select.addEventListener('change', () => {
       this.notice.clear();
       this.picked[team] = select.value;
@@ -290,7 +290,7 @@ export class TeamBattleMode {
   private slotElement(slot: SlotView, team: number): HTMLElement {
     const details = createElement('div', 'lineup-details');
     const choice = createElement('div', 'lineup-choice');
-    choice.append(createElement('span', 'field-name', t('team.name', { team: team === 0 ? 'ALPHA' : 'BRAVO' })), slot.select);
+    choice.append(createElement('span', 'field-name', t('team.name', { team: ROBOT_IDS[team] })), slot.select);
     const figures = createElement('div', 'lineup-figures');
     figures.append(slot.cost, slot.status);
     details.append(choice, slot.parts, figures);

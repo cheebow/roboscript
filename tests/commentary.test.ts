@@ -119,7 +119,7 @@ describe('the commentary of a castle match', () => {
       EFFECT_LIFETIMES,
     );
     const lines = commentaryOf(recording, ['RED-1', 'BLUE-1'], 20, ['RED', 'BLUE']);
-    expect(lines.some((line) => /wiped out|castle fights on/.test(line.text) && line.text.includes('BLUE'))).toBe(true);
+    expect(lines.some((line) => /wiped out|base fights on/.test(line.text) && line.text.includes('BLUE'))).toBe(true);
     const last = lines[lines.length - 1];
     expect(/beyond the field|carries the day/.test(last.text)).toBe(true);
     expect(last.text).toContain('BLUE');

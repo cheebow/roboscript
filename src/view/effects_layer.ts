@@ -42,11 +42,11 @@ const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
 // A number lands in a mailbox: a little envelope flies from the sender
 // along a dotted line to the receiver, and pops up over it on arrival. All
-// of it in a plain white of its own, so it does not read as a robot's
-// part. (Rings, antenna marks and raw numbers were tried first: the rings
+// of it in a plain grey of its own, so it does not read as a robot's
+// part, and stays quieter than the fighting. (Rings, antenna marks and raw numbers were tried first: the rings
 // read as the detection and guard rings, the marks were too small, and a
 // number can be as long as the program likes.)
-const RADIO = '#e8f4ff';
+const RADIO = '#9aa4ad';
 /** px between the dots of the line a signal travels along. */
 const LINK_SPACING = 10;
 /** How faint the line is next to the envelope riding it. */
@@ -55,16 +55,15 @@ const LINK_ALPHA = 0.35;
 const LINK_ARRIVE = 0.5;
 /** The envelope, drawn in square cells; '#' is a cell. */
 const ENVELOPE: readonly string[] = [
-  '#########',
-  '##.....##',
-  '#.#...#.#',
-  '#..#.#..#',
-  '#...#...#',
-  '#########',
+  '#######',
+  '##...##',
+  '#.#.#.#',
+  '#..#..#',
+  '#######',
 ];
 const ENVELOPE_CELL = DOT;
 /** Where the envelope's centre sits above the receiver once it arrives, and how far it rises. */
-const ENVELOPE_Y = -24;
+const ENVELOPE_Y = -22;
 const ENVELOPE_RISE = 4;
 /** The radio marks stay full until this share of their life, then fade out. */
 const RADIO_FADE_FROM = 0.7;

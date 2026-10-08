@@ -85,6 +85,8 @@ export interface TickEvent {
   robot?: number;
   /** The index of the robot it came from, for the events that travel between robots (a signal heard). */
   from?: number;
+  /** The number carried, for the events that carry one (a signal sent or heard). */
+  value?: number;
   /** The index in `bases` of the castle it happened to. */
   base?: number;
 }
@@ -227,11 +229,12 @@ export class Simulation {
       if (action === null || action.signal === null) return;
       const team = this.teamOf[index];
       // A new number on the radio is seen going out and coming in; the same number sent again is not.
-      if (this.signals.get(team) !== action.signal) {
-        this.tickEvents.push({ kind: 'signal', ...this.robots[index].position, robot: index });
+      const value = action.signal;
+      if (this.signals.get(team) !== value) {
+        this.tickEvents.push({ kind: 'signal', ...this.robots[index].position, robot: index, value });
         this.robots.forEach((mate, mateIndex) => {
           if (mateIndex !== index && mate.alive && this.teamOf[mateIndex] === team) {
-            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex, from: index });
+            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex, from: index, value });
           }
         });
       }

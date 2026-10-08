@@ -205,8 +205,8 @@ describe('signal and base-hit events', () => {
     simulation.step();
     const [sender, mate] = simulation.robots;
     expect(simulation.tickEvents).toEqual([
-      { kind: 'signal', ...sender.position, robot: 0 },
-      { kind: 'signalHeard', ...mate.position, robot: 1, from: 0 },
+      { kind: 'signal', ...sender.position, robot: 0, value: 1 },
+      { kind: 'signalHeard', ...mate.position, robot: 1, from: 0, value: 1 },
     ]);
     // The same number sent again is not news.
     simulation.step();
@@ -217,7 +217,7 @@ describe('signal and base-hit events', () => {
     const simulation = createSimulation([new FixedBrain({ signal: 1 }), new FixedBrain()]);
     simulation.step();
     const signals = simulation.tickEvents.filter((event) => event.kind === 'signal' || event.kind === 'signalHeard');
-    expect(signals).toEqual([{ kind: 'signal', ...simulation.robots[0].position, robot: 0 }]);
+    expect(signals).toEqual([{ kind: 'signal', ...simulation.robots[0].position, robot: 0, value: 1 }]);
   });
 
   it('reports a hit on a castle whenever an enemy bullet wears it down', () => {

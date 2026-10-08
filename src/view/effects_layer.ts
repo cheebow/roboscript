@@ -41,12 +41,10 @@ const DETECT_START_RADIUS = 22;
 const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
 // A new number on the radio: a dotted line runs out to each teammate and a
-// pulse of data travels along it; where it arrives, reception bars light up.
-// The sender itself shows a small antenna mark. (Rings were tried first, but
-// read as the detection and guard rings.)
-/** Where the sender's antenna mark sits above the robot's centre. */
-const SEND_Y = -18;
-const SEND_ARC_RADIUS = 6;
+// pulse of data travels along it; the number itself pops up at the sender,
+// and at each receiver as the pulse lands. (Rings and antenna marks were
+// tried first: the rings read as the detection and guard rings, the marks
+// were too small to read.)
 /** px between the dots of the line a signal travels along. */
 const LINK_SPACING = 10;
 /** How faint the line is next to the pulse riding it. */
@@ -55,22 +53,25 @@ const LINK_ALPHA = 0.35;
 const LINK_ARRIVE = 0.5;
 /** Dots trailing the pulse's head, each dimmer than the one before. */
 const PULSE_TRAIL = 3;
-// The reception bars at the receiving end.
-const HEARD_BARS = 3;
-const HEARD_X = 14;
-const HEARD_Y = -20;
-/** Dots across and extra dots up: every bar is this wide, and one step taller than the one before. */
-const HEARD_BAR_WIDTH = 2;
-const HEARD_BAR_STEP = 2;
+// The number itself pops up where the signal lands (and beside the sender's
+// antenna): the protocol the player wrote, readable on the field.
+const VALUE_X = 12;
+const VALUE_Y = -18;
+/** px the number rises while it is shown. */
+const VALUE_RISE = 6;
+/** Screen px of the number's type. */
+const VALUE_FONT_PX = 12;
 /** The radio marks stay full until this share of their life, then fade out. */
 const RADIO_FADE_FROM = 0.7;
 // An enemy bullet wore the castle down: a heavier spark than an ordinary impact.
 const BASE_HIT_REACH = 2;
 
-/** What of the scene an effect may follow: the robots as they stand now, and their teams (for their colours). */
+/** What of the scene an effect may follow: the robots as they stand now, their teams (for their colours), and the view's type. */
 export interface EffectScene {
   robots?: readonly { x: number; y: number }[];
   teams?: readonly number[];
+  /** The view's font at the given screen size, countering its zoom; without it, effects draw no text. */
+  font?(screenPixels: number): string;
 }
 
 /**
@@ -169,17 +170,20 @@ function radioAlpha(progress: number): number {
   return progress < RADIO_FADE_FROM ? 1 : 1 - (progress - RADIO_FADE_FROM) / (1 - RADIO_FADE_FROM);
 }
 
-/** The sender broadcasts: a small antenna mark above the robot, riding along with it. */
+/** The number an effect carries, popping up beside the given spot and rising a little. */
+function drawValue(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, at: { x: number; y: number }, shown: number, scene: EffectScene): void {
+  if (effect.value === undefined || scene.font === undefined) return;
+  ctx.font = scene.font(VALUE_FONT_PX);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(effect.value), at.x + VALUE_X, at.y + VALUE_Y - VALUE_RISE * shown);
+}
+
+/** The sender broadcasts: the number sent pops up over the robot and rises, riding along with it. */
 function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
-  const anchor = anchorOf(effect, scene);
-  const centre = { x: anchor.x, y: anchor.y + SEND_Y };
   ctx.fillStyle = robotPalette(effect, scene).light;
   ctx.globalAlpha = radioAlpha(progress);
-  dot(ctx, centre.x, centre.y);
-  for (let index = 0; index < 5; index++) {
-    const angle = -Math.PI * 0.75 + (Math.PI * 0.5 * index) / 4;
-    dot(ctx, centre.x + Math.cos(angle) * SEND_ARC_RADIUS, centre.y + Math.sin(angle) * SEND_ARC_RADIUS);
-  }
+  drawValue(ctx, effect, anchorOf(effect, scene), progress, scene);
 }
 
 /**
@@ -213,19 +217,11 @@ function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progre
       if (tail === 0) for (const [dx, dy] of PLUS) dot(ctx, place.x + dx * DOT, place.y + dy * DOT);
     }
   }
-  // The bars light up once the pulse is in: nothing yet while it is still on its way.
+  // The number pops up once the pulse is in: nothing yet while it is still on its way.
   const arrived = from === null ? progress : Math.max(0, (progress - LINK_ARRIVE) / (1 - LINK_ARRIVE));
   if (arrived <= 0) return;
   ctx.globalAlpha = radioAlpha(progress);
-  const lit = Math.min(HEARD_BARS, 1 + Math.floor(arrived * 2 * HEARD_BARS));
-  for (let bar = 0; bar < lit; bar++) {
-    // Each bar is a step taller than the one before, like reception bars.
-    for (let height = 0; height < HEARD_BAR_STEP * (bar + 1); height++) {
-      for (let across = 0; across < HEARD_BAR_WIDTH; across++) {
-        dot(ctx, to.x + HEARD_X + bar * DOT * (HEARD_BAR_WIDTH + 1) + across * DOT, to.y + HEARD_Y - height * DOT);
-      }
-    }
-  }
+  drawValue(ctx, effect, to, arrived, scene);
 }
 
 /** An enemy bullet wore the castle down: a heavier, hotter spark than an ordinary impact. */

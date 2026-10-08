@@ -147,7 +147,7 @@ export class BattleView {
     snapshot.robots.forEach((robot, index) =>
       this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }),
     );
-    drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes, { robots: snapshot.robots, teams: this.teams });
+    drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes, { robots: snapshot.robots, teams: this.teams, font: (px) => this.font(px) });
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {
       drawTargetMarks(ctx, watcher, watched, stats[snapshot.robots.indexOf(watched)], watcherColor, pixel);

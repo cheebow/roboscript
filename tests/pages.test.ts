@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { allWords } from '../src/ai/reference';
 import { CHALLENGES } from '../src/challenge/challenges';
+import { TEAM_TEMPLATES } from '../src/data/team_templates';
 import { HELP } from '../src/help/topics';
 import { type Language, useLanguage } from '../src/i18n/language';
 import { renderAbout } from '../src/pages/about';
@@ -41,13 +42,17 @@ describe('the introduction', () => {
     const page = inLanguage(language, renderAbout);
     expect(page.querySelector('a.about-play')?.getAttribute('href')).toBe('./');
     expect(page.querySelector('a[href="./help.html"]')).not.toBeNull();
-    expect(page.querySelectorAll('.about-pillar').length).toBe(3);
-    expect(page.querySelector('.about-code')?.textContent).toContain('enemy_visible');
+    expect(page.querySelectorAll('.about-pillar').length).toBe(4);
+    const samples = [...page.querySelectorAll('.about-code')].map((code) => code.textContent ?? '');
+    expect(samples[0]).toContain('enemy_visible');
+    // The team battle has its own pillar, with the one program that splits a team's roles.
+    expect(samples[1]).toContain('self_id');
     expect(page.querySelector('img.about-shot')?.getAttribute('alt')).not.toBe('');
   });
 
   it('takes its numbers from the game, so they never go stale', () => {
     const text = inLanguage('ja', renderAbout).textContent ?? '';
     expect(text).toContain(`チャレンジ ${CHALLENGES.length} 問`);
+    expect(text).toContain(`内蔵チーム ${TEAM_TEMPLATES.length} 組`);
   });
 });

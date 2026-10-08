@@ -40,38 +40,44 @@ const DEFLECT_DOTS = 16;
 const DETECT_START_RADIUS = 22;
 const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
-// A new number on the radio: a dotted line runs out to each teammate and a
-// pulse of data travels along it; the number itself pops up at the sender,
-// and at each receiver as the pulse lands. (Rings and antenna marks were
-// tried first: the rings read as the detection and guard rings, the marks
-// were too small to read.)
+// A new number on the radio: an envelope rises over the sender, a dotted
+// line runs out to each teammate with a pulse of data travelling along it,
+// and the envelope pops up where the pulse lands. All of it in a plain
+// white of its own, so it does not read as a robot's part. (Rings, antenna
+// marks and raw numbers were tried first: the rings read as the detection
+// and guard rings, the marks were too small, and a number can be as long
+// as the program likes.)
+const RADIO = '#e8f4ff';
 /** px between the dots of the line a signal travels along. */
 const LINK_SPACING = 10;
 /** How faint the line is next to the pulse riding it. */
 const LINK_ALPHA = 0.35;
-/** The pulse arrives this far into the effect's life; the bars have the rest. */
+/** The pulse arrives this far into the effect's life; the envelope has the rest. */
 const LINK_ARRIVE = 0.5;
 /** Dots trailing the pulse's head, each dimmer than the one before. */
 const PULSE_TRAIL = 3;
-// The number itself pops up where the signal lands (and beside the sender's
-// antenna): the protocol the player wrote, readable on the field.
-const VALUE_X = 12;
-const VALUE_Y = -18;
-/** px the number rises while it is shown. */
-const VALUE_RISE = 6;
-/** Screen px of the number's type. */
-const VALUE_FONT_PX = 12;
+/** The envelope, drawn in cells of 2x2 dots; '#' is a cell. */
+const ENVELOPE: readonly string[] = [
+  '#########',
+  '##.....##',
+  '#.#...#.#',
+  '#..#.#..#',
+  '#...#...#',
+  '#########',
+];
+const ENVELOPE_CELL = DOT * 2;
+/** Where the envelope's centre sits above the robot's centre, and how far it rises. */
+const ENVELOPE_Y = -30;
+const ENVELOPE_RISE = 6;
 /** The radio marks stay full until this share of their life, then fade out. */
 const RADIO_FADE_FROM = 0.7;
 // An enemy bullet wore the castle down: a heavier spark than an ordinary impact.
 const BASE_HIT_REACH = 2;
 
-/** What of the scene an effect may follow: the robots as they stand now, their teams (for their colours), and the view's type. */
+/** What of the scene an effect may follow: the robots as they stand now, and their teams (for their colours). */
 export interface EffectScene {
   robots?: readonly { x: number; y: number }[];
   teams?: readonly number[];
-  /** The view's font at the given screen size, countering its zoom; without it, effects draw no text. */
-  font?(screenPixels: number): string;
 }
 
 /**
@@ -171,31 +177,33 @@ function radioAlpha(progress: number): number {
 }
 
 /** The number an effect carries, popping up beside the given spot and rising a little. */
-function drawValue(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, at: { x: number; y: number }, shown: number, scene: EffectScene): void {
-  if (effect.value === undefined || scene.font === undefined) return;
-  ctx.font = scene.font(VALUE_FONT_PX);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(effect.value), at.x + VALUE_X, at.y + VALUE_Y - VALUE_RISE * shown);
+/** The envelope over the given robot, risen by `shown` of its way, drawn in whatever style is set. */
+function drawEnvelope(ctx: CanvasRenderingContext2D, at: { x: number; y: number }, shown: number): void {
+  const left = at.x - (ENVELOPE[0].length * ENVELOPE_CELL) / 2;
+  const top = at.y + ENVELOPE_Y - (ENVELOPE.length * ENVELOPE_CELL) / 2 - ENVELOPE_RISE * shown;
+  ENVELOPE.forEach((row, cellY) => {
+    for (let cellX = 0; cellX < row.length; cellX++) {
+      if (row[cellX] === '#') ctx.fillRect(left + cellX * ENVELOPE_CELL, top + cellY * ENVELOPE_CELL, ENVELOPE_CELL, ENVELOPE_CELL);
+    }
+  });
 }
 
-/** The sender broadcasts: the number sent pops up over the robot and rises, riding along with it. */
+/** The sender broadcasts: an envelope rises over the robot, riding along with it. */
 function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
-  ctx.fillStyle = robotPalette(effect, scene).light;
+  ctx.fillStyle = RADIO;
   ctx.globalAlpha = radioAlpha(progress);
-  drawValue(ctx, effect, anchorOf(effect, scene), progress, scene);
+  drawEnvelope(ctx, anchorOf(effect, scene), progress);
 }
 
 /**
  * The signal reaches a teammate: a dotted line from the sender, a pulse of
- * data running along it, and reception bars where it arrives. Both ends
+ * data running along it, and the envelope where it arrives. Both ends
  * follow their robots.
  */
 function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
   const to = anchorOf(effect, scene);
   const from = effect.from !== undefined ? (scene.robots?.[effect.from] ?? null) : null;
-  const colour = (effect.from !== undefined ? paletteOf(effect.from, scene.teams) : robotPalette(effect, scene)).light;
-  ctx.fillStyle = colour;
+  ctx.fillStyle = RADIO;
   if (from !== null) {
     const length = Math.hypot(to.x - from.x, to.y - from.y);
     const steps = Math.max(1, Math.round(length / LINK_SPACING));
@@ -206,7 +214,7 @@ function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progre
       const place = at(step / steps);
       dot(ctx, place.x, place.y);
     }
-    // The pulse, bright, with a short tail: the number on its way over.
+    // The pulse, bright, with a short tail: the data on its way over.
     const travelled = Math.min(1, progress / LINK_ARRIVE);
     for (let tail = 0; tail < PULSE_TRAIL; tail++) {
       const share = travelled - (tail * LINK_SPACING) / Math.max(length, 1);
@@ -217,11 +225,11 @@ function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progre
       if (tail === 0) for (const [dx, dy] of PLUS) dot(ctx, place.x + dx * DOT, place.y + dy * DOT);
     }
   }
-  // The number pops up once the pulse is in: nothing yet while it is still on its way.
+  // The envelope pops up once the pulse is in: nothing yet while it is still on its way.
   const arrived = from === null ? progress : Math.max(0, (progress - LINK_ARRIVE) / (1 - LINK_ARRIVE));
   if (arrived <= 0) return;
   ctx.globalAlpha = radioAlpha(progress);
-  drawValue(ctx, effect, to, arrived, scene);
+  drawEnvelope(ctx, to, arrived);
 }
 
 /** An enemy bullet wore the castle down: a heavier, hotter spark than an ordinary impact. */

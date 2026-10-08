@@ -3,6 +3,7 @@ import { type Language, currentLanguage } from './language';
 /** Every text of the screen, in English. The keys are what the code asks for. */
 export const en = {
   // Toolbar
+  'solo.modeLabel': 'SOLO',
   'tab.program': 'PROGRAM',
   'tab.program.title': 'Write and debug the programs of ALPHA and BRAVO',
   'tab.arena': 'ARENA',
@@ -474,7 +475,7 @@ export const en = {
   'teamwatch.status': '{alive}/{size} standing · castle {castle}',
   'teamwatch.machines': '{count} machines a side',
   'team.modeLabel': 'TEAM BATTLE',
-  'team.tab.edit': 'EDITOR',
+  'team.tab.edit': 'PROGRAM',
   'team.tab.edit.title': 'Write and debug the two teams\u2019 programs',
   'team.tab.watch': 'WATCH',
   'team.tab.watch.title': 'Pick two saved teams and watch them fight for the castles',
@@ -637,6 +638,7 @@ export type MessageKey = keyof typeof en;
 
 /** The same texts in Japanese. */
 export const ja: Record<MessageKey, string> = {
+  'solo.modeLabel': '個人戦',
   'tab.program': 'プログラム',
   'tab.program.title': 'ALPHA と BRAVO のプログラムを書いてデバッグする',
   'tab.arena': 'アリーナ',
@@ -1101,7 +1103,7 @@ export const ja: Record<MessageKey, string> = {
   'teamwatch.status': '残り {alive}/{size} 台 · 城 {castle}',
   'teamwatch.machines': '片側 {count} 台',
   'team.modeLabel': 'チームバトル',
-  'team.tab.edit': 'エディタ',
+  'team.tab.edit': 'プログラム',
   'team.tab.edit.title': '2 つのチームのプログラムを書いてデバッグする',
   'team.tab.watch': '観戦',
   'team.tab.watch.title': '保存したチームを選んで、城攻めを観戦する',

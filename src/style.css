@@ -126,7 +126,7 @@ button {
 #app:not([data-screen='teamwatch']) :is(#team-lineup, #team-results),
 #app:not([data-screen='team'], [data-screen='teamwatch']) :is(#screen-team-edit, #screen-team-watch, #team-mode-label),
 /* Inside the team battle, the other screens are reached from the start menu (⏻), as in the tutorial. */
-#app:is([data-screen='team'], [data-screen='teamwatch']) :is(#screen-program, #screen-arena, #screen-contest),
+#app:is([data-screen='team'], [data-screen='teamwatch']) :is(#solo-mode-label, #screen-program, #screen-arena, #screen-contest),
 #app:not([data-screen='contest']) #contest,
 #app:not([data-screen='tutorial']) #tutorial,
 #app:not([data-screen='challenge']) #challenge,
@@ -137,13 +137,16 @@ button {
 /* The team-size picker belongs to the team battle alone. */
 #app:not([data-screen='team'], [data-screen='teamwatch']) #team-size-box,
 /* The tutorial and the challenges are left by their LEAVE button or the start menu (⏻), not by the tabs. */
-#app:is([data-screen='tutorial'], [data-screen='challenge']) #screens .tab:not(#boot-button) {
+#app:is([data-screen='tutorial'], [data-screen='challenge']) #screens :is(.tab:not(#boot-button), .mode-label) {
   display: none;
 }
 
-/* The name of the mode, before the team battle's own tabs. */
+/* The name of the mode, before its tabs: bolder and brighter than the tabs, to read as a heading. */
 .mode-label {
-  color: var(--muted);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   align-self: center;
   padding: 0 4px 0 8px;
   white-space: nowrap;

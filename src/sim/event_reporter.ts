@@ -1,4 +1,4 @@
-import type { DebugEvent, DebugEventType } from '../debug/debug_event';
+import type { DebugEvent, DebugEventType, HitData } from '../debug/debug_event';
 import type { AIAction, ProgramStatus } from './ai_context';
 import type { MatchResult } from './simulation';
 import { winnersOf } from './winners';
@@ -95,12 +95,17 @@ export class EventReporter {
 
   /** `guarded`: the target was braced, so the damage is less than the shot's. */
   hit(shooterId: string, targetId: string, damage: number, remainingHp: number, guarded: boolean): void {
-    this.emit('hit', shooterId, `${targetId} damage=${damage} hp=${remainingHp}${guarded ? ' (guarded)' : ''}`);
+    this.emit('hit', shooterId, `${targetId} damage=${damage} hp=${remainingHp}${guarded ? ' (guarded)' : ''}`, null, {
+      targetId,
+      damage,
+      hp: remainingHp,
+      ...(guarded ? { guarded } : {}),
+    });
   }
 
   /** An enemy bullet wore down a team's castle. */
   hitBase(shooterId: string, team: number, damage: number, remainingHp: number): void {
-    this.emit('hit', shooterId, `castle of team ${team} damage=${damage} hp=${remainingHp}`);
+    this.emit('hit', shooterId, `base of team ${team} damage=${damage} hp=${remainingHp}`, null, { team, damage, hp: remainingHp });
   }
 
   matchEnded(result: MatchResult): void {
@@ -109,7 +114,7 @@ export class EventReporter {
     this.emit('system', null, `${outcome} (${result.reason})`);
   }
 
-  private emit(type: DebugEventType, robotId: string | null, message: string, sourceLine: number | null = null): void {
+  private emit(type: DebugEventType, robotId: string | null, message: string, sourceLine: number | null = null, hit?: HitData): void {
     this.sink.log({
       tick: this.tick,
       timestamp: this.tick / this.tickRate,
@@ -117,6 +122,7 @@ export class EventReporter {
       type,
       message,
       sourceLine,
+      ...(hit === undefined ? {} : { hit }),
     });
   }
 }

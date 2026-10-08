@@ -610,12 +610,7 @@ class App {
     this.matchLoadouts = loadouts;
     const played = recordMatch(config, EFFECT_LIFETIMES);
     const recording = coach.played(played);
-    const replay = createReplay(recording, this.speed, recording.snapshots[0].robots[PLAYER_INDEX].id);
-    this.replay = replay;
-    this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
-    this.notice = null;
-    replay.restart();
-    this.refollow(replay);
+    const replay = this.showRecorded(recording, mode, recording.snapshots[0].robots[PLAYER_INDEX].id);
     coach.watch(replay);
     if (mode === 'debug') coach.acted('debug');
   }
@@ -710,13 +705,18 @@ class App {
     this.matchLoadouts = [...this.loadouts];
     const recording = recordMatch(this.matchConfig(brains), EFFECT_LIFETIMES);
     this.drawSeed();
-    const replay = createReplay(recording, this.speed, ROBOT_IDS[this.shownFile.robotIndex]);
+    this.showRecorded(recording, mode, ROBOT_IDS[this.shownFile.robotIndex]);
+  }
+
+  /** Puts a recorded match on the screen: its replay from the start, with the log the mode asks for. */
+  private showRecorded(recording: Recording, mode: Mode, followId: string): ReplayManager {
+    const replay = createReplay(recording, this.speed, followId);
     this.replay = replay;
-    this.events =
-      mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
+    this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
     this.notice = null;
     replay.restart();
     this.refollow(replay);
+    return replay;
   }
 
   /** Records the team match with both teams' programs and machines, and plays it back. */
@@ -765,12 +765,7 @@ class App {
     this.matchLoadouts = fight.loadouts;
     const recording = recordMatch(fight.config, EFFECT_LIFETIMES);
     this.drawSeed();
-    const replay = createReplay(recording, this.speed, this.editorRobotId(this.shownFile.robotIndex));
-    this.replay = replay;
-    this.events = mode === 'debug' ? recording.events : recording.events.filter((event) => RUN_LOG_TYPES.has(event.type));
-    this.notice = null;
-    replay.restart();
-    this.refollow(replay);
+    this.showRecorded(recording, mode, this.editorRobotId(this.shownFile.robotIndex));
   }
 
   /** Keeps following the same line in a new match, so that a change to the code can be compared with the run before. */

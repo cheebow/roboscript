@@ -13,10 +13,20 @@ function recordedFight(names: string[], seed = 3) {
 }
 
 describe('reading a hit from the log', () => {
-  it('reads the shooter, the robot hit, the damage, the HP left and a guard', () => {
-    const hit = readHit({ tick: 9, timestamp: 0.3, robotId: 'ALPHA', type: 'hit', message: 'BRAVO damage=10 hp=150 (guarded)', sourceLine: null });
+  it('reads the shooter, the robot hit, the damage, the HP left and a guard from the event data', () => {
+    const hit = readHit({
+      tick: 9,
+      timestamp: 0.3,
+      robotId: 'ALPHA',
+      type: 'hit',
+      message: 'BRAVO damage=10 hp=150 (guarded)',
+      sourceLine: null,
+      hit: { targetId: 'BRAVO', damage: 10, hp: 150, guarded: true },
+    });
     expect(hit).toEqual({ tick: 9, shooterId: 'ALPHA', targetId: 'BRAVO', damage: 10, hp: 150, guarded: true });
     expect(readHit({ tick: 9, timestamp: 0, robotId: 'ALPHA', type: 'action', message: 'fire', sourceLine: 3 })).toBeNull();
+    // The message alone, without the data, is not parsed: the wording is free to change.
+    expect(readHit({ tick: 9, timestamp: 0.3, robotId: 'ALPHA', type: 'hit', message: 'BRAVO damage=10 hp=150', sourceLine: null })).toBeNull();
   });
 });
 

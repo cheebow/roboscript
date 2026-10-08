@@ -12,24 +12,18 @@ export interface LoggedHit {
   guarded: boolean;
 }
 
-const HIT = /^(\S+) damage=(\d+) hp=(\d+)( \(guarded\))?$/;
-
-/** The hit a log event tells of; null for any other event. */
+/** The hit on a robot a log event tells of (by the data it carries, not its wording); null for any other event. */
 export function readHit(event: DebugEvent): LoggedHit | null {
-  if (event.type !== 'hit' || event.robotId === null) return null;
-  const match = HIT.exec(event.message);
-  if (match === null) return null;
-  return { tick: event.tick, shooterId: event.robotId, targetId: match[1], damage: Number(match[2]), hp: Number(match[3]), guarded: match[4] !== undefined };
+  if (event.type !== 'hit' || event.robotId === null || event.hit?.targetId === undefined) return null;
+  const { targetId, damage, hp, guarded } = event.hit;
+  return { tick: event.tick, shooterId: event.robotId, targetId, damage, hp, guarded: guarded === true };
 }
-
-const CASTLE_HIT = /^castle of team (\d+) damage=(\d+) hp=(\d+)$/;
 
 /** The castle hit a log event tells of; null for any other event. */
 export function readCastleHit(event: DebugEvent): { tick: number; shooterId: string; team: number; damage: number; hp: number } | null {
-  if (event.type !== 'hit' || event.robotId === null) return null;
-  const match = CASTLE_HIT.exec(event.message);
-  if (match === null) return null;
-  return { tick: event.tick, shooterId: event.robotId, team: Number(match[1]), damage: Number(match[2]), hp: Number(match[3]) };
+  if (event.type !== 'hit' || event.robotId === null || event.hit?.team === undefined) return null;
+  const { team, damage, hp } = event.hit;
+  return { tick: event.tick, shooterId: event.robotId, team, damage, hp };
 }
 
 /** How one robot did in a match. */

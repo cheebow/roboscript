@@ -26,7 +26,9 @@ export const EFFECT_LIFETIMES = {
   detected: 12,
   baseDestroyed: 15,
   baseHit: 10,
-  signal: 30,
+  // The sender's envelope is gone (14) before the pulse lands (half of 30): the
+  // receivers' envelopes never show while the sender's still does.
+  signal: 14,
   signalHeard: 30,
 } as const;
 /** Playback runs this many ticks past the end, so the effects of the last tick can finish. */

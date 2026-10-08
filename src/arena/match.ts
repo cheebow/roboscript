@@ -171,6 +171,29 @@ export function playFixture(
   return { ok: true, played: { winner, reason, ticks: simulation.tick, hpLeft: [firstRobot.hp, secondRobot.hp] } };
 }
 
+/**
+ * A long run of matches, played one step at a time, so a screen can breathe
+ * (and say how far it is) between the steps. `result` may only be read once
+ * every step came back ok.
+ */
+export interface SteppedPlay<Result> {
+  /** How many steps there are. */
+  readonly count: number;
+  /** Plays step `index`; the refusal when it cannot be played. */
+  step(index: number): { ok: true } | Refusal;
+  /** The result of all the steps. */
+  result(): Result;
+}
+
+/** Plays every step at once: for a caller that does not need to breathe. */
+export function playAllSteps<Result>(play: SteppedPlay<Result>): ({ ok: true } & Result) | Refusal {
+  for (let index = 0; index < play.count; index++) {
+    const stepped = play.step(index);
+    if (!stepped.ok) return stepped;
+  }
+  return { ok: true, ...play.result() };
+}
+
 /** One match of a series to be played. */
 export interface SeriesFixture {
   arena: Arena;
@@ -189,6 +212,40 @@ export interface SeriesMatch {
   ticks: number;
 }
 
+/** The series between two entrants, one fixture a step. */
+export function arenaSeriesSteps(
+  entrants: readonly [Entrant, Entrant],
+  fixtures: readonly SeriesFixture[],
+): SteppedPlay<{ names: [string, string]; matches: SeriesMatch[]; result: SeriesResult }> {
+  const matches: SeriesMatch[] = [];
+  const result: SeriesResult = {
+    matches: 0,
+    wins: [0, 0],
+    draws: 0,
+    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0, 'base destroyed': 0 },
+  };
+  return {
+    count: fixtures.length,
+    step(index) {
+      const { arena, seed, first } = fixtures[index];
+      const fought = playFixture(entrants, first, other(first), arena, seed);
+      if (!fought.ok) return fought;
+      const { reason, ticks } = fought.played;
+      const winner = fought.played.winner as 0 | 1 | null;
+      matches.push({ winner, reason, ticks });
+      result.matches++;
+      result.reasons[reason]++;
+      if (winner === null) result.draws++;
+      else result.wins[winner]++;
+      return { ok: true };
+    },
+    result() {
+      const [firstName, secondName] = fightNames(entrants);
+      return { names: [firstName, secondName], matches, result };
+    },
+  };
+}
+
 /**
  * Plays the two entrants against each other match after match, and tells how
  * each match went, in the order of the fixtures, and who won how many.
@@ -198,26 +255,7 @@ export function playArenaSeries(
   entrants: readonly [Entrant, Entrant],
   fixtures: readonly SeriesFixture[],
 ): { ok: true; names: [string, string]; matches: SeriesMatch[]; result: SeriesResult } | Refusal {
-  const matches: SeriesMatch[] = [];
-  const result: SeriesResult = {
-    matches: 0,
-    wins: [0, 0],
-    draws: 0,
-    reasons: { destroyed: 0, timeout: 0, 'out of ammo': 0, 'base destroyed': 0 },
-  };
-  for (const { arena, seed, first } of fixtures) {
-    const fought = playFixture(entrants, first, other(first), arena, seed);
-    if (!fought.ok) return fought;
-    const { reason, ticks } = fought.played;
-    const winner = fought.played.winner as 0 | 1 | null;
-    matches.push({ winner, reason, ticks });
-    result.matches++;
-    result.reasons[reason]++;
-    if (winner === null) result.draws++;
-    else result.wins[winner]++;
-  }
-  const [firstName, secondName] = fightNames(entrants);
-  return { ok: true, names: [firstName, secondName], matches, result };
+  return playAllSteps(arenaSeriesSteps(entrants, fixtures));
 }
 
 /** How a battle royale series went: each match's places by entrant, and how often each entrant came in each place. */
@@ -230,27 +268,42 @@ export interface RoyaleSeriesResult {
   counts: number[][];
 }
 
+/** The series of three or four entrants, one fixture a step. */
+export function royaleSeriesSteps(
+  entrants: readonly Entrant[],
+  fixtures: readonly { arena: Arena; seed: number }[],
+): SteppedPlay<RoyaleSeriesResult> {
+  const names = fightNames(entrants);
+  const places: number[][] = [];
+  const ticks: number[] = [];
+  const counts = entrants.map(() => entrants.map(() => 0));
+  return {
+    count: fixtures.length,
+    step(index) {
+      const { arena, seed } = fixtures[index];
+      const prepared = prepareFight(entrants, arena, seed);
+      if (!prepared.ok) return prepared;
+      const simulation = new Simulation(prepared.fight.config);
+      while (simulation.result === null) simulation.step();
+      const { result } = simulation;
+      const placed = prepared.fight.names.map((name) => result.places[name] ?? entrants.length);
+      placed.forEach((place, entrant) => counts[entrant][place - 1]++);
+      places.push(placed);
+      ticks.push(simulation.tick);
+      return { ok: true };
+    },
+    result() {
+      return { names, places, ticks, counts };
+    },
+  };
+}
+
 /** Plays three or four entrants against each other match after match, in each fixture's arena with its seed. */
 export function playRoyaleSeries(
   entrants: readonly Entrant[],
   fixtures: readonly { arena: Arena; seed: number }[],
 ): ({ ok: true } & RoyaleSeriesResult) | Refusal {
-  const names = fightNames(entrants);
-  const places: number[][] = [];
-  const ticks: number[] = [];
-  const counts = entrants.map(() => entrants.map(() => 0));
-  for (const { arena, seed } of fixtures) {
-    const prepared = prepareFight(entrants, arena, seed);
-    if (!prepared.ok) return prepared;
-    const simulation = new Simulation(prepared.fight.config);
-    while (simulation.result === null) simulation.step();
-    const { result } = simulation;
-    const placed = prepared.fight.names.map((name) => result.places[name] ?? entrants.length);
-    placed.forEach((place, index) => counts[index][place - 1]++);
-    places.push(placed);
-    ticks.push(simulation.tick);
-  }
-  return { ok: true, names, places, ticks, counts };
+  return playAllSteps(royaleSeriesSteps(entrants, fixtures));
 }
 
 /** The two entrants with the given one first. */

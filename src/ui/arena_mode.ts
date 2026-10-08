@@ -1,15 +1,20 @@
 import {
   type Entrant,
+  type SeriesFixture,
+  type SeriesMatch,
+  type SteppedPlay,
   builtInEntrants,
   fightNames,
   garageEntrants,
   inOrder,
   MAX_ENTRANTS,
   arenaFor,
-  playArenaSeries,
-  playRoyaleSeries,
+  arenaSeriesSteps,
+  royaleSeriesSteps,
   prepareFight,
 } from '../arena/match';
+import type { SeriesResult } from '../sim/series';
+import { type DrivenRun, driveSteps } from './stepped_run';
 import { type MessageKey, t } from '../i18n/messages';
 import { randomSeed } from '../arena/seed';
 import { ARENAS, type ArenaDefinition, findArena } from '../data/arenas';
@@ -111,6 +116,8 @@ export class ArenaMode {
   private idle: ArenaScene;
   /** What the last import or share did, or why it could not: under the line-up's buttons. */
   private readonly notice = new Notice();
+  /** The series being computed, match by match; null while there is none. */
+  private run: DrivenRun | null = null;
 
   constructor(
     lineup: HTMLElement,
@@ -461,11 +468,15 @@ export class ArenaMode {
     const maps = Array.from({ length: SERIES_MATCHES }, (_, match) => order[match % order.length]);
     const fixtures = maps.map(({ arena }) => ({ arena, seed: randomSeed() }));
     const entrants = this.pickedEntrants();
-    const played = playRoyaleSeries(entrants, fixtures);
-    if (!played.ok) {
-      this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
-      return;
-    }
+    this.driveRun(royaleSeriesSteps(entrants, fixtures), (played) => this.showRoyaleSeries(played, entrants, maps, fixtures));
+  }
+
+  private showRoyaleSeries(
+    played: { names: string[]; places: number[][]; ticks: number[]; counts: number[][] },
+    entrants: Entrant[],
+    maps: readonly ArenaDefinition[],
+    fixtures: readonly { arena: ArenaDefinition['arena']; seed: number }[],
+  ): void {
     const { names, places, ticks, counts } = played;
     const series = createElement('div', 'series');
     series.append(createElement('div', 'result series-title', t('arena.royaleSeriesTitle', { count: places.length, names: names.join(' / ') })));
@@ -505,8 +516,34 @@ export class ArenaMode {
     slot.cost.classList.toggle('over-limit', cost > COST_LIMIT);
   }
 
+  /**
+   * Plays a long run one match a task, saying how far it is, so the screen
+   * stays alive. A new run, or leaving the line-up, cancels the one before.
+   */
+  private driveRun<Result>(play: SteppedPlay<Result>, done: (result: { ok: true } & Result) => void): void {
+    this.cancelRun();
+    this.seriesButton.disabled = true;
+    this.run = driveSteps(
+      play,
+      (at, count) => this.notice.show(t('arena.playing', { at, count })),
+      (outcome) => {
+        this.cancelRun();
+        if (outcome.ok) done(outcome);
+        else this.addResult(createElement('div', 'result problem', outcome.problems.join('\n')));
+      },
+    );
+  }
+
+  private cancelRun(): void {
+    this.run?.cancel();
+    this.run = null;
+    this.seriesButton.disabled = false;
+    this.notice.clear();
+  }
+
   /** Stops showing the match, as the line-up is no longer the one that fought it. Its result still goes on the list. */
   private leaveMatch(): void {
+    this.cancelRun();
     if (this.unannounced !== null) this.announce();
     this.watched.leave();
   }
@@ -578,13 +615,16 @@ export class ArenaMode {
     const maps = Array.from({ length: SERIES_MATCHES }, (_, match) => order[Math.floor(match / 2) % order.length]);
     const fixtures = maps.map(({ arena }, match) => ({ arena, seed: randomSeed(), first: sideOf(match) }));
     const entrants = this.pickedPair();
-    const played = playArenaSeries(entrants, fixtures);
-    if (!played.ok) {
-      this.addResult(createElement('div', 'result problem', played.problems.join('\n')));
-      return;
-    }
+    this.driveRun(arenaSeriesSteps(entrants, fixtures), (played) => this.showSeries(played, entrants, maps, fixtures));
+  }
 
-    // One line for every match, in the order they were fought, and the count of wins at the end.
+  /** One line for every match, in the order they were fought, and the count of wins at the end. */
+  private showSeries(
+    played: { names: [string, string]; matches: SeriesMatch[]; result: SeriesResult },
+    entrants: [Entrant, Entrant],
+    maps: readonly ArenaDefinition[],
+    fixtures: readonly SeriesFixture[],
+  ): void {
     const { names, matches, result } = played;
     const series = createElement('div', 'series');
     series.append(createElement('div', 'result series-title', t('arena.seriesTitle', { count: matches.length, first: names[0], second: names[1] })));

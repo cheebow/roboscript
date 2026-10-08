@@ -1,7 +1,7 @@
 import type { ArenaDefinition } from '../data/arenas';
 import type { MatchEndReason } from '../sim/simulation';
 import { MatchRng } from '../sim/rng';
-import { type Entrant, type Refusal, playFixture } from './match';
+import { type Entrant, type Refusal, type SteppedPlay, playAllSteps, playFixture } from './match';
 import { drawArena, drawSeed } from './seed';
 
 /** How many robots a league or a tournament takes. */
@@ -64,18 +64,31 @@ export function leagueFixtures(count: number, seed: number): LeagueFixture[] {
   return fixtures;
 }
 
+/** The league, one of its matches a step. */
+export function leagueSteps(entrants: readonly Entrant[], seed: number): SteppedPlay<{ matches: LeagueMatch[]; standings: Standing[] }> {
+  const fixtures = leagueFixtures(entrants.length, seed);
+  const matches: LeagueMatch[] = [];
+  return {
+    count: fixtures.length,
+    step(index) {
+      const fixture = fixtures[index];
+      const fought = playFixture(entrants, fixture.first, fixture.second, fixture.arena.arena, fixture.seed);
+      if (!fought.ok) return fought;
+      matches.push({ ...fixture, ...fought.played });
+      return { ok: true };
+    },
+    result() {
+      return { matches, standings: standingsOf(entrants.length, matches) };
+    },
+  };
+}
+
 /** Plays every match of a league. Refused, as a single match is, when a robot cannot fight. */
 export function playLeague(
   entrants: readonly Entrant[],
   seed: number,
 ): { ok: true; matches: LeagueMatch[]; standings: Standing[] } | Refusal {
-  const matches: LeagueMatch[] = [];
-  for (const fixture of leagueFixtures(entrants.length, seed)) {
-    const fought = playFixture(entrants, fixture.first, fixture.second, fixture.arena.arena, fixture.seed);
-    if (!fought.ok) return fought;
-    matches.push({ ...fixture, ...fought.played });
-  }
-  return { ok: true, matches, standings: standingsOf(entrants.length, matches) };
+  return playAllSteps(leagueSteps(entrants, seed));
 }
 
 /**

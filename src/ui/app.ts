@@ -320,7 +320,7 @@ class App {
     this.showScreen(this.screen);
     this.showFile(this.shownFile);
     this.splitters = new Splitters(requireElement('app'), requireElement('editor'), requireElement('vsplit'), requireElement('hsplit'), this.storage);
-    requireElement('language').addEventListener('click', () => switchLanguage(this.storage));
+    requireElement('language').addEventListener('click', () => switchLanguage(this.storage, this.screen));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
     requireElement('help-button').addEventListener('click', () => this.help.toggle());
     requireElement('guide-button').addEventListener('click', () => this.help.open(HELP[1].topics[0].id));
@@ -356,8 +356,13 @@ class App {
     });
     document.addEventListener('keydown', (event) => this.onShortcut(event));
     requestAnimationFrame(this.frame);
-    // A share link opens where its robot or match goes; any other address opens the start menu.
-    if (!this.openShareLink()) this.boot.show();
+    // A share link opens where its robot or match goes. After a language switch the
+    // screen that was shown comes back; any other address opens the start menu.
+    const returnTo = consumeReturnScreen();
+    if (!this.openShareLink()) {
+      if (returnTo !== null) this.showScreen(returnTo);
+      else this.boot.show();
+    }
     window.addEventListener('hashchange', () => this.openShareLink());
   }
 
@@ -1513,14 +1518,38 @@ function readMark(storage: Storage | null): { robotIndex: number; line: number }
   }
 }
 
-/** Keeps the other language and starts the page again in it: every text is made at start-up. */
-function switchLanguage(storage: Storage | null): void {
+/** Where the screen goes again after the reload of a language switch, for this tab alone. */
+const RETURN_SCREEN_KEY = 'roboscript/return-screen';
+
+/**
+ * Keeps the other language and starts the page again in it: every text is
+ * made at start-up. With `returnTo`, the page comes back to that screen
+ * instead of the start menu, so the switch does not throw the player out.
+ */
+function switchLanguage(storage: Storage | null, returnTo: Screen | null = null): void {
   try {
     storage?.setItem(LANGUAGE_KEY, otherLanguage(currentLanguage()));
   } catch {
     // Storage may be full or blocked: the language then falls back to the browser's at the next start.
   }
+  try {
+    if (returnTo !== null) window.sessionStorage.setItem(RETURN_SCREEN_KEY, returnTo);
+  } catch {
+    // Without session storage the page simply starts on the menu again.
+  }
   window.location.reload();
+}
+
+/** The screen kept over a language switch, taken out so it is used only once; null when there is none. */
+function consumeReturnScreen(): Screen | null {
+  try {
+    const kept = window.sessionStorage.getItem(RETURN_SCREEN_KEY);
+    window.sessionStorage.removeItem(RETURN_SCREEN_KEY);
+    const screens: readonly string[] = [...SCREENS, 'tutorial', 'challenge', 'team', 'teamwatch'];
+    return kept !== null && screens.includes(kept) ? (kept as Screen) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The browser's storage, or null when it refuses access (e.g. blocked site data). */

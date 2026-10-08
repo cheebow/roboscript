@@ -1,8 +1,10 @@
 import { type ContestRecord, recordLeague, recordTournament } from '../arena/contest_record';
-import { LEAGUE_MAX, LEAGUE_MIN, type LeagueMatch, type Standing, playLeague } from '../arena/league';
+import { LEAGUE_MAX, LEAGUE_MIN, type LeagueMatch, type Standing, leagueSteps } from '../arena/league';
+import type { SteppedPlay } from '../arena/match';
+import { type DrivenRun, driveSteps } from './stepped_run';
 import { type Entrant, builtInEntrants, fightNames, prepareFight } from '../arena/match';
 import { randomSeed } from '../arena/seed';
-import { type Bracket, playTournament } from '../arena/tournament';
+import { type Bracket, tournamentSteps } from '../arena/tournament';
 import { type ArenaDefinition, DEFAULT_ARENA } from '../data/arenas';
 import { MATCH_DEFAULTS } from '../data/match_defaults';
 import type { ReplayManager } from '../debug/replay_manager';
@@ -84,6 +86,8 @@ export class ContestMode {
   private readonly boards = new Map<Format, ShownBoard>();
   /** What the last action did, or why it could not: under the panel's buttons. */
   private readonly notice = new Notice();
+  /** The contest being computed, match by match; null while there is none. */
+  private run: DrivenRun | null = null;
 
   private readonly formatButtons: HTMLButtonElement[];
   private readonly countLabel = createElement('span', 'contest-count');
@@ -226,6 +230,7 @@ export class ContestMode {
   }
 
   private setFormat(format: Format): void {
+    this.cancelRun();
     this.format = format;
     this.notice.clear();
     this.showFormat();
@@ -285,6 +290,7 @@ export class ContestMode {
   }
 
   private setEntries(list: ContestEntry[]): void {
+    this.cancelRun();
     this.entries = list;
     try {
       this.setting.storage?.setItem(CONTEST_KEY, writeContest(list));
@@ -306,8 +312,9 @@ export class ContestMode {
   }
 
 
-  /** Plays the contest of the chosen format between the robots on the list, and shows its board. */
+  /** Plays the contest of the chosen format between the robots on the list, match by match, and shows its board. */
   private start(): void {
+    this.cancelRun();
     this.notice.clear();
     const entrants = this.entrants();
     if (entrants.length < LEAGUE_MIN) {
@@ -315,15 +322,32 @@ export class ContestMode {
       return;
     }
     const robots = this.entries.map(({ robot }) => robot);
-    const played = this.format === 'league' ? playLeague(entrants, randomSeed()) : playTournament(entrants, randomSeed());
-    if (!played.ok) {
-      this.notice.show(played.problems.join(' / '), true);
-      return;
-    }
-    this.setBoard('bracket' in played ? { format: 'tournament', robots, bracket: played.bracket } : { format: 'league', robots, ...played }, null);
-    this.leaveMatch();
-    this.showFormat();
-    this.showBoard();
+    const play: SteppedPlay<{ matches: LeagueMatch[]; standings: Standing[] } | { bracket: Bracket }> =
+      this.format === 'league' ? leagueSteps(entrants, randomSeed()) : tournamentSteps(entrants, randomSeed());
+    this.startButton.disabled = true;
+    this.run = driveSteps(
+      play,
+      (at, count) => this.notice.show(t('contest.playing', { at, count })),
+      (played) => {
+        this.cancelRun();
+        if (!played.ok) {
+          this.notice.show(played.problems.join(' / '), true);
+          return;
+        }
+        this.setBoard('bracket' in played ? { format: 'tournament', robots, bracket: played.bracket } : { format: 'league', robots, ...played }, null);
+        this.leaveMatch();
+        this.showFormat();
+        this.showBoard();
+      },
+    );
+  }
+
+  /** Stops a contest being computed; its matches so far are thrown away. */
+  private cancelRun(): void {
+    this.run?.cancel();
+    this.run = null;
+    this.startButton.disabled = false;
+    this.notice.clear();
   }
 
   /** Puts the board of the chosen format over the battle view. */

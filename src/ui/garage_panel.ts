@@ -173,7 +173,16 @@ export class GaragePanel {
 
     this.robotIds.forEach((robotId, robotIndex) => {
       const loadLabel = this.options.loadLabels?.[robotIndex] ?? robotId[0];
-      const load = createButton('garage-action', loadLabel, t('garage.load.title', { name, robot: robotId }), () => this.handlers.load(name, robotIndex));
+      const load = createButton('garage-action', loadLabel, t('garage.load.title', { name, robot: robotId }));
+      load.addEventListener('click', () => {
+        // Loading replaces the code and the parts, and the parts cannot be taken back: a second press, as deleting takes.
+        if (this.armed === load) {
+          this.disarm();
+          this.handlers.load(name, robotIndex);
+          return;
+        }
+        this.arm(load, t('garage.load.confirm', { robot: robotId }));
+      });
       row.append(load);
     });
 

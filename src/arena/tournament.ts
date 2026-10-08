@@ -1,7 +1,7 @@
 import type { ArenaDefinition } from '../data/arenas';
 import type { MatchEndReason } from '../sim/simulation';
 import { MatchRng } from '../sim/rng';
-import { type Entrant, type Refusal, playFixture } from './match';
+import { type Entrant, type Refusal, type SteppedPlay, playAllSteps, playFixture } from './match';
 import { drawArena, drawSeed } from './seed';
 
 /** Wins that take a robot through a tie. */
@@ -79,29 +79,46 @@ function spreadPositions(slots: number, count: number): number[] {
   return Array.from({ length: count }, (_, index) => Math.floor((index * slots) / count));
 }
 
-/** Plays a whole tournament. Refused, as a single match is, when a robot cannot fight. */
-export function playTournament(entrants: readonly Entrant[], seed: number): { ok: true; bracket: Bracket } | Refusal {
+/**
+ * The tournament, one tie a step. A single-elimination bracket of N seats
+ * always holds N - 1 ties, byes among them, whoever wins what.
+ */
+export function tournamentSteps(entrants: readonly Entrant[], seed: number): SteppedPlay<{ bracket: Bracket }> {
   const rng = new MatchRng(seed ^ 0x70e7);
   const rounds: Tie[][] = [];
   let pairs = firstRound(entrants.length, seed);
-  for (;;) {
-    const round: Tie[] = [];
-    for (const [a, b] of pairs) {
+  let round: Tie[] = [];
+  return {
+    count: bracketSize(entrants.length) - 1,
+    step() {
+      const [a, b] = pairs[round.length];
       if (b === null) {
         round.push({ a, b, matches: [], score: [0, 0], winner: a });
-        continue;
+      } else {
+        const tie = playTie(entrants, a, b, rng);
+        if (!tie.ok) return tie;
+        round.push(tie.tie);
       }
-      const tie = playTie(entrants, a, b, rng);
-      if (!tie.ok) return tie;
-      round.push(tie.tie);
-    }
-    rounds.push(round);
-    if (round.length === 1) break;
-    pairs = [];
-    for (let index = 0; index < round.length; index += 2) pairs.push([round[index].winner, round[index + 1].winner]);
-  }
-  const champion = rounds[rounds.length - 1][0].winner;
-  return { ok: true, bracket: { rounds, champion, places: placesOf(entrants.length, rounds) } };
+      if (round.length === pairs.length) {
+        rounds.push(round);
+        pairs = [];
+        for (let index = 0; index < round.length; index += 2) {
+          if (index + 1 < round.length) pairs.push([round[index].winner, round[index + 1].winner]);
+        }
+        round = [];
+      }
+      return { ok: true };
+    },
+    result() {
+      const champion = rounds[rounds.length - 1][0].winner;
+      return { bracket: { rounds, champion, places: placesOf(entrants.length, rounds) } };
+    },
+  };
+}
+
+/** Plays a whole tournament. Refused, as a single match is, when a robot cannot fight. */
+export function playTournament(entrants: readonly Entrant[], seed: number): { ok: true; bracket: Bracket } | Refusal {
+  return playAllSteps(tournamentSteps(entrants, seed));
 }
 
 /** Two entrants play until one has won twice; the first robot changes sides every match. */

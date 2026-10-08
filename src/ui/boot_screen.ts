@@ -191,7 +191,10 @@ export class BootScreen {
   private onKey(event: KeyboardEvent): void {
     // Enter on the link to the source opens it, not a line of the menu.
     if (event.target instanceof HTMLAnchorElement) return;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (event.key === 'Escape') {
+      // Back to the screen the menu opened over (⏻ pressed by mistake).
+      this.hide();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const step = event.key === 'ArrowDown' ? 1 : -1;
       let at = this.cursor;
       for (let tries = 0; tries < this.items.length; tries++) {

@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-08',
+    en: 'Smoother controls: a 20-match series and a contest now count up on screen instead of freezing the page, loading from the garage asks for a second press before replacing your code and parts, Esc closes the start menu, and switching the language brings you back to the screen you were on.',
+    ja: '操作まわりを使いやすくしました。連戦や大会は画面を固めずに「試合 n/20 を計算中…」と数えながら進み、ガレージからの読み込みは 2 度押しで確定するようになりました(コードとパーツの置き換えなので)。起動メニューは Esc で閉じられ、言語を切り替えても元の画面に戻ります。',
+  },
+  {
+    date: '2026-10-08',
     en: 'The castle is now the base, as the words base_hp and face base always said: the mode is TEAM BATTLE, its rule the base battle, and the team templates are BaseRush, BaseSplit and friends. Saved teams, links and files all keep working.',
     ja: '「城」は「基地」になりました。base_hp や face base が最初からそう言っていた通りです。モード名はチームバトル、ルール名は基地戦、チームのテンプレートは BaseRush・BaseSplit などに。保存したチームやリンク、ファイルはそのまま使えます。',
   },

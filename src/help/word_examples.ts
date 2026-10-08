@@ -361,6 +361,11 @@ loop
         face ally
         drive forward
     wait`,
+  'sensor:ally_signal_from': `loop
+    if ally_signal == 1 and ally_signal_from > 0
+        # answer whoever called: "on my way"
+        signal 2 to ally_signal_from
+    wait`,
   'sensor:ally_distance': `loop
     if ally_distance > 400
         face ally

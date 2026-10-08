@@ -20,6 +20,7 @@ export class EventReporter {
   private readonly lastStatus = new Map<string, ProgramStatus>();
   private readonly warnedOutOfAmmo = new Set<string>();
   private readonly warnedOutOfGuards = new Set<string>();
+  private readonly warnedSignalTo = new Set<string>();
 
   constructor(
     private readonly sink: DebugEventSink,
@@ -84,6 +85,13 @@ export class EventReporter {
     if (this.warnedOutOfAmmo.has(robotId)) return;
     this.warnedOutOfAmmo.add(robotId);
     this.emit('warning', robotId, 'out of ammo', sourceLine);
+  }
+
+  /** Reported once per robot, the first time it signals to a machine number nobody on the team has. */
+  signalToNobody(robotId: string, target: number): void {
+    if (this.warnedSignalTo.has(robotId)) return;
+    this.warnedSignalTo.add(robotId);
+    this.emit('warning', robotId, `signal to ${target}: no teammate has that number`);
   }
 
   /** Reported once per robot, the first time it tries to guard with no guards left. */

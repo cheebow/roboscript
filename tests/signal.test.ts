@@ -102,3 +102,55 @@ describe('signal', () => {
     expect(watcher.seen.map((context) => context.allySignal)).toEqual([0, 9]);
   });
 });
+
+describe('signal to one machine', () => {
+  it('reaches only the machine it is addressed to, with the sender\'s number', () => {
+    // ALPHA (self_id 1) sends to machine 2: CHARLIE (self_id 2) hears it, ALPHA's own mailbox stays empty.
+    const alpha = new SensingBrain();
+    const charlie = new SensingBrain();
+    const simulation = teamMatch([
+      watched(compileBrain('signal 7 to 2\nloop\n    wait\n'), alpha),
+      new FixedBrain(),
+      charlie,
+      new FixedBrain(),
+    ]);
+    runTicks(simulation, 2);
+    expect(charlie.seen.map((context) => context.allySignal)).toEqual([0, 7]);
+    expect(charlie.seen.map((context) => context.allySignalFrom)).toEqual([0, 1]);
+    expect(alpha.seen.map((context) => context.allySignal)).toEqual([0, 0]);
+  });
+
+  it('tells everyone who sent a broadcast, through ally_signal_from', () => {
+    // CHARLIE (self_id 2) broadcasts: ALPHA reads the number and the sender's 2.
+    const alpha = new SensingBrain();
+    const simulation = teamMatch([alpha, new FixedBrain(), compileBrain('signal 4\nloop\n    wait\n'), new FixedBrain()]);
+    runTicks(simulation, 2);
+    expect(alpha.seen.map((context) => context.allySignalFrom)).toEqual([0, 2]);
+  });
+
+  it('takes a computed addressee, and self_id as a note to the robot itself', () => {
+    const alpha = new SensingBrain();
+    const simulation = teamMatch([
+      watched(compileBrain('signal 9 to self_id + 1 - 1\nloop\n    wait\n'), alpha),
+      new FixedBrain(),
+      new FixedBrain(),
+      new FixedBrain(),
+    ]);
+    runTicks(simulation, 2);
+    expect(alpha.seen.map((context) => context.allySignal)).toEqual([0, 9]);
+  });
+
+  it('does nothing when no teammate has the number', () => {
+    const charlie = new SensingBrain();
+    const simulation = teamMatch([compileBrain('signal 1 to 9\nloop\n    wait\n'), new FixedBrain(), charlie, new FixedBrain()]);
+    runTicks(simulation, 2);
+    expect(charlie.seen.map((context) => context.allySignal)).toEqual([0, 0]);
+  });
+
+  it('leaves a variable called "to" alone: "signal to" still sends its value to everyone', () => {
+    const charlie = new SensingBrain();
+    const simulation = teamMatch([compileBrain('set to = 3\nsignal to\nloop\n    wait\n'), new FixedBrain(), charlie, new FixedBrain()]);
+    runTicks(simulation, 2);
+    expect(charlie.seen.map((context) => context.allySignal)).toEqual([0, 3]);
+  });
+});

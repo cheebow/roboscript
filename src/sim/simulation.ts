@@ -70,11 +70,11 @@ function diceSeed(seed: number, index: number): number {
 
 /**
  * `deflected`: a bullet hit a robot that was guarding. `detected`: a robot
- * caught sight of the enemy. `signal`: a robot put a new number on the radio;
- * `signalHeard`: a teammate of the sender, at that moment. `baseHit`: an
- * enemy bullet wore a castle down.
+ * caught sight of the enemy. `signalHeard`: a new number landed in a
+ * robot's mailbox (`from` is its sender). `baseHit`: an enemy bullet wore
+ * a castle down.
  */
-export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed' | 'baseHit' | 'signal' | 'signalHeard';
+export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed' | 'baseHit' | 'signalHeard';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
@@ -139,12 +139,16 @@ export class Simulation {
   private readonly teamOf: readonly number[];
   private readonly teamMatch: boolean;
   /**
-   * Each team's radio: the number last sent with `signal`, by team. Writes
-   * land after everyone has thought, in robot order, so all read the same
-   * tick-start value and the highest-numbered sender of a tick wins. Outside
-   * a team match every robot is its own team: the radio is a note to itself.
+   * The radio, one mailbox per robot: the number last addressed to it, and
+   * who sent it (the sender's self_id; 0 before anything came). `signal 3`
+   * writes every mailbox of the sender's team, own included; `signal 3 to 2`
+   * only machine 2's. Writes land after everyone has thought, in robot
+   * order, so all read the same tick-start value and the highest-numbered
+   * sender of a tick wins. Outside a team match every robot is its own
+   * team: the radio is a note to itself.
    */
-  private readonly signals = new Map<number, number>();
+  private readonly mailboxes: number[];
+  private readonly mailboxFrom: number[];
   /**
    * What stands in the way of driving, bullets and sight: the arena's
    * obstacles, plus the castles. Without castles this IS `arena` itself, so
@@ -190,9 +194,11 @@ export class Simulation {
           weapon: new Gun(stats, config.tickRate),
           dice: new MatchRng(diceSeed(config.seed, index)),
           team: this.teamMatch ? this.teamOf[index] : undefined,
-          selfId: this.teamMatch ? this.teamOf.slice(0, index + 1).filter((team) => team === this.teamOf[index]).length : undefined,
+          selfId: this.teamMatch ? this.selfIdOf(index) : undefined,
         }),
     );
+    this.mailboxes = config.robots.map(() => 0);
+    this.mailboxFrom = config.robots.map(() => 0);
     // What each robot knows of its team as the match stands ready: a snapshot
     // at tick 0 (and the waiting view before a match) shows full castles and
     // living teammates, not zeros.
@@ -226,16 +232,24 @@ export class Simulation {
     actions.forEach((action, index) => {
       if (action === null || action.signal === null) return;
       const team = this.teamOf[index];
-      // A new number on the radio is seen going out and coming in; the same number sent again is not.
-      if (this.signals.get(team) !== action.signal) {
-        this.tickEvents.push({ kind: 'signal', ...this.robots[index].position, robot: index });
-        this.robots.forEach((mate, mateIndex) => {
-          if (mateIndex !== index && mate.alive && this.teamOf[mateIndex] === team) {
-            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex, from: index });
-          }
-        });
+      const value = action.signal;
+      const recipients =
+        action.signalTo === null
+          ? this.robots.map((_, other) => other).filter((other) => this.teamOf[other] === team)
+          : this.robots.map((_, other) => other).filter((other) => this.teamOf[other] === team && this.selfIdOf(other) === action.signalTo);
+      if (action.signalTo !== null && recipients.length === 0) {
+        this.reporter?.signalToNobody(this.robots[index].id, action.signalTo);
+        return;
       }
-      this.signals.set(team, action.signal);
+      for (const recipient of recipients) {
+        // A new number in the mailbox is seen flying over; the same number again (whoever sends it) is not.
+        const news = this.mailboxes[recipient] !== value;
+        this.mailboxes[recipient] = value;
+        this.mailboxFrom[recipient] = this.selfIdOf(index);
+        if (news && recipient !== index && this.robots[recipient].alive) {
+          this.tickEvents.push({ kind: 'signalHeard', ...this.robots[recipient].position, robot: recipient, from: index });
+        }
+      }
     });
 
     // Every robot moves at once: each makes room by where the others stood at the start of the tick,
@@ -291,6 +305,11 @@ export class Simulation {
   }
 
   /** What the robot knows of its team as the tick starts: the nearest living teammate, the radio, and both castles. */
+  /** The robot's number within its team (1-based), as self_id reads it. */
+  private selfIdOf(index: number): number {
+    return this.teamOf.slice(0, index + 1).filter((team) => team === this.teamOf[index]).length;
+  }
+
   private teamReadingOf(robot: RobotController): TeamReading {
     const index = this.robots.indexOf(robot);
     const team = this.teamOf[index];
@@ -314,7 +333,8 @@ export class Simulation {
 
     return {
       alliesAlive: allies.length,
-      allySignal: this.signals.get(team) ?? 0,
+      allySignal: this.mailboxes[index],
+      allySignalFrom: this.mailboxFrom[index],
       allyDistance: toAlly?.distance ?? 0,
       allyAngle: toAlly?.angle ?? 0,
       allyHp: nearest?.hp ?? 0,

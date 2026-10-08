@@ -418,7 +418,7 @@ loop
       { id: 'team-words', title: { en: `Team and base words`, ja: `チームと基地のワード` }, body: { en: `The words of the team battle. Outside it they read 0 (and \`self_id\` reads 1), so a duel program can use them safely.
 
 - **\`self_id\`** is the machine's number (1, 2, …): one program, roles split by number.
-- **\`signal 3\`** puts a number on the team's **radio**; from the next tick everyone reads it as **\`ally_signal\`**, until a new number is sent. Everyone reads the tick's starting value, and of two senders in one tick the higher number wins. What each number means is up to your program.
+- **\`signal 3\`** puts a number on the team's **radio**; from the next tick everyone reads it as **\`ally_signal\`**, until a new number is sent. Everyone reads the tick's starting value, and of two senders in one tick the higher number wins. **\`signal 3 to 2\`** sends the number to machine 2 alone, and **\`ally_signal_from\`** says who sent what arrived. What each number means is up to your program.
 - **\`base_hp\`**, **\`base_distance\`**, **\`base_angle\`** are about your own base; the \`enemy_base_\` words about the enemy's. \`face base\` / \`face enemy_base\` turn towards them.
 - **\`ally_distance\`**, **\`ally_angle\`**, **\`ally_hp\`** are about the nearest living teammate (known even behind obstacles — the team keeps in touch by radio); \`face ally\` turns towards it. **\`allies_alive\`** counts the living teammates, yourself not included.
 - **\`sensor_range\`**, **\`max_speed\`**, **\`max_hp\`** read your own machine's parts, so roles can follow equipment.
@@ -441,7 +441,7 @@ loop
 \`\`\``, ja: `チームバトルのワードです。チームバトルの外では 0 が入る（\`self_id\` は 1）ので、ふだんのプログラムに書いてあっても安全です。
 
 - **\`self_id\`** は自分の番号（1、2、…）。1 本のプログラムを番号で書き分けます。
-- **\`signal 3\`** はチームの **無線** に数を 1 つ載せます。次の tick から全員が **\`ally_signal\`** で読め、新しい数を送るまで残ります。全員が tick の始めの値を読み、同じ tick に 2 台が送ったら番号の大きい機体が勝ちます。数の意味はプログラムで決めます。
+- **\`signal 3\`** はチームの **無線** に数を 1 つ載せます。次の tick から全員が **\`ally_signal\`** で読め、新しい数を送るまで残ります。全員が tick の始めの値を読み、同じ tick に 2 台が送ったら番号の大きい機体が勝ちます。**\`signal 3 to 2\`** なら 2 号機だけに届き、**\`ally_signal_from\`** で「だれが送ったか」が読めます。数の意味はプログラムで決めます。
 - **\`base_hp\`**・**\`base_distance\`**・**\`base_angle\`** は自分の基地、\`enemy_base_\` のワードは敵の基地のことです。\`face base\` / \`face enemy_base\` でそちらを向けます。
 - **\`ally_distance\`**・**\`ally_angle\`**・**\`ally_hp\`** は一番近い生きている味方のことです（無線でつながっている決まりなので、障害物の陰でも分かります）。\`face ally\` でそちらへ。**\`allies_alive\`** は自分を除く生きている味方の数です。
 - **\`sensor_range\`**・**\`max_speed\`**・**\`max_hp\`** は自分の機体の装備を読むので、役割を装備に合わせられます。

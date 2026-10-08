@@ -32,6 +32,12 @@ export class EffectTracker {
 
   /** Starts an effect for each event of this tick and returns every effect still running. */
   update(tick: number, events: readonly TickEvent[]): EffectSnapshot[] {
+    // A robot shows one letter at a time: a new signal replaces the one still flying to or shown over it,
+    // so a chattering radio cannot pile envelopes up.
+    for (const event of events) {
+      if (event.kind !== 'signalHeard' || event.robot === undefined) continue;
+      this.active = this.active.filter((effect) => effect.kind !== 'signalHeard' || effect.robot !== event.robot);
+    }
     this.active.push(...events.map((event) => ({ ...event, startTick: tick })));
     this.active = this.active.filter((effect) => tick - effect.startTick < this.lifetimes[effect.kind]);
     return this.active.map(({ kind, x, y, startTick, robot, from }) => ({

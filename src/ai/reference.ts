@@ -101,7 +101,7 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'signal',
     kind: 'command',
     hint: 'send a number to the team',
-    summary: `Puts a number on the team's radio: signal 3. From the next tick on, the whole team reads it as ally_signal, until a new number is sent. What each number means is up to your program. Alone, it is a note to the robot itself. ${NO_TIME}`,
+    summary: `Puts a number on the team's radio: signal 3. From the next tick on, the whole team reads it as ally_signal, until a new number is sent. signal 3 to 2 sends it to machine 2 alone. What each number means is up to your program. Alone, it is a note to the robot itself. ${NO_TIME}`,
   },
   {
     word: 'drive',
@@ -386,7 +386,13 @@ export const LANGUAGE: readonly WordReference[] = [
     word: 'ally_signal',
     kind: 'sensor',
     hint: "the team's radio",
-    summary: 'The number last sent with signal by anyone on the team, as it stood at the start of the tick: a signal sent this tick is read from the next. 0 until something is sent.',
+    summary: 'The number last sent to this robot, as it stood at the start of the tick: a signal sent this tick is read from the next. A signal to everyone and a directed "signal ... to ..." both land here. 0 until something came.',
+  },
+  {
+    word: 'ally_signal_from',
+    kind: 'sensor',
+    hint: 'who sent it',
+    summary: 'The machine number (as self_id counts) of whoever sent what ally_signal holds; 0 until something came. Handy for answering a directed signal.',
   },
   {
     word: 'ally_distance',

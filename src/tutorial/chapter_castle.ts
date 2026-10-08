@@ -130,10 +130,14 @@ else
 
 This opponent splits up: one keeper stays home, two machines come for your base. March on the enemy base together, with a rule on the radio: whoever gets an enemy in range **calls the team** — \`signal 1\` — and keeps calling while it fights. A machine that hears the call heads for its nearest teammate with **\`face ally\`**: every call is answered by every free gun. And a finished call must be **taken back** — the caller sends \`signal 0\` once no enemy is in sight — or the team would keep answering it forever. Remembering whether it was you who called takes a variable.
 
+A signal can also be addressed: \`signal 1 to 2\` reaches machine 2 alone, and \`ally_signal_from\` tells who sent what arrived.
+
 Watch \`ally_signal\` change in the WATCH panel while you debug: that is the protocol you designed, running.`,
         ja: `味方は 1 本の **無線** でつながっています。**\`signal 1\`** で数を載せると、次の tick から全員が **\`ally_signal\`** で読めます（新しい数を送るまで残ります）。数の意味はプログラムで決めます。
 
 今回の相手は兵力を割いてきます: 1 台を基地に残し、2 台がこちらの基地へ向かってきます。こちらは全員そろって敵の基地へ進軍し、無線にルールをひとつ決めましょう: 敵を射程にとらえた機体が **チームを呼ぶ** — \`signal 1\` — 戦っている間は呼び続けます。呼ばれた機体は **\`face ally\`** で一番近い味方のところへ駆けつけます。手のあいた銃は全部、呼ばれた場所に集まるわけです。そして、終わった呼び出しは **取り消す** こと — 敵が見えなくなったら呼んだ機体が \`signal 0\` を送ります。そうしないと、チームは永遠に駆けつけ続けます。「呼んだのが自分かどうか」を覚えておくのには変数を使います。
+
+宛先も選べます。\`signal 1 to 2\` と書くと 2 号機だけに届き、\`ally_signal_from\` で「だれが送ったか」が読めます。
 
 デバッグ中にウォッチの \`ally_signal\` が変わるのを見てください。自分で設計した無線のやりとりが動いています。`,
       },

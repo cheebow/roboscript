@@ -38,6 +38,7 @@ const NUMBERS = [
   'self_id',
   'allies_alive',
   'ally_signal',
+  'ally_signal_from',
   'ally_distance',
   'ally_angle',
   'ally_hp',

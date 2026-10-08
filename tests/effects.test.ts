@@ -121,7 +121,7 @@ describe('a hit on a guarding robot', () => {
 
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1, baseHit: 1, signal: 1, signalHeard: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1, baseHit: 1, signalHeard: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 
@@ -197,27 +197,48 @@ describe('effects in a recording', () => {
   });
 });
 
+describe('EffectTracker and the radio', () => {
+  it('keeps one envelope per robot: a new one replaces the one still flying to it', () => {
+    const tracker = new EffectTracker(EFFECT_LIFETIMES);
+    tracker.update(0, [{ kind: 'signalHeard', x: 0, y: 0, robot: 1, from: 0 }]);
+    const shown = tracker.update(1, [{ kind: 'signalHeard', x: 0, y: 0, robot: 1, from: 2 }]);
+    expect(shown.filter((effect) => effect.kind === 'signalHeard')).toEqual([{ kind: 'signalHeard', x: 0, y: 0, robot: 1, from: 2, age: 0 }]);
+  });
+});
+
 describe('signal and base-hit events', () => {
   const teamed = (brains: [FixedBrain, FixedBrain]) => createSimulation(brains, { teams: [0, 0] });
 
-  it('reports a new number on the radio once, at the sender and at each teammate', () => {
+  it('reports a new number landing at each teammate, once', () => {
     const simulation = teamed([new FixedBrain({ signal: 1 }), new FixedBrain()]);
     simulation.step();
-    const [sender, mate] = simulation.robots;
-    expect(simulation.tickEvents).toEqual([
-      { kind: 'signal', ...sender.position, robot: 0 },
-      { kind: 'signalHeard', ...mate.position, robot: 1, from: 0 },
-    ]);
+    const [, mate] = simulation.robots;
+    expect(simulation.tickEvents).toEqual([{ kind: 'signalHeard', ...mate.position, robot: 1, from: 0 }]);
     // The same number sent again is not news.
     simulation.step();
     expect(simulation.tickEvents).toEqual([]);
   });
 
-  it('reports nothing of a signal in a duel but the send itself', () => {
+  it('reports a directed signal only at the machine it goes to', () => {
+    const simulation = teamed([new FixedBrain({ signal: 7, signalTo: 2 }), new FixedBrain()]);
+    simulation.step();
+    const [, mate] = simulation.robots;
+    expect(simulation.tickEvents).toEqual([{ kind: 'signalHeard', ...mate.position, robot: 1, from: 0 }]);
+  });
+
+  it('reports nothing of a signal to itself, or to a machine nobody is', () => {
+    const toSelf = teamed([new FixedBrain({ signal: 1, signalTo: 1 }), new FixedBrain()]);
+    toSelf.step();
+    expect(toSelf.tickEvents).toEqual([]);
+    const toNobody = teamed([new FixedBrain({ signal: 1, signalTo: 9 }), new FixedBrain()]);
+    toNobody.step();
+    expect(toNobody.tickEvents).toEqual([]);
+  });
+
+  it('reports nothing of a signal in a duel: there is nobody to hear it', () => {
     const simulation = createSimulation([new FixedBrain({ signal: 1 }), new FixedBrain()]);
     simulation.step();
-    const signals = simulation.tickEvents.filter((event) => event.kind === 'signal' || event.kind === 'signalHeard');
-    expect(signals).toEqual([{ kind: 'signal', ...simulation.robots[0].position, robot: 0 }]);
+    expect(simulation.tickEvents.filter((event) => event.kind === 'signalHeard')).toEqual([]);
   });
 
   it('reports a hit on a castle whenever an enemy bullet wears it down', () => {

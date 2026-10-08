@@ -84,11 +84,16 @@ export interface LabelNode {
   label: string;
 }
 
-/** Puts a number on the team's radio, read by everyone as ally_signal from the next tick on. Takes no time. */
+/**
+ * Puts a number on the radio, read as ally_signal from the next tick on:
+ * by the whole team, or with `to` by that one machine alone. Takes no time.
+ */
 export interface SignalNode {
   kind: 'signal';
   line: number;
   value: Expression;
+  /** The machine it goes to (a self_id number), or null for the whole team. */
+  to: Expression | null;
 }
 
 /** Sets how the hull drives from now on. Takes no time: the driving goes on alongside the actions. */

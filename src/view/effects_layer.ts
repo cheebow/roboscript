@@ -40,23 +40,20 @@ const DEFLECT_DOTS = 16;
 const DETECT_START_RADIUS = 22;
 const DETECT_GROWTH = 26;
 const DETECT_DOTS = 12;
-// A new number on the radio: an envelope rises over the sender, a dotted
-// line runs out to each teammate with a pulse of data travelling along it,
-// and the envelope pops up where the pulse lands. All of it in a plain
-// white of its own, so it does not read as a robot's part. (Rings, antenna
-// marks and raw numbers were tried first: the rings read as the detection
-// and guard rings, the marks were too small, and a number can be as long
-// as the program likes.)
+// A number lands in a mailbox: a little envelope flies from the sender
+// along a dotted line to the receiver, and pops up over it on arrival. All
+// of it in a plain white of its own, so it does not read as a robot's
+// part. (Rings, antenna marks and raw numbers were tried first: the rings
+// read as the detection and guard rings, the marks were too small, and a
+// number can be as long as the program likes.)
 const RADIO = '#e8f4ff';
 /** px between the dots of the line a signal travels along. */
 const LINK_SPACING = 10;
-/** How faint the line is next to the pulse riding it. */
+/** How faint the line is next to the envelope riding it. */
 const LINK_ALPHA = 0.35;
-/** The pulse arrives this far into the effect's life; the envelope has the rest. */
+/** The envelope arrives this far into the effect's life; popping up over the receiver has the rest. */
 const LINK_ARRIVE = 0.5;
-/** Dots trailing the pulse's head, each dimmer than the one before. */
-const PULSE_TRAIL = 3;
-/** The envelope, drawn in cells of 2x2 dots; '#' is a cell. */
+/** The envelope, drawn in square cells; '#' is a cell. */
 const ENVELOPE: readonly string[] = [
   '#########',
   '##.....##',
@@ -65,10 +62,10 @@ const ENVELOPE: readonly string[] = [
   '#...#...#',
   '#########',
 ];
-const ENVELOPE_CELL = DOT * 2;
-/** Where the envelope's centre sits above the robot's centre, and how far it rises. */
-const ENVELOPE_Y = -30;
-const ENVELOPE_RISE = 6;
+const ENVELOPE_CELL = DOT;
+/** Where the envelope's centre sits above the receiver once it arrives, and how far it rises. */
+const ENVELOPE_Y = -24;
+const ENVELOPE_RISE = 4;
 /** The radio marks stay full until this share of their life, then fade out. */
 const RADIO_FADE_FROM = 0.7;
 // An enemy bullet wore the castle down: a heavier spark than an ordinary impact.
@@ -114,9 +111,6 @@ export function drawEffects(
         break;
       case 'detected':
         drawDetection(ctx, effect, progress, scene);
-        break;
-      case 'signal':
-        drawSignal(ctx, effect, progress, scene);
         break;
       case 'signalHeard':
         drawHeard(ctx, effect, progress, scene);
@@ -178,9 +172,10 @@ function radioAlpha(progress: number): number {
 
 /** The number an effect carries, popping up beside the given spot and rising a little. */
 /** The envelope over the given robot, risen by `shown` of its way, drawn in whatever style is set. */
-function drawEnvelope(ctx: CanvasRenderingContext2D, at: { x: number; y: number }, shown: number): void {
-  const left = at.x - (ENVELOPE[0].length * ENVELOPE_CELL) / 2;
-  const top = at.y + ENVELOPE_Y - (ENVELOPE.length * ENVELOPE_CELL) / 2 - ENVELOPE_RISE * shown;
+/** The envelope with its centre at the given spot, drawn in whatever style is set. */
+function drawEnvelope(ctx: CanvasRenderingContext2D, centre: { x: number; y: number }): void {
+  const left = centre.x - (ENVELOPE[0].length * ENVELOPE_CELL) / 2;
+  const top = centre.y - (ENVELOPE.length * ENVELOPE_CELL) / 2;
   ENVELOPE.forEach((row, cellY) => {
     for (let cellX = 0; cellX < row.length; cellX++) {
       if (row[cellX] === '#') ctx.fillRect(left + cellX * ENVELOPE_CELL, top + cellY * ENVELOPE_CELL, ENVELOPE_CELL, ENVELOPE_CELL);
@@ -188,48 +183,33 @@ function drawEnvelope(ctx: CanvasRenderingContext2D, at: { x: number; y: number 
   });
 }
 
-/** The sender broadcasts: an envelope rises over the robot, riding along with it. */
-function drawSignal(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
-  ctx.fillStyle = RADIO;
-  ctx.globalAlpha = radioAlpha(progress);
-  drawEnvelope(ctx, anchorOf(effect, scene), progress);
-}
-
 /**
- * The signal reaches a teammate: a dotted line from the sender, a pulse of
- * data running along it, and the envelope where it arrives. Both ends
+ * The signal reaches a teammate: the envelope flies from the sender along
+ * a dotted line, and pops up over the receiver as it lands. Both ends
  * follow their robots.
  */
 function drawHeard(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
   const to = anchorOf(effect, scene);
   const from = effect.from !== undefined ? (scene.robots?.[effect.from] ?? null) : null;
   ctx.fillStyle = RADIO;
-  if (from !== null) {
-    const length = Math.hypot(to.x - from.x, to.y - from.y);
-    const steps = Math.max(1, Math.round(length / LINK_SPACING));
+  if (from !== null && progress < LINK_ARRIVE) {
+    const steps = Math.max(1, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / LINK_SPACING));
     const at = (share: number) => ({ x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share });
     // The line, faint, from sender to receiver.
-    ctx.globalAlpha = radioAlpha(progress) * LINK_ALPHA;
+    ctx.globalAlpha = LINK_ALPHA;
     for (let step = 0; step <= steps; step++) {
       const place = at(step / steps);
       dot(ctx, place.x, place.y);
     }
-    // The pulse, bright, with a short tail: the data on its way over.
-    const travelled = Math.min(1, progress / LINK_ARRIVE);
-    for (let tail = 0; tail < PULSE_TRAIL; tail++) {
-      const share = travelled - (tail * LINK_SPACING) / Math.max(length, 1);
-      if (share < 0) continue;
-      ctx.globalAlpha = radioAlpha(progress) * (1 - tail / PULSE_TRAIL);
-      const place = at(share);
-      dot(ctx, place.x, place.y);
-      if (tail === 0) for (const [dx, dy] of PLUS) dot(ctx, place.x + dx * DOT, place.y + dy * DOT);
-    }
+    // The envelope on its way over.
+    ctx.globalAlpha = 1;
+    drawEnvelope(ctx, at(progress / LINK_ARRIVE));
+    return;
   }
-  // The envelope pops up once the pulse is in: nothing yet while it is still on its way.
-  const arrived = from === null ? progress : Math.max(0, (progress - LINK_ARRIVE) / (1 - LINK_ARRIVE));
-  if (arrived <= 0) return;
+  // Landed: the envelope pops up over the receiver, rises a little and fades.
+  const arrived = from === null ? progress : (progress - LINK_ARRIVE) / (1 - LINK_ARRIVE);
   ctx.globalAlpha = radioAlpha(progress);
-  drawEnvelope(ctx, to, arrived);
+  drawEnvelope(ctx, { x: to.x, y: to.y + ENVELOPE_Y - ENVELOPE_RISE * arrived });
 }
 
 /** An enemy bullet wore the castle down: a heavier, hotter spark than an ordinary impact. */

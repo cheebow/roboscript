@@ -61,6 +61,7 @@ export const QUIET_CONTEXT: AIContext = {
   selfId: 1,
   alliesAlive: 0,
   allySignal: 0,
+  allySignalFrom: 0,
   allyDistance: 0,
   allyAngle: 0,
   allyHp: 0,

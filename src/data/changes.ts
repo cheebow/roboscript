@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-08',
+    en: 'The radio learned addresses: signal 3 to 2 sends a number to machine 2 alone, ally_signal_from says who sent what arrived, and on the field a little envelope flies from the sender to whoever it is for.',
+    ja: '無線に宛先が付きました。signal 3 to 2 と書くと 2 号機だけに数が届き、ally_signal_from で「だれが送ったか」が読めます。戦闘画面では、小さな封筒が送信機から相手まで飛んでいきます。',
+  },
+  {
+    date: '2026-10-08',
     en: 'The field shows more of what happens: a new number on the radio sends a white envelope up over the sender and a pulse down a line to each teammate, where the envelope pops up as it lands; a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
     ja: '戦闘画面の見せ方が増えました。無線に新しい数が載ると、送信機の上に白い封筒マークが浮かび、味方へ伸びる線をデータのパルスが流れて、届いた機体にも封筒が浮かびます。基地が削られると大きめの火花が散り、回復中のロボットからは + マークが立ちのぼります。',
   },

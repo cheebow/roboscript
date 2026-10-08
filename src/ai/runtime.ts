@@ -220,6 +220,7 @@ export class ScriptBrain implements RobotBrain {
         return null;
       case 'signal':
         action.signal = this.valueOf(statement.value);
+        action.signalTo = statement.to === null ? null : this.valueOf(statement.to);
         return null;
       case 'drive':
         // A setting, not an action: the hull keeps driving while the program goes on.

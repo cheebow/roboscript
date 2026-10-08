@@ -80,8 +80,10 @@ export interface AIContext {
   readonly selfId: number;
   /** Living teammates, not counting the robot itself. 0 outside a team match. */
   readonly alliesAlive: number;
-  /** The team's radio: the number last sent with `signal`, as it stood at the start of the tick. 0 until something is sent. */
+  /** The robot's mailbox: the number last addressed to it, as it stood at the start of the tick. 0 until something came. */
   readonly allySignal: number;
+  /** Who sent what is in the mailbox: the sender's self_id; 0 before anything came. */
+  readonly allySignalFrom: number;
   /** Distance, relative angle (deg, positive = to the right) and HP of the nearest living teammate. 0 without one. */
   readonly allyDistance: number;
   readonly allyAngle: number;
@@ -127,6 +129,8 @@ export interface AIAction {
   guard: boolean;
   /** The number to put on the team's radio, read by everyone from the next tick on; null sends nothing. */
   signal: number | null;
+  /** The machine the signal goes to (a self_id number), or null to send to the whole team. */
+  signalTo: number | null;
   /** A name for what the robot is doing, to show and to log. It changes nothing else; null keeps the current one. */
   label: string | null;
   /** Source lines the AI executed on this tick, in order. */
@@ -179,6 +183,7 @@ export function createIdleAction(): AIAction {
     fire: false,
     guard: false,
     signal: null,
+    signalTo: null,
     label: null,
     executedLines: [],
     sourceLines: { drive: null, turn: null, aim: null, fire: null, guard: null, label: null },

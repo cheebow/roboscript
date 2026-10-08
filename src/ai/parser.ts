@@ -325,9 +325,20 @@ class Parser {
         return { kind: 'label', line: lineNumber, label: argument.text };
       }
       case 'signal': {
-        const value = line.tokens.slice(1);
-        if (value.length === 0) throw new LineError(t('parse.expectSignalValue'));
-        return { kind: 'signal', line: lineNumber, value: new ExpressionParser(value, this.scope).parseWholeExpression() };
+        const tokens = line.tokens.slice(1);
+        if (tokens.length === 0) throw new LineError(t('parse.expectSignalValue'));
+        // "signal 1 to 3": a `to` with something on both sides splits the value from the addressee.
+        // A lone `to` stays an ordinary name, so a variable called `to` keeps working.
+        let depth = 0;
+        let split = -1;
+        tokens.forEach((token, index) => {
+          if (token.type === 'symbol' && token.text === '(') depth++;
+          else if (token.type === 'symbol' && token.text === ')') depth--;
+          else if (token.type === 'word' && token.text === 'to' && depth === 0 && index > 0 && index < tokens.length - 1 && split < 0) split = index;
+        });
+        const value = split < 0 ? tokens : tokens.slice(0, split);
+        const to = split < 0 ? null : new ExpressionParser(tokens.slice(split + 1), this.scope).parseWholeExpression();
+        return { kind: 'signal', line: lineNumber, value: new ExpressionParser(value, this.scope).parseWholeExpression(), to };
       }
       case 'state':
         // The command of earlier versions, which only knew five names.

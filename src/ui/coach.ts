@@ -24,7 +24,7 @@ export interface Coach {
   /** The match is being shown: the result comes out as the replay gets to it. */
   watch(replay: ReplayManager): void;
   /** The program had errors, or the parts cost too much: no match. */
-  matchRefused(): void;
+  matchRefused(why: 'errors' | 'cost'): void;
   /** Something the player did on the screen. */
   acted(action: TutorialAction): void;
   /** The parts the player picked. */

@@ -118,7 +118,8 @@ else
         drive forward
         wait
 `,
-      stage: castleStage(3, SITTING_TEAM, 102),
+      // Light bodies and pistols: three of them fit the team's cost limit, where three standard machines would not.
+      stage: castleStage(3, SITTING_TEAM, 102, { player: { body: 'light', gun: 'pistol' } }),
       check: { kind: 'match', goal: { kind: 'win' }, uses: ['self_id'] },
     },
     {
@@ -176,7 +177,7 @@ loop
             drive forward
             wait
 `,
-      stage: castleStage(3, CASTLE_SPLIT, 103, { gun: 'pistol', body: 'light' }),
+      stage: castleStage(3, CASTLE_SPLIT, 103, { bot: { gun: 'pistol', body: 'light' }, player: { body: 'light', gun: 'pistol' } }),
       check: { kind: 'match', goal: { kind: 'win' }, uses: ['signal', 'ally_signal'] },
     },
     {

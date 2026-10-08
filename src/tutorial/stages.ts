@@ -212,12 +212,18 @@ export const SNIPE: Stage = {
 };
 
 /** A castle match on the plain castle map: the player's team on the right, the training team on the left. */
-export function castleStage(teamSize: number, bot: string, seed: number, botLoadout?: Partial<Loadout>): Stage {
+export function castleStage(
+  teamSize: number,
+  bot: string,
+  seed: number,
+  parts: { bot?: Partial<Loadout>; player?: Partial<Loadout> } = {},
+): Stage {
   const definition = CASTLE_ARENAS[0];
   return {
     arena: { ...definition.arena, spawns: castleSpawnsFor(teamSize) },
     bot,
-    botLoadout,
+    botLoadout: parts.bot,
+    loadout: parts.player,
     teamSize,
     bases: definition.basesFor(teamSize),
     seed,

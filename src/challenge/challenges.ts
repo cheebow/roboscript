@@ -267,7 +267,7 @@ export const CHALLENGES: readonly Challenge[] = [
       en: 'A castle match of one robot a side. The enemy runs straight for your castle: stop it on the way, or out-race it to its own. Either way, win.',
       ja: '片側 1 台の城攻めです。相手はまっすぐこちらの城へ走ってきます。途中で止めるか、先に向こうの城を落とすか。どちらでも、勝ちましょう。',
     },
-    stage: castleStage(1, CASTLE_RUSH, 131, { gun: 'pistol' }),
+    stage: castleStage(1, CASTLE_RUSH, 131, { bot: { gun: 'pistol' } }),
     goal: { kind: 'win' },
     stars: [{ kind: 'seconds', max: 30 }, { kind: 'hp', min: 120 }],
     start: START,
@@ -296,21 +296,28 @@ export const CHALLENGES: readonly Challenge[] = [
     id: 'castle-hold',
     title: { en: 'The unbroken castle', ja: '鉄壁の城' },
     brief: {
-      en: 'Three rushers are coming for your castle. Hold the line and win — and for the stars, hardly let them scratch it.',
-      ja: '3 台の突撃が、こちらの城へ向かってきます。守りきって勝ちましょう。星の条件は、城をほとんど削らせないことです。',
+      en: 'Three rushers are coming for your castle. Once they have it in range they shell it and ignore you, so waiting at the walls is too late: go out and meet them. Win — and for the stars, hardly let them scratch the castle.',
+      ja: '3 台の突撃が、こちらの城へ向かってきます。城を射程にとらえた敵は、こちらを無視して城を撃ち続けます。城壁で待っていては手遅れです。前へ出て迎え撃ちましょう。星の条件は、城をほとんど削らせないことです。',
     },
-    stage: castleStage(3, CASTLE_RUSH, 132),
+    // Both teams field light bodies and pistols: three machines inside the team's cost limit, on even terms.
+    stage: castleStage(3, CASTLE_RUSH, 132, { bot: { body: 'light', gun: 'pistol' }, player: { body: 'light', gun: 'pistol' } }),
     goal: { kind: 'win' },
-    stars: [{ kind: 'castleHp', min: 450 }, { kind: 'castleHp', min: 560 }],
+    // Of the castle's 200: at most two hits through for a star, at most one for both.
+    stars: [{ kind: 'castleHp', min: 150 }, { kind: 'castleHp', min: 180 }],
     start: START,
     answer: `loop
     if enemy_visible and enemy_distance < weapon_range
-        label GUARD
+        label FIGHT
         drive stop
         aim enemy
         fire
+    else if enemy_base_distance > 600
+        label ADVANCE
+        face enemy_base
+        drive forward
+        wait
     else
-        label WATCH
+        label HOLD
         drive stop
         aim enemy
         wait
@@ -323,7 +330,7 @@ export const CHALLENGES: readonly Challenge[] = [
       en: 'Two defenders sit by their castle and never leave it. Killing them ends nothing you need: the challenge is cleared only when their CASTLE falls. Short-sighted as they are, a long gun can shell the castle from beyond their eyes.',
       ja: '2 台の守りが城のそばに座り込んでいます。倒すだけでは足りません。この課題は、相手の「城」を落として初めてクリアです。守りは目が短いので、長い銃なら見つからない距離から城を撃てます。',
     },
-    stage: castleStage(2, CASTLE_TURTLE, 133, { sensor: 'short' }),
+    stage: castleStage(2, CASTLE_TURTLE, 133, { bot: { sensor: 'short' } }),
     goal: { kind: 'win' },
     require: [{ kind: 'castleDestroyed' }],
     stars: [{ kind: 'seconds', max: 45 }, { kind: 'noHit' }],

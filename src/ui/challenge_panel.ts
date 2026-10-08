@@ -116,9 +116,9 @@ export class ChallengePanel implements Coach {
     this.setStatus(t('tutorial.watching'), 'waiting');
   }
 
-  matchRefused(): void {
+  matchRefused(why: 'errors' | 'cost'): void {
     this.pending = null;
-    this.setStatus(t('tutorial.fixErrors'), 'problem');
+    this.setStatus(t(why === 'cost' ? 'tutorial.fixCost' : 'tutorial.fixErrors'), 'problem');
   }
 
   acted(_action: TutorialAction): void {}

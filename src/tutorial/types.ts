@@ -13,6 +13,12 @@ export interface Stage {
   /** The program of the training robot (BRAVO). */
   bot: string;
   botLoadout?: Partial<Loadout>;
+  /**
+   * ALPHA's parts, where the step fixes none of its own: standard parts with
+   * these put on. A castle stage fields them on every machine of the player's
+   * team, so together they must fit the team's cost limit.
+   */
+  loadout?: Partial<Loadout>;
   /** A circle on the field for ALPHA to reach. */
   goal?: Vec2 & { radius: number };
   /**

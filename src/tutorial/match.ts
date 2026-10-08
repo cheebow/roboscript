@@ -10,6 +10,11 @@ import { type Stage, stageTeams } from './types';
 /** sec: long enough for any step, short enough not to wait long for a program that does not get there. */
 export const TUTORIAL_MATCH_TIME = 60;
 
+/** The parts ALPHA plays a stage with when the step fixes none: standard parts, with the stage's own put on. */
+export function stageLoadout(stage: Stage): Loadout {
+  return { ...STANDARD_LOADOUT, ...stage.loadout };
+}
+
 /** A step's match, ready to record: the player's program as ALPHA, the training robot as BRAVO, where the stage puts them. */
 export interface TutorialMatch {
   config: Omit<SimulationConfig, 'logger'>;

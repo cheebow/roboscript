@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHALLENGES, challengeLoadout, linesOf, playChallenge } from '../src/challenge';
+import { teamCostLimitFor } from '../src/data/castle';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf } from '../src/data/parts';
+import { stageLoadout } from '../src/tutorial/match';
 
 describe('the challenges', () => {
   it('have ids of their own and words in both languages', () => {
@@ -16,8 +18,10 @@ describe('the challenges', () => {
 
   it('keep the parts of their answers within the cost limit, with any fixed parts on', () => {
     for (const challenge of CHALLENGES) {
-      const loadout = challengeLoadout(challenge, { ...STANDARD_LOADOUT, ...challenge.answerParts });
-      expect(costOf(loadout), challenge.id).toBeLessThanOrEqual(COST_LIMIT);
+      const loadout = challengeLoadout(challenge, { ...stageLoadout(challenge.stage), ...challenge.answerParts });
+      const size = challenge.stage.teamSize;
+      if (size === undefined) expect(costOf(loadout), challenge.id).toBeLessThanOrEqual(COST_LIMIT);
+      else expect(costOf(loadout) * size, challenge.id).toBeLessThanOrEqual(teamCostLimitFor(size));
     }
   });
 

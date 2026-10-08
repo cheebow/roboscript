@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { STANDARD_LOADOUT } from '../src/data/parts';
+import { teamCostLimitFor } from '../src/data/castle';
+import { COST_LIMIT, STANDARD_LOADOUT, costOf } from '../src/data/parts';
 import { STEPS, playStep } from '../src/tutorial';
+import { stageLoadout } from '../src/tutorial/match';
 
 /** The code a step starts with: its own, or the answer of the step before (what a player who did it has). */
 function startOf(index: number): string {
@@ -25,6 +27,18 @@ describe('the tutorial', () => {
         expect(text.en.trim(), step.id).not.toBe('');
         expect(text.ja.trim(), step.id).not.toBe('');
       }
+    }
+  });
+
+  // The screen refuses a match whose parts cost too much, and the castle steps fix
+  // their parts: every step's parts must fit, or the player would be stuck there.
+  it('keeps the parts of every stage within its cost limit', () => {
+    for (const { step } of STEPS) {
+      if (step.stage === undefined) continue;
+      const loadout = { ...stageLoadout(step.stage), ...step.answerParts };
+      const size = step.stage.teamSize;
+      if (size === undefined) expect(costOf(loadout), step.id).toBeLessThanOrEqual(COST_LIMIT);
+      else expect(costOf(loadout) * size, step.id).toBeLessThanOrEqual(teamCostLimitFor(size));
     }
   });
 

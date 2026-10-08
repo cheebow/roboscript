@@ -593,14 +593,14 @@ class App {
     if (cost > limit) {
       const message = stageSize === undefined ? t('program.costOverLimit', { cost, limit }) : t('castle.costOverLimit', { team: ROBOT_IDS[PLAYER_INDEX], cost, limit });
       this.showFaults([{ file: { robotIndex: PLAYER_INDEX, file: 'config' }, events: [appEvent('error', message, null, workspace.robotId)] }]);
-      coach.matchRefused();
+      coach.matchRefused('cost');
       return;
     }
     const built = coach.match(workspace.source, loadout);
     if (!built.ok) {
       workspace.editor.showErrorLines(built.errors.map((error) => error.line));
       this.showFaults([{ file: codeFileOf(PLAYER_INDEX), events: built.errors.map((error) => appEvent('error', formatError(error), error.line, workspace.robotId)) }]);
-      coach.matchRefused();
+      coach.matchRefused('errors');
       return;
     }
     workspace.editor.showErrorLines([]);

@@ -4,7 +4,7 @@ import type { KeyValueStorage } from '../project/project_store';
 import type { Recording } from '../debug/recorder';
 import type { ReplayManager } from '../debug/replay_manager';
 import { CHAPTERS, STEPS, judgeStep, trimmed } from '../tutorial';
-import { tutorialMatch } from '../tutorial/match';
+import { stageLoadout, tutorialMatch } from '../tutorial/match';
 import type { Coach } from './coach';
 import type { Outcome } from '../tutorial/checks';
 import { TUTORIAL_KEY, readProgress, writeProgress, type Progress } from '../tutorial/progress';
@@ -107,9 +107,11 @@ export class TutorialPanel implements Coach {
     return trimmed(recording, outcome);
   }
 
-  /** ALPHA's parts for this step: those chosen, for a step about parts; standard parts elsewhere. */
+  /** ALPHA's parts for this step: those chosen, for a step about parts; the stage's fixed parts elsewhere. */
   get loadout(): Loadout {
-    return this.step.parts === true ? this.progress.loadout : STANDARD_LOADOUT;
+    if (this.step.parts === true) return this.progress.loadout;
+    const { stage } = this;
+    return stage === undefined ? STANDARD_LOADOUT : stageLoadout(stage);
   }
 
   /** The steps fix no parts: either they leave the parts standard, or they let them all be chosen. */
@@ -156,10 +158,10 @@ export class TutorialPanel implements Coach {
     this.showStatus();
   }
 
-  /** The program had errors: no match. */
-  matchRefused(): void {
+  /** The program had errors, or the parts cost too much: no match. */
+  matchRefused(why: 'errors' | 'cost'): void {
     this.pending = null;
-    if (this.step.check.kind === 'match' && !this.cleared) this.setStatus(t('tutorial.fixErrors'), 'problem');
+    if (this.step.check.kind === 'match' && !this.cleared) this.setStatus(t(why === 'cost' ? 'tutorial.fixCost' : 'tutorial.fixErrors'), 'problem');
   }
 
   /** Something the player did on the screen. */

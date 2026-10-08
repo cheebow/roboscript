@@ -5,12 +5,19 @@ export default defineConfig({
   // or under a path such as GitHub Pages' https://<user>.github.io/roboscript/.
   base: './',
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       // Three pages: the game, the introduction and the help on its own.
       input: {
         main: 'index.html',
         about: 'about.html',
         help: 'help.html',
+      },
+      output: {
+        codeSplitting: {
+          // The editor's library in a file of its own: it changes far less often than
+          // the game, so a returning player's browser keeps it across the game's updates.
+          groups: [{ name: 'editor', test: /node_modules[\\/]@(codemirror|lezer)[\\/]/ }],
+        },
       },
     },
   },

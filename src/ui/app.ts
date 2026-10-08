@@ -37,11 +37,10 @@ import { ChallengePanel } from './challenge_panel';
 import type { Coach } from './coach';
 import { createReplay } from './watched_match';
 import { CommentaryView } from './commentary_view';
-import { HelpPanel } from './help_panel';
+import { HelpPanel, loadHelpText } from './help_panel';
 import { AnalysisView } from './analysis_view';
 import { analyze, lineCounts } from '../arena/analysis';
 import type { Recording } from '../debug/recorder';
-import { HELP } from '../help/topics';
 import { GUIDE_EVENT } from './roboscript_assist';
 import { parse } from '../ai/parser';
 import { functionLines } from '../ai/structure';
@@ -305,10 +304,10 @@ class App {
     requireElement('language').addEventListener('click', () => switchLanguage(this.storage, this.screen));
     requireElement('boot-button').addEventListener('click', () => this.boot.show());
     requireElement('help-button').addEventListener('click', () => this.help.toggle());
-    requireElement('guide-button').addEventListener('click', () => this.help.open(HELP[1].topics[0].id));
+    requireElement('guide-button').addEventListener('click', () => this.help.openGuide());
     document.addEventListener(GUIDE_EVENT, (event) => {
       const word = (event as CustomEvent<string>).detail;
-      if (word === '') this.help.open(HELP[1].topics[0].id);
+      if (word === '') this.help.openGuide();
       else this.help.openWord(word);
     });
     requireElement('battle-frame').append(this.commentaryView.element);
@@ -338,6 +337,10 @@ class App {
     });
     document.addEventListener('keydown', (event) => this.onShortcut(event));
     requestAnimationFrame(this.frame);
+    // The help's text is loaded apart, out of the way of the start; fetched once things are quiet, it is
+    // then kept by the service worker, so that the help opens offline too.
+    const idle = window.requestIdleCallback ?? ((then: () => void) => window.setTimeout(then, 2000));
+    idle(() => void loadHelpText().catch(() => {}));
     // A share link opens where its robot or match goes. After a language switch the
     // screen that was shown comes back; any other address opens the start menu.
     const returnTo = consumeReturnScreen();
@@ -437,7 +440,7 @@ class App {
   /** What the start menu starts. Help opens over the screen that was shown. */
   private bootInto(choice: BootChoice): void {
     if (choice === 'language') switchLanguage(this.storage);
-    else if (choice === 'help') this.help.open(HELP[0].topics[0].id);
+    else if (choice === 'help') this.help.open();
     else this.showScreen(choice);
   }
 

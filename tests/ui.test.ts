@@ -95,6 +95,36 @@ describe('a share box', () => {
   });
 });
 
+describe('the help', () => {
+  it('opens at once, fills in its text once loaded, and finds a word', async () => {
+    const { HelpPanel } = await import('../src/ui/help_panel');
+    const help = new HelpPanel();
+    help.open();
+    expect(help.shown).toBe(true);
+    // The table of contents and the first topic follow the text.
+    await vi.waitFor(() => expect(document.querySelectorAll('#help .help-link').length).toBeGreaterThan(10));
+    expect(document.querySelector('#help .help-link.selected')).not.toBeNull();
+    help.openWord('signal');
+    expect(document.querySelector('#help .help-word-found')?.getAttribute('data-word')).toBe('signal');
+    help.close();
+    expect(document.getElementById('help')).toBeNull();
+  });
+
+  it('opens the guide at its start, and stays shut when closed before its text came', async () => {
+    const { HelpPanel } = await import('../src/ui/help_panel');
+    const help = new HelpPanel();
+    help.openGuide();
+    await vi.waitFor(() => expect(document.querySelector('#help .help-link.selected')).not.toBeNull());
+    const guideStart = document.querySelector('#help .help-link.selected')?.textContent;
+    help.close();
+    help.open();
+    help.close();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.getElementById('help')).toBeNull();
+    expect(guideStart).not.toBe('');
+  });
+});
+
 describe('the watch', () => {
   it('folds its long lists, and remembers which', async () => {
     const { WatchPanel } = await import('../src/ui/watch_panel');

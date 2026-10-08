@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { CHALLENGES, challengeLoadout, linesOf, playChallenge } from '../src/challenge';
 import { teamCostLimitFor } from '../src/data/castle';
 import { COST_LIMIT, STANDARD_LOADOUT, costOf } from '../src/data/parts';
-import { stageLoadout } from '../src/tutorial/match';
 
 describe('the challenges', () => {
   it('have ids of their own and words in both languages', () => {
@@ -18,7 +17,8 @@ describe('the challenges', () => {
 
   it('keep the parts of their answers within the cost limit, with any fixed parts on', () => {
     for (const challenge of CHALLENGES) {
-      const loadout = challengeLoadout(challenge, { ...stageLoadout(challenge.stage), ...challenge.answerParts });
+      // The screen starts every challenge from standard parts: with the fixed ones on, they must fit as they are.
+      const loadout = challengeLoadout(challenge, { ...STANDARD_LOADOUT, ...challenge.answerParts });
       const size = challenge.stage.teamSize;
       if (size === undefined) expect(costOf(loadout), challenge.id).toBeLessThanOrEqual(COST_LIMIT);
       else expect(costOf(loadout) * size, challenge.id).toBeLessThanOrEqual(teamCostLimitFor(size));
@@ -33,6 +33,33 @@ describe('the challenges', () => {
       expect(playChallenge(challenge, challenge.start)).toMatchObject({ cleared: false });
     });
   }
+});
+
+describe('calling by name', () => {
+  const challenge = CHALLENGES.find((each) => each.id === 'base-call-by-name');
+  if (challenge === undefined) throw new Error('no base-call-by-name');
+
+  it('is not cleared by calling everyone: the whole team turns back and loses the race', () => {
+    const broadcast = challenge.answer.replaceAll('signal 1 to 2', 'signal 1').replaceAll('signal 0 to 2', 'signal 0');
+    expect(playChallenge(challenge, broadcast)).toMatchObject({ cleared: false });
+  });
+
+  it('sees a directed signal wherever it is written, in a function too', async () => {
+    const { judgeChallenge } = await import('../src/challenge');
+    const played = playChallenge(challenge, challenge.answer);
+    expect(played).toMatchObject({ cleared: true });
+    // The same match judged against programs that do and do not call by name.
+    const { recordMatch } = await import('../src/debug/recorder');
+    const { EFFECT_LIFETIMES } = await import('../src/data/match_defaults');
+    const { challengeMatch } = await import('../src/challenge');
+    const built = challengeMatch(challenge, challenge.answer, { ...STANDARD_LOADOUT });
+    if (!built.ok) throw new Error('does not compile');
+    const recording = recordMatch(built.match.config, EFFECT_LIFETIMES);
+    expect(judgeChallenge(challenge, 'def call()\n    signal 1 to 2\nloop\n    wait', recording)).toMatchObject({ cleared: true });
+    const without = judgeChallenge(challenge, 'loop\n    signal 1\n    wait', recording);
+    expect(without).toMatchObject({ cleared: false });
+    expect(without.why?.ja).toContain('signal … to …');
+  });
 });
 
 describe('lines of a program', () => {

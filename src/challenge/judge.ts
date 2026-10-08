@@ -1,3 +1,5 @@
+import { parse } from '../ai/parser';
+import { walk } from '../ai/walk';
 import { analyze } from '../arena/analysis';
 import type { Recording } from '../debug/recorder';
 import { judge } from '../tutorial/checks';
@@ -68,6 +70,8 @@ export function judgeChallenge(challenge: Challenge, source: string, recording: 
         return (baseHpAt(0, last) ?? 0) >= condition.min;
       case 'castleDestroyed':
         return (baseHpAt(1, last) ?? 1) <= 0;
+      case 'directedSignal':
+        return sendsDirectedSignal(source);
     }
   };
   if (!outcome.done) return { cleared: false, tick, stars: 0, starsMet: [false, false], why: outcome.why, record };
@@ -106,7 +110,22 @@ export function describeCondition(condition: Condition): Text {
       return { en: `with your base at ${condition.min} HP or more`, ja: `自分の基地の HP を ${condition.min} 以上残す` };
     case 'castleDestroyed':
       return { en: 'bringing the enemy base down', ja: '敵の基地を落とす' };
+    case 'directedSignal':
+      return { en: 'calling one machine by its number (signal … to …)', ja: '宛先つきの無線（signal … to …）を使う' };
   }
+}
+
+/** Whether the program sends a signal to one machine somewhere, in its main body or a function. */
+function sendsDirectedSignal(source: string): boolean {
+  const { program } = parse(source);
+  if (program === null) return false;
+  let found = false;
+  walk([...program.body, ...[...program.functions.values()].flatMap((definition) => definition.body)], {
+    statement(statement) {
+      if (statement.kind === 'signal' && statement.to !== null) found = true;
+    },
+  });
+  return found;
 }
 
 /** What a challenge's match has to end in, in both languages. */

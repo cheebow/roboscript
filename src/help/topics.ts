@@ -63,13 +63,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上の **マップ** で戦う場所を選びます。
 
 プログラムにエラーがあると、試合は始まりません。エラーのある行が赤くなり、ログに理由が出ます。` } },
-      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 16, and you can try them in any order; three of them are base battles. The last is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
+      { id: 'challenge-screen', title: { en: `Challenges`, ja: `チャレンジ` }, body: { en: `Puzzles with conditions, started from **CHALLENGE** on the start menu. There are 17, and you can try them in any order; four of them are base battles. One of them is the **champion**, which beats every built-in robot in nine matches out of ten: choosing the right parts is the key.
 
 - Each challenge has **conditions to clear it** (beat the enemy, within so many seconds, in so many lines, without being hit…) and **two more for stars**: clearing gives ★, and each star condition met adds one more, up to ★★★.
 - Some challenges **fix a part** (a Pistol, the Short sensor…); choose the other slots within the cost limit under **PARTS**.
 - Every try of a challenge is the same match: only your code and parts make a difference.
 - Your code and your best are kept for each challenge. Bests are compared by stars, then HP left, then time. Blank lines and lines with only a comment are not counted as lines.
-- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 16 問あり（うち 3 問は基地戦）、どれからでも挑戦できます。最後の 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
+- **Show an example answer** shows one way to clear it, and the parts it uses.`, ja: `起動メニューの **チャレンジ** から始める、条件つきの課題です。全部で 17 問あり（うち 4 問は基地戦）、どれからでも挑戦できます。そのうち 1 問の相手は、内蔵ロボットのどれにも 9 割以上勝つ **最強ロボ** です。パーツ選びがカギになります。
 
 - それぞれに **クリア条件**（敵に勝つ、何秒以内、何行以内、1 発も受けない…）と、**星の条件** が 2 つあります。クリアすると ★ が 1 つ。星の条件を 1 つ満たすごとに ★ がもう 1 つ増え、最高で ★★★ です。
 - **パーツが固定** のチャレンジもあります（Pistol、Short センサーなど）。ほかのスロットは、**パーツ** を押してコストの範囲で選べます。

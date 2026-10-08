@@ -7,7 +7,7 @@ import { COWARD_BOT } from '../data/templates/coward_bot';
 import { DUMB_BOT } from '../data/templates/dumb_bot';
 import { SENTRY_BOT } from '../data/templates/sentry_bot';
 import { STRAFE_BOT } from '../data/templates/strafe_bot';
-import { CASTLE_RUSH, CASTLE_TURTLE } from '../data/team_templates';
+import { BASE_CAPTAIN, CASTLE_RUNNER as BASE_RUNNER, CASTLE_RUSH, CASTLE_TURTLE } from '../data/team_templates';
 import { DUEL, SHELTER, SHOT_AT, SNIPE, TARGET_BOT, castleStage } from '../tutorial/stages';
 import { CHAMPION, CHAMPION_LOADOUT } from './champion';
 import type { Challenge } from './types';
@@ -299,8 +299,10 @@ export const CHALLENGES: readonly Challenge[] = [
       en: 'Three rushers are coming for your base. Once they have it in range they shell it and ignore you, so waiting at the walls is too late: go out and meet them. Win — and for the stars, hardly let them scratch the base.',
       ja: '3 台の突撃が、こちらの基地へ向かってきます。基地を射程にとらえた敵は、こちらを無視して基地を撃ち続けます。基地の前で待っていては手遅れです。前へ出て迎え撃ちましょう。星の条件は、基地をほとんど削らせないことです。',
     },
-    // Both teams field light bodies and pistols: three machines inside the team's cost limit, on even terms.
-    stage: castleStage(3, CASTLE_RUSH, 132, { bot: { body: 'light', gun: 'pistol' }, player: { body: 'light', gun: 'pistol' } }),
+    // Both teams field light bodies and pistols, on even terms: fixed for the player, so that three machines
+    // stay inside the team's cost limit (32) whatever legs and sensor are picked.
+    stage: castleStage(3, CASTLE_RUSH, 132, { bot: { body: 'light', gun: 'pistol' } }),
+    parts: { body: 'light', gun: 'pistol' },
     goal: { kind: 'win' },
     // Of the base's 200: at most two hits through for a star, at most one for both.
     stars: [{ kind: 'castleHp', min: 150 }, { kind: 'castleHp', min: 180 }],
@@ -351,5 +353,21 @@ export const CHALLENGES: readonly Challenge[] = [
         drive forward
         wait
 `,
+  },
+  {
+    id: 'base-call-by-name',
+    title: { en: 'Call by name', ja: '名指しで呼べ' },
+    brief: {
+      en: 'Three runners make straight for your base and never shoot a robot. Keep your keeper home and your attack going: when the keeper sees them coming, call ONE teammate back by its number, with signal … to …. Call everyone and the whole team turns back — and the race for the bases is lost.',
+      ja: '3 台の走り屋が、ロボットには目もくれず、まっすぐこちらの基地へ向かってきます。守りは基地に残し、攻めは続けたまま、守りが敵を見つけたら signal … to … で「1 台だけ」名指しで呼び戻しましょう。全員を呼ぶとチームごと引き返してしまい、基地の取り合いに負けます。',
+    },
+    // The same light bodies and pistols on both sides, fixed for the player: three machines inside the team's cost limit.
+    stage: castleStage(3, BASE_RUNNER, 135, { bot: { body: 'light', gun: 'pistol' } }),
+    parts: { body: 'light', gun: 'pistol' },
+    goal: { kind: 'win' },
+    require: [{ kind: 'directedSignal' }],
+    stars: [{ kind: 'castleHp', min: 100 }, { kind: 'seconds', max: 30 }],
+    start: START,
+    answer: BASE_CAPTAIN,
   },
 ];

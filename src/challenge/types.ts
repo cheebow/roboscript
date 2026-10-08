@@ -20,7 +20,9 @@ export type Condition =
   /** The own castle has at least this much HP left at the end (castle challenges). */
   | { kind: 'castleHp'; min: number }
   /** The enemy castle was brought down (castle challenges). */
-  | { kind: 'castleDestroyed' };
+  | { kind: 'castleDestroyed' }
+  /** The program sends a signal to one machine by its number: signal … to … (team challenges). */
+  | { kind: 'directedSignal' };
 
 export interface Challenge {
   id: string;

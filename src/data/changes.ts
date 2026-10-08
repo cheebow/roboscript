@@ -17,8 +17,8 @@ export const CHANGES: readonly Change[] = [
   },
   {
     date: '2026-10-08',
-    en: 'The radio learned addresses: signal 3 to 2 sends a number to machine 2 alone, and ally_signal_from says who sent what arrived. On the field a little envelope flies from the sender to each robot it is for; a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
-    ja: '無線に宛先が付きました。signal 3 to 2 で 2 号機だけに数が届き、ally_signal_from で「だれが送ったか」が読めます。戦闘画面では小さな封筒が送信機から相手まで飛び、削られる基地からは火花が散り、回復中のロボットからは + マークが立ちのぼります。',
+    en: 'The radio learned addresses: signal 3 to 2 sends a number to machine 2 alone, and ally_signal_from says who sent what arrived. The team template BaseCaptain calls one helper home by name, and the challenge Call by name shows why that beats calling everyone. On the field a little envelope flies from the sender to each robot it is for; a base being worn down throws hot sparks, and a recovering robot gives off rising plus signs.',
+    ja: '無線に宛先が付きました。signal 3 to 2 で 2 号機だけに数が届き、ally_signal_from で「だれが送ったか」が読めます。チームのテンプレート BaseCaptain は助けを 1 台だけ名指しで呼び戻し、チャレンジ「名指しで呼べ」では全員を呼ぶより強い理由が分かります。戦闘画面では小さな封筒が送信機から相手まで飛び、削られる基地からは火花が散り、回復中のロボットからは + マークが立ちのぼります。',
   },
   {
     date: '2026-10-08',
@@ -27,8 +27,8 @@ export const CHANGES: readonly Change[] = [
   },
   {
     date: '2026-10-08',
-    en: 'Tutorial chapter 10 no longer jams: its teams fit the shared cost pool, and a cost problem says so instead of pointing at the code. The challenge The unbroken base was rebuilt to be winnable — meet the rushers away from your base.',
-    ja: 'チュートリアル 10 章が途中で詰まらなくなりました。チームの装備がコストの枠に収まり、コスト超過のときはコストの案内が出ます。チャレンジ「鉄壁の基地」もクリアできる形に作り直しました。基地から離れて迎え撃つのがコツです。',
+    en: 'Tutorial chapter 10 no longer jams: its teams fit the shared cost pool, and a cost problem says so instead of pointing at the code. The challenge The unbroken base was rebuilt to be winnable, with light bodies and pistols fixed so that the team fits its cost — meet the rushers away from your base.',
+    ja: 'チュートリアル 10 章が途中で詰まらなくなりました。チームの装備がコストの枠に収まり、コスト超過のときはコストの案内が出ます。チャレンジ「鉄壁の基地」もクリアできる形に作り直し、コストに収まるよう車体 Light と銃 Pistol を固定にしました。基地から離れて迎え撃つのがコツです。',
   },
   {
     date: '2026-10-07',

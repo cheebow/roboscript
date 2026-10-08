@@ -191,6 +191,13 @@ describe('functions: errors in how they call each other', () => {
     expect(errorsOf(`${sweep}set n = sweep()\nwait`)).toEqual([
       'Line 4: "sweep" cannot be used as a value: it takes time (line 2)',
     ]);
+    // The number a signal sends, and the machine it goes to, are values too.
+    expect(errorsOf(`${sweep}signal sweep()\nwait`)).toEqual([
+      'Line 4: "sweep" cannot be used as a value: it takes time (line 2)',
+    ]);
+    expect(errorsOf(`${sweep}signal 1 to sweep()\nwait`)).toEqual([
+      'Line 4: "sweep" cannot be used as a value: it takes time (line 2)',
+    ]);
     // On a line of its own it may take all the time it needs.
     expect(errorsOf(`${sweep}loop\n    sweep()`)).toEqual([]);
   });

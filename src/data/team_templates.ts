@@ -77,6 +77,67 @@ loop
             wait
 `;
 
+/**
+ * Machine 1 keeps the base and calls for help by name: an addressed signal
+ * brings machine 2 alone home, while the rest keep attacking.
+ */
+export const BASE_CAPTAIN = `# BaseCaptain: machine 1 keeps the base and calls for help by name. "signal 1 to 2" brings machine 2 alone home while the rest keep attacking; "signal 0 to 2" sends it out again once the danger has passed.
+def fight()
+    drive stop
+    aim enemy
+    fire
+
+def attack()
+    if blocked
+        turn left
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        fight()
+    else if enemy_base_distance < weapon_range - 50
+        label SIEGE
+        drive stop
+        face enemy_base
+        aim ahead
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+        wait
+
+loop
+    if self_id == 1
+        # The captain stays home. An enemy in range: machine 2, and only machine 2, is called back.
+        if enemy_visible and enemy_distance < weapon_range
+            signal 1 to 2
+            label GUARD
+            fight()
+        else
+            signal 0 to 2
+            if base_distance > 200
+                label GO_HOME
+                face base
+                drive forward
+                wait
+            else
+                label WATCH
+                drive stop
+                aim enemy
+                wait
+    else if ally_signal == 1
+        # Called back by the captain: home to help, fighting whatever it meets on the way.
+        if enemy_visible and enemy_distance < weapon_range
+            label HELP
+            fight()
+        else
+            label RETURN
+            face base
+            drive forward
+            wait
+    else
+        attack()
+`;
+
 /** Whoever sees an enemy calls the team on the radio; the rest answer the call and converge. */
 export const CASTLE_CALL = `# BaseCall: whoever sees an enemy calls the team with signal 1; the rest head for the caller. No call: march on the enemy base.
 # The radio holds one number for the whole team, and keeps it until someone sends another:
@@ -350,6 +411,7 @@ export const TEAM_TEMPLATES: readonly Template[] = [
   { id: 'castle_rush', name: 'BaseRush', source: CASTLE_RUSH },
   { id: 'castle_split', name: 'BaseSplit', source: CASTLE_SPLIT },
   { id: 'castle_call', name: 'BaseCall', source: CASTLE_CALL },
+  { id: 'base_captain', name: 'BaseCaptain', source: BASE_CAPTAIN },
   { id: 'castle_turtle', name: 'BaseTurtle', source: CASTLE_TURTLE },
   { id: 'castle_rally', name: 'BaseRally', source: CASTLE_RALLY },
   { id: 'castle_runner', name: 'BaseRunner', source: CASTLE_RUNNER },

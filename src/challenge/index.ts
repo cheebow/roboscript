@@ -1,7 +1,7 @@
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS } from '../data/match_defaults';
-import type { Loadout } from '../data/parts';
+import { type Loadout, STANDARD_LOADOUT } from '../data/parts';
 import { recordMatch } from '../debug/recorder';
-import { stageLoadout, tutorialMatch } from '../tutorial/match';
+import { tutorialMatch } from '../tutorial/match';
 import { type ChallengeResult, judgeChallenge } from './judge';
 import type { Challenge } from './types';
 
@@ -24,7 +24,8 @@ export function challengeMatch(challenge: Challenge, source: string, loadout: Lo
 
 /** Plays the challenge with the source and judges it: for the tests, which play every answer. */
 export function playChallenge(challenge: Challenge, source: string, parts: Partial<Loadout> = {}): ChallengeResult | { errors: string[] } {
-  const built = challengeMatch(challenge, source, { ...stageLoadout(challenge.stage), ...parts });
+  // As the screen plays it: the parts the player picked over the standard ones, with the challenge's fixed parts on.
+  const built = challengeMatch(challenge, source, { ...STANDARD_LOADOUT, ...parts });
   if (!built.ok) return { errors: built.errors.map((error) => error.message) };
   return judgeChallenge(challenge, source, recordMatch(built.match.config, EFFECT_LIFETIMES));
 }

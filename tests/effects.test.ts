@@ -121,7 +121,7 @@ describe('a hit on a guarding robot', () => {
 
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1, baseHit: 1, signal: 1, signalHeard: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 
@@ -194,5 +194,40 @@ describe('effects in a recording', () => {
     const last = snapshots[snapshots.length - 1];
     const loser = last.robots.find((robot) => !robot.alive);
     expect(last.effects).toContainEqual({ kind: 'destroyed', x: loser?.x, y: loser?.y, age: 0 });
+  });
+});
+
+describe('signal and base-hit events', () => {
+  const teamed = (brains: [FixedBrain, FixedBrain]) => createSimulation(brains, { teams: [0, 0] });
+
+  it('reports a new number on the radio once, at the sender and at each teammate', () => {
+    const simulation = teamed([new FixedBrain({ signal: 1 }), new FixedBrain()]);
+    simulation.step();
+    const [sender, mate] = simulation.robots;
+    expect(simulation.tickEvents).toEqual([
+      { kind: 'signal', ...sender.position, robot: 0 },
+      { kind: 'signalHeard', ...mate.position, robot: 1 },
+    ]);
+    // The same number sent again is not news.
+    simulation.step();
+    expect(simulation.tickEvents).toEqual([]);
+  });
+
+  it('reports nothing of a signal in a duel but the send itself', () => {
+    const simulation = createSimulation([new FixedBrain({ signal: 1 }), new FixedBrain()]);
+    simulation.step();
+    const signals = simulation.tickEvents.filter((event) => event.kind === 'signal' || event.kind === 'signalHeard');
+    expect(signals).toEqual([{ kind: 'signal', ...simulation.robots[0].position, robot: 0 }]);
+  });
+
+  it('reports a hit on a castle whenever an enemy bullet wears it down', () => {
+    const base = { team: 1, rect: { x: 480, y: 220, width: 40, height: 160 }, maxHp: 40 };
+    const simulation = createSimulation([compileBrain('loop\n    fire\n'), new FixedBrain()], { teams: [0, 1], bases: [base] });
+    let hits = 0;
+    while (simulation.result === null && simulation.tick < 600) {
+      simulation.step();
+      hits += simulation.tickEvents.filter((event) => event.kind === 'baseHit').length;
+    }
+    expect(hits).toBe(base.maxHp / NO_SPREAD_STATS.shotDamage);
   });
 });

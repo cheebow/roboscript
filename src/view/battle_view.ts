@@ -50,6 +50,9 @@ const GUARD_RING_GAP = 4;
 const GUARD_RING_PX = 2;
 /** A single tick of guarding would be gone before it is seen: the ring and the label fade out over this many ticks. */
 const GUARD_SHOWN_TICKS = 15;
+/** One rising plus sign of a recovering robot takes this long; a second follows half a period behind. */
+const RECOVERY_SPARK_TICKS = 24;
+const RECOVERY_RISE = 18;
 /** From the robot's edge up to the label, above the HP bar. */
 const GUARD_LABEL_GAP = 13;
 /** From the robot's edge down to its name; leaves room for the target frame in between. */
@@ -263,6 +266,7 @@ export class BattleView {
     const lineHeight = LABEL_LINE_PX / this.scale;
     const marks = placeMarks(y, radius, showState || place !== null ? 2 : 1, lineHeight, arena.height);
     if (robot.alive) this.drawGuard(robot, index, radius, marks, arena.width, overrun);
+    if (robot.alive && robot.recovering) this.drawRecovery(robot, radius, tick + overrun);
 
     const barWidth = radius * 2;
     ctx.fillStyle = COLORS.hpBack;
@@ -293,6 +297,21 @@ export class BattleView {
   }
 
   /** A ring around a robot that guards or has just guarded, and the word for it, both fading out. */
+  /** A recovering robot gives off little plus signs, rising and fading beside it, in time with the match. */
+  private drawRecovery(robot: RobotSnapshot, radius: number, tick: number): void {
+    const ctx = this.context;
+    ctx.fillStyle = COLORS.recovering;
+    for (const offset of [0, RECOVERY_SPARK_TICKS / 2]) {
+      const phase = ((tick + offset) % RECOVERY_SPARK_TICKS) / RECOVERY_SPARK_TICKS;
+      ctx.globalAlpha = 1 - phase;
+      const x = robot.x - radius - DOT * 2;
+      const y = robot.y - radius + DOT - phase * RECOVERY_RISE;
+      ctx.fillRect(x - DOT, y, DOT * 3, DOT);
+      ctx.fillRect(x, y - DOT, DOT, DOT * 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   private drawGuard(
     robot: RobotSnapshot,
     index: number,

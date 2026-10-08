@@ -68,8 +68,13 @@ function diceSeed(seed: number, index: number): number {
   return (seed ^ DICE_SALT ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0;
 }
 
-/** `deflected`: a bullet hit a robot that was guarding. `detected`: a robot caught sight of the enemy. */
-export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed';
+/**
+ * `deflected`: a bullet hit a robot that was guarding. `detected`: a robot
+ * caught sight of the enemy. `signal`: a robot put a new number on the radio;
+ * `signalHeard`: a teammate of the sender, at that moment. `baseHit`: an
+ * enemy bullet wore a castle down.
+ */
+export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed' | 'baseHit' | 'signal' | 'signalHeard';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
@@ -217,7 +222,18 @@ export class Simulation {
     const actions = this.robots.map((robot) => (robot.alive ? this.think(robot) : null));
     // The radio takes the signals once everyone has thought: in robot order, so the last writer of a tick wins.
     actions.forEach((action, index) => {
-      if (action !== null && action.signal !== null) this.signals.set(this.teamOf[index], action.signal);
+      if (action === null || action.signal === null) return;
+      const team = this.teamOf[index];
+      // A new number on the radio is seen going out and coming in; the same number sent again is not.
+      if (this.signals.get(team) !== action.signal) {
+        this.tickEvents.push({ kind: 'signal', ...this.robots[index].position, robot: index });
+        this.robots.forEach((mate, mateIndex) => {
+          if (mateIndex !== index && mate.alive && this.teamOf[mateIndex] === team) {
+            this.tickEvents.push({ kind: 'signalHeard', ...mate.position, robot: mateIndex });
+          }
+        });
+      }
+      this.signals.set(team, action.signal);
     });
 
     // Every robot moves at once: each makes room by where the others stood at the start of the tick,
@@ -487,6 +503,7 @@ export class Simulation {
     const shooter = this.robots.findIndex((robot) => robot.id === bullet.ownerId);
     if (this.teamOf[shooter] === base.team || base.hp <= 0) return;
     base.hp = Math.max(0, base.hp - bullet.damage);
+    this.tickEvents.push({ kind: 'baseHit', ...bullet.position, base: baseIndex });
     this.reporter?.hitBase(bullet.ownerId, base.team, bullet.damage, base.hp);
     if (base.hp === 0) {
       const { rect } = base;

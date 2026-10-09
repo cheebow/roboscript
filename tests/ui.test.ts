@@ -104,6 +104,9 @@ describe('the help', () => {
     // The table of contents and the first topic follow the text.
     await vi.waitFor(() => expect(document.querySelectorAll('#help .help-link').length).toBeGreaterThan(10));
     expect(document.querySelector('#help .help-link.selected')).not.toBeNull();
+    help.open('recipes');
+    await vi.waitFor(() => expect(document.querySelector('#help .help-recipe-contents')).not.toBeNull());
+    expect(document.querySelectorAll('#help .help-recipe-link').length).toBeGreaterThan(30);
     help.openWord('signal');
     expect(document.querySelector('#help .help-word-found')?.getAttribute('data-word')).toBe('signal');
     help.close();

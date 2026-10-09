@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-10',
+    en: 'The recipes in the help open with a table of contents: every recipe under its group, one click from its program, and a way back up at the end of each group.',
+    ja: 'ヘルプのレシピ集の最初に目次を付けました。分類ごとにレシピが並び、押すとそのレシピへ飛びます。各分類の終わりから目次へ戻れます。',
+  },
+  {
+    date: '2026-10-10',
     en: 'A ninth built-in robot, HitAndHideBot: it fires one shot, runs for cover and rests there out of sight, then comes out for the next. It wears down a robot that crosses the open, and falls to one that walks up to it.',
     ja: '9 台目の内蔵ロボット HitAndHideBot が入りました。1 発撃っては物陰へ逃げ込んで休み、また探しに出ます。開けた場所を横切る相手は削り切り、まっすぐ寄ってくる相手には弱いロボットです。',
   },

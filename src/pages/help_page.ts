@@ -4,7 +4,8 @@
 import '../style.css';
 import './pages.css';
 import { allWords } from '../ai/reference';
-import { HELP, WORDS_TOPIC } from '../help/topics';
+import { renderRecipes } from '../help/recipe_list';
+import { HELP, RECIPES_TOPIC, WORDS_TOPIC } from '../help/topics';
 import { renderWordList } from '../help/word_list';
 import { createElement } from '../ui/dom';
 import { local } from '../ui/tutorial_panel';
@@ -38,7 +39,9 @@ export function renderHelpPage(): HTMLElement {
       const article = createElement('section', 'help-page-topic');
       article.id = topic.id;
       article.append(createElement('h2', '', local(topic.title)));
-      article.append(topic.id === WORDS_TOPIC ? renderWordList(allWords()) : renderMarkup(local(topic.body)));
+      article.append(
+        topic.id === WORDS_TOPIC ? renderWordList(allWords()) : topic.id === RECIPES_TOPIC ? renderRecipes() : renderMarkup(local(topic.body)),
+      );
       content.append(article);
     }
   }

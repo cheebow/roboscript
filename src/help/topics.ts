@@ -19,6 +19,8 @@ export interface HelpSection {
 
 /** The id of the topic listing every word of the language, made when shown. */
 export const WORDS_TOPIC = 'words';
+/** The recipes topic, shown with a table of contents rather than as plain text. */
+export const RECIPES_TOPIC = 'recipes';
 
 export const HELP: readonly HelpSection[] = [
   {
@@ -507,19 +509,11 @@ A faulty line turns red, and the editor underlines it. Put the cursor on it to s
 
 エラーのある行は赤くなり、エディタではその行に波線が出ます。カーソルを載せると内容が出ます。` } },
       {
-        id: 'recipes',
+        id: RECIPES_TOPIC,
         title: { en: `Recipes`, ja: `レシピ集` },
         body: {
-          en: recipesText(
-            'en',
-            `Short programs for things you may want a robot to do. Each runs as it is: copy the one nearest to what you want into the editor, and change its numbers and directions.`,
-            `To learn more, read the built-in robots' programs with **LOAD TEMPLATE** in the editor.`,
-          ),
-          ja: recipesText(
-            'ja',
-            `やりたいことごとの短いプログラムです。どれもそのまま動きます。やりたいことに近いものをエディタに写して、数や向きを変えてみましょう。`,
-            `もっと知りたいときは、エディタの **テンプレート** で内蔵ロボットのプログラムを読んでみましょう。`,
-          ),
+          en: recipesText('en'),
+          ja: recipesText('ja'),
         },
       },
     ],

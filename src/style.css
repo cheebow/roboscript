@@ -2282,6 +2282,68 @@ button {
   font-weight: normal;
 }
 
+/* The recipes' table of contents: each group's name, then its recipes, in columns as wide as there is room for. */
+.help-recipe-contents {
+  margin: 8px 0 12px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--border);
+  scroll-margin-top: 8px;
+}
+
+.help-recipe-contents-title {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.help-recipe-contents-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+
+.help-recipe-contents-heading,
+.help-recipe-link,
+.help-recipe-back {
+  padding: 1px 0;
+  border: 0;
+  background: none;
+  color: var(--syntax-command);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.help-recipe-contents-heading {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.help-recipe-link {
+  padding-left: 1em;
+}
+
+.help-recipe-contents-heading:hover,
+.help-recipe-link:hover,
+.help-recipe-back:hover {
+  text-decoration: underline;
+}
+
+.help-recipe-title {
+  margin: 16px 0 4px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: bold;
+  scroll-margin-top: 8px;
+}
+
+.help-recipe-back {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
 .help-word-jumps {
   display: flex;
   flex-wrap: wrap;

@@ -11,14 +11,22 @@ interface HelpText {
   sections: readonly HelpSection[];
   wordsTopic: string;
   renderWordList: typeof import('../help/word_list').renderWordList;
+  recipesTopic: string;
+  renderRecipes: typeof import('../help/recipe_list').renderRecipes;
 }
 
 let loading: Promise<HelpText> | null = null;
 
 /** The help's text; a load that failed (offline, before it was ever kept) is tried again the next time. */
 export function loadHelpText(): Promise<HelpText> {
-  loading ??= Promise.all([import('../help/topics'), import('../help/word_list')])
-    .then(([topics, list]) => ({ sections: topics.HELP, wordsTopic: topics.WORDS_TOPIC, renderWordList: list.renderWordList }))
+  loading ??= Promise.all([import('../help/topics'), import('../help/word_list'), import('../help/recipe_list')])
+    .then(([topics, list, recipes]) => ({
+      sections: topics.HELP,
+      wordsTopic: topics.WORDS_TOPIC,
+      renderWordList: list.renderWordList,
+      recipesTopic: topics.RECIPES_TOPIC,
+      renderRecipes: recipes.renderRecipes,
+    }))
     .catch((error: unknown) => {
       loading = null;
       throw error;
@@ -170,7 +178,9 @@ export class HelpPanel {
     this.shownTopic = topic.id;
     if (this.content === null) return;
     const heading = createElement('h2', 'help-topic-title', local(topic.title));
-    this.content.replaceChildren(heading, topic.id === text.wordsTopic ? text.renderWordList(allWords()) : renderMarkup(local(topic.body)));
+    const body =
+      topic.id === text.wordsTopic ? text.renderWordList(allWords()) : topic.id === text.recipesTopic ? text.renderRecipes() : renderMarkup(local(topic.body));
+    this.content.replaceChildren(heading, body);
     this.content.scrollTop = 0;
     for (const link of this.nav?.querySelectorAll<HTMLElement>('.help-link') ?? []) {
       link.classList.toggle('selected', link.dataset.topic === topic.id);

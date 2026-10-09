@@ -840,11 +840,23 @@ loop
 
 export const RECIPES: readonly Recipe[] = RECIPE_GROUPS.flatMap((group) => group.recipes);
 
-/** The text of the recipes topic in one language: a heading for each group, and for each recipe its title, text and code. */
-export function recipesText(language: keyof Text, intro: string, outro: string): string {
+/** What the recipes topic says before the recipes. */
+export const RECIPES_INTRO: Text = {
+  en: 'Short programs for things you may want a robot to do. Each runs as it is: copy the one nearest to what you want into the editor, and change its numbers and directions.',
+  ja: 'やりたいことごとの短いプログラムです。どれもそのまま動きます。やりたいことに近いものをエディタに写して、数や向きを変えてみましょう。',
+};
+
+/** What the recipes topic says after the recipes. */
+export const RECIPES_OUTRO: Text = {
+  en: "To learn more, read the built-in robots' programs with **LOAD TEMPLATE** in the editor.",
+  ja: 'もっと知りたいときは、エディタの **テンプレート** で内蔵ロボットのプログラムを読んでみましょう。',
+};
+
+/** The text of the recipes topic in one language, for searching the help: a heading for each group, and for each recipe its title, text and code. */
+export function recipesText(language: keyof Text): string {
   const groups = RECIPE_GROUPS.map((group) => {
     const recipes = group.recipes.map((recipe) => `**${recipe.title[language]}**\n\n${recipe.text[language]}\n\n\`\`\`\n${recipe.code}\n\`\`\``);
     return [`## ${group.title[language]}`, ...recipes].join('\n\n');
   });
-  return [intro, ...groups, outro].join('\n\n');
+  return [RECIPES_INTRO[language], ...groups, RECIPES_OUTRO[language]].join('\n\n');
 }

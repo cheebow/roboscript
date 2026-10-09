@@ -153,6 +153,8 @@ loop
             drive stop
             aim enemy
             fire
+        else if touching_ally
+            turn left
         else
             turn enemy
             drive forward
@@ -160,14 +162,20 @@ loop
         if called == 1
             signal 0
             set called = 0
-        if blocked
+        if blocked or touching_ally
             turn left
         else if ally_signal == 1
             # A teammate is calling: head for the nearest one and join its fight.
             label ANSWER
-            face ally
-            drive forward
-            wait
+            if ally_distance > 120
+                face ally
+                drive forward
+                wait
+            else
+                # Close enough: wait at its side for the enemy to show, not push into it.
+                drive stop
+                aim enemy
+                wait
         else if enemy_base_distance < weapon_range - 50
             label SIEGE
             drive stop
@@ -223,7 +231,7 @@ loop
             fight()
         else if base_distance > 220
             label FALL_BACK
-            if blocked
+            if blocked or touching_ally
                 turn left
             else
                 face base
@@ -234,7 +242,7 @@ loop
             drive stop
             aim enemy
             wait
-    else if blocked
+    else if blocked or touching_ally
         turn left
     else if enemy_visible and enemy_distance < weapon_range - 50
         label FIGHT

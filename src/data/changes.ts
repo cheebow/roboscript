@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-09',
+    en: 'The team templates BaseCall and BaseRally no longer get stuck pushing against a teammate: they turn away from it as they would from a wall (touching_ally), and BaseCall\'s machines answering a call wait at the caller\'s side instead of driving into it.',
+    ja: 'チームのテンプレート BaseCall と BaseRally が、味方に押し付けたまま動けなくなることがなくなりました。壁と同じように、味方に触れたら向きを変えます（touching_ally）。BaseCall の呼ばれた機体は、呼んだ機体にぶつかるまで走らず、そばで待ちます。',
+  },
+  {
+    date: '2026-10-09',
     en: 'New team word: touching_ally, true while a teammate stands right against the robot. A teammate in the way never made blocked true, so two machines heading for one place could push against each other for good; now a program can tell, and the new recipe Stuck on a teammate: steer away shows what to do about it.',
     ja: 'チームのワード touching_ally（味方と接している）が入りました。味方にふさがれても blocked は真にならないので、同じ場所へ向かう 2 台が押し合ったまま動けなくなることがありました。これからはプログラムで分かります。どうよけるかは、新しいレシピ「味方につかえたら、よける」にあります。',
   },

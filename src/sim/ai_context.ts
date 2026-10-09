@@ -80,6 +80,8 @@ export interface AIContext {
   readonly selfId: number;
   /** Living teammates, not counting the robot itself. 0 outside a team match. */
   readonly alliesAlive: number;
+  /** Living enemies: the team knows how many it faced and hears each kill over the radio. 0 outside a team match. */
+  readonly enemiesAlive: number;
   /** The robot's mailbox: the number last addressed to it, as it stood at the start of the tick. 0 until something came. */
   readonly allySignal: number;
   /** Who sent what is in the mailbox: the sender's self_id; 0 before anything came. */

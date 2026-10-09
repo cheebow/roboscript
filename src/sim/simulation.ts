@@ -318,6 +318,8 @@ export class Simulation {
     const centerOf = ({ rect }: BaseState) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
 
     const allies = this.robots.filter((other, i) => other !== robot && this.teamOf[i] === team && other.alive);
+    // The team knows how many it faced, and every enemy that falls falls to its bullets: the shooter sees it and tells the rest by radio.
+    const enemiesAlive = !this.teamMatch ? 0 : this.robots.filter((other, i) => this.teamOf[i] !== team && other.alive).length;
     const nearest =
       allies.length === 0
         ? null
@@ -333,6 +335,7 @@ export class Simulation {
 
     return {
       alliesAlive: allies.length,
+      enemiesAlive,
       allySignal: this.mailboxes[index],
       allySignalFrom: this.mailboxFrom[index],
       allyDistance: toAlly?.distance ?? 0,

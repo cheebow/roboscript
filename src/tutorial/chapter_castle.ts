@@ -193,7 +193,7 @@ loop
 Two more things worth knowing:
 
 - **Parts tell machines apart.** \`sensor_range\`, \`max_speed\` and \`max_hp\` read your own machine's own parts, so roles can follow equipment: \`if sensor_range > 800\` — the far-sighted machine scouts. Fit each machine on its config (the 1 2 3 tabs), within the team's shared cost.
-- **\`allies_alive\`** counts your living teammates: \`if allies_alive == 0\` is "I am the last one".
+- **\`allies_alive\`** counts your living teammates: \`if allies_alive == 0\` is "I am the last one". **\`enemies_alive\`** counts the living enemies (each kill goes out on the radio): \`if enemies_alive == 0\` is "they are all down — now take the base"; a team that stays home after that runs out the clock.
 
 Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 5 a side) and the map, watch saved teams fight under the commentary, and share a team with a link, like a robot.`,
         ja: `これが基地戦の全体像です。1 本のプログラム、守る基地と落とす基地、そして機体をつなぐ無線。
@@ -201,7 +201,7 @@ Open **TEAM BATTLE** from the start menu: write your team, pick the size (1 to 5
 あと 2 つ、覚えておくと良いことを。
 
 - **装備で機体を書き分けられます。** \`sensor_range\`・\`max_speed\`・\`max_hp\` は自分の機体の装備を読むので、役割を装備に合わせられます: \`if sensor_range > 800\` なら「目のいい機体が偵察」。装備は config（1 2 3 のタブ）で機体ごとに選べて、コストはチームで 1 つの枠です。
-- **\`allies_alive\`** は生きている味方の数です。\`if allies_alive == 0\` は「自分が最後の 1 台」。
+- **\`allies_alive\`** は味方の生存数です。\`if allies_alive == 0\` は「自分が最後の 1 台」。**\`enemies_alive\`** は敵の生存数（撃破は無線で伝わります）。\`if enemies_alive == 0\` は「敵は全滅、あとは基地を落とすだけ」。そのあとも守りにこもっていると、時間切れになってしまいます。
 
 起動メニューから **チームバトル** を開きましょう。チームを書き、台数（片側 1〜5）とマップを選び、保存したチーム同士の試合を実況つきで観戦でき、ロボットと同じようにリンクでチームを人に渡せます。`,
       },

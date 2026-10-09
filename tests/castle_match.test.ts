@@ -6,7 +6,7 @@ import { STANDARD_LOADOUT, type Loadout, costOf } from '../src/data/parts';
 import { TEAM_TEMPLATES } from '../src/data/team_templates';
 import { TeamStore } from '../src/project/project_store';
 import { Simulation } from '../src/sim/simulation';
-import { compileBrain, runToEnd } from './helpers';
+import { QUIET_CONTEXT, compileBrain, runToEnd } from './helpers';
 
 const THREE: Loadout[] = [STANDARD_LOADOUT, STANDARD_LOADOUT, STANDARD_LOADOUT];
 /** Cheap enough that three together fit the team limit. */
@@ -111,6 +111,15 @@ describe('the team templates', () => {
       }
     }
   }, 30_000);
+
+  it('BaseRally holds the base after a loss, and goes out again once no enemy is left', () => {
+    const rally = TEAM_TEMPLATES.find((template) => template.id === 'castle_rally');
+    if (rally === undefined) throw new Error('no BaseRally');
+    // A teammate is down, the robot is far from home and sees nobody.
+    const away = { ...QUIET_CONTEXT, alliesAlive: 1, baseDistance: 600, enemyBaseDistance: 900 };
+    expect(compileBrain(rally.source).decide({ ...away, enemiesAlive: 2 })).toMatchObject({ label: 'FALL_BACK' });
+    expect(compileBrain(rally.source).decide({ ...away, enemiesAlive: 0 })).toMatchObject({ label: 'MARCH', drive: 'forward' });
+  });
 
   it('CastleCall answers a call: a robot that sees nothing heads for the teammate that does', () => {
     // On the lanes map the outer machines cannot see what the middle one meets first.

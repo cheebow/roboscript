@@ -45,6 +45,7 @@ export const NUMBER_VARIABLES = {
   hit_angle: (context: AIContext) => context.hitAngle,
   self_id: (context: AIContext) => context.selfId,
   allies_alive: (context: AIContext) => context.alliesAlive,
+  enemies_alive: (context: AIContext) => context.enemiesAlive,
   ally_signal: (context: AIContext) => context.allySignal,
   ally_signal_from: (context: AIContext) => context.allySignalFrom,
   ally_distance: (context: AIContext) => context.allyDistance,

@@ -37,6 +37,7 @@ const NUMBERS = [
   'hit_angle',
   'self_id',
   'allies_alive',
+  'enemies_alive',
   'ally_signal',
   'ally_signal_from',
   'ally_distance',
@@ -143,7 +144,7 @@ describe('completionsAt: conditions', () => {
     expect(offered('if |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
     expect(offered('set shots = 0\nwhile |')).toEqual([...SENSORS, ...FUNCTIONS, 'not', 'shots']);
     expect(offered('if blocked and |')).toEqual([...SENSORS, ...FUNCTIONS, 'not']);
-    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
+    expect(offered('if not e|')).toEqual(['enemy_visible', 'enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemies_alive', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
   });
 
   it('waits for a letter after an opening parenthesis', () => {
@@ -236,7 +237,7 @@ describe('completionsAt: functions', () => {
   it('offers values between the parentheses of a call, after each comma too', () => {
     // The program's own abs takes the place of the language's.
     expect(offered(`${program}loop\n    approach(|`, true)).toEqual(['true', 'false', ...NUMBERS, 'min', 'max', 'sqrt', 'random', 'approach', 'abs', 'stop']);
-    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
+    expect(offered(`${program}loop\n    approach(e|`)).toEqual(['enemy_distance', 'enemy_angle', 'enemy_speed', 'enemy_heading', 'enemies_alive', 'enemy_base_hp', 'enemy_base_distance', 'enemy_base_angle']);
     expect(offered(`${program}loop\n    if abs(1, h|`)).toEqual(['hp', 'hit_angle']);
   });
 

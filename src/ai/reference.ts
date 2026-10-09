@@ -383,6 +383,12 @@ export const LANGUAGE: readonly WordReference[] = [
     summary: 'How many teammates are still in the match, not counting the robot itself. 0 when it is the last one, and in a match without teams.',
   },
   {
+    word: 'enemies_alive',
+    kind: 'sensor',
+    hint: 'enemies still standing',
+    summary: 'How many enemies are still in the match, seen or not: the team knows how many it faced, and every enemy that falls falls to its bullets, so the shooter tells the rest by radio. 0 once they are all down: the base is all that is left. 0 in a match without teams.',
+  },
+  {
     word: 'ally_signal',
     kind: 'sensor',
     hint: "the team's radio",

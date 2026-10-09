@@ -142,6 +142,27 @@ describe('the watch', () => {
     new WatchPanel(again, name, storage);
     expect(again.querySelectorAll('.watch-section')[1].nextElementSibling?.hasAttribute('hidden')).toBe(true);
   });
+
+  it('shows how many teammates and enemies are left in a team match', async () => {
+    const { WatchPanel } = await import('../src/ui/watch_panel');
+    const { captureSnapshot } = await import('../src/debug/snapshot');
+    const { prepareCastleFight } = await import('../src/arena/castle_match');
+    const { CASTLE_ARENAS } = await import('../src/data/arenas');
+    const { STANDARD_LOADOUT } = await import('../src/data/parts');
+    const { Simulation } = await import('../src/sim/simulation');
+    const light = { ...STANDARD_LOADOUT, body: 'light', gun: 'pistol' } as const;
+    const side = (name: string) => ({ name, source: 'loop\n    wait\n', loadouts: [light, light, light] });
+    const prepared = prepareCastleFight([side('ALPHA'), side('BRAVO')], CASTLE_ARENAS[0], 3, 1);
+    if (!prepared.ok) throw new Error(prepared.problems.join('\n'));
+    const fields = document.createElement('div');
+    const panel = new WatchPanel(fields, document.createElement('span'));
+    panel.update(captureSnapshot(new Simulation(prepared.fight.config)).robots[0], {});
+    const valueOf = (word: string) =>
+      [...fields.querySelectorAll('.field')].find((row) => row.querySelector('.field-name')?.getAttribute('title')?.endsWith(` ${word}`))
+        ?.querySelector('.field-value')?.textContent;
+    expect(valueOf('allies_alive')).toBe('2');
+    expect(valueOf('enemies_alive')).toBe('3');
+  });
 });
 
 describe('a menu', () => {

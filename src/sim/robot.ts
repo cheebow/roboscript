@@ -461,6 +461,7 @@ export class RobotController {
 /** What a robot knows of its team on one tick: the nearest living teammate, the radio, and both castles. */
 export interface TeamReading {
   alliesAlive: number;
+  enemiesAlive: number;
   allySignal: number;
   allySignalFrom: number;
   allyDistance: number;
@@ -477,6 +478,7 @@ export interface TeamReading {
 /** Outside a team match, and before the first tick: no teammate, no castles, a silent radio. */
 export const NO_TEAM: TeamReading = {
   alliesAlive: 0,
+  enemiesAlive: 0,
   allySignal: 0,
   allySignalFrom: 0,
   allyDistance: 0,

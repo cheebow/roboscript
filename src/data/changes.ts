@@ -11,6 +11,11 @@ export interface Change {
 
 export const CHANGES: readonly Change[] = [
   {
+    date: '2026-10-09',
+    en: 'New word for the team battle: enemies_alive, how many enemies are left. Every enemy falls to your team\'s bullets and the shooter tells the rest by radio, so it is right even for enemies nobody sees. When it reads 0, only the base is left to take — the team template BaseRally now goes back out instead of waiting out the clock at home.',
+    ja: 'チームバトルに新しいワード enemies_alive（敵の生存数）が入りました。敵を倒すのは必ず自分のチームの弾なので、撃った機体が無線で知らせ、見えていない敵の分まで正しく数えられます。0 になったら、あとは基地を落とすだけ。チームのテンプレート BaseRally も、敵が全滅したら守りから攻めに戻るようになりました（基地にこもったまま時間切れにならない）。',
+  },
+  {
     date: '2026-10-08',
     en: "The castle is now the base, as base_hp and face base always said, and the rule is the base battle: a team stays in the match while its base stands, even with every robot gone, and a base has one robot's worth of HP (200) at every size. The commentary reads each side's plan, calls a base on the brink, and says why a judgement went the way it did. New team template: BaseDecoy. Saved teams, links and files keep working.",
     ja: '「城」は「基地」に、城攻めは「基地戦」になりました（base_hp や face base と同じ言葉です）。全滅しても基地が立っているかぎり試合は続き、基地の HP は台数によらずロボット 1 台ぶん（200）。実況は布陣を読み、落ちかけた基地を呼び、判定の理由まで伝えます。チームのテンプレートに BaseDecoy が加わりました。保存したチームやリンク、ファイルはそのまま使えます。',

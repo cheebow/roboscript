@@ -356,6 +356,12 @@ loop
         face base
         drive forward
     wait`,
+  'sensor:enemies_alive': `loop
+    if enemies_alive == 0
+        label SIEGE
+        face enemy_base
+        drive forward
+    wait`,
   'sensor:ally_signal': `loop
     if ally_signal == 2
         face ally

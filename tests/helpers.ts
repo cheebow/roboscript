@@ -60,6 +60,7 @@ export const QUIET_CONTEXT: AIContext = {
   hidden: false,
   selfId: 1,
   alliesAlive: 0,
+  enemiesAlive: 0,
   allySignal: 0,
   allySignalFrom: 0,
   allyDistance: 0,

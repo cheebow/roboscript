@@ -77,6 +77,26 @@ describe('the team words', () => {
     expect(last.allyHp).toBe(0);
   });
 
+  it('counts the living enemies with enemies_alive, on both sides of the match', () => {
+    const alpha = new SensingBrain();
+    const bravo = new SensingBrain();
+    const simulation = teamMatch([alpha, bravo, new FixedBrain(), new FixedBrain()]);
+    simulation.step();
+    expect(alpha.seen[0].enemiesAlive).toBe(2);
+    expect(bravo.seen[0].enemiesAlive).toBe(2);
+  });
+
+  it('drops a destroyed enemy from enemies_alive on the next tick, though nobody watches it fall', () => {
+    const delta = new SensingBrain();
+    // BRAVO shoots ALPHA until it falls; DELTA, its teammate, only listens.
+    const shooter = compileBrain('loop\n    aim enemy\n    fire\n');
+    const simulation = teamMatch([new FixedBrain(), shooter, new FixedBrain(), delta]);
+    runTicks(simulation, 30 * 15);
+    expect(simulation.robots[0].alive).toBe(false);
+    expect(delta.seen[0].enemiesAlive).toBe(2);
+    expect(delta.seen[delta.seen.length - 1].enemiesAlive).toBe(1);
+  });
+
   it('turns towards the teammate with face ally', () => {
     // CHARLIE faces away from ALPHA, which is straight behind it.
     const arena: Arena = { ...ROW, spawns: [ROW.spawns[0], ROW.spawns[1], { x: 300, y: 300, rotation: 180 }, ROW.spawns[3]] };
@@ -203,6 +223,7 @@ describe('the equipment words', () => {
     const [seen] = alpha.seen;
     expect(seen.selfId).toBe(1);
     expect(seen.alliesAlive).toBe(0);
+    expect(seen.enemiesAlive).toBe(0);
     expect(seen.allyDistance).toBe(0);
     expect(seen.baseHp).toBe(0);
     expect(seen.enemyBaseDistance).toBe(0);

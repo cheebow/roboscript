@@ -50,6 +50,7 @@ const NOT_WORDS: ReadonlySet<string> = new Set(['label', 'last_seen_x', 'last_se
 const TEAM_SENSOR_NAMES = [
   'self_id',
   'allies_alive',
+  'enemies_alive',
   'ally_signal',
   'ally_signal_from',
   'ally_distance',
@@ -177,6 +178,7 @@ export class WatchPanel {
     this.teamSensors.set([
       String(robot.selfId ?? 1),
       String(sense.alliesAlive),
+      String(sense.enemiesAlive),
       formatNumber(sense.allySignal),
       formatNumber(sense.allySignalFrom),
       formatNumber(sense.allyDistance),

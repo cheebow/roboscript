@@ -207,15 +207,16 @@ loop
         wait
 `;
 
-/** Attacks while the team is whole; a fallen teammate sends everyone home to defend. */
+/** Attacks while the team is whole; a fallen teammate sends everyone home to defend, until no enemy is left. */
 export const CASTLE_RALLY = `# BaseRally: attack while the team is whole; once a teammate falls (allies_alive drops), the rest fall back and hold the base.
+# When no enemy is left (enemies_alive is 0), they go out again: only the enemy base is left to take.
 def fight()
     drive stop
     aim enemy
     fire
 
 loop
-    if allies_alive < 2
+    if allies_alive < 2 and enemies_alive > 0
         # Somebody is down: no more pushing, the base comes first.
         if enemy_visible and enemy_distance < weapon_range
             label GUARD

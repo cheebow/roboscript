@@ -313,6 +313,27 @@ describe('the recipes of the help: defending', () => {
     expect(tally(recipe('peek'), enemies).damageTaken).toBeLessThan(0.7 * tally(noHiding, enemies).damageTaken);
   });
 
+  it('flee: runs behind the block out of the enemy\'s sight, and in the open backs away facing it', () => {
+    const behind = match(recipe('flee'), compileBrain(SHOOTER), {
+      arena: CENTER_BLOCK,
+      alpha: { x: 500, y: 120, rotation: 0 },
+      bravo: { x: 500, y: 520, rotation: 180 },
+    });
+    let hid = false;
+    for (let tick = 0; tick < 10 * tickRate && !hid; tick++) {
+      behind.step();
+      hid = behind.robots[0].hidden;
+    }
+    expect(hid).toBe(true);
+
+    // Room to back into: the wall is 600 behind it.
+    const open = match(recipe('flee'), compileBrain(SHOOTER), { alpha: { x: 600, y: 300, rotation: 0 }, bravo: { x: 800, y: 300, rotation: 180 } });
+    const start = distance(open);
+    runTicks(open, 2 * tickRate);
+    expect(distance(open)).toBeGreaterThan(start + 100);
+    expect(open.robots[0].label).toBe('BACK_OFF');
+  });
+
   it('hide: hurt, goes into hiding and gets back to 180 HP', () => {
     const simulation = match(recipe('hide'), compileBrain(SHOOTER), {
       arena: CENTER_BLOCK,

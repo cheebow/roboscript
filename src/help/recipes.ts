@@ -327,6 +327,33 @@ loop
         fire`,
       },
       {
+        id: 'flee',
+        title: { en: 'Run from an enemy in sight', ja: '敵を見たら逃げる' },
+        text: {
+          en: 'Seeing an enemy, the robot runs for cover (`turn cover` steers one tick at a time, so it rounds the corners on the way). With no cover to go to, it backs away facing the enemy, which keeps it in sight; turning its back would take time under fire. With a wall behind it, it fights. Out of sight, it stops, and a robot that stays hidden and still gets HP back.',
+          ja: '敵が見えたら、隠れ場所へ走ります（`turn cover` は 1 tick ずつ曲がるので、角を回り込みながら進みます）。隠れ場所がなければ、敵を向いたまま後ろへ下がります。敵から目を離さずに済み、背中を向けるために回る間に撃たれることもありません。後ろが壁なら撃ち返します。見えなくなったら止まります。見られずにじっとしていると HP が回復します。',
+        },
+        code: `loop
+    if enemy_visible
+        if cover_visible
+            label FLEE
+            turn cover
+            drive forward
+        else if blocked_behind
+            label CORNERED
+            turn enemy
+            drive stop
+            fire
+        else
+            label BACK_OFF
+            turn enemy
+            drive backward
+    else
+        label HIDE
+        drive stop
+        wait`,
+      },
+      {
         id: 'hide',
         title: { en: 'Hurt: hide and recover', ja: 'HP が減ったら隠れて休む' },
         text: {

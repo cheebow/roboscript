@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-09',
+    en: 'A new recipe in the help, under Defending: run from an enemy in sight — for cover if there is any, backing away facing the enemy if not.',
+    ja: 'ヘルプの「守る」にレシピ「敵を見たら逃げる」を足しました。隠れ場所があればそこへ、なければ敵を向いたまま下がります。',
+  },
+  {
+    date: '2026-10-09',
     en: 'The start menu is in groups now — LEARN, SOLO, TEAM BATTLE, HELP & SETTINGS — and the team battle has two lines of its own: PROGRAM to write your team, WATCH to go straight to watching teams fight.',
     ja: '起動メニューを「まなぶ」「個人戦」「チーム戦」「ヘルプと設定」の見出しで分けました。チーム戦には「プログラム」と「観戦」の 2 つがあり、観戦の画面へも直接入れます。',
   },

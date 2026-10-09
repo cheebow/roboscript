@@ -109,7 +109,7 @@ loop
           en: 'A sensor tells what is happening now; a variable remembers what happened. `mode` is the plan: 1 charges in, 2 keeps away. `hits` counts the shots taken, and the third one switches the plan for good. The first half picks the driving by the plan, the second half does one action. Add more numbers for more plans.',
           ja: 'センサーは「今」のことしか分かりませんが、変数は「これまで」を覚えておけます。`mode` が作戦で、1 は突っ込む、2 は距離をとる。`hits` で撃たれた回数を数え、3 発目で作戦を切り替えて、もう戻しません。前半で作戦に合わせて走り方を決め、後半で行動を 1 つします。数を増やせば、作戦をいくつでも持てます。',
         },
-        code: `set mode = 1   # 1: charge in, 2: keep away
+        code: `set mode = 1
 set hits = 0
 loop
     if hit
@@ -340,11 +340,11 @@ loop
         id: 'look-around',
         title: { en: 'Look all round, then move on', ja: 'ぐるっと見回してから、場所を変える' },
         text: {
-          en: 'Four quarter turns, `turn left 90`, make one look all round. If nothing showed up, the robot drives on for 2 seconds and looks again. Why not `turn left 360` at once? A turn by an angle goes on to its end even once an enemy shows, and a whole turn ends facing where it began: the enemy seen on the way is behind it again. A quarter at a time, it checks after each one.',
-          ja: '`turn left 90` を 4 回で、ぐるっと 1 周見回します。何も見えなければ 2 秒走って、また見回します。`turn left 360` で一度に回らないのは、角度つきの turn は途中で敵が見えても最後まで回り、1 周すると元の向きに戻ってしまうからです（途中で見えた敵が、また後ろになる）。90 度ずつなら、回るたびに確かめられます。',
+          en: 'Four quarter turns, `turn left 90`, make one look all round: `looked` counts them. If nothing showed up, the robot drives on for 2 seconds (`t` counts the ticks down) and looks again. Why not `turn left 360` at once? A turn by an angle goes on to its end even once an enemy shows, and a whole turn ends facing where it began: the enemy seen on the way is behind it again. A quarter at a time, it checks after each one.',
+          ja: '`turn left 90` を 4 回で、ぐるっと 1 周見回します（`looked` で回数を数えます）。何も見えなければ 2 秒走って（`t` で残りの tick を数えます）、また見回します。`turn left 360` で一度に回らないのは、角度つきの turn は途中で敵が見えても最後まで回り、1 周すると元の向きに戻ってしまうからです（途中で見えた敵が、また後ろになる）。90 度ずつなら、回るたびに確かめられます。',
         },
-        code: `set looked = 0   # quarter turns done
-set t = 0        # ticks left to drive
+        code: `set looked = 0
+set t = 0
 loop
     if enemy_visible
         label FIGHT
@@ -395,8 +395,8 @@ loop
         id: 'in-range',
         title: { en: 'Shoot only what the gun reaches', ja: '届く敵だけを撃つ' },
         text: {
-          en: 'A bullet flies only as far as `weapon_range`, then is gone. Further than that the robot does not shoot but drives in (round obstacles), and opens fire once the enemy is in reach. Not a bullet is wasted, and it works with any gun, as `weapon_range` reads your own.',
-          ja: '弾は `weapon_range` までしか飛ばず、そこで消えます。それより遠ければ撃たずに近づき（障害物は回り込み）、届くようになってから撃ちます。弾を 1 発も無駄にしません。`weapon_range` は自分の銃の射程を読むので、どの銃でもそのまま使えます。',
+          en: 'A bullet flies only as far as `weapon_range`, then is gone. Further than that the robot does not shoot but drives in (round obstacles), and opens fire once the enemy is in reach. Not a bullet goes out that cannot reach, and it works with any gun, as `weapon_range` reads your own.',
+          ja: '弾は `weapon_range` までしか飛ばず、そこで消えます。それより遠ければ撃たずに近づき（障害物は回り込み）、届くようになってから撃ちます。届かない弾は 1 発も撃ちません。`weapon_range` は自分の銃の射程を読むので、どの銃でもそのまま使えます。',
         },
         code: `loop
     if not enemy_visible or enemy_distance > weapon_range
@@ -739,13 +739,14 @@ loop
         id: 'defend-base',
         title: { en: 'The base is hit: go back', ja: '基地が削られたら戻る' },
         text: {
-          en: '`full` remembers the base\'s HP at the start. While the base is untouched, the robot attacks; once `base_hp` is lower, someone is at the base, and the robot goes back to guard it, and stays.',
-          ja: '`full` に、始めの基地の HP を覚えておきます。基地が無傷のあいだは攻め、`base_hp` が減ったら、だれかが基地を撃っているので、戻って守り、そのまま残ります。',
+          en: '`full` remembers the base\'s HP at the start. While the base is untouched, the robot attacks; once `base_hp` is lower, someone is at the base, and the robot goes back to guard it, and stays. It stops before it turns for home: turning on the move swings it wide, into a teammate turning the same way.',
+          ja: '`full` に、始めの基地の HP を覚えておきます。基地が無傷のあいだは攻め、`base_hp` が減ったら、だれかが基地を撃っているので、戻って守り、そのまま残ります。戻るときは止まってから向きを変えます。走りながら回ると大回りになり、同じように戻る味方とぶつかるからです。',
         },
         code: `set full = base_hp
 loop
     if base_hp < full and base_distance > 200
         label RETURN
+        drive stop
         face base
         drive forward
         wait
@@ -794,9 +795,13 @@ loop
             drive stop
             aim enemy
             fire
-        else
+        else if base_distance > 150
             face base
             drive forward
+            wait
+        else
+            drive stop
+            aim enemy
             wait
     else
         label MARCH

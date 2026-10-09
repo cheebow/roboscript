@@ -508,9 +508,9 @@ describe('the recipes of the help: making it easy to follow', () => {
 
 describe('the recipes of the help: as a team', () => {
   /** A 2 v 2 castle match: the recipe on both player machines, sitting ducks on the other side. */
-  function castleMatch(source: string, stats: [RobotStats, RobotStats], secondSource = source): Simulation {
+  function castleMatch(source: string, stats: [RobotStats, RobotStats]): Simulation {
     const brainA = compileBrain(source);
-    const brainB = compileBrain(secondSource);
+    const brainB = compileBrain(source);
     const bases = [
       { team: 0, rect: { x: 960, y: 220, width: 40, height: 160 }, maxHp: 300 },
       { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 300 },
@@ -589,17 +589,17 @@ describe('the recipes of the help: as a team', () => {
   });
 
   it('defend-base: marches while the base is untouched, and goes back to guard it once it is hit', () => {
-    // Machine 2 stays put: two machines heading for the base from mirrored places would meet on the way.
-    const simulation = castleMatch(recipe('defend-base'), [ROBOT_DEFAULTS, ROBOT_DEFAULTS], 'loop\n    wait');
-    const [first] = simulation.robots;
+    // Both machines, from mirrored places: turning on the spot, they go home side by side without meeting.
+    const simulation = castleMatch(recipe('defend-base'), [ROBOT_DEFAULTS, ROBOT_DEFAULTS]);
+    const team = simulation.robots.slice(0, 2);
     runTicks(simulation, 2 * tickRate);
-    expect(first.label).toBe('MARCH');
+    expect(team.map((robot) => robot.label)).toEqual(['MARCH', 'MARCH']);
     simulation.bases[0].hp -= 20;
     runTicks(simulation, 2);
-    expect(first.label).toBe('RETURN');
+    expect(team.map((robot) => robot.label)).toEqual(['RETURN', 'RETURN']);
     runTicks(simulation, 10 * tickRate);
-    expect(first.label).toBe('DEFEND');
-    expect(first.teamSense.baseDistance).toBeLessThanOrEqual(200);
+    expect(team.map((robot) => robot.label)).toEqual(['DEFEND', 'DEFEND']);
+    for (const robot of team) expect(robot.teamSense.baseDistance).toBeLessThanOrEqual(200);
   });
 
   it('call-by-name: the keeper calls machine 2 alone; machine 3 never hears it and marches on', () => {
@@ -634,5 +634,9 @@ describe('the recipes of the help: as a team', () => {
     expect(second.label).toBe('HELP');
     expect(third.teamSense.allySignal).toBe(0);
     expect(third.label).toBe('MARCH');
+    // Machine 2 settles by the base to guard it, not against it.
+    runTicks(simulation, 8 * tickRate);
+    expect(second.teamSense.baseDistance).toBeLessThanOrEqual(150);
+    expect(second.blocked).toBe(false);
   });
 });

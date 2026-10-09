@@ -33,7 +33,7 @@ export const HELP: readonly HelpSection[] = [
 - In **CHALLENGE**, solve set puzzles and collect stars.
 - New here? Start with the **TUTORIAL**: it teaches the language one step at a time.
 
-The start menu comes up when the page opens; ⏻ at the left of the top bar brings it back at any time. The tabs at the top switch screens.`, ja: `RoboScript は、ロボットの動きを **プログラムで決めて** 戦わせるゲームです。試合中にロボットを操作することはありません。どう動くかは、試合の前に書いたプログラムがすべて決めます。
+The start menu comes up when the page opens, its lines grouped under LEARN, SOLO, TEAM BATTLE and HELP & SETTINGS; ⏻ at the left of the top bar brings it back at any time. The tabs at the top switch screens.`, ja: `RoboScript は、ロボットの動きを **プログラムで決めて** 戦わせるゲームです。試合中にロボットを操作することはありません。どう動くかは、試合の前に書いたプログラムがすべて決めます。
 
 - **プログラム** の画面で、ロボットのプログラムを書いて試合をし、うまくいかなければデバッグして直します。
 - **アリーナ** で、作ったロボットや内蔵のロボットを戦わせて見ます。
@@ -41,7 +41,7 @@ The start menu comes up when the page opens; ⏻ at the left of the top bar brin
 - **チャレンジ** で、条件つきの課題を解いて星を集めます。
 - 初めてなら **チュートリアル** から始めましょう。一歩ずつ書き方を学べます。
 
-ページを開くと起動メニューが出ます。上部バー左端の ⏻ でいつでも戻れます。上のタブで画面を切り替えられます。` } },
+ページを開くと起動メニューが出ます（「まなぶ」「個人戦」「チーム戦」「ヘルプと設定」に分かれています）。上部バー左端の ⏻ でいつでも戻れます。上のタブで画面を切り替えられます。` } },
       { id: 'program-screen', title: { en: `The program screen`, ja: `プログラムの画面` }, body: { en: `The screen for writing code, trying it in a match, and fixing it.
 
 - **PROJECT** (top left): ALPHA (green) and BRAVO (orange), each with a \`main.bot\` (program) and a \`config\` (parts). Click one to open it. BRAVO's program can be changed too.
@@ -100,13 +100,13 @@ When the program has a mistake, the match does not start: the line turns red, an
 - 上で **リーグ戦**（全員と 2 回ずつ）か **トーナメント**（2 勝で勝ち上がり）を選んで始めます。
 - 結果は戦闘画面の上の **結果ボード** に出ます。丸を押すと、その試合を見られます。左上の「◀ 結果ボード」で戻ります。
 - **結果** メニューから、結果をファイルに保存したり、人の結果ファイルを開いたりできます。` } },
-      { id: 'team-screen', title: { en: `The team battle (bases)`, ja: `チームバトル（基地戦）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu: each side defends a **base**, and **one program drives the whole team**.
+      { id: 'team-screen', title: { en: `The team battle (bases)`, ja: `チームバトル（基地戦）` }, body: { en: `A mode of its own, started from **TEAM BATTLE** on the start menu (PROGRAM or WATCH): each side defends a **base**, and **one program drives the whole team**.
 
 - A team loses the moment its base's HP reaches 0 — and only then: it is in the match as long as its base stands, even with every robot gone. At time-out the healthier base wins.
 - Pick **1 to 5 robots a side** and a base map in the top bar. The machines share one cost pool (10 × robots + 2), and each machine's parts are chosen on the \`config\` tabs (1 2 3 …).
 - Every machine runs its own copy of the team's program, with its own variables and sensors. \`self_id\`, the radio (\`signal\`), and the equipment words (\`sensor_range\` and friends) split the roles — see **Team and base words**.
 - While debugging, pick the machine to follow on the **INSPECTOR** panel's tabs; clicking a log row jumps to the machine that ran it. The WATCH panel shows the team words, radio included.
-- **WATCH** (next to PROGRAM in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チームバトル** から入る、独立したモードです。どちらの側も **基地** を守り、**1 本のプログラムがチーム全体を動かします**。
+- **WATCH** (next to PROGRAM in the top bar) pits saved teams against each other with commentary, and shares a match as a link. The garage here keeps whole **teams**, shared like robots (\`#team=\` links and files).`, ja: `起動メニューの **チーム戦**（プログラム / 観戦）から入る、独立したモードです。どちらの側も **基地** を守り、**1 本のプログラムがチーム全体を動かします**。
 
 - 基地の HP が 0 になった瞬間、そのチームの負けです — そして、それだけが負けです。基地が立っているかぎり、全滅してもチームは戦いの中にいます。時間切れなら基地の HP が多いほうの勝ち。
 - 上部バーで **片側 1〜5 台** と基地のマップを選びます。コストはチームで 1 つの枠（10 × 台数 + 2）で、機体ごとの装備は \`config\` の番号タブ（1 2 3 …）で選びます。

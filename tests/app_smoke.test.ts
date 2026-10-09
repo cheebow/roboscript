@@ -158,4 +158,15 @@ describe('the app, on the real page', () => {
     runFrames();
     expect(document.getElementById('app')?.dataset.screen).toBe('team');
   });
+
+  it('starts the team battle\'s watching straight from the start menu', () => {
+    click('boot-button');
+    const boot = document.getElementById('boot');
+    boot?.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }));
+    boot?.dispatchEvent(new KeyboardEvent('keydown', { key: '7' }));
+    runFrames();
+    expect(document.getElementById('boot')).toBeNull();
+    expect(document.getElementById('app')?.dataset.screen).toBe('teamwatch');
+    expect(document.getElementById('screen-team-watch')?.classList.contains('selected')).toBe(true);
+  });
 });

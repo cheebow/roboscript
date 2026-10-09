@@ -12,8 +12,17 @@ import { createCredits } from './credits';
 import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
-export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'team' | 'arena' | 'contest' | 'help' | 'language';
-const CHOICES: readonly BootChoice[] = ['tutorial', 'challenge', 'program', 'arena', 'contest', 'team', 'help', 'language'];
+export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'team' | 'teamwatch' | 'arena' | 'contest' | 'help' | 'language';
+
+/** The menu in groups, each under a heading: learning, the duel's screens, the team battle's, and the rest. */
+const GROUPS: readonly { heading: MessageKey; choices: readonly BootChoice[] }[] = [
+  { heading: 'boot.group.learn', choices: ['tutorial', 'challenge'] },
+  { heading: 'boot.group.solo', choices: ['program', 'arena', 'contest'] },
+  { heading: 'boot.group.team', choices: ['team', 'teamwatch'] },
+  { heading: 'boot.group.other', choices: ['help', 'language'] },
+];
+/** Every line of the menu, top to bottom: the headings are not lines, so the cursor and the digits pass them by. */
+const CHOICES: readonly BootChoice[] = GROUPS.flatMap((group) => group.choices);
 
 export const BOOT_KEY = 'roboscript/boot.json';
 
@@ -146,21 +155,30 @@ export class BootScreen {
     const menu = createElement('div', 'boot-menu');
     menu.setAttribute('role', 'menu');
     menu.append(createElement('div', 'boot-menu-title', t('boot.menu')));
-    this.items = CHOICES.map((choice, index) => {
-      const item = createElement('button', 'boot-item');
-      item.type = 'button';
-      item.setAttribute('role', 'menuitem');
-      item.disabled = this.unavailable.has(choice);
-      item.append(
-        createElement('span', 'boot-item-mark', '▶'),
-        createElement('span', 'boot-item-name', t(`boot.choice.${choice}` as MessageKey)),
-        createElement('span', 'boot-item-what', t(`boot.choice.${choice}.what` as MessageKey)),
-      );
-      item.addEventListener('mouseenter', () => this.moveTo(index));
-      item.addEventListener('click', () => this.choose(choice));
-      menu.append(item);
-      return item;
-    });
+    this.items = [];
+    for (const { heading, choices } of GROUPS) {
+      const group = createElement('div', 'boot-group');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', t(heading));
+      group.append(createElement('div', 'boot-group-title', t(heading)));
+      for (const choice of choices) {
+        const index = this.items.length;
+        const item = createElement('button', 'boot-item');
+        item.type = 'button';
+        item.setAttribute('role', 'menuitem');
+        item.disabled = this.unavailable.has(choice);
+        item.append(
+          createElement('span', 'boot-item-mark', '▶'),
+          createElement('span', 'boot-item-name', t(`boot.choice.${choice}` as MessageKey)),
+          createElement('span', 'boot-item-what', t(`boot.choice.${choice}.what` as MessageKey)),
+        );
+        item.addEventListener('mouseenter', () => this.moveTo(index));
+        item.addEventListener('click', () => this.choose(choice));
+        group.append(item);
+        this.items.push(item);
+      }
+      menu.append(group);
+    }
     const help = createElement('div', 'boot-help', t('boot.help', { count: CHOICES.length }));
     this.element.append(menu, ...(news.length > 0 ? [this.newsElement(news)] : []), help, createCredits('boot-credits'));
     this.menu = menu;

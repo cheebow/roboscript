@@ -241,18 +241,30 @@ describe('the start-up screen', () => {
     expect(document.querySelector('.boot-item.current .boot-item-name')?.textContent).toBe('PROGRAM');
   });
 
-  it('offers the team battle, and starts it when chosen', () => {
+  it('groups its lines under headings, and the team battle offers its program and its watching', () => {
     const storage = memoryStorage();
     const chosen: string[] = [];
     const boot = new BootScreen(storage, (choice) => chosen.push(choice));
     boot.show();
     const screen = document.getElementById('boot')!;
     key(screen, 'x');
-    const names = [...screen.querySelectorAll('.boot-item-name')].map((item) => item.textContent);
-    expect(names).toContain('TEAM BATTLE');
-    // After the duel's own screens: the sixth line of the menu.
+    const groups = [...screen.querySelectorAll('.boot-group')].map((group) => [
+      group.querySelector('.boot-group-title')?.textContent,
+      ...[...group.querySelectorAll('.boot-item-name')].map((item) => item.textContent),
+    ]);
+    expect(groups).toEqual([
+      ['LEARN', 'TUTORIAL', 'CHALLENGE'],
+      ['SOLO', 'PROGRAM', 'ARENA', 'CONTEST'],
+      ['TEAM BATTLE', 'PROGRAM', 'WATCH'],
+      ['HELP & SETTINGS', 'HELP', '日本語'],
+    ]);
+    // The digits count the lines, not the headings: after the duel's three screens come the team battle's two.
     key(screen, '6');
     expect(chosen).toEqual(['team']);
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    key(document.getElementById('boot')!, '7');
+    expect(chosen).toEqual(['team', 'teamwatch']);
   });
 
   it('tells a returning player what changed, once, and keeps quiet for a new one', () => {

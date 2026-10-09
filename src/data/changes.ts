@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-09',
+    en: 'The start menu is in groups now — LEARN, SOLO, TEAM BATTLE, HELP & SETTINGS — and the team battle has two lines of its own: PROGRAM to write your team, WATCH to go straight to watching teams fight.',
+    ja: '起動メニューを「まなぶ」「個人戦」「チーム戦」「ヘルプと設定」の見出しで分けました。チーム戦には「プログラム」と「観戦」の 2 つがあり、観戦の画面へも直接入れます。',
+  },
+  {
+    date: '2026-10-09',
     en: 'New word for the team battle: enemies_alive, how many enemies are left. Every enemy falls to your team\'s bullets and the shooter tells the rest by radio, so it is right even for enemies nobody sees. When it reads 0, only the base is left to take — the team template BaseRally now goes back out instead of waiting out the clock at home.',
     ja: 'チームバトルに新しいワード enemies_alive（敵の生存数）が入りました。敵を倒すのは必ず自分のチームの弾なので、撃った機体が無線で知らせ、見えていない敵の分まで正しく数えられます。0 になったら、あとは基地を落とすだけ。チームのテンプレート BaseRally も、敵が全滅したら守りから攻めに戻るようになりました（基地にこもったまま時間切れにならない）。',
   },

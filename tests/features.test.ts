@@ -79,6 +79,7 @@ describe('program features', () => {
       coward_bot: NONE,
       guard_bot: { ...NONE, bullets: true },
       cover_bot: { ...NONE, cover: true },
+      hit_and_hide_bot: { ...NONE, cover: true },
       strafe_bot: { ...NONE, lead: true },
       sentry_bot: { ...NONE, lead: true },
     });

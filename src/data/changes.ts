@@ -11,6 +11,11 @@ export interface Change {
 
 export const CHANGES: readonly Change[] = [
   {
+    date: '2026-10-10',
+    en: 'A ninth built-in robot, HitAndHideBot: it fires one shot, runs for cover and rests there out of sight, then comes out for the next. It wears down a robot that crosses the open, and falls to one that walks up to it.',
+    ja: '9 台目の内蔵ロボット HitAndHideBot が入りました。1 発撃っては物陰へ逃げ込んで休み、また探しに出ます。開けた場所を横切る相手は削り切り、まっすぐ寄ってくる相手には弱いロボットです。',
+  },
+  {
     date: '2026-10-09',
     en: 'The team templates BaseCall and BaseRally no longer get stuck pushing against a teammate: they turn away from it as they would from a wall (touching_ally), and BaseCall\'s machines answering a call wait at the caller\'s side instead of driving into it.',
     ja: 'チームのテンプレート BaseCall と BaseRally が、味方に押し付けたまま動けなくなることがなくなりました。壁と同じように、味方に触れたら向きを変えます（touching_ally）。BaseCall の呼ばれた機体は、呼んだ機体にぶつかるまで走らず、そばで待ちます。',

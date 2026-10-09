@@ -12,6 +12,9 @@ function sorted(rects: Rect[]): Rect[] {
   return [...rects].sort((a, b) => a.x - b.x || a.y - b.y);
 }
 
+/** The templates that hide and recover: a match against them can run out the clock. */
+const HIDERS = ['cover_bot', 'hit_and_hide_bot'];
+
 describe('arena list', () => {
   it('offers nine arenas, each with a unique id, the centre block first', () => {
     expect(ARENAS.map((arena) => arena.name)).toEqual([
@@ -84,10 +87,10 @@ describe.each(ARENAS)('arena $name', ({ arena }) => {
 
   it('lets every pair of different templates fight to a finish, without running out the clock', () => {
     // Two robots running the same program can stay half a turn apart and never meet; that is left to the player.
-    // CoverBot hides and recovers whenever it is hurt, which can run out the clock: see the next test.
+    // CoverBot and HitAndHideBot hide and recover, which can run out the clock: see the tests at the end.
     for (const player of TEMPLATES) {
       for (const enemy of TEMPLATES) {
-        if (enemy === player || player.id === 'cover_bot' || enemy.id === 'cover_bot') continue;
+        if (enemy === player || HIDERS.includes(player.id) || HIDERS.includes(enemy.id)) continue;
         for (const seed of SEEDS) {
           const simulation = createSimulation(
             [compileBrain(player.source), compileBrain(enemy.source)],
@@ -154,17 +157,17 @@ describe.each(CASTLE_ARENAS)('castle arena $name', ({ id, arena, basesFor }) => 
   });
 });
 
-describe('CoverBot against the clock', () => {
-  it('runs out the clock in some matches, by hiding and recovering whenever it is hurt, but in few', () => {
-    const coverBot = TEMPLATES.find((template) => template.id === 'cover_bot');
-    if (coverBot === undefined) throw new Error('Expected CoverBot');
+describe.each(HIDERS)('%s against the clock', (hiderId) => {
+  it('runs out the clock in some matches, by hiding and recovering, but in few', () => {
+    const hider = TEMPLATES.find((template) => template.id === hiderId);
+    if (hider === undefined) throw new Error(`Expected ${hiderId}`);
     let timeouts = 0;
     let matches = 0;
     for (const { arena } of ARENAS) {
       for (const other of TEMPLATES) {
-        if (other === coverBot) continue;
+        if (other === hider) continue;
         for (const seed of SEEDS) {
-          for (const [first, second] of [[coverBot, other], [other, coverBot]]) {
+          for (const [first, second] of [[hider, other], [other, hider]]) {
             const simulation = createSimulation([compileBrain(first.source), compileBrain(second.source)], { arena, stats: ROBOT_DEFAULTS, seed });
             runToEnd(simulation);
             matches++;

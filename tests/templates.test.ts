@@ -77,6 +77,7 @@ describe('template list', () => {
       'CowardBot',
       'GuardBot',
       'CoverBot',
+      'HitAndHideBot',
       'StrafeBot',
       'SentryBot',
     ]);
@@ -254,6 +255,37 @@ describe('CoverBot', () => {
   });
 });
 
+describe('HitAndHideBot', () => {
+  const inSight = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 300, coverVisible: true, coverDistance: 100 };
+
+  it('fires one shot, runs for cover, rests out of sight for 3 seconds, then comes out to find the enemy', () => {
+    const brain = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
+    expect(brain.decide(inSight)).toMatchObject({ fire: true, label: 'SHOOT' });
+    // Still in sight, gun ready again: it does not shoot a second time, it runs.
+    expect(brain.decide(inSight)).toMatchObject({ fire: false, turn: 'cover', drive: 'forward', label: 'RUN' });
+    const hidden = { ...QUIET_CONTEXT, hidden: true, coverVisible: true };
+    for (let tick = 0; tick < 89; tick++) expect(brain.decide(hidden)).toMatchObject({ drive: 'stop', label: 'HIDE' });
+    brain.decide(hidden);
+    expect(brain.decide(hidden)).toMatchObject({ drive: 'forward', label: 'SEEK' });
+  });
+
+  it('fights back instead of hiding with the enemy right against it, or with nowhere to hide', () => {
+    const touched = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
+    touched.decide(inSight);
+    expect(touched.decide({ ...inSight, touchingEnemy: true })).toMatchObject({ fire: true, label: 'SHOOT' });
+
+    const open = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
+    open.decide(inSight);
+    expect(open.decide({ ...inSight, coverVisible: false })).toMatchObject({ fire: true, label: 'SHOOT' });
+  });
+
+  it('waits for the gun to be ready rather than going into hiding without a shot', () => {
+    const brain = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
+    expect(brain.decide({ ...inSight, reload: 0.5 })).toMatchObject({ fire: false, label: 'SHOOT' });
+    expect(brain.decide(inSight)).toMatchObject({ fire: true, label: 'SHOOT' });
+  });
+});
+
 describe('SentryBot', () => {
   const inRange = { ...QUIET_CONTEXT, enemyVisible: true, enemyDistance: 300 };
 
@@ -327,6 +359,14 @@ describe('strategies against the enemies', () => {
     }
     return tally;
   }
+
+  it('HitAndHideBot wears down StrafeBot, which crosses the open, but loses to DumbBot, which comes to it', () => {
+    const hitAndHide = findTemplate('hit_and_hide_bot')?.source ?? '';
+    const strafe = tally(hitAndHide, 'strafe_bot');
+    const dumb = tally(hitAndHide, 'dumb_bot');
+    expect(strafe.wins).toBeGreaterThanOrEqual(MOST);
+    expect(dumb.losses).toBeGreaterThanOrEqual(MOST);
+  });
 
   it('the sample AI loses to every enemy that stops to shoot', () => {
     for (const enemyId of ['dumb_bot', 'coward_bot', 'guard_bot', 'strafe_bot', 'sentry_bot']) {

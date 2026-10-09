@@ -3,6 +3,7 @@ import { COVER_BOT } from './cover_bot';
 import { COWARD_BOT } from './coward_bot';
 import { DUMB_BOT } from './dumb_bot';
 import { GUARD_BOT } from './guard_bot';
+import { HIT_AND_HIDE_BOT } from './hit_and_hide_bot';
 import { SAMPLE_AI } from './sample';
 import { SENTRY_BOT } from './sentry_bot';
 import { STRAFE_BOT } from './strafe_bot';
@@ -23,6 +24,7 @@ export const TEMPLATES: readonly Template[] = [
   { id: 'coward_bot', name: 'CowardBot', source: COWARD_BOT },
   { id: 'guard_bot', name: 'GuardBot', source: GUARD_BOT },
   { id: 'cover_bot', name: 'CoverBot', source: COVER_BOT },
+  { id: 'hit_and_hide_bot', name: 'HitAndHideBot', source: HIT_AND_HIDE_BOT },
   { id: 'strafe_bot', name: 'StrafeBot', source: STRAFE_BOT },
   { id: 'sentry_bot', name: 'SentryBot', source: SENTRY_BOT },
 ];

@@ -635,25 +635,27 @@ And when you change parts, look at the program again. If it uses \`weapon_range\
     title: { en: `Read other programs`, ja: `ほかのプログラムを読む` },
     body: { en: `The quickest way to get better is to **read other people's programs**.
 
-On the program screen, press **LOAD TEMPLATE** to the right of the editor's heading to load the program of any of the eight built-in robots (Cmd / Ctrl + Z takes it back).
+On the program screen, press **LOAD TEMPLATE** to the right of the editor's heading to load the program of any of the nine built-in robots (Cmd / Ctrl + Z takes it back).
 
 - **Sample** … drives up and shoots: the basic shape
 - **AggressiveBot** … charges without stopping
 - **CowardBot** … backs away as it shoots
 - **GuardBot** … defends itself with \`guard\`
 - **CoverBot** … hides behind obstacles to recover
+- **HitAndHideBot** … fires one shot, then hides and rests
 - **StrafeBot** … drives sideways, aiming where the enemy will be (\`aim lead\`)
 - **SentryBot** … stops, and aims carefully where the enemy will be
 
 Each is explained with comments (\`#\`). Put the cursor on a word this tutorial did not cover to see what it means.`, ja: `上達の近道は、**ほかの人のプログラムを読む** ことです。
 
-プログラムの画面で、エディタの見出しの右にある **テンプレート** を押すと、内蔵ロボット 8 台のプログラムをエディタに読み込めます（Cmd / Ctrl + Z で元に戻せます）。
+プログラムの画面で、エディタの見出しの右にある **テンプレート** を押すと、内蔵ロボット 9 台のプログラムをエディタに読み込めます（Cmd / Ctrl + Z で元に戻せます）。
 
 - **Sample** … 近づいて撃つ、基本の形
 - **AggressiveBot** … 止まらずに突っ込む
 - **CowardBot** … 下がりながら撃つ
 - **GuardBot** … \`guard\` で身を守る
 - **CoverBot** … 物陰に隠れて回復する
+- **HitAndHideBot** … 1 発撃っては隠れて休む
 - **StrafeBot** … 横に走りながら、敵の動く先を狙う（\`aim lead\`）
 - **SentryBot** … 止まって、動く先を正確に狙う
 

@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-09',
+    en: 'Twelve new recipes in the help, and a new group, Looking for the enemy: look round until it shows (while), remember a plan in a variable, circle the enemy, turn before the wall, shoot point-blank, go where it was last seen, look all round in quarter turns, shoot only what the gun reaches — and for the team: take the base once every enemy is down (enemies_alive), hold the base as the last one, go back when the base is hit, and call one helper by name.',
+    ja: 'ヘルプのレシピを 12 本足し、新しい分類「探す」を作りました。見つかるまで探す（while）、作戦を変数で覚えておく、敵の周りを回りながら撃つ、壁の手前で曲がる、くっついて間近で撃つ、見失ったら最後に見た場所へ、90 度ずつ見回す、届く敵だけを撃つ。チームでは、敵が全滅したら基地を落としに行く（enemies_alive）、最後の 1 台になったら基地を守る、基地が削られたら戻る、助けを 1 台だけ名指しで呼ぶ。',
+  },
+  {
+    date: '2026-10-09',
     en: 'A new recipe in the help, under Defending: run from an enemy in sight — for cover if there is any, backing away facing the enemy if not.',
     ja: 'ヘルプの「守る」にレシピ「敵を見たら逃げる」を足しました。隠れ場所があればそこへ、なければ敵を向いたまま下がります。',
   },

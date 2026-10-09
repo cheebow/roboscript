@@ -113,6 +113,39 @@ describe('the recipes of the help: the flow of the program', () => {
     runTicks(simulation, 15);
     expect(simulation.robots[0].rotation).toBeCloseTo(90);
   });
+
+  it('search: turns while it sees nothing, and leaves the while to shoot the moment it sees the enemy', () => {
+    const scope = { ...ROBOT_DEFAULTS, sensorAngle: 120 };
+    const simulation = match(recipe('search'), new FixedBrain(), { stats: scope, alpha: { x: 500, y: 300, rotation: 0 }, bravo: { x: 200, y: 300, rotation: 0 } });
+    const robot = simulation.robots[0];
+    simulation.step();
+    expect(robot.label).toBe('SEARCH');
+    let shot = false;
+    for (let tick = 0; tick < 3 * tickRate && !shot; tick++) {
+      const ammo = robot.weapon.ammo;
+      simulation.step();
+      shot = robot.weapon.ammo < ammo;
+    }
+    expect(shot).toBe(true);
+    expect(robot.label).toBe('FIGHT');
+  });
+
+  it('mode: charges in until the third hit, then keeps away for good', () => {
+    const simulation = match(recipe('mode'), compileBrain(SHOOTER));
+    const robot = simulation.robots[0];
+    let hits = 0;
+    for (let tick = 0; tick < 20 * tickRate && hits < 3; tick++) {
+      const hp = robot.hp;
+      simulation.step();
+      if (robot.hp < hp) hits++;
+      if (hits < 3) expect(robot.label).toBe('CHARGE');
+    }
+    expect(hits).toBe(3);
+    for (let tick = 0; tick < 5 * tickRate && simulation.result === null; tick++) {
+      simulation.step();
+      expect(robot.label).toBe('KEEP_AWAY');
+    }
+  });
 });
 
 describe('the recipes of the help: random turns', () => {
@@ -168,6 +201,59 @@ describe('the recipes of the help: moving', () => {
     const enemies = ['sentry_bot', 'dumb_bot', 'strafe_bot'];
     expect(tally(recipe('dodge'), enemies).hitsTaken).toBeLessThan(0.7 * tally(SHOOTER, enemies).hitsTaken);
   });
+
+  it('circle: goes round a standing enemy, shooting all the way', () => {
+    const open: Arena = { width: 1000, height: 1000, obstacles: [], spawns: [] };
+    const simulation = match(recipe('circle'), new FixedBrain(), { arena: open, alpha: { x: 200, y: 500, rotation: 0 }, bravo: { x: 500, y: 500, rotation: 0 } });
+    const [self, other] = simulation.robots;
+    const bearing = () => Math.atan2(self.position.y - other.position.y, self.position.x - other.position.x);
+    let turned = 0;
+    let shots = 0;
+    for (let tick = 0; tick < 20 * tickRate; tick++) {
+      const before = bearing();
+      const ammo = self.weapon.ammo;
+      simulation.step();
+      let step = bearing() - before;
+      if (step > Math.PI) step -= 2 * Math.PI;
+      if (step < -Math.PI) step += 2 * Math.PI;
+      turned += step;
+      if (self.weapon.ammo < ammo) shots++;
+      if (tick > 5 * tickRate) expect(distance(simulation)).toBeLessThan(ROBOT_DEFAULTS.weaponRange);
+    }
+    expect(Math.abs(turned)).toBeGreaterThan(1.5 * Math.PI);
+    expect(shots).toBeGreaterThan(5);
+  });
+
+  it('walls: drives about for half a minute and never runs into a wall', () => {
+    // The enemy stands in the middle, off the way round along the walls: a robot is not a wall to wall_ahead.
+    const simulation = match(recipe('walls'), new FixedBrain(), { alpha: { x: 700, y: 300, rotation: 0 }, bravo: { x: 450, y: 300, rotation: 0 } });
+    const robot = simulation.robots[0];
+    let travelled = 0;
+    for (let tick = 0; tick < 30 * tickRate; tick++) {
+      const { x, y } = robot.position;
+      simulation.step();
+      travelled += Math.hypot(robot.position.x - x, robot.position.y - y);
+      expect(robot.blocked).toBe(false);
+    }
+    expect(travelled).toBeGreaterThan(20 * ROBOT_DEFAULTS.moveSpeed);
+  });
+
+  it('stick: closes in until touching, then hardly ever misses', () => {
+    const simulation = match(recipe('stick'), compileBrain(SHOOTER), { bravo: { x: 600, y: 300, rotation: 180 } });
+    const [self, other] = simulation.robots;
+    let shots = 0;
+    let hits = 0;
+    for (let tick = 0; tick < 15 * tickRate && simulation.result === null; tick++) {
+      const ammo = self.weapon.ammo;
+      const hp = other.hp;
+      simulation.step();
+      if (self.label !== 'STICK') continue;
+      if (self.weapon.ammo < ammo) shots++;
+      if (other.hp < hp) hits++;
+    }
+    expect(shots).toBeGreaterThan(3);
+    expect(hits / shots).toBeGreaterThan(0.9);
+  });
 });
 
 describe('the recipes of the help: the legs with a way of fighting of their own', () => {
@@ -219,6 +305,40 @@ describe('the recipes of the help: the legs with a way of fighting of their own'
   });
 });
 
+describe('the recipes of the help: looking for the enemy', () => {
+  it('last-seen: loses an enemy that runs out of its sight, drives to where it was, and finds it again', () => {
+    const shortSighted = { ...ROBOT_DEFAULTS, sensorRange: 300 };
+    // Runs right for 3 seconds, out of ALPHA's sight, and stops there.
+    const runner = compileBrain('drive forward\nset n = 0\nwhile n < 90\n    wait\n    set n = n + 1\ndrive stop\nloop\n    wait');
+    const simulation = match(recipe('last-seen'), runner, { stats: shortSighted, bravo: { x: 400, y: 300, rotation: 0 } });
+    const labels: string[] = [];
+    for (let tick = 0; tick < 15 * tickRate && labels.join() !== 'FIGHT,CHASE,FIGHT'; tick++) {
+      simulation.step();
+      if (simulation.robots[0].label !== labels.at(-1)) labels.push(simulation.robots[0].label);
+    }
+    expect(labels).toEqual(['FIGHT', 'CHASE', 'FIGHT']);
+  });
+
+  it('look-around: turns all the way round, then drives on and looks again', () => {
+    const shortSighted = { ...ROBOT_DEFAULTS, sensorRange: 300 };
+    const simulation = match(recipe('look-around'), new FixedBrain(), { stats: shortSighted, alpha: { x: 300, y: 300, rotation: 0 }, bravo: { x: 950, y: 560, rotation: 0 } });
+    const robot = simulation.robots[0];
+    const labels: string[] = [];
+    for (let tick = 0; tick < 5 * tickRate; tick++) {
+      simulation.step();
+      if (robot.label !== labels.at(-1)) labels.push(robot.label);
+    }
+    expect(labels).toEqual(['LOOK', 'MOVE', 'LOOK']);
+    expect(robot.position.x).toBeGreaterThan(300 + ROBOT_DEFAULTS.moveSpeed);
+
+    // An enemy behind, out of a Scope's cone: the look round finds it.
+    const scope = { ...ROBOT_DEFAULTS, sensorAngle: 120 };
+    const behind = match(recipe('look-around'), new FixedBrain(), { stats: scope, alpha: { x: 500, y: 300, rotation: 0 }, bravo: { x: 200, y: 300, rotation: 0 } });
+    runTicks(behind, 3 * tickRate);
+    expect(behind.robots[0].label).toBe('FIGHT');
+  });
+});
+
 describe('the recipes of the help: aiming and shooting', () => {
   it('aimed: hits far more often than shooting without waiting for the aim', () => {
     const plain = 'loop\n    aim enemy\n    fire';
@@ -266,6 +386,21 @@ describe('the recipes of the help: aiming and shooting', () => {
     const plenty = match(recipe('low-ammo'), new FixedBrain());
     runTicks(plenty, 5 * tickRate);
     expect(plenty.robots[0].weapon.ammo).toBeLessThan(ROBOT_DEFAULTS.maxAmmo);
+  });
+
+  it('in-range: never fires at an enemy out of reach, and fires once it is in reach', () => {
+    const simulation = match(recipe('in-range'), new FixedBrain());
+    const robot = simulation.robots[0];
+    let shots = 0;
+    for (let tick = 0; tick < 15 * tickRate && simulation.result === null; tick++) {
+      const ammo = robot.weapon.ammo;
+      simulation.step();
+      if (robot.weapon.ammo < ammo) {
+        shots++;
+        expect(distance(simulation)).toBeLessThanOrEqual(ROBOT_DEFAULTS.weaponRange);
+      }
+    }
+    expect(shots).toBeGreaterThan(3);
   });
 });
 
@@ -373,9 +508,9 @@ describe('the recipes of the help: making it easy to follow', () => {
 
 describe('the recipes of the help: as a team', () => {
   /** A 2 v 2 castle match: the recipe on both player machines, sitting ducks on the other side. */
-  function castleMatch(source: string, stats: [RobotStats, RobotStats]): Simulation {
+  function castleMatch(source: string, stats: [RobotStats, RobotStats], secondSource = source): Simulation {
     const brainA = compileBrain(source);
-    const brainB = compileBrain(source);
+    const brainB = compileBrain(secondSource);
     const bases = [
       { team: 0, rect: { x: 960, y: 220, width: 40, height: 160 }, maxHp: 300 },
       { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 300 },
@@ -424,5 +559,80 @@ describe('the recipes of the help: as a team', () => {
     expect(pusher.label).toBe('MARCH');
     // The pusher marched west, towards the enemy castle.
     expect(pusher.position.x).toBeLessThan(800);
+  });
+  it('finish-base: keeps home while enemies are left, and takes the enemy base once they are all down', () => {
+    const simulation = castleMatch(recipe('finish-base'), [ROBOT_DEFAULTS, ROBOT_DEFAULTS]);
+    const [first] = simulation.robots;
+    runTicks(simulation, 3 * tickRate);
+    expect(first.label).toBe('GUARD');
+    expect(simulation.bases[1].hp).toBe(simulation.bases[1].maxHp);
+    // Every enemy down.
+    simulation.robots[2].hp = 0;
+    simulation.robots[3].hp = 0;
+    runTicks(simulation, 2);
+    expect(first.label).toBe('MARCH');
+    runTicks(simulation, 15 * tickRate);
+    expect(simulation.bases[1].hp).toBeLessThan(simulation.bases[1].maxHp);
+  });
+
+  it('last-one: attacks with company, and goes home to hold the base once alone', () => {
+    const simulation = castleMatch(recipe('last-one'), [ROBOT_DEFAULTS, ROBOT_DEFAULTS]);
+    const [first] = simulation.robots;
+    runTicks(simulation, 2 * tickRate);
+    expect(first.label).toBe('MARCH');
+    simulation.robots[1].hp = 0;
+    runTicks(simulation, 2);
+    expect(first.label).toBe('GO_HOME');
+    runTicks(simulation, 10 * tickRate);
+    expect(first.label).toBe('HOLD');
+    expect(first.teamSense.baseDistance).toBeLessThanOrEqual(150);
+  });
+
+  it('defend-base: marches while the base is untouched, and goes back to guard it once it is hit', () => {
+    // Machine 2 stays put: two machines heading for the base from mirrored places would meet on the way.
+    const simulation = castleMatch(recipe('defend-base'), [ROBOT_DEFAULTS, ROBOT_DEFAULTS], 'loop\n    wait');
+    const [first] = simulation.robots;
+    runTicks(simulation, 2 * tickRate);
+    expect(first.label).toBe('MARCH');
+    simulation.bases[0].hp -= 20;
+    runTicks(simulation, 2);
+    expect(first.label).toBe('RETURN');
+    runTicks(simulation, 10 * tickRate);
+    expect(first.label).toBe('DEFEND');
+    expect(first.teamSense.baseDistance).toBeLessThanOrEqual(200);
+  });
+
+  it('call-by-name: the keeper calls machine 2 alone; machine 3 never hears it and marches on', () => {
+    const brains = [0, 1, 2].map(() => compileBrain(recipe('call-by-name')));
+    const simulation = createSimulation([brains[0], new FixedBrain()], {
+      arena: { ...DUEL_ARENA, spawns: [
+        { x: 850, y: 300, rotation: 180 },
+        { x: 850, y: 120, rotation: 180 },
+        { x: 850, y: 480, rotation: 180 },
+        // One enemy within the keeper's reach, one far away.
+        { x: 550, y: 300, rotation: 0 },
+        { x: 100, y: 500, rotation: 0 },
+      ] },
+      robots: [
+        { id: 'ALPHA-1', brain: brains[0], stats: ROBOT_DEFAULTS },
+        { id: 'ALPHA-2', brain: brains[1], stats: ROBOT_DEFAULTS },
+        { id: 'ALPHA-3', brain: brains[2], stats: ROBOT_DEFAULTS },
+        { id: 'BRAVO-1', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+        { id: 'BRAVO-2', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+      ],
+      teams: [0, 0, 0, 1, 1],
+      bases: [
+        { team: 0, rect: { x: 960, y: 220, width: 40, height: 160 }, maxHp: 300 },
+        { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 300 },
+      ],
+    });
+    runTicks(simulation, tickRate);
+    const [keeper, second, third] = simulation.robots;
+    expect(keeper.label).toBe('KEEPER');
+    expect(second.teamSense.allySignal).toBe(1);
+    expect(second.teamSense.allySignalFrom).toBe(1);
+    expect(second.label).toBe('HELP');
+    expect(third.teamSense.allySignal).toBe(0);
+    expect(third.label).toBe('MARCH');
   });
 });

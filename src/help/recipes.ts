@@ -85,6 +85,55 @@ loop
     else
         fire`,
       },
+      {
+        id: 'search',
+        title: { en: 'Look round until the enemy is found', ja: '見つかるまで探す' },
+        text: {
+          en: '`while` repeats its block as long as the condition holds, and goes on to the next line once it does not. Here the robot turns left for as long as it sees no enemy; the moment it sees one it leaves the `while` and shoots. The `loop` brings it back to the `while`, which lets it through at once while the enemy is in sight. Handy with the Scope sensor, which sees only ahead.',
+          ja: '`while` は、条件が正しいあいだ中身を繰り返し、正しくなくなったら次の行へ進みます。ここでは、敵が見えないあいだ左へ回り続け、見えた瞬間に `while` を抜けて撃ちます。`loop` で `while` に戻ってきても、敵が見えていればすぐに通り抜けます。前しか見えない Scope のセンサーで役立ちます。',
+        },
+        code: `loop
+    while not enemy_visible
+        label SEARCH
+        turn left
+    label FIGHT
+    if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+      },
+      {
+        id: 'mode',
+        title: { en: 'Remember a plan in a variable', ja: '作戦を変数で覚えておく' },
+        text: {
+          en: 'A sensor tells what is happening now; a variable remembers what happened. `mode` is the plan: 1 charges in, 2 keeps away. `hits` counts the shots taken, and the third one switches the plan for good. The first half picks the driving by the plan, the second half does one action. Add more numbers for more plans.',
+          ja: 'センサーは「今」のことしか分かりませんが、変数は「これまで」を覚えておけます。`mode` が作戦で、1 は突っ込む、2 は距離をとる。`hits` で撃たれた回数を数え、3 発目で作戦を切り替えて、もう戻しません。前半で作戦に合わせて走り方を決め、後半で行動を 1 つします。数を増やせば、作戦をいくつでも持てます。',
+        },
+        code: `set mode = 1   # 1: charge in, 2: keep away
+set hits = 0
+loop
+    if hit
+        set hits = hits + 1
+        if hits >= 3
+            set mode = 2
+    if mode == 1
+        label CHARGE
+        drive forward
+    else if enemy_visible and enemy_distance < 350 and not blocked_behind
+        label KEEP_AWAY
+        drive backward
+    else
+        label KEEP_AWAY
+        drive stop
+    if blocked
+        turn left
+    else if abs(enemy_angle) > 5
+        turn enemy
+    else if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+      },
     ],
   },
   {
@@ -154,6 +203,70 @@ loop
         fire`,
       },
       {
+        id: 'circle',
+        title: { en: 'Circle the enemy, shooting', ja: '敵の周りを回りながら撃つ' },
+        text: {
+          en: 'Driving with the enemy on its right hand (`enemy_angle` 90), the robot goes round it, and the turret, which turns apart from the hull, keeps shooting. Further than 250 it keeps the enemy at 45 instead, to spiral in. One action a tick: turn the hull, or aim, or shoot. Write -90 and -45 to circle the other way.',
+          ja: '敵を右手（`enemy_angle` が 90）に見ながら走ると、敵の周りを回ります。砲塔は車体とは別に回るので、回りながら撃ち続けられます。250 より遠ければ、敵を 45 に見て、渦を巻くように近づきます。1 tick の行動は 1 つ（車体を回す・狙う・撃つのどれか）です。-90 と -45 にすると、反対回りになります。',
+        },
+        code: `loop
+    drive forward
+    set want = 90
+    if enemy_distance > 250
+        set want = 45
+    if blocked
+        turn left
+    else if enemy_angle < want - 10
+        turn left
+    else if enemy_angle > want + 10
+        turn right
+    else if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+      },
+      {
+        id: 'walls',
+        title: { en: 'Turn before the wall', ja: '壁の手前で曲がる' },
+        text: {
+          en: '`blocked` is true only once the robot has run into something. `wall_ahead` is how far the wall or obstacle ahead is, so the robot can start turning right 80 before it, and never stop against it. After the turn the wall runs along its left side; `wall_left` keeps it from scraping along it, turning right a little more whenever it comes closer than 20. Meanwhile the turret shoots at whatever it sees.',
+          ja: '`blocked` は、ぶつかってから正しくなります。`wall_ahead` は前の壁や障害物までの距離なので、80 手前から右へ曲がり始めて、ぶつからずに走り続けられます。曲がったあとは壁が左側に来るので、`wall_left` が 20 より近くなったら少し右へ曲がり、壁にこすらないようにします。そのあいだも、砲塔は見えた敵を撃ちます。',
+        },
+        code: `drive forward
+loop
+    if wall_ahead < 80 or wall_left < 20
+        label TURN
+        turn right
+    else
+        label RUN
+        if not enemy_visible
+            wait
+        else if abs(aim_angle) > 2
+            aim enemy
+        else
+            fire`,
+      },
+      {
+        id: 'stick',
+        title: { en: 'Close in until touching, and shoot point-blank', ja: 'くっつくまで近づいて、間近で撃つ' },
+        text: {
+          en: 'The robot drives at the enemy until `touching_enemy`, and keeps pushing to stay there. Shots from that close hardly ever miss. It takes fire all the way in, so it suits heavy armour and a short gun.',
+          ja: '敵にぶつかる（`touching_enemy`）まで走り、ぶつかってからも押し続けて離れません。間近で撃つ弾は、まず外れません。近づくあいだは撃たれ続けるので、重い装甲と射程の短い銃に向きます。',
+        },
+        code: `loop
+    drive forward
+    if touching_enemy
+        label STICK
+    else
+        label CLOSE_IN
+    if abs(enemy_angle) > 5 and not touching_enemy
+        turn enemy
+    else if abs(aim_angle) > 2
+        aim enemy
+    else
+        fire`,
+      },
+      {
         id: 'walker-march',
         title: { en: 'March in, firing all the way (for the Walker legs)', ja: '撃ちながら歩いて詰める（Walker 向き）' },
         text: {
@@ -194,6 +307,73 @@ loop
     ],
   },
   {
+    title: { en: 'Looking for the enemy', ja: '探す' },
+    recipes: [
+      {
+        id: 'last-seen',
+        title: { en: 'Lost it: go where it was last seen', ja: '見失ったら、最後に見た場所へ行く' },
+        text: {
+          en: 'When the enemy is out of sight, `enemy_distance` and `turn enemy` are about where it was last seen. So the robot drives there, and looks round once it arrives. Before it has ever seen the enemy, `enemy_distance` is 0: it just looks round.',
+          ja: '敵が見えないとき、`enemy_distance` と `turn enemy` は「最後に見た場所」を指します。そこで、その場所まで走り、着いたら見回します。一度も見ていなければ `enemy_distance` は 0 なので、その場で見回します。',
+        },
+        code: `loop
+    if enemy_visible
+        label FIGHT
+        drive stop
+        if abs(aim_angle) > 2
+            aim enemy
+        else
+            fire
+    else if enemy_distance > 50
+        label CHASE
+        drive forward
+        if blocked
+            turn left
+        else
+            turn enemy
+    else
+        label LOOK
+        drive stop
+        turn left`,
+      },
+      {
+        id: 'look-around',
+        title: { en: 'Look all round, then move on', ja: 'ぐるっと見回してから、場所を変える' },
+        text: {
+          en: 'Four quarter turns, `turn left 90`, make one look all round. If nothing showed up, the robot drives on for 2 seconds and looks again. Why not `turn left 360` at once? A turn by an angle goes on to its end even once an enemy shows, and a whole turn ends facing where it began: the enemy seen on the way is behind it again. A quarter at a time, it checks after each one.',
+          ja: '`turn left 90` を 4 回で、ぐるっと 1 周見回します。何も見えなければ 2 秒走って、また見回します。`turn left 360` で一度に回らないのは、角度つきの turn は途中で敵が見えても最後まで回り、1 周すると元の向きに戻ってしまうからです（途中で見えた敵が、また後ろになる）。90 度ずつなら、回るたびに確かめられます。',
+        },
+        code: `set looked = 0   # quarter turns done
+set t = 0        # ticks left to drive
+loop
+    if enemy_visible
+        label FIGHT
+        drive stop
+        if abs(aim_angle) > 2
+            aim enemy
+        else
+            fire
+    else if looked < 4
+        label LOOK
+        drive stop
+        turn left 90
+        set looked = looked + 1
+        if looked == 4
+            set t = 60
+    else if t > 0
+        label MOVE
+        set t = t - 1
+        drive forward
+        if blocked
+            turn left
+        else
+            wait
+    else
+        set looked = 0`,
+      },
+    ],
+  },
+  {
     title: { en: 'Aiming and shooting', ja: '狙う・撃つ' },
     recipes: [
       {
@@ -210,6 +390,29 @@ loop
         aim enemy
     else
         fire`,
+      },
+      {
+        id: 'in-range',
+        title: { en: 'Shoot only what the gun reaches', ja: '届く敵だけを撃つ' },
+        text: {
+          en: 'A bullet flies only as far as `weapon_range`, then is gone. Further than that the robot does not shoot but drives in (round obstacles), and opens fire once the enemy is in reach. Not a bullet is wasted, and it works with any gun, as `weapon_range` reads your own.',
+          ja: '弾は `weapon_range` までしか飛ばず、そこで消えます。それより遠ければ撃たずに近づき（障害物は回り込み）、届くようになってから撃ちます。弾を 1 発も無駄にしません。`weapon_range` は自分の銃の射程を読むので、どの銃でもそのまま使えます。',
+        },
+        code: `loop
+    if not enemy_visible or enemy_distance > weapon_range
+        label APPROACH
+        drive forward
+        if blocked
+            turn left
+        else
+            turn enemy
+    else
+        label FIRE
+        drive stop
+        if abs(aim_angle) > 2
+            aim enemy
+        else
+            fire`,
       },
       {
         id: 'stop-to-fire',
@@ -458,6 +661,143 @@ loop
         drive stop
         aim enemy
         fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+        wait`,
+      },
+      {
+        id: 'finish-base',
+        title: { en: 'Every enemy down: go and take the base', ja: '敵が全滅したら、基地を落としに行く' },
+        text: {
+          en: '`enemies_alive` is how many enemies are left, seen or not: every enemy falls to your team\'s bullets, and the shooter tells the rest by radio. While any are left, the robot keeps to its own base and shoots what comes into reach. Once it reads 0, it marches on the enemy base and shells it: a team that stays home after that only runs out the clock.',
+          ja: '`enemies_alive` は敵の生存数です。敵を倒すのは必ず自分のチームの弾なので、撃った機体が無線で知らせ、見えていない敵の分まで分かります。敵が残っているあいだは自分の基地の近くで、届く敵を撃ちます。0 になったら敵の基地へ進んで砲撃します。全滅させたあとも守りにこもっていると、時間切れになるだけです。',
+        },
+        code: `loop
+    if enemies_alive == 0
+        if enemy_base_distance > weapon_range - 50
+            label MARCH
+            face enemy_base
+            drive forward
+            wait
+        else
+            label SIEGE
+            drive stop
+            face enemy_base
+            aim ahead
+            fire
+    else if enemy_visible and enemy_distance < weapon_range
+        label FIGHT
+        drive stop
+        aim enemy
+        fire
+    else if base_distance > 150
+        label HOME
+        face base
+        drive forward
+        wait
+    else
+        label GUARD
+        drive stop
+        aim enemy
+        wait`,
+      },
+      {
+        id: 'last-one',
+        title: { en: 'The last one left: hold the base', ja: '最後の 1 台になったら、基地を守る' },
+        text: {
+          en: '`allies_alive` is how many teammates are left, not counting the robot itself. While it has company the robot attacks; once it reads 0, the robot is the last one, and it goes home to hold the base, as time up goes by the bases\' HP.',
+          ja: '`allies_alive` は、自分を除いた味方の生存数です。味方がいるあいだは攻め、0 になったら自分が最後の 1 台なので、基地へ戻って守ります。時間切れは基地の HP で決まるからです。',
+        },
+        code: `loop
+    if allies_alive == 0 and base_distance > 150
+        label GO_HOME
+        face base
+        drive forward
+        wait
+    else if allies_alive == 0
+        label HOLD
+        drive stop
+        aim enemy
+        if enemy_visible and enemy_distance < weapon_range
+            fire
+        else
+            wait
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        drive stop
+        aim enemy
+        fire
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+        wait`,
+      },
+      {
+        id: 'defend-base',
+        title: { en: 'The base is hit: go back', ja: '基地が削られたら戻る' },
+        text: {
+          en: '`full` remembers the base\'s HP at the start. While the base is untouched, the robot attacks; once `base_hp` is lower, someone is at the base, and the robot goes back to guard it, and stays.',
+          ja: '`full` に、始めの基地の HP を覚えておきます。基地が無傷のあいだは攻め、`base_hp` が減ったら、だれかが基地を撃っているので、戻って守り、そのまま残ります。',
+        },
+        code: `set full = base_hp
+loop
+    if base_hp < full and base_distance > 200
+        label RETURN
+        face base
+        drive forward
+        wait
+    else if enemy_visible and enemy_distance < weapon_range - 50
+        label FIGHT
+        drive stop
+        aim enemy
+        fire
+    else if base_hp < full
+        label DEFEND
+        drive stop
+        aim enemy
+        wait
+    else
+        label MARCH
+        face enemy_base
+        drive forward
+        wait`,
+      },
+      {
+        id: 'call-by-name',
+        title: { en: 'Call one helper by name', ja: '助けを 1 台だけ名指しで呼ぶ' },
+        text: {
+          en: 'Machine 1 keeps the base. When an enemy comes into reach, it calls machine 2 alone with `signal 1 to 2`; the others never hear it and march on. Machine 2 checks with `ally_signal_from` that the call is from machine 1, and comes back to help for the rest of the match. Calling everyone home would leave nobody attacking.',
+          ja: '1 号機は基地の番をします。敵が届くところに来たら、`signal 1 to 2` で 2 号機だけを呼びます。ほかの機体には届かないので、そのまま攻め続けます。2 号機は `ally_signal_from` で 1 号機からの呼び出しだと確かめて、そこからは基地へ戻って守ります。全員を呼び戻すと、攻める機体がいなくなります。',
+        },
+        code: `loop
+    if self_id == 1
+        label KEEPER
+        if base_distance > 150
+            face base
+            drive forward
+            wait
+        else if enemy_visible and enemy_distance < weapon_range
+            signal 1 to 2
+            drive stop
+            aim enemy
+            fire
+        else
+            drive stop
+            aim enemy
+            wait
+    else if ally_signal == 1 and ally_signal_from == 1
+        label HELP
+        if enemy_visible and enemy_distance < weapon_range
+            drive stop
+            aim enemy
+            fire
+        else
+            face base
+            drive forward
+            wait
     else
         label MARCH
         face enemy_base

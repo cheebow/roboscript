@@ -639,4 +639,36 @@ describe('the recipes of the help: as a team', () => {
     expect(second.teamSense.baseDistance).toBeLessThanOrEqual(150);
     expect(second.blocked).toBe(false);
   });
+  it('make-way: two machines that meet on the way home get apart and get home', () => {
+    // Facing away from home, mirrored, and already on the move: turning for home, they swing into each other.
+    const run = (program: string) => {
+      const source = `drive forward\n${program}`;
+      const brains = [compileBrain(source), compileBrain(source)];
+      const simulation = createSimulation([brains[0], new FixedBrain()], {
+        arena: { ...DUEL_ARENA, spawns: [
+          { x: 655, y: 224, rotation: 167 },
+          { x: 655, y: 376, rotation: -167 },
+          { x: 100, y: 100, rotation: 0 },
+          { x: 100, y: 500, rotation: 0 },
+        ] },
+        robots: [
+          { id: 'ALPHA-1', brain: brains[0], stats: ROBOT_DEFAULTS },
+          { id: 'ALPHA-2', brain: brains[1], stats: ROBOT_DEFAULTS },
+          { id: 'BRAVO-1', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+          { id: 'BRAVO-2', brain: new FixedBrain(), stats: ROBOT_DEFAULTS },
+        ],
+        teams: [0, 0, 1, 1],
+        bases: [
+          { team: 0, rect: { x: 960, y: 220, width: 40, height: 160 }, maxHp: 300 },
+          { team: 1, rect: { x: 0, y: 220, width: 40, height: 160 }, maxHp: 300 },
+        ],
+      });
+      runTicks(simulation, 10 * tickRate);
+      return simulation.robots.slice(0, 2).map((robot) => robot.teamSense.baseDistance);
+    };
+    // Without making way they jam far from home; with it, both get there.
+    const goOnly = 'loop\n    face base\n    drive forward\n    wait';
+    expect(Math.min(...run(goOnly))).toBeGreaterThan(250);
+    for (const left of run(recipe('make-way'))) expect(left).toBeLessThan(120);
+  });
 });

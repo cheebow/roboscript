@@ -336,6 +336,7 @@ export class Simulation {
     return {
       alliesAlive: allies.length,
       enemiesAlive,
+      touchingAlly: allies.some((ally) => this.areTouching(robot, ally)),
       allySignal: this.mailboxes[index],
       allySignalFrom: this.mailboxFrom[index],
       allyDistance: toAlly?.distance ?? 0,

@@ -8,7 +8,7 @@ export interface WordText {
 }
 
 const NO_TIME = '時間はかからない。';
-const NOT_THE_ENEMY = 'ロボットは数えない（敵にふさがれているときは、かわりに touching_enemy が真になる）。';
+const NOT_THE_ENEMY = 'ロボットは数えない（敵にふさがれているときは、かわりに touching_enemy が真になる。味方なら touching_ally）。';
 const ANGLE = '度。0 が正面、右が正';
 const BULLET_STEP = Math.round(ROBOT_DEFAULTS.shotSpeed / MATCH_DEFAULTS.tickRate);
 const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
@@ -94,6 +94,7 @@ export const WORDS_JA: Record<string, WordText> = {
   ally_distance: { hint: '一番近い味方までの距離', summary: '一番近い生きている味方までの距離。味方どうしは無線でつながっているという決まりなので、障害物の陰でも分かる。味方がいなければ 0。' },
   ally_angle: { hint: '一番近い味方の方向', summary: `一番近い生きている味方への角度（${ANGLE}）。turn ally / face ally でそちらを向ける。味方がいなければ 0。` },
   ally_hp: { hint: '一番近い味方の HP', summary: '一番近い生きている味方の HP。ally_hp < 60 を「助けが要る」の合図にできる。味方がいなければ 0。' },
+  touching_ally: { hint: '味方と接している', summary: '生きている味方と接しているとき真（どちらがぶつかったかは問わない）。味方にふさがれても blocked は真にならないので、味方につかえているかはこれで分かる。一番近い味方がどちら側かは ally_angle。チーム戦でない試合では偽。' },
   base_hp: { hint: '自分の基地の HP', summary: '自分のチームの基地に残っている HP。0 になった瞬間にチームの負け。基地のない試合では 0。' },
   base_distance: { hint: '自分の基地までの距離', summary: '自分のチームの基地の中心までの距離。基地のない試合では 0。' },
   base_angle: { hint: '自分の基地の方向', summary: `自分のチームの基地の中心への角度（${ANGLE}）。face base でそちらを向ける。基地のない試合では 0。` },

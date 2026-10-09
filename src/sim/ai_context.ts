@@ -82,6 +82,8 @@ export interface AIContext {
   readonly alliesAlive: number;
   /** Living enemies: the team knows how many it faced and hears each kill over the radio. 0 outside a team match. */
   readonly enemiesAlive: number;
+  /** Right against a living teammate. Unlike a wall, a teammate does not make blocked true. false outside a team match. */
+  readonly touchingAlly: boolean;
   /** The robot's mailbox: the number last addressed to it, as it stood at the start of the tick. 0 until something came. */
   readonly allySignal: number;
   /** Who sent what is in the mailbox: the sender's self_id; 0 before anything came. */

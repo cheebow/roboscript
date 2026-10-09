@@ -462,6 +462,7 @@ export class RobotController {
 export interface TeamReading {
   alliesAlive: number;
   enemiesAlive: number;
+  touchingAlly: boolean;
   allySignal: number;
   allySignalFrom: number;
   allyDistance: number;
@@ -479,6 +480,7 @@ export interface TeamReading {
 export const NO_TEAM: TeamReading = {
   alliesAlive: 0,
   enemiesAlive: 0,
+  touchingAlly: false,
   allySignal: 0,
   allySignalFrom: 0,
   allyDistance: 0,

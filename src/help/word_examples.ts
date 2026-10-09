@@ -336,6 +336,15 @@ loop
     else
         drive stop
     fire`,
+  'sensor:touching_ally': `loop
+    if touching_ally
+        label MAKE_WAY
+        drive forward
+        turn right
+    else
+        face base
+        drive forward
+        wait`,
   'sensor:hidden': `loop
     if hidden
         drive stop

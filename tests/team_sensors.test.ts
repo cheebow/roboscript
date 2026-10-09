@@ -30,6 +30,13 @@ class SensingBrain implements RobotBrain {
   }
 }
 
+/** Records what it reads, like SensingBrain, and drives straight on. */
+class DrivingSensingBrain extends SensingBrain {
+  decide(context: AIContext) {
+    return { ...super.decide(context), drive: 'forward' as const };
+  }
+}
+
 function teamMatch(brains: RobotBrain[], { bases = [] as readonly Base[] } = {}) {
   return new Simulation({
     arena: ROW,
@@ -95,6 +102,27 @@ describe('the team words', () => {
     expect(simulation.robots[0].alive).toBe(false);
     expect(delta.seen[0].enemiesAlive).toBe(2);
     expect(delta.seen[delta.seen.length - 1].enemiesAlive).toBe(1);
+  });
+
+  it('reads touching_ally once a teammate drives right against the robot', () => {
+    const alpha = new SensingBrain();
+    // CHARLIE, 100 behind ALPHA, drives into it.
+    const simulation = teamMatch([alpha, new FixedBrain(), compileBrain('drive forward\nloop\n    wait'), new FixedBrain()]);
+    runTicks(simulation, 2 * MATCH_DEFAULTS.tickRate);
+    expect(alpha.seen[0].touchingAlly).toBe(false);
+    expect(alpha.seen[alpha.seen.length - 1].touchingAlly).toBe(true);
+    // Nothing in the way to blocked: a teammate is not a wall.
+    expect(simulation.robots[0].blocked).toBe(false);
+  });
+
+  it('leaves touching_ally false against an enemy, which is touching_enemy', () => {
+    const alpha = new DrivingSensingBrain();
+    // ALPHA drives into BRAVO, 200 ahead of it.
+    const simulation = teamMatch([alpha, new FixedBrain(), new FixedBrain(), new FixedBrain()]);
+    runTicks(simulation, 3 * MATCH_DEFAULTS.tickRate);
+    const last = alpha.seen[alpha.seen.length - 1];
+    expect(last.touchingEnemy).toBe(true);
+    expect(last.touchingAlly).toBe(false);
   });
 
   it('turns towards the teammate with face ally', () => {
@@ -224,6 +252,7 @@ describe('the equipment words', () => {
     expect(seen.selfId).toBe(1);
     expect(seen.alliesAlive).toBe(0);
     expect(seen.enemiesAlive).toBe(0);
+    expect(seen.touchingAlly).toBe(false);
     expect(seen.allyDistance).toBe(0);
     expect(seen.baseHp).toBe(0);
     expect(seen.enemyBaseDistance).toBe(0);

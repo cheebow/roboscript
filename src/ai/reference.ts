@@ -21,7 +21,7 @@ export interface WordReference {
 }
 
 const NO_TIME = 'Takes no time.';
-const NOT_THE_ENEMY = 'Robots do not count: when the enemy is in the way, touching_enemy is true instead.';
+const NOT_THE_ENEMY = 'Robots do not count: when the enemy is in the way, touching_enemy is true instead (touching_ally for a teammate).';
 const ANGLE = 'in degrees: 0 is straight ahead, positive is to the right';
 const BULLET_STEP = Math.round(ROBOT_DEFAULTS.shotSpeed / MATCH_DEFAULTS.tickRate);
 const GUARDED_SHARE = `${Math.round(ROBOT_DEFAULTS.guardDamageFactor * 100)}%`;
@@ -417,6 +417,12 @@ export const LANGUAGE: readonly WordReference[] = [
     kind: 'sensor',
     hint: "the nearest teammate's hp",
     summary: 'HP of the nearest living teammate: ally_hp < 60 can mean it needs help. 0 without one.',
+  },
+  {
+    word: 'touching_ally',
+    kind: 'sensor',
+    hint: 'right against a teammate',
+    summary: 'True while the robot stands right against a living teammate, whichever drove into the other. A teammate in the way does not make blocked true, so this is how a robot knows it is stuck on one; ally_angle tells which side the nearest teammate is on. False in a match without teams.',
   },
   {
     word: 'base_hp',

@@ -809,6 +809,31 @@ loop
         drive forward
         wait`,
       },
+      {
+        id: 'make-way',
+        title: { en: 'Stuck on a teammate: steer away', ja: '味方につかえたら、よける' },
+        text: {
+          en: 'Two machines heading for the same place can meet and push against each other for good: a teammate in the way does not make `blocked` true. `touching_ally` does. Then, for half a second (`away` counts 15 ticks down), the robot drives on steering away from the teammate: `ally_angle` above 0 means it is on the right, so the robot turns left. Then it goes back to what it was doing.',
+          ja: '同じ場所へ向かう 2 台は、ぶつかったまま押し合って動けなくなることがあります。味方にふさがれても `blocked` は真になりませんが、`touching_ally` は真になります。そうしたら 0.5 秒（`away` で 15 tick を数えます）、味方のいない側へハンドルを切って進みます。`ally_angle` が 0 より大きければ味方は右にいるので、左へ曲がります。そのあとは元の動きに戻ります。',
+        },
+        code: `set away = 0
+loop
+    if touching_ally
+        set away = 15
+    if away > 0
+        label MAKE_WAY
+        set away = away - 1
+        drive forward
+        if ally_angle > 0
+            turn left
+        else
+            turn right
+    else
+        label GO
+        face base
+        drive forward
+        wait`,
+      },
     ],
   },
 ];

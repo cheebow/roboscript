@@ -59,6 +59,7 @@ const SENSORS = [
   'hit',
   'touching_enemy',
   'hidden',
+  'touching_ally',
   ...NUMBERS,
 ];
 

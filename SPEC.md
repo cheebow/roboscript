@@ -299,7 +299,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | `weapon_range` | 自分の銃の射程 |
 | `sensor_range` / `max_speed` / `max_hp` | 自分のセンサーの届く距離、脚の速さ（1 秒あたり）、始まりの HP。装備の違う機体を 1 本のプログラムで書き分けるのに使う |
 | `aim_angle` / `lead_angle` / `gun_angle` | 砲塔から敵まで、砲塔から敵の移動先までの角度と、車体の上での砲塔の向き |
-| `blocked` / `blocked_behind` | すぐ前 / 後ろに壁や障害物があって進めない（ロボットは数えない。敵にぶつかってもそのまま戦えるように。敵にふさがれているかは `touching_enemy`） |
+| `blocked` / `blocked_behind` | すぐ前 / 後ろに壁や障害物があって進めない（ロボットは数えない。敵にぶつかってもそのまま戦えるように。敵にふさがれているかは `touching_enemy`、味方なら `touching_ally`） |
 | `wall_ahead` / `wall_behind` / `wall_left` / `wall_right` | その方向の壁・障害物までの距離（車体の端から。ロボットは数えない） |
 | `bullet_incoming` / `bullet_distance` / `bullet_angle` | 自分に当たるコースの弾があるか、その弾までの距離と方向。なければ 0 |
 | `cover_visible` / `cover_distance` / `cover_angle` | 隠れ場所へ行けるか、そこまでの道のり、道の次の地点の方向。隠れていれば距離 0。敵を一度も見ていなければ偽 |
@@ -308,6 +308,7 @@ RoboScript は、ロボットの AI を独自の言語 RoboScript で書き、�
 | `hidden` | 敵のだれからも見えていない |
 | `self_id` | チームの中での自分の番号（1〜3）。チーム戦でなければ 1 |
 | `allies_alive` | 自分を除く、生きている味方の数。チーム戦でなければ 0 |
+| `touching_ally` | 生きている味方と接している。チーム戦でなければ偽 |
 | `enemies_alive` | 生きている敵の数（見えていなくても分かる。下の **撃破の知らせ**）。チーム戦でなければ 0 |
 | `ally_signal` | チームの無線の数（tick の始めの値）。まだ何も送られていなければ 0 |
 | `ally_distance` / `ally_angle` / `ally_hp` | 一番近い生きている味方までの距離・角度・その HP（無線でつながっている決まりなので、障害物の陰でも分かる）。味方がいなければ 0 |

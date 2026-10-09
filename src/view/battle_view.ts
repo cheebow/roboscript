@@ -144,9 +144,13 @@ export class BattleView {
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
-    snapshot.robots.forEach((robot, index) =>
-      this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }),
-    );
+    // Wrecks first, so a living robot over a wreck is drawn on top of it, name and all.
+    for (const alive of [false, true]) {
+      snapshot.robots.forEach((robot, index) => {
+        if (robot.alive !== alive) return;
+        this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) });
+      });
+    }
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes, { robots: snapshot.robots, teams: this.teams });
 
     if (watcher !== undefined && watched !== undefined && watcher.alive) {

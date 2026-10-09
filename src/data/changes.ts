@@ -12,8 +12,8 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-10',
-    en: 'The recipes in the help open with a table of contents: every recipe under its group, one click from its program, and a way back up at the end of each group.',
-    ja: 'ヘルプのレシピ集の最初に目次を付けました。分類ごとにレシピが並び、押すとそのレシピへ飛びます。各分類の終わりから目次へ戻れます。',
+    en: 'The recipes in the help open with a table of contents: every recipe under its group, one click from its program, and a way back up at the end of each recipe.',
+    ja: 'ヘルプのレシピ集の最初に目次を付けました。分類ごとにレシピが並び、押すとそのレシピへ飛びます。各レシピの終わりから目次へ戻れます。',
   },
   {
     date: '2026-10-10',

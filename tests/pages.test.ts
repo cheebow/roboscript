@@ -32,7 +32,7 @@ describe('the help page', () => {
     }
   });
 
-  it('opens the recipes with a table of contents: every recipe under its group, each going to its recipe', () => {
+  it('opens the recipes with a table of contents: every recipe under its group, each going to its recipe and back', () => {
     const page = inLanguage('ja', renderHelpPage);
     const contents = page.querySelector('#recipes .help-recipe-contents');
     expect(contents?.querySelector('.help-recipe-contents-title')?.textContent).toBe('目次');
@@ -51,8 +51,8 @@ describe('the help page', () => {
     }
     links[5].click();
     expect(scrolledTo).toEqual([RECIPES[5].id]);
-    // Each group ends with a way back to the contents.
-    expect(page.querySelectorAll('#recipes .help-recipe-back')).toHaveLength(RECIPE_GROUPS.length);
+    // Each recipe ends with a way back to the contents.
+    expect(page.querySelectorAll('#recipes .help-recipe-back')).toHaveLength(RECIPES.length);
   });
 
   it('shows the topics in the language asked for', () => {

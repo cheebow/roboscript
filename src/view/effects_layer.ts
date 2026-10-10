@@ -36,10 +36,21 @@ const BURST_FLASH_SIZE = 20;
 const DEFLECT_START_RADIUS = 20;
 const DEFLECT_GROWTH = 14;
 const DEFLECT_DOTS = 16;
-// A robot caught sight of the enemy: a ring in its own colour that widens around it.
-const DETECT_START_RADIUS = 22;
-const DETECT_GROWTH = 26;
-const DETECT_DOTS = 12;
+// A robot caught sight of the enemy: a "!" in its own colour pops up over it,
+// rises a little and fades. (A widening ring was tried first: it read as a
+// blow, the robot being hit, not as the robot spotting something.)
+const ALERT: readonly string[] = ['##', '##', '##', '##', '..', '##'];
+/** Where the mark's centre sits above the robot, and how far it rises. */
+const ALERT_Y = -30;
+const ALERT_RISE = 6;
+/** The mark is solid until this share of its life, then fades. */
+const ALERT_FADE_FROM = 0.6;
+// A robot is hit: sparks fly on from it the way the bullet was going, in a narrow fan.
+// (The robot itself flashes white as well: see BattleView.)
+const HIT_SPARK_ANGLES = [-28, -10, 10, 28];
+/** How far out the sparks start, past the robot's middle, and how far they fly per tick. */
+const HIT_SPARK_START = 14;
+const HIT_SPARK_SPEED = 5;
 // A number lands in a mailbox: a little envelope flies from the sender
 // along a dotted line to the receiver, and pops up over it on arrival. All
 // of it in a plain grey of its own, so it does not read as a robot's
@@ -111,6 +122,9 @@ export function drawEffects(
       case 'detected':
         drawDetection(ctx, effect, progress, scene);
         break;
+      case 'hit':
+        drawHit(ctx, effect, age, progress, scene);
+        break;
       case 'signalHeard':
         drawHeard(ctx, effect, progress, scene);
         break;
@@ -158,10 +172,27 @@ function drawDeflection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, p
   drawRing(ctx, effect, DEFLECT_START_RADIUS + DEFLECT_GROWTH * progress, DEFLECT_DOTS, 0);
 }
 
+/** The robot caught sight of the enemy: a "!" in its colour over it, rising a little as it fades. It follows the robot. */
 function drawDetection(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, progress: number, scene: EffectScene): void {
+  const at = anchorOf(effect, scene);
   ctx.fillStyle = robotPalette(effect, scene).body;
+  ctx.globalAlpha = progress < ALERT_FADE_FROM ? 1 : 1 - (progress - ALERT_FADE_FROM) / (1 - ALERT_FADE_FROM);
+  drawCells(ctx, ALERT, { x: at.x, y: at.y + ALERT_Y - ALERT_RISE * progress });
+}
+
+/** The robot was hit: sparks fly on from it the way the bullet was going, spreading and fading. They follow the robot. */
+function drawHit(ctx: CanvasRenderingContext2D, effect: EffectSnapshot, age: number, progress: number, scene: EffectScene): void {
+  const at = anchorOf(effect, scene);
+  const heading = effect.angle ?? 0;
+  ctx.fillStyle = age < 2 ? FLASH : SPARK;
   ctx.globalAlpha = 1 - progress;
-  drawRing(ctx, effect, DETECT_START_RADIUS + DETECT_GROWTH * progress, DETECT_DOTS, Math.PI / DETECT_DOTS);
+  const reach = HIT_SPARK_START + HIT_SPARK_SPEED * age;
+  for (const spread of HIT_SPARK_ANGLES) {
+    const angle = ((heading + spread) * Math.PI) / 180;
+    // The outer sparks fly a little shorter than the inner ones: a fan, not a line.
+    const far = reach * (1 - Math.abs(spread) / 100);
+    dot(ctx, at.x + Math.cos(angle) * far, at.y + Math.sin(angle) * far);
+  }
 }
 
 /** How far into their life the radio marks are solid, and how they fade after. */
@@ -173,9 +204,14 @@ function radioAlpha(progress: number): number {
 /** The envelope over the given robot, risen by `shown` of its way, drawn in whatever style is set. */
 /** The envelope with its centre at the given spot, drawn in whatever style is set. */
 function drawEnvelope(ctx: CanvasRenderingContext2D, centre: { x: number; y: number }): void {
-  const left = centre.x - (ENVELOPE[0].length * ENVELOPE_CELL) / 2;
-  const top = centre.y - (ENVELOPE.length * ENVELOPE_CELL) / 2;
-  ENVELOPE.forEach((row, cellY) => {
+  drawCells(ctx, ENVELOPE, centre);
+}
+
+/** A little picture in square cells ('#' is a cell) with its centre at the given spot, drawn in whatever style is set. */
+function drawCells(ctx: CanvasRenderingContext2D, picture: readonly string[], centre: { x: number; y: number }): void {
+  const left = centre.x - (picture[0].length * ENVELOPE_CELL) / 2;
+  const top = centre.y - (picture.length * ENVELOPE_CELL) / 2;
+  picture.forEach((row, cellY) => {
     for (let cellX = 0; cellX < row.length; cellX++) {
       if (row[cellX] === '#') ctx.fillRect(left + cellX * ENVELOPE_CELL, top + cellY * ENVELOPE_CELL, ENVELOPE_CELL, ENVELOPE_CELL);
     }

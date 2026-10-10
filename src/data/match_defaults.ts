@@ -21,9 +21,10 @@ export const DEFAULT_PLAYBACK_SPEED = 1;
 export const EFFECT_LIFETIMES = {
   shot: 2,
   impact: 4,
+  hit: 8,
   deflected: 8,
   destroyed: 15,
-  detected: 12,
+  detected: 20,
   baseDestroyed: 15,
   baseHit: 10,
   signalHeard: 30,

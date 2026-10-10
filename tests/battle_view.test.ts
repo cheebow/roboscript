@@ -36,3 +36,30 @@ it('draws the wrecks first, so a living robot on top of one is not hidden under 
   const names = written.filter((text) => text === 'ALPHA' || text === 'BRAVO');
   expect(names).toEqual(['BRAVO', 'ALPHA']);
 });
+
+it('marks a detection with a "!" over the robot, and a hit with sparks flying on the way the bullet went', async () => {
+  const { drawEffects } = await import('../src/view/effects_layer');
+  const cells: { x: number; y: number }[] = [];
+  const context = new Proxy(
+    {},
+    {
+      get: (_, name) => (name === 'fillRect' ? (x: number, y: number) => cells.push({ x, y }) : () => {}),
+      set: () => true,
+    },
+  ) as unknown as CanvasRenderingContext2D;
+  const robot = { x: 500, y: 300 };
+
+  drawEffects(context, [{ kind: 'detected', ...robot, age: 0, robot: 0 }], 0, EFFECT_LIFETIMES, { robots: [robot] });
+  expect(cells.length).toBeGreaterThan(0);
+  // A narrow mark straight above the robot: no ring around it.
+  for (const cell of cells) {
+    expect(cell.y).toBeLessThan(robot.y - 16);
+    expect(Math.abs(cell.x - robot.x)).toBeLessThanOrEqual(4);
+  }
+
+  cells.length = 0;
+  // Hit by a bullet flying left to right (0 degrees): the sparks fly on to the right.
+  drawEffects(context, [{ kind: 'hit', ...robot, age: 2, robot: 0, angle: 0 }], 0, EFFECT_LIFETIMES, { robots: [robot] });
+  expect(cells.length).toBeGreaterThan(0);
+  for (const cell of cells) expect(cell.x).toBeGreaterThan(robot.x);
+});

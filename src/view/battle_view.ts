@@ -15,7 +15,7 @@ import {
   drawTargetMarks,
 } from './debug_overlay';
 import { drawEffects } from './effects_layer';
-import { DOT, type RobotSprites, WRECK_PALETTE, createRobotSprites, paletteOf } from './sprites';
+import { DOT, FLASH_PALETTE, type RobotSprites, WRECK_PALETTE, createRobotSprites, paletteOf } from './sprites';
 
 const COLORS = {
   background: '#0f1215',
@@ -61,6 +61,8 @@ const LABEL_GAP = 15;
 const BULLET_SIZE = DOT * 2;
 /** ticks: how long each frame of the tread animation is shown while a robot drives. */
 const TREAD_STEP_TICKS = 4;
+/** ticks a robot shows all white after it is hit. */
+const HIT_FLASH_TICKS = 3;
 /** Near the top edge, clear of the robots, which tend to meet in the middle. */
 const RESULT_Y = 50;
 
@@ -144,11 +146,15 @@ export class BattleView {
     }
 
     for (const bullet of snapshot.bullets) this.drawBullet(bullet);
+    // The robots hit in the last few ticks flash white.
+    const flashing = new Set(
+      snapshot.effects.filter((effect) => effect.kind === 'hit' && effect.age + options.overrun < HIT_FLASH_TICKS).map((effect) => effect.robot),
+    );
     // Wrecks first, so a living robot over a wreck is drawn on top of it, name and all.
     for (const alive of [false, true]) {
       snapshot.robots.forEach((robot, index) => {
         if (robot.alive !== alive) return;
-        this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) });
+        this.drawRobot(robot, index, stats[index], loadouts[index], arena, debug, snapshot.tick, options.overrun, snapshot.result === null ? null : { place: snapshot.result.places[robot.id] ?? 0, draw: isDraw(snapshot.result) }, flashing.has(index));
       });
     }
     drawEffects(ctx, snapshot.effects, options.overrun, this.effectLifetimes, { robots: snapshot.robots, teams: this.teams });
@@ -217,10 +223,10 @@ export class BattleView {
     ctx.fillRect(barX, rect.y + rect.height * (1 - left), HP_BAR_HEIGHT, rect.height * left);
   }
 
-  /** The sprites of the robot at the given index with the given parts, whole or wrecked. Painted the first time they are asked for. */
-  private spritesOf(robotIndex: number, loadout: Loadout, alive: boolean): RobotSprites {
-    const palette = alive ? paletteOf(robotIndex, this.teams) : WRECK_PALETTE;
-    const key = [alive ? palette.body : 'wreck', ...SLOTS.map((slot) => loadout[slot])].join('/');
+  /** The sprites of the robot at the given index with the given parts: whole, flashing white from a hit, or wrecked. Painted the first time they are asked for. */
+  private spritesOf(robotIndex: number, loadout: Loadout, look: 'whole' | 'flash' | 'wreck'): RobotSprites {
+    const palette = look === 'wreck' ? WRECK_PALETTE : look === 'flash' ? FLASH_PALETTE : paletteOf(robotIndex, this.teams);
+    const key = [look === 'whole' ? palette.body : look, ...SLOTS.map((slot) => loadout[slot])].join('/');
     let sprites = this.sprites.get(key);
     if (sprites === undefined) {
       sprites = createRobotSprites(palette, loadout);
@@ -254,6 +260,8 @@ export class BattleView {
     overrun: number,
     /** The robot's place once the match is over, and whether nobody won; null while it goes on. */
     standing: { place: number; draw: boolean } | null,
+    /** It was hit a moment ago: drawn all white. */
+    flash: boolean,
   ): void {
     const ctx = this.context;
     const { x, y } = robot;
@@ -261,7 +269,7 @@ export class BattleView {
     // Once the match is over, every robot that did not come first is shown beaten: greyed, like a wreck.
     const place = standing?.place ?? null;
     const beaten = !robot.alive || (place !== null && place > 1);
-    const sprites = this.spritesOf(index, loadout, !beaten);
+    const sprites = this.spritesOf(index, loadout, beaten ? 'wreck' : flash ? 'flash' : 'whole');
     // A driving robot's legs animate: the tread dots step every few ticks, in time with the match.
     const stepping = !beaten && robot.moved && Math.floor((tick + overrun) / TREAD_STEP_TICKS) % 2 === 1;
     this.drawPart(stepping ? sprites.hullMoving : sprites.hull, x, y, robot.rotation);

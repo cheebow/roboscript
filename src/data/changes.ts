@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-10',
+    en: 'Clearer on the field: a robot that catches sight of the enemy shows a "!" over it, in its colour, instead of a widening ring that looked like a blow; and a robot that is hit flashes white, with sparks flying on the way the bullet went.',
+    ja: '戦闘画面を見やすくしました。敵を見つけたロボットの頭上には、そのロボットの色で「！」が出ます（撃たれたように見えていた広がる輪の代わり）。撃たれたロボットは一瞬白く光り、弾の飛んできた向きの先へ火花が散ります。',
+  },
+  {
+    date: '2026-10-10',
     en: 'The recipes in the help open with a table of contents: every recipe under its group, one click from its program, and a way back up at the end of each recipe.',
     ja: 'ヘルプのレシピ集の最初に目次を付けました。分類ごとにレシピが並び、押すとそのレシピへ飛びます。各レシピの終わりから目次へ戻れます。',
   },

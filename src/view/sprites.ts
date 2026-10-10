@@ -126,6 +126,18 @@ const ROBOT_PALETTES: readonly RobotPalette[] = [
   },
 ];
 
+/** A robot on the ticks it is hit: all white, a flash. Only the outline of its parts shows. */
+export const FLASH_PALETTE: RobotPalette = {
+  body: '#ffffff',
+  shade: '#e8e8e8',
+  light: '#ffffff',
+  gun: '#ffffff',
+  hatch: '#d8d8d8',
+  tread: '#e8e8e8',
+  treadLight: '#ffffff',
+  sensor: '#ffffff',
+};
+
 export const WRECK_PALETTE: RobotPalette = {
   body: '#4a5158',
   shade: '#3a4046',

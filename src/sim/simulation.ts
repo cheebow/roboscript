@@ -74,7 +74,7 @@ function diceSeed(seed: number, index: number): number {
  * robot's mailbox (`from` is its sender). `baseHit`: an enemy bullet wore
  * a castle down.
  */
-export type TickEventKind = 'shot' | 'impact' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed' | 'baseHit' | 'signalHeard';
+export type TickEventKind = 'shot' | 'impact' | 'hit' | 'deflected' | 'destroyed' | 'detected' | 'baseDestroyed' | 'baseHit' | 'signalHeard';
 
 /** Something that happened at a place in the arena during one tick. */
 export interface TickEvent {
@@ -87,6 +87,8 @@ export interface TickEvent {
   from?: number;
   /** The index in `bases` of the castle it happened to. */
   base?: number;
+  /** deg on the field: the way the bullet was flying, for a robot hit. */
+  angle?: number;
 }
 
 /** A castle as it stands during the match: its definition plus the HP it has left. */
@@ -544,6 +546,12 @@ export class Simulation {
     const damage = target.takeDamage(bullet.damage);
     // It came from the way opposite to the one it flew.
     target.noteHit(radToDeg(Math.atan2(-bullet.direction.y, -bullet.direction.x)));
+    this.tickEvents.push({
+      kind: 'hit',
+      ...target.position,
+      robot: this.robots.indexOf(target),
+      angle: radToDeg(Math.atan2(bullet.direction.y, bullet.direction.x)),
+    });
     if (target.guarding) this.tickEvents.push({ kind: 'deflected', ...target.position });
     if (wasAlive && !target.alive) {
       this.tickEvents.push({ kind: 'destroyed', ...target.position });

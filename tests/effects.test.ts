@@ -72,6 +72,23 @@ describe('Simulation.tickEvents', () => {
     expect(simulation.tickEvents).toContainEqual({ kind: 'destroyed', ...target.position });
   });
 
+  it('reports a hit at the robot it hit, with its index and the way the bullet was flying', () => {
+    const simulation = createSimulation([new FixedBrain({ fire: true }), new FixedBrain()]);
+    const [, target] = simulation.robots;
+    while (target.hp === NO_SPREAD_STATS.maxHp) simulation.step();
+    // ALPHA, on the left, shoots right at BRAVO: the bullet flies at 0 degrees.
+    expect(simulation.tickEvents.find((event) => event.kind === 'hit')).toEqual({ kind: 'hit', ...target.position, robot: 1, angle: 0 });
+  });
+
+  it('reports no hit for a bullet that hits a wall', () => {
+    const arena = { ...DEFAULT_ARENA, obstacles: [], spawns: [{ x: 900, y: 300, rotation: 0 }, { x: 100, y: 500, rotation: 0 }] };
+    const simulation = createSimulation([new FixedBrain({ fire: true }), new FixedBrain()], { arena, stats: { ...NO_SPREAD_STATS, maxAmmo: 1 } });
+    for (let tick = 0; tick < MATCH_DEFAULTS.tickRate; tick++) {
+      simulation.step();
+      expect(simulation.tickEvents.filter((event) => event.kind === 'hit')).toEqual([]);
+    }
+  });
+
   it('reports an impact where a bullet hits a wall', () => {
     // The shooter stands near the right wall and faces it; the other robot is out of the way.
     const arena = {
@@ -109,19 +126,19 @@ describe('a hit on a guarding robot', () => {
 
   it('is reported at the robot, besides the impact of the bullet', () => {
     const { events, target } = eventsOfFirstHit('loop\n    guard');
-    expect(events.map((event) => event.kind).sort()).toEqual(['deflected', 'impact']);
+    expect(events.map((event) => event.kind).sort()).toEqual(['deflected', 'hit', 'impact']);
     expect(events.find((event) => event.kind === 'deflected')).toMatchObject({ x: target.position.x, y: target.position.y });
   });
 
   it('is not reported for a robot that takes the hit unguarded', () => {
     const { events } = eventsOfFirstHit('loop\n    wait');
-    expect(events.map((event) => event.kind)).toEqual(['impact']);
+    expect(events.map((event) => event.kind)).toEqual(['impact', 'hit']);
   });
 });
 
 describe('EffectTracker', () => {
   it('keeps each effect for its lifetime, ageing it every tick', () => {
-    const tracker = new EffectTracker({ shot: 2, impact: 3, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1, baseHit: 1, signalHeard: 1 });
+    const tracker = new EffectTracker({ shot: 2, impact: 3, hit: 1, deflected: 1, destroyed: 1, detected: 1, baseDestroyed: 1, baseHit: 1, signalHeard: 1 });
     const shot = { kind: 'shot', x: 10, y: 20 } as const;
     const impact = { kind: 'impact', x: 30, y: 40 } as const;
 
@@ -188,6 +205,18 @@ describe('effects in a recording', () => {
   it('shows an impact effect from the tick of each hit', () => {
     const hits = events.filter((event) => event.type === 'hit');
     for (const { tick } of hits) expect(agesAt(tick, 'impact')).toContain(0);
+  });
+
+  it('shows a hit effect at the robot hit, carrying the way the bullet flew, for its lifetime', () => {
+    const hits = events.filter((event) => event.type === 'hit');
+    expect(hits.length).toBeGreaterThan(0);
+    // A hit is logged under the shooter, and names the robot hit first.
+    for (const { tick, message } of hits) {
+      const robot = snapshots[tick].robots.findIndex((candidate) => candidate.id === message.split(' ')[0]);
+      const started = snapshots[tick].effects.filter((effect) => effect.kind === 'hit' && effect.age === 0 && effect.robot === robot);
+      expect(started.length, `tick ${tick}`).toBeGreaterThan(0);
+      expect(typeof started[0].angle).toBe('number');
+    }
   });
 
   it('starts the destruction effect on the last tick, at the destroyed robot', () => {

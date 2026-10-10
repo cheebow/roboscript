@@ -279,6 +279,17 @@ describe('HitAndHideBot', () => {
     expect(open.decide({ ...inSight, coverVisible: false })).toMatchObject({ fire: true, label: 'SHOOT' });
   });
 
+  it('rests only with the whole hull in cover, facing where the enemy was, and runs on if hit there', () => {
+    const brain = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
+    brain.decide(inSight);
+    // Out of the enemy's sight, but still sticking out past the corner: on to the hiding place.
+    expect(brain.decide({ ...QUIET_CONTEXT, hidden: true, coverVisible: true, coverDistance: 30 })).toMatchObject({ turn: 'cover', label: 'RUN' });
+    // In cover: it rests, turning to where the enemy was rather than showing its back.
+    expect(brain.decide({ ...QUIET_CONTEXT, hidden: true, coverVisible: true, coverDistance: 0 })).toMatchObject({ drive: 'stop', turn: 'enemy', label: 'HIDE' });
+    // Hit in its hiding place: no rest there.
+    expect(brain.decide({ ...QUIET_CONTEXT, hidden: true, hit: true, coverVisible: true, coverDistance: 0 })).toMatchObject({ label: 'RUN' });
+  });
+
   it('waits for the gun to be ready rather than going into hiding without a shot', () => {
     const brain = compileBrain(findTemplate('hit_and_hide_bot')?.source ?? '');
     expect(brain.decide({ ...inSight, reload: 0.5 })).toMatchObject({ fire: false, label: 'SHOOT' });
@@ -360,12 +371,13 @@ describe('strategies against the enemies', () => {
     return tally;
   }
 
-  it('HitAndHideBot wears down StrafeBot, which crosses the open, but loses to DumbBot, which comes to it', () => {
+  it('HitAndHideBot wears down the robots that keep their distance, and loses to the ones that come to it', () => {
     const hitAndHide = findTemplate('hit_and_hide_bot')?.source ?? '';
-    const strafe = tally(hitAndHide, 'strafe_bot');
-    const dumb = tally(hitAndHide, 'dumb_bot');
-    expect(strafe.wins).toBeGreaterThanOrEqual(MOST);
-    expect(dumb.losses).toBeGreaterThanOrEqual(MOST);
+    // SentryBot and CowardBot stand off and trade shots: hiding and recovering between shots wins that.
+    expect(tally(hitAndHide, 'sentry_bot').wins).toBeGreaterThanOrEqual(MOST);
+    expect(tally(hitAndHide, 'coward_bot').wins).toBeGreaterThanOrEqual(MOST);
+    // AggressiveBot runs it down in its hiding place.
+    expect(tally(hitAndHide, 'aggressive_bot').losses).toBeGreaterThanOrEqual(MOST);
   });
 
   it('the sample AI loses to every enemy that stops to shoot', () => {

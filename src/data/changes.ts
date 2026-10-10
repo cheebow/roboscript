@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-10',
+    en: 'HitAndHideBot no longer stops half hidden with its back to the enemy: it rests only once its whole hull is in cover, faces where the enemy was, and runs on if it is hit there. It now beats robots that stand off and trade shots, and still falls to ones that come for it.',
+    ja: 'HitAndHideBot が、隠れ切らないうちに敵に背中を向けて止まることがなくなりました。車体ごと陰に入ってから、敵のいた方を向いて休み、そこで撃たれたら走り直します。離れて撃ち合う相手には勝ち越すようになり、寄ってくる相手には今までどおり弱いままです。',
+  },
+  {
+    date: '2026-10-10',
     en: 'Clearer on the field: a robot that catches sight of the enemy shows a "!" over it, in its colour, instead of a widening ring that looked like a blow; and a robot that is hit flashes white, with sparks flying on the way the bullet went.',
     ja: '戦闘画面を見やすくしました。敵を見つけたロボットの頭上には、そのロボットの色で「！」が出ます（撃たれたように見えていた広がる輪の代わり）。撃たれたロボットは一瞬白く光り、弾の飛んできた向きの先へ火花が散ります。',
   },

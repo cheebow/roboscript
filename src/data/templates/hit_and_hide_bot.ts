@@ -1,6 +1,6 @@
 /**
  * Shows itself only for one shot at a time: fires once, runs for cover,
- * rests there out of sight (getting hp back), then comes out to find the
+ * rests there out of sight (getting hp back), facing where the enemy was, then comes out to find the
  * enemy again. With no cover to go to, or with the enemy right against it,
  * it stands and fights instead.
  */
@@ -25,12 +25,14 @@ loop
             turn left
         else
             turn enemy
-    else if hidden
-        # Out of sight and still: hp comes back.
+    # Rest only once the whole hull is in cover (cover_distance 0): hidden alone can be true
+    # with the hull still sticking out past a corner, where bullets still reach. Hit there: run on.
+    else if hidden and cover_distance == 0 and not hit
+        # Out of sight and still: hp comes back. Turning on the spot keeps it still, facing where the enemy was.
         label HIDE
         drive stop
         set rest = rest - 1
-        wait
+        turn enemy
     else if cover_visible
         label RUN
         drive forward

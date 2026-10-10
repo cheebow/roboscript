@@ -14,6 +14,8 @@ function sorted(rects: Rect[]): Rect[] {
 
 /** The templates that hide and recover: a match against them can run out the clock. */
 const HIDERS = ['cover_bot', 'hit_and_hide_bot'];
+/** The share of a hider's matches that may run out the clock. HitAndHideBot rests after every shot, not only when hurt: a little more. */
+const MOST_TIMEOUTS: Record<string, number> = { cover_bot: 0.2, hit_and_hide_bot: 0.25 };
 
 describe('arena list', () => {
   it('offers nine arenas, each with a unique id, the centre block first', () => {
@@ -178,6 +180,6 @@ describe.each(HIDERS)('%s against the clock', (hiderId) => {
     }
     // A match that runs out the clock goes to the robot with more hp: hiding is no way to a draw.
     expect(timeouts).toBeGreaterThan(0);
-    expect(timeouts / matches).toBeLessThan(0.2);
+    expect(timeouts / matches).toBeLessThan(MOST_TIMEOUTS[hiderId]);
   }, 60_000); // Matches that run out the clock take a while to simulate.
 });

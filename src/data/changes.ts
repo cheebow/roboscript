@@ -11,6 +11,11 @@ export interface Change {
 
 export const CHANGES: readonly Change[] = [
   {
+    date: '2026-10-14',
+    en: 'The RoboScript book (book.html, BOOK in the start menu): a book to read through, for someone who has never written a program. Its first chapters are out: what a program is, making a robot move, and how time goes in ticks — the biggest difference from ordinary programs. Its pictures are drawn from real matches. More chapters, and a part on how to win, are on the way.',
+    ja: '「RoboScript の本」ができました（book.html。起動メニューの「本」）。プログラムを書いたことがない人のための、通して読む本です。まずは最初の章、「プログラムってなに？」「動かしてみる」と、ふつうのプログラムとの一番の違いである「時間は tick で進む」を載せました。図の試合の場面は、本物の試合から描いています。続きの章と、勝ち方の部もこれから足していきます。',
+  },
+  {
     date: '2026-10-10',
     en: 'HitAndHideBot no longer stops half hidden with its back to the enemy: it rests only once its whole hull is in cover, faces where the enemy was, and runs on if it is hit there. It now beats robots that stand off and trade shots, and still falls to ones that come for it.',
     ja: 'HitAndHideBot が、隠れ切らないうちに敵に背中を向けて止まることがなくなりました。車体ごと陰に入ってから、敵のいた方を向いて休み、そこで撃たれたら走り直します。離れて撃ち合う相手には勝ち越すようになり、寄ってくる相手には今までどおり弱いままです。',

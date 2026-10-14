@@ -437,10 +437,11 @@ class App {
     this.analysisOverlay.hidden = false;
   }
 
-  /** What the start menu starts. Help opens over the screen that was shown. */
+  /** What the start menu starts. Help opens over the screen that was shown; the book in a page of its own. */
   private bootInto(choice: BootChoice): void {
     if (choice === 'language') switchLanguage(this.storage);
     else if (choice === 'help') this.help.open();
+    else if (choice === 'book') window.open('./book.html', '_blank', 'noopener');
     else this.showScreen(choice);
   }
 

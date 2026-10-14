@@ -12,17 +12,21 @@ import { createCredits } from './credits';
 import { createElement } from './dom';
 
 /** What can be started from the boot menu. */
-export type BootChoice = 'tutorial' | 'challenge' | 'program' | 'team' | 'teamwatch' | 'arena' | 'contest' | 'help' | 'language';
+export type BootChoice = 'tutorial' | 'challenge' | 'book' | 'program' | 'team' | 'teamwatch' | 'arena' | 'contest' | 'help' | 'language';
 
 /** The menu in groups, each under a heading: learning, the duel's screens, the team battle's, and the rest. */
 const GROUPS: readonly { heading: MessageKey; choices: readonly BootChoice[] }[] = [
-  { heading: 'boot.group.learn', choices: ['tutorial', 'challenge'] },
+  { heading: 'boot.group.learn', choices: ['tutorial', 'challenge', 'book'] },
   { heading: 'boot.group.solo', choices: ['program', 'arena', 'contest'] },
   { heading: 'boot.group.team', choices: ['team', 'teamwatch'] },
   { heading: 'boot.group.other', choices: ['help', 'language'] },
 ];
 /** Every line of the menu, top to bottom: the headings are not lines, so the cursor and the digits pass them by. */
 const CHOICES: readonly BootChoice[] = GROUPS.flatMap((group) => group.choices);
+/** Choices that open something beside the screen, not a screen: the menu does not remember them. */
+const ASIDES: readonly BootChoice[] = ['book', 'help', 'language'];
+/** The digit that picks each line: 1 to 9, then 0 for a tenth. */
+const DIGITS = '1234567890';
 
 export const BOOT_KEY = 'roboscript/boot.json';
 
@@ -179,7 +183,8 @@ export class BootScreen {
       }
       menu.append(group);
     }
-    const help = createElement('div', 'boot-help', t('boot.help', { count: CHOICES.length }));
+    const digits = CHOICES.length <= 9 ? `1-${CHOICES.length}` : `1-9, 0`;
+    const help = createElement('div', 'boot-help', t('boot.help', { digits }));
     this.element.append(menu, ...(news.length > 0 ? [this.newsElement(news)] : []), help, createCredits('boot-credits'));
     this.menu = menu;
     // Shown (or, the first time, skipped): the player is up to date from here on.
@@ -224,8 +229,8 @@ export class BootScreen {
       this.choose(CHOICES[this.cursor]);
     } else {
       // A digit picks that line of the menu.
-      const number = Number.parseInt(event.key, 10);
-      if (number >= 1 && number <= CHOICES.length && !this.items[number - 1].disabled) this.choose(CHOICES[number - 1]);
+      const index = event.key.length === 1 ? DIGITS.indexOf(event.key) : -1;
+      if (index >= 0 && index < CHOICES.length && !this.items[index].disabled) this.choose(CHOICES[index]);
       else return;
     }
     event.preventDefault();
@@ -239,9 +244,10 @@ export class BootScreen {
 
   private choose(choice: BootChoice): void {
     if (this.unavailable.has(choice)) return;
-    // Help and language are not where the screen goes: the menu remembers the screen.
-    if (choice !== 'language' && choice !== 'help') this.save(choice);
-    if (choice !== 'language') this.hide();
+    // The book, help and language are not where the screen goes: the menu remembers the screen.
+    if (!ASIDES.includes(choice)) this.save(choice);
+    // The book opens in a page of its own, so the menu stays for when the player comes back.
+    if (choice !== 'language' && choice !== 'book') this.hide();
     this.onChoose(choice);
   }
 

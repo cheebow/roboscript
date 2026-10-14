@@ -1,5 +1,5 @@
-/* The standalone pages: the introduction (about.html) and the help page
- * (help.html). They share the game's palette and base styles (style.css)
+/* The standalone pages: the introduction (about.html), the help page
+ * (help.html) and the book (book.html). They share the game's palette and base styles (style.css)
  * and scroll like ordinary pages. */
 
 html,
@@ -225,12 +225,149 @@ body {
 }
 
 @media (max-width: 760px) {
+  /* minmax(0, …): a wide table or program scrolls inside the column instead of widening the page. */
   .help-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .help-page-nav {
     position: static;
     max-height: none;
   }
+}
+
+/* ---- The book ---- */
+
+.book-part-title {
+  margin: 28px 0 18px;
+  color: var(--syntax-value);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.book-chapter {
+  margin-bottom: 56px;
+  line-height: 1.75;
+}
+
+.book-chapter .markup-heading {
+  margin-top: 28px;
+}
+
+.book-code {
+  margin: 12px 0;
+}
+
+.book-figure {
+  margin: 18px 0 22px;
+}
+
+.book-caption {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A moment of a match: the canvas sizes itself to the frame (see BattleView), which keeps the field's shape. */
+.book-scene {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 5 / 3;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.book-scene-canvas {
+  display: block;
+  margin: 8px auto;
+}
+
+.book-shot {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  border: 1px solid var(--border);
+}
+
+.book-figure-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-family);
+}
+
+.book-fig-box {
+  fill: var(--panel);
+  stroke: var(--border);
+}
+
+.book-fig-box.accent {
+  stroke: var(--syntax-value);
+}
+
+.book-fig-band {
+  fill: var(--selected);
+}
+
+.book-fig-line {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.book-fig-title {
+  fill: var(--text);
+  font-size: 14px;
+}
+
+.book-fig-note {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.book-fig-code {
+  fill: var(--syntax-command);
+  font-size: 12px;
+  white-space: pre;
+}
+
+.book-fig-dot {
+  fill: var(--background);
+  stroke: var(--syntax-variable);
+  stroke-width: 1.5;
+}
+
+.book-fig-dot.action {
+  fill: var(--syntax-value);
+  stroke: var(--syntax-value);
+}
+
+.book-see {
+  color: var(--muted);
+}
+
+.book-see a {
+  text-decoration: none;
+  color: var(--syntax-variable);
+}
+
+.book-next {
+  display: inline-block;
+  margin-top: 18px;
+  color: var(--syntax-value);
+  text-decoration: none;
+}
+
+.book-next:hover {
+  text-decoration: underline;
+}
+
+.book-see a + a {
+  margin-left: 0.4em;
+}
+
+.book-chapter .markup-table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }

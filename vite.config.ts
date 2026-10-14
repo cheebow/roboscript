@@ -6,11 +6,12 @@ export default defineConfig({
   base: './',
   build: {
     rolldownOptions: {
-      // Three pages: the game, the introduction and the help on its own.
+      // Four pages: the game, the introduction, the help on its own and the book.
       input: {
         main: 'index.html',
         about: 'about.html',
         help: 'help.html',
+        book: 'book.html',
       },
       output: {
         codeSplitting: {

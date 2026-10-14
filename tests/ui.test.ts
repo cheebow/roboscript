@@ -233,6 +233,7 @@ describe('the start-up screen', () => {
     expect(screen.querySelector('.boot-item.current .boot-item-name')?.textContent).toBe('TUTORIAL');
     key(screen, 'ArrowDown');
     key(screen, 'ArrowDown');
+    key(screen, 'ArrowDown');
     key(screen, 'Enter');
     expect(chosen).toEqual(['program']);
     expect(document.getElementById('boot')).toBeNull();
@@ -256,18 +257,37 @@ describe('the start-up screen', () => {
       ...[...group.querySelectorAll('.boot-item-name')].map((item) => item.textContent),
     ]);
     expect(groups).toEqual([
-      ['LEARN', 'TUTORIAL', 'CHALLENGE'],
+      ['LEARN', 'TUTORIAL', 'CHALLENGE', 'BOOK'],
       ['SOLO', 'PROGRAM', 'ARENA', 'CONTEST'],
       ['TEAM BATTLE', 'PROGRAM', 'WATCH'],
       ['HELP & SETTINGS', 'HELP', '日本語'],
     ]);
     // The digits count the lines, not the headings: after the duel's three screens come the team battle's two.
-    key(screen, '6');
+    key(screen, '7');
     expect(chosen).toEqual(['team']);
     boot.show();
     key(document.getElementById('boot')!, 'x');
-    key(document.getElementById('boot')!, '7');
+    key(document.getElementById('boot')!, '8');
     expect(chosen).toEqual(['team', 'teamwatch']);
+    // The tenth line is 0, and the help below the menu says so.
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    expect(document.querySelector('.boot-help')?.textContent).toContain('1-9, 0');
+    key(document.getElementById('boot')!, '0');
+    expect(chosen).toEqual(['team', 'teamwatch', 'language']);
+  });
+
+  it('opens the book beside the game: the menu stays, and does not remember it as the screen to go to', () => {
+    const storage = memoryStorage();
+    const chosen: string[] = [];
+    const boot = new BootScreen(storage, (choice) => chosen.push(choice));
+    boot.show();
+    key(document.getElementById('boot')!, 'x');
+    key(document.getElementById('boot')!, '3');
+    expect(chosen).toEqual(['book']);
+    expect(document.getElementById('boot')).not.toBeNull();
+    expect(storage.getItem(BOOT_KEY) ?? '').not.toContain('book');
+    boot.hide();
   });
 
   it('tells a returning player what changed, once, and keeps quiet for a new one', () => {

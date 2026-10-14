@@ -6,7 +6,7 @@
 
 **遊ぶ / Play**: https://cheebow.github.io/roboscript/ （インストール不要。ブラウザで開くだけで遊べます）
 
-**紹介 / About**: https://cheebow.github.io/roboscript/about.html ・ **ヘルプ / Help**: https://cheebow.github.io/roboscript/help.html （遊ぶ前に、中身とヘルプを読めます）
+**紹介 / About**: https://cheebow.github.io/roboscript/about.html ・ **ヘルプ / Help**: https://cheebow.github.io/roboscript/help.html ・ **本 / Book**: https://cheebow.github.io/roboscript/book.html （遊ぶ前に、中身とヘルプ、通して読む入門書を読めます）
 
 ![デバッグ: 試合を再生しながら、ログとウォッチが進む。途中で 1 行ずつ進めると、今の行（黄色）がコードの中を動く](docs/images/debug.gif)
 
@@ -101,6 +101,7 @@ src/
 ├─ arena/      試合・連戦・リーグ戦・トーナメント・実況
 ├─ tutorial/   チュートリアルの章と判定
 ├─ help/       ヘルプの本文
+├─ book/       本（book.html）の章と図
 ├─ data/       パーツ、マップ、内蔵ロボット、基本の値
 ├─ project/    保存（ガレージ、プロジェクト）
 ├─ share/      共有コードとファイル

@@ -163,7 +163,7 @@ describe('the app, on the real page', () => {
     click('boot-button');
     const boot = document.getElementById('boot');
     boot?.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }));
-    boot?.dispatchEvent(new KeyboardEvent('keydown', { key: '7' }));
+    boot?.dispatchEvent(new KeyboardEvent('keydown', { key: '8' }));
     runFrames();
     expect(document.getElementById('boot')).toBeNull();
     expect(document.getElementById('app')?.dataset.screen).toBe('teamwatch');

@@ -1,4 +1,4 @@
-// What the standalone pages (the introduction and the help page) share:
+// What the standalone pages (the introduction, the help page and the book) share:
 // starting in the right language, the header with the links and the language
 // toggle, and re-rendering when the language changes. The game itself knows
 // nothing of these pages.
@@ -35,7 +35,7 @@ export function startPage(title: PageText, render: () => HTMLElement): void {
   show();
 }
 
-/** The game, the two pages and the language toggle, along the top. */
+/** The game, the pages and the language toggle, along the top. */
 function pageHeader(onLanguageChange: () => void): HTMLElement {
   const header = createElement('header', 'page-header');
   const home = createElement('a', 'page-title', 'ROBOSCRIPT');
@@ -44,6 +44,7 @@ function pageHeader(onLanguageChange: () => void): HTMLElement {
   for (const [href, text] of [
     ['./about.html', { en: 'About', ja: '紹介' }],
     ['./help.html', { en: 'Help', ja: 'ヘルプ' }],
+    ['./book.html', { en: 'Book', ja: '本' }],
     ['./', { en: 'Play', ja: '遊ぶ' }],
   ] as const) {
     const link = createElement('a', 'page-link', inLanguage(text));

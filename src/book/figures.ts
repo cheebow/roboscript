@@ -1,3 +1,4 @@
+import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { inLanguage } from '../pages/page';
 import type { Text } from '../tutorial/types';
 import type { FigureId } from './types';
@@ -129,8 +130,74 @@ function angles(): SVGSVGElement {
   return root;
 }
 
+/** Four built-in robots that each beat the next, round in a ring: no robot beats them all. */
+function rivals(): SVGSVGElement {
+  const root = canvas(460, 300);
+  const names = ['GuardBot', 'CoverBot', 'SentryBot', 'StrafeBot'];
+  const places = [
+    [60, 40],
+    [300, 40],
+    [300, 220],
+    [60, 220],
+  ];
+  const [width, height] = [120, 40];
+  names.forEach((name, index) => {
+    const [x, y] = places[index];
+    root.append(
+      svg('rect', { x, y, width, height, class: 'book-fig-box accent' }),
+      svg('text', { x: x + width / 2, y: y + 25, class: 'book-fig-title', 'text-anchor': 'middle' }, name),
+    );
+  });
+  const beats = inLanguage({ en: 'beats', ja: 'に勝ち越す' });
+  // Winner to loser, round the ring.
+  const arrows: [number, number, number, number, number, number][] = [
+    [180, 60, 300, 60, 240, 50],
+    [360, 80, 360, 220, 368, 154],
+    [300, 240, 180, 240, 240, 266],
+    [120, 220, 120, 80, 112, 154],
+  ];
+  arrows.forEach(([x1, y1, x2, y2, tx, ty], index) => {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const head = (turn: number) => `${x2 - 8 * Math.cos(angle + turn)},${y2 - 8 * Math.sin(angle + turn)}`;
+    root.append(
+      svg('path', { d: `M${x1},${y1} L${x2},${y2} M${head(0.5)} L${x2},${y2} L${head(-0.5)}`, class: 'book-fig-line' }),
+      svg('text', { x: tx, y: ty, class: 'book-fig-note', 'text-anchor': index === 1 ? 'start' : index === 3 ? 'end' : 'middle' }, beats),
+    );
+  });
+  return root;
+}
+
+/**
+ * How far a shot can stray, to scale: a target the width of a robot, 350
+ * away, and the widest a shot goes either side, standing and on the move.
+ */
+function spread(): SVGSVGElement {
+  const distance = 350;
+  const target = ROBOT_DEFAULTS.radius;
+  const scale = 1.4;
+  const root = canvas(600, 300);
+  const [x0, y0] = [70, 150];
+  const x1 = x0 + distance * scale;
+  const cone = (degrees: number, accent: boolean, label: Text, labelY: number) => {
+    const side = Math.tan((degrees * Math.PI) / 180) * distance * scale;
+    root.append(
+      svg('path', { d: `M${x0},${y0} L${x1},${y0 - side} L${x1},${y0 + side} Z`, class: accent ? 'book-fig-cone accent' : 'book-fig-cone' }),
+      svg('text', { x: x1 + 12, y: labelY, class: 'book-fig-note' }, `${inLanguage(label)} ±${degrees}°`),
+    );
+  };
+  cone(ROBOT_DEFAULTS.movingShotSpread, false, { en: 'on the move', ja: '走りながら' }, y0 - Math.tan((ROBOT_DEFAULTS.movingShotSpread * Math.PI) / 180) * distance * scale + 4);
+  cone(ROBOT_DEFAULTS.shotSpread, true, { en: 'standing', ja: '止まって' }, y0 + 4);
+  root.append(
+    svg('circle', { cx: x1, cy: y0, r: target * scale, class: 'book-fig-target' }),
+    svg('rect', { x: x0 - 26, y: y0 - 10, width: 20, height: 20, class: 'book-fig-box accent' }),
+    svg('path', { d: `M${x0},${y0 + 110} L${x1},${y0 + 110}`, class: 'book-fig-line' }),
+    svg('text', { x: (x0 + x1) / 2, y: y0 + 128, class: 'book-fig-note', 'text-anchor': 'middle' }, `${distance}`),
+  );
+  return root;
+}
+
 export function createFigure(id: FigureId): SVGSVGElement {
-  return id === 'tick-steps' ? tickSteps() : id === 'angles' ? angles() : programVsTick();
+  return id === 'tick-steps' ? tickSteps() : id === 'angles' ? angles() : id === 'rivals' ? rivals() : id === 'spread' ? spread() : programVsTick();
 }
 
 /**

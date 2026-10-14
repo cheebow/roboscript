@@ -400,3 +400,60 @@ body {
   color: var(--error);
   font-family: var(--font-family);
 }
+
+.book-template {
+  margin: 12px 0;
+}
+
+.book-template summary {
+  cursor: pointer;
+  color: var(--syntax-variable);
+}
+
+.book-matchup {
+  margin: 14px 0 20px;
+}
+
+.book-matchup-play {
+  margin: 4px 0 10px;
+}
+
+.book-matchup-table td:not(:first-child),
+.book-matchup-table th:not(:first-child) {
+  text-align: right;
+}
+
+.book-matchup-table tr.won td:first-child {
+  color: var(--syntax-variable);
+}
+
+.book-matchup-table tr.lost td:first-child {
+  color: var(--error);
+}
+
+.book-parts td,
+.book-parts th {
+  white-space: nowrap;
+}
+
+.book-parts td.book-parts-summary {
+  min-width: 16em;
+  white-space: normal;
+}
+
+.book-fig-cone {
+  fill: var(--error-line);
+  stroke: var(--error);
+  stroke-width: 1;
+}
+
+.book-fig-cone.accent {
+  fill: var(--executed-line);
+  stroke: var(--syntax-variable);
+}
+
+.book-fig-target {
+  fill: var(--panel);
+  stroke: var(--syntax-value);
+  stroke-width: 1.5;
+}

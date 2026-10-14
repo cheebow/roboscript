@@ -1,12 +1,21 @@
 import type { Text } from '../tutorial/types';
-import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHOT_AT, TRACK } from '../tutorial/stages';
+import { COST_LIMIT } from '../data/parts';
+import { ROBOT_DEFAULTS } from '../data/robot_defaults';
+import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHELTER, SHOT_AT, TRACK } from '../tutorial/stages';
 import {
+  AIM_AHEAD,
+  AIM_AT_ENEMY,
+  AIM_WHILE_RELOADING,
+  ANY_GUN,
   COUNT_HITS,
   DRIVE_ON,
   FACE_BEHIND,
   FIRE_FIRST,
   FIRST_PROGRAM,
+  GUARD_AT_HIT,
   GUARD_FIRST,
+  GUARD_ON_SIGHT,
+  HIDE_AND_REST,
   JUST_LOOK,
   KEEP_FIRING,
   LONG_TURN,
@@ -14,9 +23,11 @@ import {
   MISSPELT,
   NEVER_SET,
   NO_ACTION_LOOP,
+  NO_GUARD,
   ONE_SHOT,
   SEARCH_AND_SHOOT,
   SEARCH_AND_SHOOT_IN_FUNCTIONS,
+  SHOOT_ON_THE_MOVE,
   STUCK,
   TICK_BY_TICK,
   TIMED_DRIVE,
@@ -28,7 +39,8 @@ import {
   VALUE_THAT_TAKES_TIME,
   WITHIN_RANGE,
 } from './examples';
-import type { BookBlock, BookChapter, BookPart } from './types';
+import { BROADSIDE } from './stages';
+import type { BookBlock, BookChapter, BookPart, Matchup } from './types';
 
 // The text of the book. Each chapter is a run of blocks; the text blocks use
 // the little markup of the help (see renderMarkup). A number the text gives
@@ -845,12 +857,414 @@ When you wonder why a line never runs, put a ◆ on it and on the lines before i
     text(
       `## End of Part 1
 
-That is all of Part 1. With ticks, sensors, \`if\`, variables, functions and debugging, you can write any robot. Part 2 uses them to work out how to win (it is still being written).`,
+That is all of Part 1. With ticks, sensors, \`if\`, variables, functions and debugging, you can write any robot. Part 2 uses them to work out how to win.`,
       `## 第 1 部のおわりに
 
-第 1 部はここまでです。tick、センサー、\`if\`、変数、関数、デバッグがそろえば、どんなロボットでも書けます。第 2 部では、これを使って勝つための作戦を考えます（これから書きます）。`,
+第 1 部はここまでです。tick、センサー、\`if\`、変数、関数、デバッグがそろえば、どんなロボットでも書けます。第 2 部では、これを使って勝つための作戦を考えます。`,
     ),
     { kind: 'see', topics: ['debugging-help', 'errors'] },
+  ],
+};
+
+/** The built-in robots Part 2 talks about, in the order of the game's list. */
+export const RIVALS = ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot', 'cover_bot', 'hit_and_hide_bot', 'strafe_bot', 'sentry_bot'] as const;
+
+/** Where and how the book's tables of results are played. */
+export const MATCHUP_ARENAS = ['center_block', 'open_field', 'pillars'] as const;
+export const MATCHUP_SEEDS = [1, 2] as const;
+
+/** A built-in robot against the seven others. */
+export function matchupOf(robot: (typeof RIVALS)[number]): Matchup {
+  return { robot, opponents: RIVALS.filter((other) => other !== robot), arenas: MATCHUP_ARENAS, seeds: MATCHUP_SEEDS };
+}
+
+/** A section of Chapter 9: a built-in robot, what it does and whom it beats, its program, and its matches. */
+function rival(robot: (typeof RIVALS)[number], en: string, ja: string): BookBlock[] {
+  return [text(en, ja), { kind: 'template', template: robot }, { kind: 'matchup', matchup: matchupOf(robot) }];
+}
+
+const BUILT_IN_ROBOTS: BookChapter = {
+  id: 'built-in-robots',
+  title: { en: 'Reading the built-in robots', ja: '内蔵ロボットを読む' },
+  blocks: [
+    text(
+      `The game comes with built-in robots, each with a strategy of its own. You can send them into the ARENA, or load one as a template and change it. This chapter looks at eight of them: how each fights, and whom it beats and loses to.
+
+Their programs are shown as the game has them, folded away because they are long. Open one and read it: it uses nothing but what Part 1 covered.`,
+      `ゲームには、作戦の違う内蔵ロボットが入っています。アリーナで戦わせたり、テンプレートとして読み込んで書きかえたりできます。この章では 8 体を取り上げて、それぞれの戦い方と、得意な相手・苦手な相手を見ていきます。
+
+プログラムは、ゲームに入っているものをそのまま載せています。長いので畳んであります。開いて読んでみてください。第 1 部で見た書き方だけでできています。`,
+    ),
+    text(
+      `## No robot beats them all
+
+To start with the conclusion: there is no robot that beats every other. These four, for one, go round like rock, paper, scissors.`,
+      `## どれにでも勝つロボットはいない
+
+先に結論を言うと、どの相手にも勝つロボットはいません。たとえば次の 4 体は、じゃんけんのように回っています。`,
+    ),
+    { kind: 'figure', figure: 'rivals', caption: caption(
+      'Each beats the one its arrow points to.',
+      '矢印の先の相手に勝ち越す。',
+    ) },
+    text(
+      `Under each robot below is a button, **Play the matches**. Press it, and this page plays that robot against the other seven, right here: on ${MATCHUP_ARENAS.length} maps, with ${MATCHUP_SEEDS.length} seeds, from both starting places — ${MATCHUP_ARENAS.length * MATCHUP_SEEDS.length * 2} matches against each. The same matches always come out the same.`,
+      `下の各ロボットの節にある「試合をして確かめる」を押すと、そのロボットとほかの 7 体を、このページの中で実際に戦わせます。マップ ${MATCHUP_ARENAS.length} つで、seed を ${MATCHUP_SEEDS.length} つ、先手と後手を入れかえて、相手 1 体あたり ${MATCHUP_ARENAS.length * MATCHUP_SEEDS.length * 2} 試合です。同じ試合は、何度やっても同じ結果になります。`,
+    ),
+    ...rival(
+      'dumb_bot',
+      `## DumbBot
+
+Drives at the enemy and shoots once close. When it loses sight of the enemy it heads for where it saw it last, and if it stays lost, it goes round obstacles the other way.
+
+The plainest strategy of all. Coming straight on, it does well against CoverBot, which waits behind cover. Against robots that shoot from a distance or keep moving, it loses.`,
+      `## DumbBot
+
+敵に向かって走り、近づいたら撃ちます。見失ったら最後に見た場所へ向かい、それでも見つからなければ、障害物を回り込む向きを変えます。
+
+いちばん素直な作戦です。まっすぐ寄っていくので、物陰で待つ CoverBot には強く出ます。離れて撃つ相手や、動き回る相手には勝てません。`,
+    ),
+    ...rival(
+      'aggressive_bot',
+      `## AggressiveBot
+
+Never stops: it charges the enemy and shoots on the move. Right up against the enemy, it stops pushing and only shoots.
+
+Shots fired on the move stray a long way (Chapter 10), so few of them hit. Of the eight, it has the worst record. The one robot it beats more often than not is HitAndHideBot, which spends its time hiding.`,
+      `## AggressiveBot
+
+止まらずに突っ込み、走りながら撃ちます。敵にくっついたら、押すのをやめて撃つだけになります。
+
+走りながら撃つ弾は大きくぶれる（第 10 章）ので、なかなか当たりません。8 体の中でいちばん成績のよくないロボットです。勝ち越せるのは、隠れてばかりいる HitAndHideBot くらいです。`,
+    ),
+    ...rival(
+      'coward_bot',
+      `## CowardBot
+
+When the enemy comes close, it backs away as it shoots. With its back to a wall or an obstacle, it stands and fights.
+
+Against DumbBot and AggressiveBot, which charge in, it keeps its distance and shoots, and wins. But its shots on the move stray too, and against robots that shoot calmly it loses.`,
+      `## CowardBot
+
+敵が近づくと、後ろへ下がりながら撃ちます。背中が壁や障害物に付いたら、そこで踏みとどまって撃ち合います。
+
+突っ込んでくる DumbBot や AggressiveBot には、距離を取りながら撃てるので勝ちます。ただ、下がりながら撃つ弾もぶれるので、落ち着いて撃ってくる相手には負けます。`,
+    ),
+    ...rival(
+      'guard_bot',
+      `## GuardBot
+
+DumbBot with a defence: it guards on the very tick a bullet hits, and when it is shot from somewhere it cannot see, it turns that way.
+
+\`guard\` works only four times a match, so it saves them for the moment they count (Chapter 11). It beats many robots, DumbBot, CowardBot and CoverBot among them. But it cannot beat StrafeBot and SentryBot, which aim where it is going.`,
+      `## GuardBot
+
+DumbBot に守りを足したものです。弾が当たるその tick にだけ \`guard\` し、見えない相手に撃たれたら、そちらを向きます。
+
+\`guard\` は 1 試合に 4 回までなので、いちばん効く瞬間にだけ使っています（第 11 章）。DumbBot、CowardBot、CoverBot など、多くの相手に勝ち越します。ただ、移動先を狙って撃つ StrafeBot と SentryBot には勝てません。`,
+    ),
+    ...rival(
+      'cover_bot',
+      `## CoverBot
+
+Fights from a distance, and when it is hurt, hides behind the nearest obstacle and gets its HP back (Chapter 11).
+
+SentryBot and StrafeBot shoot from where they are, and can do nothing while it hides: CoverBot beats them. What it is bad against is a robot that follows it to its hiding place, as DumbBot and GuardBot do.`,
+      `## CoverBot
+
+離れて撃ち合い、傷ついたら近くの物陰に隠れて HP を回復します（第 11 章）。
+
+その場から撃ってくる SentryBot や StrafeBot は、隠れられると手が出せず、CoverBot が勝ち越します。苦手なのは、隠れ場所まで追いかけてくる DumbBot と GuardBot です。`,
+    ),
+    ...rival(
+      'hit_and_hide_bot',
+      `## HitAndHideBot
+
+Fires one shot, runs for cover and rests there, then comes out to look for the enemy again. It shows itself only to shoot.
+
+It does well against robots that stand off and trade shots: SentryBot, StrafeBot and CowardBot. It loses more than it wins against GuardBot, CoverBot and AggressiveBot.`,
+      `## HitAndHideBot
+
+1 発撃つと物陰へ逃げ込んで休み、また探しに出ます。姿を見せるのは撃つときだけです。
+
+離れて撃ち合う相手、とくに SentryBot、StrafeBot、CowardBot には強く出ます。GuardBot、CoverBot、AggressiveBot には少し負け越します。`,
+    ),
+    ...rival(
+      'strafe_bot',
+      `## StrafeBot
+
+Once in range, it turns its body side-on to the enemy and drives to and fro across it, shooting, while its gun aims where the enemy will be (Chapter 10). As it moves sideways, a shot at where it is now passes behind it.
+
+It beats DumbBot, AggressiveBot, CowardBot and GuardBot by a wide margin. But it loses to SentryBot, which aims where it is going, and to CoverBot and HitAndHideBot, which hide.`,
+      `## StrafeBot
+
+射程まで近づいたら、車体を敵に対して横向きにして、行ったり来たりしながら撃ちます。砲塔は敵の移動先を狙います（第 10 章）。横に動き続けるので、今いる場所を狙った弾は後ろを通り過ぎていきます。
+
+DumbBot、AggressiveBot、CowardBot、GuardBot には大きく勝ち越します。ところが、移動先を狙ってくる SentryBot と、隠れる CoverBot、HitAndHideBot には負け越します。`,
+    ),
+    ...rival(
+      'sentry_bot',
+      `## SentryBot
+
+Closes in to range, then stops and shoots at where the enemy will be. Shot from somewhere it cannot see, it turns that way.
+
+Standing still, its shots hardly stray, and it can hit even StrafeBot on the move. What it is bad against is robots that hide when they are shot at: CoverBot and HitAndHideBot.`,
+      `## SentryBot
+
+射程まで近づいたら止まり、敵の移動先を狙って撃ちます。見えない相手に撃たれたら、そちらを向きます。
+
+止まって撃つので弾がぶれず、動き回る StrafeBot にも当てられます。苦手なのは、撃たれると隠れてしまう CoverBot と HitAndHideBot です。`,
+    ),
+    text(
+      `## Every strategy has a weak spot
+
+When you make a robot of your own, think about which robots you want it to beat. It makes the strategy easier to choose.`,
+      `## どの作戦にも弱点がある
+
+自分のロボットを作るときは、どの相手に勝ちたいのかを考えると、作戦を決めやすくなります。`,
+    ),
+    { kind: 'see', topics: ['arena-screen'] },
+  ],
+};
+
+const SHOOTING: BookChapter = {
+  id: 'shooting',
+  title: { en: 'Shooting', ja: '撃ち合いの基本' },
+  blocks: [
+    text(
+      `A shot that misses misses for one of two reasons, nearly always: the enemy was not where it was aimed, or the shot strayed.`,
+      `撃った弾が外れる理由は、だいたい 2 つです。狙った場所に敵がいなかったか、弾がぶれたかです。`,
+    ),
+    text(
+      `## Aim where a moving enemy is going
+
+\`aim enemy\` points the gun at the enemy as it is now. But while the bullet flies, a moving enemy moves on. \`aim lead\` points it at where the enemy will be when the bullet gets there, if it keeps moving as it is.`,
+      `## 動く敵は、移動先を狙う
+
+\`aim enemy\` は、砲塔を今の敵の方へ向けます。でも弾が届くまでの間に、動いている敵は先へ進んでしまいます。\`aim lead\` は、敵が今の動きを続けたとき、弾が届くころにいる場所へ向けます。`,
+    ),
+    code(AIM_AT_ENEMY),
+    code(AIM_AHEAD),
+    text(
+      `A robot standing still shot at a target driving about, once each way:
+
+- \`aim enemy\`: 27 shots, 3 hits
+- \`aim lead\`: 13 shots, 10 hits, and the target was down
+
+\`lead\` reckons on the enemy going straight on. Against a robot that turns as it goes, it can miss too.`,
+      `止まったまま、動き回る的を 2 通りで撃たせてみました。
+
+- \`aim enemy\`: 27 発撃って、当たったのは 3 発
+- \`aim lead\`: 13 発撃って 10 発当たり、的を倒した
+
+\`lead\` は、敵がまっすぐ進み続けるものとして計算します。曲がりながら動く相手には、外れることもあります。`,
+    ),
+    text(
+      `## Shots stray
+
+A shot does not fly exactly where it is aimed, but a little off. With the standard gun, standing still, it strays up to ${ROBOT_DEFAULTS.shotSpread} degrees either side. If the body moved in that tick, it strays up to ${ROBOT_DEFAULTS.movingShotSpread} degrees: ${ROBOT_DEFAULTS.movingShotSpread / ROBOT_DEFAULTS.shotSpread} times as far.`,
+      `## 弾はぶれる
+
+弾は狙った方向ぴったりではなく、少しずれて飛びます。標準の銃なら、止まって撃てば左右に ${ROBOT_DEFAULTS.shotSpread} 度まで。その tick に車体が動いていると、${ROBOT_DEFAULTS.movingShotSpread / ROBOT_DEFAULTS.shotSpread} 倍の ${ROBOT_DEFAULTS.movingShotSpread} 度までずれます。`,
+    ),
+    { kind: 'figure', figure: 'spread', caption: caption(
+      'How far a shot can stray at an enemy (the circle) 350 away, to scale. Standing, it always stays within the enemy\'s width; on the move, it goes well outside.',
+      '350 離れた敵（丸）を撃ったときに、弾がずれる範囲（縮尺どおり）。止まっていれば必ず敵の幅に収まるが、走りながらだと大きくはみ出す。',
+    ) },
+    code(SHOOT_ON_THE_MOVE),
+    { kind: 'scene', scene: { stage: BROADSIDE, program: SHOOT_ON_THE_MOVE, tick: 100 }, caption: caption(
+      'Shooting on the move at the target (left): the shots fan out, and most go wide.',
+      '走りながら的（左）を撃っているところ。弾が広がって飛び、ほとんどが外れていく。',
+    ) },
+    text(
+      `A target standing still, shot at while driving past it and while standing:
+
+- Standing: 12 shots, 10 hits
+- Driving: 24 shots, 3 hits
+
+To shoot on the move, put Walker or Hover legs on: shots on the move stray less with them (Chapter 12).`,
+      `止まっている的を、止まって撃つのと、横を走りながら撃つのとで比べました。
+
+- 止まって撃つ: 12 発中 10 発
+- 走りながら撃つ: 24 発中 3 発
+
+走りながら撃ちたいなら、脚を Walker か Hover にすると、ぶれが小さくなります（第 12 章）。`,
+    ),
+    text(
+      `## Range and distance
+
+A bullet goes no further than the gun's range (${ROBOT_DEFAULTS.weaponRange} for the standard gun). Within it, the further the enemy, the longer the bullet takes, and the wider a strayed shot misses by. Up close is easier to hit — for the enemy as well.`,
+      `## 射程と距離
+
+弾は射程（標準の銃で ${ROBOT_DEFAULTS.weaponRange}）より先へは飛びません。射程の中でも、遠いほど弾が届くまでに時間がかかり、ぶれも広がります。近ければ当てやすくなりますが、それは相手も同じです。`,
+    ),
+    text(
+      `## While the gun is not ready
+
+After a shot, the gun needs time before the next (${ROBOT_DEFAULTS.shotCooldown} seconds for the standard gun). A \`fire\` in that time fires nothing and only uses up the tick (Chapter 3). With \`reload\`, the robot can do something else until it is ready.`,
+      `## 撃てない間にできること
+
+銃は 1 発撃つと、次に撃てるまで間があきます（標準の銃で ${ROBOT_DEFAULTS.shotCooldown} 秒）。その間の \`fire\` は弾が出ず、tick を使うだけです（第 3 章）。\`reload\` を見れば、撃てるようになるまで別のことができます。`,
+    ),
+    code(AIM_WHILE_RELOADING),
+    text(
+      `While it cannot shoot, it keeps the aim right with \`aim lead\` every tick, and fires on the tick it can.`,
+      `撃てない間は毎 tick \`aim lead\` で狙いを合わせ続け、撃てるようになった tick に撃ちます。`,
+    ),
+    text(
+      `## The gun and the body turn apart
+
+\`aim\` turns only the gun. It aims whichever way the body faces, so the body can stay pointed where it wants to drive. StrafeBot drives side-on to the enemy while its gun aims where the enemy is going.`,
+      `## 砲塔と車体は別々に回る
+
+\`aim\` が回すのは砲塔だけです。車体の向きと関係なく狙えるので、車体は走りたい方へ向けたまま撃てます。StrafeBot は、車体を横向きにして走りながら、砲塔で敵の移動先を狙っています。`,
+    ),
+    { kind: 'see', topics: ['moving'] },
+  ],
+};
+
+const DEFENCE: BookChapter = {
+  id: 'defence',
+  title: { en: 'Defence and recovery', ja: '守りと回復' },
+  blocks: [
+    text(
+      `Not being hit matters as much as hitting. This chapter looks at three ways to defend: guarding, turning to whoever shot you, and hiding to recover.`,
+      `当てるのと同じくらい、当たらないことも大事です。この章では、守りの手を 3 つ見ます。\`guard\`、撃たれた方を向くこと、隠れて回復することです。`,
+    ),
+    text(
+      `## Guard at the moment of the hit
+
+\`guard\` halves the damage of a bullet that hits on that tick. But it works only ${ROBOT_DEFAULTS.maxGuards} times a match, and each one puts off the next shot by ${ROBOT_DEFAULTS.guardRecovery} seconds.
+
+When to use it makes all the difference. Here are three robots, each trading shots with one that keeps shooting:`,
+      `## guard は当たる瞬間に
+
+\`guard\` すると、その tick に当たった弾のダメージが半分になります。ただし 1 試合に ${ROBOT_DEFAULTS.maxGuards} 回までで、使うたびに次の弾が ${ROBOT_DEFAULTS.guardRecovery} 秒遅れます。
+
+いつ使うかで、結果が大きく変わります。撃ち続けてくる相手に、3 通りのロボットで撃ち合わせてみました。`,
+    ),
+    code(NO_GUARD),
+    code(GUARD_ON_SIGHT),
+    code(GUARD_AT_HIT),
+    text(
+      `- **No guard**: they shoot each other down on the same tick. A draw.
+- **Guard as soon as a bullet comes** (\`bullet_incoming\`): a bullet seen is not yet a bullet that hits, so guarding then saves nothing. It wasted all four guards, its shots were put off, and it lost.
+- **Guard only just before the hit** (\`bullet_distance < 36\`): it won, with 10 HP left.
+
+A small difference decided the match. \`bullet_distance < 36\` stands for "about to hit": it is what GuardBot uses.`,
+      `- **guard しない**: 撃ち合って、同じ tick に倒れて引き分け。
+- **弾が来たらすぐ guard**（\`bullet_incoming\`）: 弾が見えても、その tick に当たるわけではないので、ダメージは減りません。4 回を無駄に使い、撃つのも遅れて、負けました。
+- **当たる直前だけ guard**（\`bullet_distance < 36\`）: HP を 10 残して勝ちました。
+
+ほんの少しの差で、勝ち負けが分かれました。\`bullet_distance < 36\` は「もうすぐ当たる」の目安で、GuardBot が使っている数です。`,
+    ),
+    text(
+      `## Turn to whoever shot you
+
+Sometimes the shot comes from an enemy you cannot see. \`hit\` is true on the tick you are hit, and \`turn hit\` or \`face hit\` turns you the way the bullet came from. That is how GuardBot and SentryBot find an enemy shooting from behind cover.`,
+      `## 撃たれた方を向く
+
+見えない相手から撃たれることもあります。\`hit\` は撃たれた tick に本当になり、\`turn hit\` や \`face hit\` で、弾が来た方へ向けます。GuardBot と SentryBot は、こうして物陰から撃ってくる相手を探します。`,
+    ),
+    text(
+      `## Hide and recover
+
+Stay still for half a second where no enemy can see you, and your HP comes back at 20 a second. Moving, or being seen, stops it.
+
+You need not find a hiding place yourself: the sensors tell you.
+
+- \`cover_visible\`: there is a hiding place to go to
+- \`turn cover\`: turns towards the way to it
+- \`hidden\`: no enemy can see you now`,
+      `## 隠れて回復する
+
+敵のだれからも見えない場所で 0.5 秒止まっていると、HP が 1 秒に 20 ずつ回復します。動いたり見つかったりすると止まります。
+
+隠れ場所は自分で探さなくても、センサーが教えてくれます。
+
+- \`cover_visible\`: 行ける隠れ場所がある
+- \`turn cover\`: 隠れ場所への道の方へ回る
+- \`hidden\`: 今、敵のだれからも見えていない`,
+    ),
+    code(HIDE_AND_REST),
+    text(
+      `It trades shots with a robot that keeps shooting, and below 140 HP heads for cover. Once out of sight, it stops and rests. In the match, its HP went down to 100, and came all the way back to 200 behind the block.`,
+      `撃ち続けてくる相手と撃ち合い、HP が 140 を切ったら物陰へ向かいます。見えなくなったら止まって休みます。試合では HP が 100 まで減りましたが、物陰で 200 まで戻しました。`,
+    ),
+    { kind: 'scene', scene: { stage: SHELTER, program: HIDE_AND_REST, tick: 280 }, caption: caption(
+      'ALPHA resting behind the block (right), out of the shooter\'s sight, getting its HP back.',
+      'ALPHA が物陰（右の四角）の後ろで、相手から見えないように休み、HP を回復しているところ。',
+    ) },
+    text(
+      `## Where recovering helps, and where it does not
+
+In a one-on-one match, hiding to recover works well. It is why CoverBot and HitAndHideBot beat robots that shoot from where they stand (Chapter 9).
+
+In the base battle (Chapter 14) it is of little use. The bases decide who wins, a base never recovers, and a robot in hiding cannot shoot at a base.`,
+      `## 回復が効く場面、効かない場面
+
+1 対 1 では、隠れて回復する手がよく効きます。CoverBot や HitAndHideBot が、その場から撃ってくる相手に強いのはこのためです（第 9 章）。
+
+基地戦（第 14 章）では、あまり役に立ちません。勝ち負けは基地の HP で決まり、基地は回復しないうえ、隠れている間は基地を撃てないからです。`,
+    ),
+    { kind: 'see', topics: ['moving', 'rules'] },
+  ],
+};
+
+const PARTS_CHAPTER: BookChapter = {
+  id: 'parts',
+  title: { en: 'Choosing parts', ja: 'パーツ選び' },
+  blocks: [
+    text(
+      `A robot takes a part in each of four places: body, legs, gun and sensor. On the PROGRAM screen, open a robot's \`config\` to choose them.`,
+      `ロボットには、車体・脚・銃・センサーの 4 か所にパーツを付けられます。プログラムの画面で、ロボットの \`config\` を開くと選べます。`,
+    ),
+    text(
+      `## The cost limit
+
+Each part has a cost, and the four together may cost at most ${COST_LIMIT}. Every standard part costs 3, so a robot of standard parts is at the limit exactly. To put on a part of cost 4, you have to take a part of cost 2 somewhere else.`,
+      `## コストの上限
+
+パーツにはコストがあり、4 つの合計は ${COST_LIMIT} までです。標準のパーツはどれもコスト 3 なので、全部標準でちょうど ${COST_LIMIT} になります。コスト 4 のパーツを付けたければ、どこかをコスト 2 のパーツにしなければなりません。`,
+    ),
+    text(`## Body`, `## 車体`),
+    { kind: 'parts', slot: 'body' },
+    text(
+      `Light drives and turns faster, with less HP; Heavy is the other way round. To last in a long exchange, Heavy; for a strategy of moving about, Light.`,
+      `Light は速く走れて曲がるのも速い代わりに、HP が少なくなります。Heavy はその逆です。撃ち合いで粘りたいなら Heavy、動き回る作戦なら Light が合います。`,
+    ),
+    text(`## Legs`, `## 脚`),
+    { kind: 'parts', slot: 'legs' },
+    text(
+      `Sprint is good at going straight, Pivot at turning. Walker is slow, but its shots on the move hardly stray. Hover is fast and its shots stray less too, but it cannot stop at once: it slides, and drifts after it turns.`,
+      `Sprint は直進が、Pivot は旋回が得意です。Walker は遅い代わりに、走りながら撃っても弾がほとんどぶれません。Hover は速くてぶれも少なめですが、すぐには止まれず、曲がったあとも少し流れます。`,
+    ),
+    text(`## Gun`, `## 銃`),
+    { kind: 'parts', slot: 'gun' },
+    text(
+      `In damage a second, Rapid and Cannon beat the standard gun. But a Rapid shot is weak and strays easily, and a Cannon's bullets are slow, which makes a moving enemy hard to hit. Pistol has a short range, and costs 2 for it.`,
+      `1 秒あたりのダメージでは、Rapid と Cannon が標準より上です。ただ Rapid は 1 発が弱くてぶれやすく、Cannon は弾が遅いので、動く敵には当てにくくなります。Pistol は射程が短く、そのぶんコストが 2 です。`,
+    ),
+    text(`## Sensor`, `## センサー`),
+    { kind: 'parts', slot: 'sensor' },
+    text(
+      `Short sees all round, but no further than 300. Scope sees far, but only the 120 degrees ahead: with it, the robot has to turn its body to look for the enemy.`,
+      `Short は周りぐるりが見えますが、300 より遠くは見えません。Scope は遠くまで見えますが、前の 120 度だけです。Scope を付けたら、敵を探すときに車体を回す必要があります。`,
+    ),
+    text(
+      `## Fit the program to the parts
+
+When you change the parts, change the program to suit. Put on a Cannon for its long range while the program still closes in to 300 before shooting, and the Cannon's strength is wasted. With the sensors \`weapon_range\`, \`sensor_range\` and \`max_speed\`, you can write a program that suits any parts.`,
+      `## プログラムをパーツに合わせる
+
+パーツを替えたら、プログラムも合わせます。射程の長い Cannon を付けたのに、プログラムが「300 まで近づいてから撃つ」のままでは、長所が生きません。センサーの \`weapon_range\`、\`sensor_range\`、\`max_speed\` を使うと、どのパーツにも合うプログラムが書けます。`,
+    ),
+    code(ANY_GUN),
+    text(
+      `With \`weapon_range\` in place of a number such as 300, it stops at the range of whatever gun it carries, Pistol or Cannon.`,
+      `300 のような数の代わりに \`weapon_range\` を使っているので、Pistol でも Cannon でも、付けている銃の射程で止まります。`,
+    ),
+    { kind: 'see', topics: ['parts-help'] },
   ],
 };
 
@@ -859,6 +1273,11 @@ export const BOOK: readonly BookPart[] = [
     id: 'part-1',
     title: { en: 'Part 1: Thinking in programs', ja: '第 1 部 プログラムで考える' },
     chapters: [WHAT_A_PROGRAM_IS, MAKING_IT_MOVE, TICKS, LOOKING_AROUND, IF, REMEMBERING, FUNCTIONS, DEBUGGING],
+  },
+  {
+    id: 'part-2',
+    title: { en: 'Part 2: Strategies for winning', ja: '第 2 部 勝つための作戦' },
+    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER],
   },
 ];
 

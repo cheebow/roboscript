@@ -1,20 +1,33 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
-import { BOOK, CHAPTERS } from '../src/book/chapters';
+import { BOOK, CHAPTERS, MATCHUP_ARENAS, RIVALS, matchupOf } from '../src/book/chapters';
+import { matchCount, matchupRecords } from '../src/book/matchups';
+import { BROADSIDE } from '../src/book/stages';
+import { ARENAS } from '../src/data/arenas';
+import { COST_LIMIT, PARTS, SLOTS, STANDARD_LOADOUT, type Slot, statsOf } from '../src/data/parts';
+import { TEMPLATES } from '../src/data/templates';
+import type { Stage } from '../src/tutorial/types';
 import {
+  AIM_AHEAD,
+  AIM_AT_ENEMY,
   COUNT_HITS,
   DRIVE_ON,
   FACE_BEHIND,
   FIRE_FIRST,
+  GUARD_AT_HIT,
   GUARD_FIRST,
+  GUARD_ON_SIGHT,
+  HIDE_AND_REST,
   JUST_LOOK,
   KEEP_FIRING,
   LONG_TURN,
   NO_ACTION_LOOP,
+  NO_GUARD,
   ONE_SHOT,
   SEARCH_AND_SHOOT,
   SEARCH_AND_SHOOT_IN_FUNCTIONS,
+  SHOOT_ON_THE_MOVE,
   STUCK,
   TICK_BY_TICK,
   TIMED_DRIVE,
@@ -32,7 +45,7 @@ import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { HELP } from '../src/help/topics';
 import { type Language, useLanguage } from '../src/i18n/language';
 import { renderBookPage } from '../src/pages/book_page';
-import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHOT_AT, TRACK } from '../src/tutorial/stages';
+import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHELTER, SHOT_AT, TRACK } from '../src/tutorial/stages';
 
 // The book (book.html): that it renders whole, that its programs work, and
 // that what its text says about them is what the game does.
@@ -307,5 +320,154 @@ describe('what the chapter on debugging says', () => {
     expect(at(STUCK, 150).y).toBe(at(STUCK, 300).y);
     expect(at(UNSTUCK, 300).x - at(UNSTUCK, 150).x).toBeGreaterThan(200);
     expect(at(UNSTUCK, 300).label).toBe('GO');
+  });
+});
+
+describe('what Part 2 says about the built-in robots', () => {
+  // Each pair once, both ways round from one table: the same matches the page plays.
+  const results = new Map<string, { wins: number; losses: number }>();
+  const record = (robot: string, opponent: string) => {
+    const key = `${robot}>${opponent}`;
+    if (!results.has(key)) {
+      const [played] = matchupRecords({ ...matchupOf(robot as (typeof RIVALS)[number]), opponents: [opponent] });
+      results.set(key, played);
+      results.set(`${opponent}>${robot}`, { wins: played.losses, losses: played.wins });
+    }
+    return results.get(key)!;
+  };
+  const beats = (robot: string, opponent: string) => {
+    const { wins, losses } = record(robot, opponent);
+    return wins > losses;
+  };
+
+  it('the tables play real arenas and real robots, 12 matches an opponent', () => {
+    for (const id of MATCHUP_ARENAS) expect(ARENAS.some((arena) => arena.id === id), id).toBe(true);
+    for (const id of RIVALS) expect(TEMPLATES.some((template) => template.id === id), id).toBe(true);
+    expect(matchCount({ ...matchupOf('dumb_bot'), opponents: ['sentry_bot'] })).toBe(12);
+  });
+
+  it.each([
+    ['guard_bot', 'cover_bot'],
+    ['cover_bot', 'sentry_bot'],
+    ['sentry_bot', 'strafe_bot'],
+    ['strafe_bot', 'guard_bot'],
+  ])('goes round in a ring: %s beats %s', (robot, opponent) => {
+    expect(beats(robot, opponent)).toBe(true);
+  });
+
+  it.each([
+    ['dumb_bot', ['cover_bot', 'aggressive_bot'], ['sentry_bot', 'strafe_bot', 'hit_and_hide_bot']],
+    ['coward_bot', ['dumb_bot', 'aggressive_bot'], ['guard_bot', 'cover_bot', 'hit_and_hide_bot', 'strafe_bot']],
+    ['guard_bot', ['dumb_bot', 'coward_bot', 'cover_bot'], ['strafe_bot', 'sentry_bot']],
+    ['cover_bot', ['sentry_bot', 'strafe_bot'], ['dumb_bot', 'guard_bot']],
+    ['hit_and_hide_bot', ['sentry_bot', 'strafe_bot', 'coward_bot'], ['guard_bot', 'cover_bot', 'aggressive_bot']],
+    ['strafe_bot', ['dumb_bot', 'aggressive_bot', 'coward_bot', 'guard_bot'], ['sentry_bot', 'cover_bot', 'hit_and_hide_bot']],
+    ['sentry_bot', ['strafe_bot'], ['cover_bot', 'hit_and_hide_bot']],
+  ])('%s beats %j and loses to %j', (robot, winsOver, losesTo) => {
+    for (const opponent of winsOver) expect(beats(robot, opponent), opponent).toBe(true);
+    for (const opponent of losesTo) expect(beats(opponent, robot), opponent).toBe(true);
+  });
+
+  it('AggressiveBot has the worst record, and beats HitAndHideBot alone', () => {
+    const total = (robot: string) => RIVALS.filter((other) => other !== robot).reduce((sum, other) => sum + record(robot, other).wins, 0);
+    const worst = Math.min(...RIVALS.map(total));
+    expect(total('aggressive_bot')).toBe(worst);
+    expect(RIVALS.filter((other) => other !== 'aggressive_bot' && beats('aggressive_bot', other))).toEqual(['hit_and_hide_bot']);
+  });
+});
+
+describe('what the chapter on shooting says', () => {
+  const tally = (stage: Stage, program: string, ticks = 600) => {
+    const { recording } = recordFor(stage, program, ticks);
+    const [alpha, target] = recording.snapshots[0].robots.map((robot) => robot.id);
+    return {
+      shots: recording.events.filter((event) => event.robotId === alpha && event.type === 'action' && /^fire/.test(event.message)).length,
+      hits: recording.events.filter((event) => event.type === 'hit' && event.hit?.targetId === target).length,
+      down: recording.snapshots.some((snapshot) => !snapshot.robots[1].alive),
+    };
+  };
+
+  it('at a moving target: aim enemy hits 3 of 27; aim lead hits 10 of 13 and brings it down', () => {
+    expect(tally(MOVING, AIM_AT_ENEMY)).toEqual({ shots: 27, hits: 3, down: false });
+    expect(tally(MOVING, AIM_AHEAD)).toEqual({ shots: 13, hits: 10, down: true });
+  });
+
+  it('at a target standing still: 10 of 12 standing, 3 of 24 on the move', () => {
+    expect(tally(BROADSIDE, AIM_AT_ENEMY)).toMatchObject({ shots: 12, hits: 10 });
+    expect(tally(BROADSIDE, SHOOT_ON_THE_MOVE)).toMatchObject({ shots: 24, hits: 3 });
+  });
+
+  it('a shot strays 5 times as far on the move; 350 away, standing, it always stays within the enemy', () => {
+    expect(ROBOT_DEFAULTS.movingShotSpread / ROBOT_DEFAULTS.shotSpread).toBe(5);
+    const reach = ROBOT_DEFAULTS.radius + ROBOT_DEFAULTS.bulletRadius;
+    expect(350 * Math.tan((ROBOT_DEFAULTS.shotSpread * Math.PI) / 180)).toBeLessThan(reach);
+    expect(350 * Math.tan((ROBOT_DEFAULTS.movingShotSpread * Math.PI) / 180)).toBeGreaterThan(reach * 2);
+  });
+
+  it('Walker and Hover legs stray less on the move', () => {
+    const moving = (legs: string) => statsOf({ ...STANDARD_LOADOUT, legs }).movingShotSpread;
+    expect(moving('walker')).toBeLessThan(moving('standard'));
+    expect(moving('hover')).toBeLessThan(moving('standard'));
+  });
+});
+
+describe('what the chapter on defence says', () => {
+  const fight = (program: string) => {
+    const { recording } = recordFor(SHOT_AT, program, 1200);
+    const last = recording.snapshots[recording.snapshots.length - 1];
+    const alpha = recording.snapshots[0].robots[0].id;
+    const damage = recording.events.filter((event) => event.type === 'hit' && event.hit?.targetId === alpha).reduce((sum, event) => sum + (event.hit?.damage ?? 0), 0);
+    return { alphaAlive: last.robots[0].alive, bravoAlive: last.robots[1].alive, hp: last.robots[0].hp, guardsLeft: last.robots[0].guards, damage };
+  };
+
+  it('no guard: a draw; guarding on sight: four guards for nothing, and a loss; guarding at the hit: a win with 10 HP', () => {
+    expect(fight(NO_GUARD)).toMatchObject({ alphaAlive: false, bravoAlive: false });
+    expect(fight(GUARD_ON_SIGHT)).toMatchObject({ alphaAlive: false, bravoAlive: true, guardsLeft: 0, damage: ROBOT_DEFAULTS.maxHp });
+    expect(fight(GUARD_AT_HIT)).toMatchObject({ alphaAlive: true, bravoAlive: false, hp: 10 });
+    expect(ROBOT_DEFAULTS.guardRecovery).toBe(0.3);
+  });
+
+  it('hiding: down to 100 HP, then all the way back to 200, resting out of sight at tick 280', () => {
+    const { recording } = recordFor(SHELTER, HIDE_AND_REST, 600);
+    const hp = recording.snapshots.map((snapshot) => snapshot.robots[0].hp);
+    expect(Math.min(...hp)).toBe(100);
+    expect(hp[hp.length - 1]).toBe(ROBOT_DEFAULTS.maxHp);
+    expect(hp[280]).toBeGreaterThan(hp[260]);
+    expect(recording.snapshots[280].robots[0].driving).toBe('stop');
+    expect(ROBOT_DEFAULTS.recoveryRate).toBe(20);
+    expect(ROBOT_DEFAULTS.recoveryDelay).toBe(0.5);
+  });
+});
+
+describe('what the chapter on parts says', () => {
+  const part = (slot: Slot, id: string) => PARTS.find((candidate) => candidate.slot === slot && candidate.id === id)!;
+  const gun = (id: string) => statsOf({ ...STANDARD_LOADOUT, gun: id });
+
+  it('standard parts cost 3 each, which is the limit of 12 exactly; a part of cost 4 needs one of cost 2', () => {
+    expect(COST_LIMIT).toBe(12);
+    for (const slot of SLOTS) expect(part(slot, 'standard').cost).toBe(3);
+    expect(Math.max(...PARTS.map((candidate) => candidate.cost))).toBe(4);
+    expect(Math.min(...PARTS.map((candidate) => candidate.cost))).toBe(2);
+  });
+
+  it('Rapid and Cannon do more damage a second than the standard gun; Cannon bullets are slower; Pistol reaches less and costs 2', () => {
+    const perSecond = (id: string) => gun(id).shotDamage / gun(id).shotCooldown;
+    expect(perSecond('rapid')).toBeGreaterThan(perSecond('standard'));
+    expect(perSecond('cannon')).toBeGreaterThan(perSecond('standard'));
+    expect(gun('rapid').shotDamage).toBeLessThan(gun('standard').shotDamage);
+    expect(gun('cannon').shotSpeed).toBeLessThan(gun('standard').shotSpeed);
+    expect(gun('pistol').weaponRange).toBeLessThan(gun('standard').weaponRange);
+    expect(part('gun', 'pistol').cost).toBe(2);
+  });
+
+  it('Short sees no further than 300; Scope only the 120 degrees ahead', () => {
+    expect(statsOf({ ...STANDARD_LOADOUT, sensor: 'short' }).sensorRange).toBe(300);
+    expect(statsOf({ ...STANDARD_LOADOUT, sensor: 'scope' }).sensorAngle).toBe(120);
+  });
+
+  it('shows every part of each slot', () => {
+    const page = inLanguage('ja', renderBookPage);
+    const rows = page.querySelectorAll('#parts table.book-parts tr');
+    expect(rows.length).toBe(PARTS.length + SLOTS.length);
   });
 });

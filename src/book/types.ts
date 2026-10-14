@@ -35,7 +35,17 @@ export interface Readings {
 }
 
 /** A diagram drawn by the book itself: see figures.ts. */
-export type FigureId = 'tick-steps' | 'program-vs-tick' | 'angles';
+export type FigureId = 'tick-steps' | 'program-vs-tick' | 'angles' | 'rivals' | 'spread';
+
+/** A built-in robot against others, played when the reader asks: see matchups.ts. */
+export interface Matchup {
+  /** Template ids. */
+  robot: string;
+  opponents: readonly string[];
+  /** Arena ids (ARENAS). */
+  arenas: readonly string[];
+  seeds: readonly number[];
+}
 
 /** A picture of the game's screens: see shots.ts. */
 export type ShotId = 'program' | 'debug';
@@ -50,6 +60,11 @@ export type BookBlock =
   | { kind: 'error'; program: string; caption: Text }
   | { kind: 'figure'; figure: FigureId; caption: Text }
   | { kind: 'shot'; shot: ShotId; caption: Text }
+  /** A built-in robot's program, as the game has it now, folded away until opened. */
+  | { kind: 'template'; template: string }
+  | { kind: 'matchup'; matchup: Matchup }
+  /** The parts of a slot, from the game's own list. */
+  | { kind: 'parts'; slot: 'body' | 'legs' | 'gun' | 'sensor' }
   /** Where the help says more: the ids of its topics. */
   | { kind: 'see'; topics: readonly string[] };
 

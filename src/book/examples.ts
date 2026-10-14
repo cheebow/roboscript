@@ -198,3 +198,81 @@ loop
         label GO
         wait
 `;
+
+/** Chapter 10: aiming where the enemy is now. */
+export const AIM_AT_ENEMY = `loop
+    aim enemy
+    fire
+`;
+
+/** Chapter 10: aiming where the enemy will be when the bullet gets there. */
+export const AIM_AHEAD = `loop
+    aim lead
+    fire
+`;
+
+/** Chapter 10: the same target, shot at on the move. */
+export const SHOOT_ON_THE_MOVE = `loop
+    if blocked
+        turn right 180
+    drive forward
+    aim enemy
+    fire
+`;
+
+/** Chapter 10: keep aiming while the gun is not ready, and fire on the tick it is. */
+export const AIM_WHILE_RELOADING = `loop
+    aim lead
+    if reload == 0
+        fire
+`;
+
+/** Chapter 11: no guard at all. */
+export const NO_GUARD = `loop
+    aim enemy
+    fire
+`;
+
+/** Chapter 11: guard as soon as a bullet is coming. */
+export const GUARD_ON_SIGHT = `loop
+    if bullet_incoming
+        guard
+    else
+        aim enemy
+        fire
+`;
+
+/** Chapter 11: guard only when the bullet is about to hit. */
+export const GUARD_AT_HIT = `loop
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else
+        aim enemy
+        fire
+`;
+
+/** Chapter 11: when hurt, go behind cover and rest there. */
+export const HIDE_AND_REST = `loop
+    if hp < 140 and not hidden
+        turn cover
+        drive forward
+    else if hidden
+        drive stop
+        wait
+    else
+        aim enemy
+        fire
+`;
+
+/** Chapter 12: written for whatever gun the robot carries. */
+export const ANY_GUN = `loop
+    if enemy_visible and enemy_distance < weapon_range
+        drive stop
+        aim lead
+        fire
+    else if enemy_visible
+        drive forward
+        turn enemy
+    else
+        turn left
+`;

@@ -3,24 +3,36 @@ import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
 import { BOOK, CHAPTERS } from '../src/book/chapters';
 import {
+  COUNT_HITS,
   DRIVE_ON,
   FACE_BEHIND,
+  FIRE_FIRST,
+  GUARD_FIRST,
+  JUST_LOOK,
   KEEP_FIRING,
   LONG_TURN,
   NO_ACTION_LOOP,
   ONE_SHOT,
+  SEARCH_AND_SHOOT,
+  SEARCH_AND_SHOOT_IN_FUNCTIONS,
+  STUCK,
   TICK_BY_TICK,
+  TIMED_DRIVE,
+  TURN_AND_CHECK,
   TURN_THEN_DRIVE,
   TWO_TICK_LOOP,
+  UNSTUCK,
+  UNTIL_SEEN,
+  WITHIN_RANGE,
 } from '../src/book/examples';
-import { recordFor, timelineRows } from '../src/book/scenes';
+import { readingsRows, recordFor, timelineRows } from '../src/book/scenes';
 import type { BookBlock } from '../src/book/types';
 import { ROBOT_DEFAULTS } from '../src/data/robot_defaults';
 import { MATCH_DEFAULTS } from '../src/data/match_defaults';
 import { HELP } from '../src/help/topics';
 import { type Language, useLanguage } from '../src/i18n/language';
 import { renderBookPage } from '../src/pages/book_page';
-import { BEHIND, QUARTER, RANGE, TRACK } from '../src/tutorial/stages';
+import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHOT_AT, TRACK } from '../src/tutorial/stages';
 
 // The book (book.html): that it renders whole, that its programs work, and
 // that what its text says about them is what the game does.
@@ -56,6 +68,8 @@ describe('the book page', () => {
     const pictures = BLOCKS.filter((block) => 'caption' in block).length;
     expect(page.querySelectorAll('figure.book-figure figcaption')).toHaveLength(pictures);
     expect(page.querySelectorAll('.book-scene')).toHaveLength(BLOCKS.filter((block) => block.kind === 'scene').length);
+    expect(page.querySelectorAll('table.book-readings')).toHaveLength(BLOCKS.filter((block) => block.kind === 'readings').length);
+    expect(page.querySelectorAll('.book-error-message').length).toBeGreaterThanOrEqual(BLOCKS.filter((block) => block.kind === 'error').length);
     expect(page.querySelectorAll('.book-figure-svg')).toHaveLength(
       BLOCKS.filter((block) => block.kind === 'timeline' || block.kind === 'figure').length,
     );
@@ -78,10 +92,20 @@ describe('the book page', () => {
 
   it('writes its programs as programs, not in the text, and every one of them compiles', () => {
     const programs = BLOCKS.flatMap((block) =>
-      block.kind === 'code' ? [block.code] : block.kind === 'scene' ? [block.scene.program] : block.kind === 'timeline' ? [block.timeline.program] : [],
+      block.kind === 'code'
+        ? [block.code]
+        : block.kind === 'scene'
+          ? [block.scene.program]
+          : block.kind === 'timeline'
+            ? [block.timeline.program]
+            : block.kind === 'readings'
+              ? [block.readings.program]
+              : [],
     );
     expect(programs.length).toBeGreaterThan(5);
     for (const program of programs) expect(compileScript(program).ok, program).toBe(true);
+    // The programs shown with their errors are wrong on purpose.
+    for (const block of BLOCKS) if (block.kind === 'error') expect(compileScript(block.program).ok, block.program).toBe(false);
     for (const text of allText()) expect(text).not.toContain('```');
   });
 
@@ -175,5 +199,113 @@ describe('what the chapter on moving says', () => {
     expect(start.rotation).toBe(0);
     expect(then.y).toBeLessThan(start.y - 100);
     expect(Math.abs(then.x - start.x)).toBeLessThan(1);
+  });
+});
+
+describe('the error shown', () => {
+  it.each([
+    ['en', 'Line 1: Expected indented block'],
+    ['ja', '1 行目: 字下げしたブロックが必要'],
+  ] as const)('is the game\'s own message, in the language of the page (%s)', (language, first) => {
+    const page = inLanguage(language, renderBookPage);
+    expect(page.querySelector('#debugging .book-error-message')?.textContent).toBe(first);
+  });
+});
+
+describe('what the chapter on sensors says', () => {
+  it('a robot that only waits reads a moving target as in sight, its distance and angle changing tick by tick', () => {
+    const rows = readingsRows({ stage: MOVING, program: JUST_LOOK, ticks: [1, 10, 20, 30, 40], sensors: ['enemy_visible', 'enemy_distance', 'enemy_angle'] });
+    for (const row of rows) expect(row[0]).toBe(true);
+    for (let at = 1; at < rows.length; at++) {
+      expect(rows[at][1]).not.toBe(rows[at - 1][1]);
+      expect(rows[at][2]).not.toBe(rows[at - 1][2]);
+    }
+  });
+
+  it('the target behind the block is out of sight', () => {
+    const { recording } = recordFor(HIDDEN, JUST_LOOK, 1);
+    expect(recording.snapshots[1].robots[0].enemyVisible).toBe(false);
+  });
+});
+
+describe('what the chapter on if says', () => {
+  it('drives past the block, then stops and shoots the target down', () => {
+    const { recording } = recordFor(HIDDEN, SEARCH_AND_SHOOT, 600);
+    expect(recording.snapshots[200].robots[0].driving).toBe('stop');
+    expect(recording.snapshots[200].robots[0].enemyVisible).toBe(true);
+    expect(recording.snapshots.some((snapshot) => !snapshot.robots[1].alive)).toBe(true);
+  });
+
+  it('while: drives until it sees the target, stops, and fires one shot', () => {
+    const { recording } = recordFor(HIDDEN, UNTIL_SEEN, 200);
+    const seen = recording.snapshots.findIndex((snapshot, tick) => tick > 0 && snapshot.robots[0].enemyVisible);
+    expect(recording.snapshots[seen + 1].robots[0].driving).toBe('stop');
+    expect(recording.events.filter((event) => event.robotId === recording.snapshots[0].robots[0].id && event.type === 'action' && /fire/.test(event.message))).toHaveLength(1);
+  });
+
+  it('the order is the priority: shooting first never guards and draws; guarding first guards four times and loses', () => {
+    const play = (program: string) => {
+      const { recording } = recordFor(SHOT_AT, program, 1200);
+      const last = recording.snapshots[recording.snapshots.length - 1];
+      const fell = (index: number) => recording.snapshots.findIndex((snapshot) => !snapshot.robots[index].alive);
+      return { guardsLeft: last.robots[0].guards, alphaFell: fell(0), bravoFell: fell(1) };
+    };
+    const fireFirst = play(FIRE_FIRST);
+    expect(fireFirst.guardsLeft).toBe(ROBOT_DEFAULTS.maxGuards);
+    expect(fireFirst.alphaFell).toBeGreaterThan(0);
+    expect(fireFirst.bravoFell).toBe(fireFirst.alphaFell);
+    const guardFirst = play(GUARD_FIRST);
+    expect(ROBOT_DEFAULTS.maxGuards).toBe(4);
+    expect(guardFirst.guardsLeft).toBe(0);
+    expect(guardFirst.alphaFell).toBeGreaterThan(0);
+    expect(guardFirst.bravoFell).toBe(-1);
+  });
+
+  it('turning in a loop checks for bullets on every tick', () => {
+    for (const lines of timelineRows({ stage: BEHIND, program: TURN_AND_CHECK, ticks: 6 })) expect(lines.slice(0, 2)).toEqual([1, 2]);
+  });
+});
+
+describe('what the chapter on variables says', () => {
+  it('counting 60 ticks drives exactly two seconds, 200, then stops', () => {
+    const { recording } = recordFor(TRACK, TIMED_DRIVE, 90);
+    const x = (tick: number) => recording.snapshots[tick].robots[0].x;
+    expect(Math.round(x(90) - x(0))).toBe(200);
+    expect(x(61)).toBe(x(90));
+    expect(x(60)).toBeGreaterThan(x(59));
+  });
+
+  it('backs off after the third hit, and not before', () => {
+    const { recording } = recordFor(SHOT_AT, COUNT_HITS, 110);
+    const backing = recording.snapshots.findIndex((snapshot) => snapshot.robots[0].driving === 'backward');
+    expect(recording.snapshots[backing].robots[0].hp).toBe(ROBOT_DEFAULTS.maxHp - 3 * ROBOT_DEFAULTS.shotDamage);
+    expect(recording.snapshots[backing - 1].robots[0].driving).not.toBe('backward');
+    expect(recording.snapshots[110].robots[0].driving).toBe('backward');
+  });
+});
+
+describe('what the chapter on functions says', () => {
+  it('giving the parts names plays exactly the same match', () => {
+    const track = (program: string) =>
+      recordFor(HIDDEN, program, 600).recording.snapshots.map((snapshot) => snapshot.robots.map((robot) => `${robot.x},${robot.y},${robot.rotation},${robot.hp}`).join(' '));
+    expect(track(SEARCH_AND_SHOOT_IN_FUNCTIONS)).toEqual(track(SEARCH_AND_SHOOT));
+  });
+
+  it('drives until the target is in range, then stops and shoots', () => {
+    const { recording } = recordFor(FAR, WITHIN_RANGE, 120);
+    const stopped = recording.snapshots.findIndex((snapshot, tick) => tick > 0 && snapshot.robots[0].driving === 'stop');
+    expect(recording.snapshots[stopped].robots[0].enemyDistance).toBeLessThanOrEqual(ROBOT_DEFAULTS.weaponRange + 5);
+    expect(recording.snapshots[1].robots[0].enemyDistance).toBeGreaterThan(ROBOT_DEFAULTS.weaponRange);
+    expect(recording.snapshots[120].robots[1].hp).toBeLessThan(ROBOT_DEFAULTS.maxHp);
+  });
+});
+
+describe('what the chapter on debugging says', () => {
+  it('without a check it stays at the wall; turning when blocked, it drives on along it', () => {
+    const at = (program: string, tick: number) => recordFor(CORNER, program, 300).recording.snapshots[tick].robots[0];
+    expect(at(STUCK, 150).x).toBe(at(STUCK, 300).x);
+    expect(at(STUCK, 150).y).toBe(at(STUCK, 300).y);
+    expect(at(UNSTUCK, 300).x - at(UNSTUCK, 150).x).toBeGreaterThan(200);
+    expect(at(UNSTUCK, 300).label).toBe('GO');
   });
 });

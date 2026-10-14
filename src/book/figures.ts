@@ -92,8 +92,45 @@ function programVsTick(): SVGSVGElement {
   return root;
 }
 
+/** How enemy_angle is measured: from where the body faces, plus to the right, minus to the left. */
+function angles(): SVGSVGElement {
+  const root = canvas(420, 340);
+  const [cx, cy, r] = [210, 165, 105];
+  root.append(svg('circle', { cx, cy, r, class: 'book-fig-line' }));
+  // The body, facing up, with its front marked.
+  root.append(
+    svg('rect', { x: cx - 13, y: cy - 13, width: 26, height: 26, class: 'book-fig-box accent' }),
+    svg('path', { d: `M${cx},${cy - 13} L${cx},${cy - r}`, class: 'book-fig-line' }),
+  );
+  const marks: [number, string, Text][] = [
+    [0, '0', { en: 'ahead', ja: '正面' }],
+    [90, '90', { en: 'right', ja: '右' }],
+    [-90, '-90', { en: 'left', ja: '左' }],
+    [180, '180 / -180', { en: 'behind', ja: '後ろ' }],
+  ];
+  for (const [angle, value, name] of marks) {
+    const rad = (angle * Math.PI) / 180;
+    const [x, y] = [cx + Math.sin(rad) * (r + 22), cy - Math.cos(rad) * (r + 22)];
+    const anchor = angle === 90 ? 'start' : angle === -90 ? 'end' : 'middle';
+    const dx = angle === 90 ? -14 : angle === -90 ? 14 : 0;
+    root.append(
+      svg('text', { x: x + dx, y: y + (angle === 0 ? -4 : angle === 180 ? 10 : 0), class: 'book-fig-code', 'text-anchor': anchor }, value),
+      svg('text', { x: x + dx, y: y + (angle === 0 ? -20 : angle === 180 ? 26 : 16), class: 'book-fig-note', 'text-anchor': anchor }, inLanguage(name)),
+    );
+  }
+  // An enemy ahead and to the right, at +45.
+  const rad = (45 * Math.PI) / 180;
+  const [ex, ey] = [cx + Math.sin(rad) * r, cy - Math.cos(rad) * r];
+  root.append(
+    svg('path', { d: `M${cx},${cy - 40} A40,40 0 0 1 ${cx + Math.sin(rad) * 40},${cy - Math.cos(rad) * 40}`, class: 'book-fig-line' }),
+    svg('circle', { cx: ex, cy: ey, r: 8, class: 'book-fig-dot action' }),
+    svg('text', { x: ex + 14, y: ey - 6, class: 'book-fig-code' }, 'enemy_angle = 45'),
+  );
+  return root;
+}
+
 export function createFigure(id: FigureId): SVGSVGElement {
-  return id === 'tick-steps' ? tickSteps() : programVsTick();
+  return id === 'tick-steps' ? tickSteps() : id === 'angles' ? angles() : programVsTick();
 }
 
 /**

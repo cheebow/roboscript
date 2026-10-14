@@ -385,3 +385,18 @@ body {
   max-width: 100%;
   overflow-x: auto;
 }
+
+.book-readings td,
+.book-readings th {
+  font-family: var(--font-family);
+  text-align: right;
+}
+
+.book-error-message {
+  margin-top: 4px;
+  padding: 6px 12px;
+  border-left: 2px solid var(--error);
+  background: var(--error-line);
+  color: var(--error);
+  font-family: var(--font-family);
+}

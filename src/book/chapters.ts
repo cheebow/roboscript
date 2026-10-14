@@ -1,16 +1,32 @@
 import type { Text } from '../tutorial/types';
-import { BEHIND, QUARTER, RANGE, TRACK } from '../tutorial/stages';
+import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHOT_AT, TRACK } from '../tutorial/stages';
 import {
+  COUNT_HITS,
   DRIVE_ON,
   FACE_BEHIND,
+  FIRE_FIRST,
   FIRST_PROGRAM,
+  GUARD_FIRST,
+  JUST_LOOK,
   KEEP_FIRING,
   LONG_TURN,
+  MISSING_INDENT,
+  MISSPELT,
+  NEVER_SET,
   NO_ACTION_LOOP,
   ONE_SHOT,
+  SEARCH_AND_SHOOT,
+  SEARCH_AND_SHOOT_IN_FUNCTIONS,
+  STUCK,
   TICK_BY_TICK,
+  TIMED_DRIVE,
+  TURN_AND_CHECK,
   TURN_THEN_DRIVE,
   TWO_TICK_LOOP,
+  UNSTUCK,
+  UNTIL_SEEN,
+  VALUE_THAT_TAKES_TIME,
+  WITHIN_RANGE,
 } from './examples';
 import type { BookBlock, BookChapter, BookPart } from './types';
 
@@ -392,11 +408,457 @@ Run a match with DEBUG and you can follow how the program goes. The yellow line 
   ],
 };
 
+const LOOKING_AROUND: BookChapter = {
+  id: 'looking-around',
+  title: { en: 'Looking around', ja: '周りを見る' },
+  blocks: [
+    text(
+      `A program learns what is around the robot through its **sensors**. Under names such as \`enemy_visible\` (is the enemy in sight?) and \`enemy_distance\` (how far is it?) it reads how things are now.
+
+The sensors are read again at the start of every tick (Chapter 3). The same \`enemy_distance\` has a new value as the ticks go by.`,
+      `プログラムが周りの様子を知る手段が **センサー** です。\`enemy_visible\`（敵が見えているか）や \`enemy_distance\`（敵までの距離）のような名前で、今の様子を読めます。
+
+センサーの値は、tick の始めに読み直されます（第 3 章）。同じ \`enemy_distance\` でも、tick が進めば値は変わります。`,
+    ),
+    text(
+      `## Yes-or-no, and numbers
+
+There are two kinds of sensor:
+
+- Yes or no: \`enemy_visible\` (the enemy is in sight), \`blocked\` (the way ahead is blocked), \`bullet_incoming\` (a bullet is coming at you), \`hit\` (you were hit) and so on
+- Numbers: \`enemy_distance\` (how far the enemy is), \`enemy_angle\` (which way it is), \`hp\` (your HP), \`reload\` (seconds until you can shoot again) and so on
+
+These are the ones you will use most. The help lists them all.`,
+      `## 本当かうそか、と数
+
+センサーには 2 種類あります。
+
+- 本当かうそかを表すもの: \`enemy_visible\`（敵が見えている）、\`blocked\`（前がふさがっている）、\`bullet_incoming\`（当たるコースの弾が来ている）、\`hit\`（撃たれた）など
+- 数を表すもの: \`enemy_distance\`（敵までの距離）、\`enemy_angle\`（敵のいる方向）、\`hp\`（自分の HP）、\`reload\`（次に撃てるまでの秒数）など
+
+よく使うのはこのあたりです。全部の一覧はヘルプにあります。`,
+    ),
+    text(
+      `## Values that change
+
+Here are the sensors of a robot that just stands there, read in a real match. The other robot drives about.`,
+      `## 変わっていく値
+
+何もせずに立っているロボットのセンサーを、本物の試合で読んでみます。相手は動き回る的です。`,
+    ),
+    code(JUST_LOOK),
+    { kind: 'readings', readings: { stage: MOVING, program: JUST_LOOK, ticks: [1, 10, 20, 30, 40], sensors: ['enemy_visible', 'enemy_distance', 'enemy_angle'] }, caption: caption(
+      'ALPHA\'s sensors as it watches a moving target, from a real match.',
+      '動く的を見ている ALPHA のセンサーの値（本物の試合から）。',
+    ) },
+    text(
+      `ALPHA does nothing, but the target moves, so the values change. A program decides what to do by watching values like these.`,
+      `ALPHA は何もしていませんが、的が動くので値は変わっていきます。プログラムは、こうして変わる値を見て動きを決めます。`,
+    ),
+    text(
+      `## Which way: the angle
+
+\`enemy_angle\` says in degrees which way the enemy is, seen from where the body faces. Right is plus and left is minus; straight ahead is 0 and straight behind is 180 (or -180).`,
+      `## 角度の測り方
+
+\`enemy_angle\` は、車体の正面から見て敵がどちらにいるかを、度で表します。右がプラス、左がマイナスで、真正面が 0、真後ろが 180（または -180）です。`,
+    ),
+    { kind: 'figure', figure: 'angles', caption: caption(
+      'How enemy_angle is measured: 0 where the body faces, plus to the right, minus to the left.',
+      'enemy_angle の測り方。車体の正面が 0、右がプラス、左がマイナス。',
+    ) },
+    text(
+      `It is measured from the robot's own heading, so when the robot turns, \`enemy_angle\` changes even if the enemy stands still.`,
+      `自分の向きが基準なので、ロボットが回れば、敵が止まっていても \`enemy_angle\` は変わります。`,
+    ),
+    text(
+      `## An enemy out of sight
+
+The sensors see all the way round, but not through obstacles.`,
+      `## 見えない敵
+
+センサーは周りをぐるりと見渡せますが、障害物の向こうは見えません。`,
+    ),
+    { kind: 'scene', scene: { stage: HIDDEN, program: JUST_LOOK, tick: 1 }, caption: caption(
+      'The target (top left) is behind the block, so ALPHA (bottom right) cannot see it: enemy_visible is false.',
+      '的（左上）は障害物の陰にいるので、ALPHA（右下）からは見えない。enemy_visible はうそ（false）。',
+    ) },
+    text(
+      `While the enemy is out of sight, \`enemy_distance\` and \`enemy_angle\` point to where it was last seen. If it has never been seen, they are 0.`,
+      `見えていない間、\`enemy_distance\` と \`enemy_angle\` は、最後に見た場所を指します。一度も見ていなければ 0 です。`,
+    ),
+    { kind: 'see', topics: ['words'] },
+  ],
+};
+
+const IF: BookChapter = {
+  id: 'if',
+  title: { en: 'If…', ja: 'もし〜なら' },
+  blocks: [
+    text(
+      `Once the sensors tell you how things are, you make the robot act on it. That is what \`if\` is for.`,
+      `センサーで様子が分かったら、それに合わせて動きを変えます。そのための書き方が \`if\` です。`,
+    ),
+    text(
+      `## if and else`,
+      `## if と else`,
+    ),
+    code(SEARCH_AND_SHOOT),
+    text(
+      `- \`if enemy_visible\`: if the enemy is in sight, run the three lines below
+- \`else\`: if not, run the one line below
+
+It drives on, checking every tick whether it can see the enemy, and when it can, it stops and shoots.`,
+      `- \`if enemy_visible\`: 敵が見えていたら、下の 3 行を実行する
+- \`else\`: 見えていなかったら、下の 1 行を実行する
+
+走りながら毎 tick「見えるか」を確かめ、見えたら止まって撃ちます。`,
+    ),
+    { kind: 'scene', scene: { stage: HIDDEN, program: SEARCH_AND_SHOOT, tick: 200 }, caption: caption(
+      'Past the block, ALPHA can see the target, so it has stopped and is shooting.',
+      '障害物の横を抜けて的が見えたので、止まって撃っている。',
+    ) },
+    text(
+      `\`loop\` with \`if\` inside is the basic shape of a robot's program: every tick it looks again, and picks the one action that fits.`,
+      `\`loop\` の中に \`if\` を入れるのが、ロボットのプログラムの基本の形です。tick ごとに様子を確かめ直して、そのときに合った行動を 1 つ選びます。`,
+    ),
+    text(
+      `## Writing conditions
+
+| Condition | Means |
+|---|---|
+| \`enemy_distance < 300\` | the enemy is nearer than 300 |
+| \`hp <= 100\` | HP is 100 or less |
+| \`ammo == 0\` | no bullets left |
+| \`reload != 0\` | the gun is not ready yet |
+| \`enemy_visible and enemy_distance < 300\` | in sight, and nearer than 300 |
+| \`blocked or hit\` | the way is blocked, or you were hit |
+| \`not enemy_visible\` | not in sight |
+
+\`==\` is "equals", and \`!=\` is "does not equal".`,
+      `## 条件の書き方
+
+| 書き方 | 意味 |
+|---|---|
+| \`enemy_distance < 300\` | 敵までの距離が 300 より小さい |
+| \`hp <= 100\` | HP が 100 以下 |
+| \`ammo == 0\` | 弾がもうない |
+| \`reload != 0\` | まだ撃てない |
+| \`enemy_visible and enemy_distance < 300\` | 見えていて、しかも 300 より近い |
+| \`blocked or hit\` | 前がふさがっているか、撃たれた |
+| \`not enemy_visible\` | 見えていない |
+
+\`==\` は「等しい」、\`!=\` は「等しくない」です。`,
+    ),
+    text(
+      `## while: repeat as long as
+
+\`while\` repeats the lines inside as long as its condition holds. When it no longer does, the program goes on below.`,
+      `## while: 当てはまる間だけ繰り返す
+
+\`while\` は、条件が当てはまる間だけ中を繰り返します。当てはまらなくなったら、その下へ進みます。`,
+    ),
+    code(UNTIL_SEEN),
+    text(
+      `It drives until it sees the target, then stops and fires one shot. After that the program is over, and it does nothing more.`,
+      `見えるまで走り、見えたら止まって 1 発だけ撃ちます。撃ったあとはプログラムが終わるので、何もしません。`,
+    ),
+    text(
+      `## The order is the priority
+
+With \`else if\` you can line up many conditions. They are checked from the top, and only the first that holds is run.`,
+      `## 並べる順番が優先順位
+
+\`else if\` を使うと、条件をいくつも並べられます。上から順に調べて、最初に当てはまったものだけを実行します。`,
+    ),
+    code(GUARD_FIRST),
+    text(
+      `Here are the same two conditions the other way round.`,
+      `同じ 2 つの条件を、逆の順に並べたのがこちらです。`,
+    ),
+    code(FIRE_FIRST),
+    text(
+      `Against a robot that keeps shooting, the two come out quite differently:
+
+- The one that shoots first always sees the enemy, so its \`guard\` never runs. It trades shots, and both robots fall on the same tick: a draw.
+- The one that guards first guards whenever a bullet comes. But \`guard\` works only four times a match, and each one puts off its next shot a little. Against this robot it lost the exchange.
+
+Which is better depends on the opponent. What matters here is that **changing the order alone makes a different robot**.`,
+      `撃ち続けてくる相手と戦わせると、結果がはっきり分かれます。
+
+- 撃つのが先の方は、敵がいつも見えているので、\`guard\` が一度も実行されません。撃ち合いになり、同じ tick に倒れて引き分けです。
+- \`guard\` が先の方は、弾が来るたびに \`guard\` します。ただ \`guard\` は 1 試合に 4 回までで、使うたびに次の弾が少し遅れます。この相手には撃ち負けました。
+
+どちらがいいかは相手しだいです。大事なのは、**順番を入れかえただけで、別のロボットになる** ことです。`,
+    ),
+    text(
+      `## face and turn again
+
+Chapter 3 said that \`face enemy\` can do nothing else until it has turned. With \`loop\` and \`if\`, the robot can check for bullets on every tick while it turns.`,
+      `## もう一度 face と turn
+
+第 3 章で、\`face enemy\` は回り終わるまでほかのことができないと書きました。\`loop\` と \`if\` を使えば、回りながら毎 tick 弾を確かめられます。`,
+    ),
+    code(TURN_AND_CHECK),
+    { kind: 'timeline', timeline: { stage: BEHIND, program: TURN_AND_CHECK, ticks: 6 }, caption: caption(
+      'Turning to a target right behind: every tick, it checks for bullets first, then turns.',
+      '真後ろの的の方へ回っているところ。毎 tick、まず弾が来ていないかを確かめてから回っている。',
+    ) },
+    text(
+      `\`face enemy\` would not check once in that whole second. This one checks every tick, so it can switch to \`guard\` the moment a bullet comes.`,
+      `\`face enemy\` なら、その 1 秒の間に一度も弾を確かめません。こちらは tick ごとに確かめるので、弾が来たらすぐに \`guard\` に切りかえられます。`,
+    ),
+    { kind: 'see', topics: ['conditions'] },
+  ],
+};
+
+const REMEMBERING: BookChapter = {
+  id: 'remembering',
+  title: { en: 'Remembering', ja: '覚えておく' },
+  blocks: [
+    text(
+      `The sensors only tell you about now. To remember how things were, or to count something, you use **variables**.`,
+      `センサーが教えてくれるのは「今」のことだけです。前の様子を覚えておいたり、何かを数えたりするには **変数** を使います。`,
+    ),
+    text(
+      `## set`,
+      `## set で覚える`,
+    ),
+    code(`set ticks = 0
+set ticks = ticks + 1
+`),
+    text(
+      `\`set\` keeps a number under a name. The first line puts 0 in \`ticks\`; the second puts in "\`ticks\` as it is now, plus 1".
+
+- A variable holds a number, and only a number.
+- A name is made of letters, digits and \`_\`, and starts with a letter (\`last_hp\`, say). The names of commands and sensors cannot be used.
+- \`set\` takes no time.`,
+      `\`set\` は、名前を付けて数を覚えておく命令です。1 行目で \`ticks\` に 0 を入れ、2 行目で「今の \`ticks\` に 1 を足した数」を入れています。
+
+- 変数に入れられるのは数だけです。
+- 名前は英字・数字・\`_\` で作り、英字から始めます（\`last_hp\` など）。命令やセンサーの名前は使えません。
+- \`set\` は時間がかかりません。`,
+    ),
+    text(
+      `## Counting ticks`,
+      `## tick を数える`,
+    ),
+    code(TIMED_DRIVE),
+    text(
+      `Each round of \`while\` waits one tick and adds 1 to \`ticks\`. At 60 the \`while\` ends and the robot stops. 60 ticks are two seconds, so it drives for exactly two seconds.`,
+      `\`while\` を 1 周するたびに \`wait\` で 1 tick たち、\`ticks\` が 1 増えます。60 になったら \`while\` を抜けて止まります。60 tick は 2 秒なので、ちょうど 2 秒走って止まるプログラムです。`,
+    ),
+    { kind: 'scene', scene: { stage: TRACK, program: TIMED_DRIVE, tick: 90 }, caption: caption(
+      'Stopped after two seconds, 200 on from where it started.',
+      '2 秒走り、出発点から 200 進んだところで止まっている。',
+    ) },
+    text(
+      `## Comparing with the tick before`,
+      `## 前の tick と比べる`,
+    ),
+    code(COUNT_HITS),
+    text(
+      `\`last_hp\` keeps the HP of the tick before. If \`hp\` is now lower, the robot was hit; it adds 1 to \`hits\` each time, and after the third hit it backs off.
+
+The \`hit\` sensor would tell you about a hit too. A variable is used here to show how to remember how things were.`,
+      `\`last_hp\` に前の tick の HP を覚えておき、今の \`hp\` の方が小さければ、撃たれたと分かります。そのたびに \`hits\` を 1 増やし、3 発当たったら後ろへ下がります。
+
+撃たれたことは \`hit\` センサーでも分かります。ここでは、前の様子を覚えておくやり方を見せるために変数を使いました。`,
+    ),
+    { kind: 'scene', scene: { stage: SHOT_AT, program: COUNT_HITS, tick: 110 }, caption: caption(
+      'Hit three times, ALPHA (right) is backing off.',
+      '3 発当たったので、ALPHA（右）が後ろへ下がっている。',
+    ) },
+    text(
+      `## Seeing them in Watch
+
+While debugging, Watch (bottom right of the screen) shows the variables as they are now. Check there that a number goes up the way you meant.`,
+      `## ウォッチで中身を見る
+
+デバッグ中は、画面右下の「ウォッチ」に変数の今の値が出ます。数が思ったとおりに増えているか、ここで確かめられます。`,
+    ),
+    { kind: 'see', topics: ['values'] },
+  ],
+};
+
+const FUNCTIONS: BookChapter = {
+  id: 'functions',
+  title: { en: 'Giving things names', ja: 'まとめて名前を付ける' },
+  blocks: [
+    text(
+      `As a program grows, it gets hard to tell what each part does. A **function** puts a few lines together under a name.`,
+      `プログラムが長くなってくると、どこで何をしているのか分かりにくくなります。何行かをひとまとめにして名前を付けられるのが **関数** です。`,
+    ),
+    text(
+      `## def, and calling by name
+
+Here is the program of Chapter 5 again, written with functions.`,
+      `## def で作って、名前で呼ぶ
+
+第 5 章のプログラムを、関数を使って書き直してみます。`,
+    ),
+    code(SEARCH_AND_SHOOT_IN_FUNCTIONS),
+    text(
+      `- The three lines under \`def attack()\` are a function called \`attack\`.
+- A line \`attack()\` runs those three lines.
+
+It plays exactly the same match as before (checked with a real one). But now the \`loop\` alone says what the robot does: attack when it sees the enemy, search when it does not. Write the \`()\` even when there is nothing in them.`,
+      `- \`def attack()\` の下の 3 行が、\`attack\` という名前の関数です。
+- \`attack()\` と書いた行で、その 3 行が実行されます。
+
+動きは書き直す前とまったく同じです（本物の試合で確かめてあります）。それでも、\`loop\` の中を読むだけで「見えたら攻撃、見えなければ探す」と分かるようになりました。中に何もなくても \`()\` は付けます。`,
+    ),
+    text(
+      `## Arguments
+
+You can hand a function a number.`,
+      `## 引数
+
+関数に数を渡すこともできます。`,
+    ),
+    code(`def turn_by(degrees)
+    turn right degrees
+
+turn_by(90)
+turn_by(-45)
+`),
+    text(
+      `\`degrees\` is an **argument**: it holds the number written in the call.`,
+      `\`degrees\` を **引数** といいます。呼ぶときに書いた数が入ります。`,
+    ),
+    text(
+      `## A function that gives back a value`,
+      `## 値を返す関数`,
+    ),
+    code(WITHIN_RANGE),
+    text(
+      `The number after \`return\` is the value of the function. \`margin()\` is how much room is left before the edge of the gun's range: above 0, the enemy is in range. The robot drives until it is, then stops and shoots.`,
+      `\`return\` のあとに書いた数が、関数の値になります。\`margin()\` は「射程まであとどれだけ余裕があるか」で、プラスなら敵が射程に入っています。射程に入るまで走り、入ったら止まって撃ちます。`,
+    ),
+    { kind: 'scene', scene: { stage: FAR, program: WITHIN_RANGE, tick: 120 }, caption: caption(
+      'ALPHA (right) stopped once the target was in range, and is shooting.',
+      'ALPHA（右）は、的が射程に入ったところで止まって撃っている。',
+    ) },
+    text(
+      `## A function that takes time cannot be a value
+
+A function used as a value, as in the condition of an \`if\`, cannot have actions (\`wait\`, \`fire\` and so on) or \`loop\` in it: the tick would end in the middle of checking the condition.`,
+      `## 時間のかかる関数は、値には使えない
+
+\`if\` の条件のように値として使う関数には、行動（\`wait\` や \`fire\` など）や \`loop\` を入れられません。条件を調べている途中で tick が終わってしまうからです。`,
+    ),
+    { kind: 'error', program: VALUE_THAT_TAKES_TIME, caption: caption(
+      'A function with an action in it, used in a condition.',
+      '行動の入った関数を条件に使うと、こう言われる。',
+    ) },
+    text(
+      `A function called as a line of its own, as \`attack()\` was, can have actions in it and take as many ticks as it likes.`,
+      `\`attack()\` のように行として呼ぶ関数なら、行動を入れても、何 tick かかってもかまいません。`,
+    ),
+    { kind: 'see', topics: ['functions-help'] },
+  ],
+};
+
+const DEBUGGING: BookChapter = {
+  id: 'debugging',
+  title: { en: 'When it does not do what you meant', ja: '思った通りに動かないとき' },
+  blocks: [
+    text(
+      `A robot that does not do what you meant is an everyday thing. To fix it:
+
+- First, think how it should move.
+- Run a match, and find where it does something else.
+- Then find out which lines of the program were running there.`,
+      `ロボットが思ったとおりに動かないのは、いつものことです。直すときは、次の順に進めます。
+
+- まず、どう動くはずかを考える。
+- 試合をして、そのとおりにならないところを見つける。
+- そこで、プログラムのどの行が動いていたかを調べる。`,
+    ),
+    text(
+      `## Reading an error
+
+When a program is written wrong, the match does not even start. The message in the log says which line is wrong, and how. Here are three common ones.`,
+      `## エラーを読む
+
+書き方がまちがっていると、試合はそもそも始まりません。ログに出るメッセージに、何行目の何がおかしいかが書いてあります。よくある 3 つを見てみましょう。`,
+    ),
+    { kind: 'error', program: MISSING_INDENT, caption: caption('The line inside loop is not indented.', 'loop の中の行を字下げし忘れた。') },
+    { kind: 'error', program: MISSPELT, caption: caption('fire is misspelt.', 'fire のつづりをまちがえた。') },
+    { kind: 'error', program: NEVER_SET, caption: caption('limit is never set.', 'limit に一度も set していない。') },
+    text(
+      `## Stuck at the wall
+
+Harder are the programs that do start, but move oddly. Here is one.`,
+      `## 壁で止まったまま
+
+試合は始まるのに、動きがおかしい。こちらの方が手ごわい問題です。例を見てみます。`,
+    ),
+    code(STUCK),
+    { kind: 'scene', scene: { stage: CORNER, program: STUCK, tick: 150 }, caption: caption(
+      'It drove into the top wall, and stays there.',
+      '上の壁にぶつかって、そのまま止まっている。',
+    ) },
+    text(
+      `It sets off with \`drive forward\` and then only waits, so once it reaches the wall it stays there. Make it turn when the way is blocked:`,
+      `\`drive forward\` で走り出したあとは待っているだけなので、壁にぶつかったら止まったままです。前がふさがったら向きを変えるようにします。`,
+    ),
+    code(UNSTUCK),
+    { kind: 'scene', scene: { stage: CORNER, program: UNSTUCK, tick: 300 }, caption: caption(
+      'At the wall it turned right, and is driving along it.',
+      '壁にぶつかったら右へ回り、壁に沿って走っている。',
+    ) },
+    text(
+      `## label: which way is it going?
+
+The \`label TURN\` and \`label GO\` above change nothing about how the robot moves. While debugging, the name shows under the robot, so you can see at a glance which branch it is in.`,
+      `## label で、今どこを通っているか見る
+
+上の \`label TURN\` と \`label GO\` は、動きには何も影響しません。デバッグ中はロボットの下にその名前が出るので、今どちらの道を通っているかが一目で分かります。`,
+    ),
+    text(
+      `## The tools
+
+| Tool | What for |
+|---|---|
+| Log | what happened, in order. Click a row to go to that moment |
+| \`label\` | shows under the robot which way the program is going |
+| Watch | the variables and sensors as they are now |
+| \`1▶\` | on one line at a time |
+| \`1▷\` | goes through a called function in one go, and stops at the next line |
+| Click a line number (◆) | goes to where that line runs next. Click again to take it off |
+
+When you wonder why a line never runs, put a ◆ on it and on the lines before it, and see how far the program gets. Where it stops getting, look in Watch at the condition just before.`,
+      `## 道具のまとめ
+
+| 道具 | 使いどころ |
+|---|---|
+| ログ | 何が起きたかを時間順に見る。行を押すと、その時点へ移る |
+| \`label\` | 今どの道を通っているかを、ロボットの下に出す |
+| ウォッチ | 変数とセンサーの今の値を見る |
+| \`1▶\` | 1 行ずつ進める |
+| \`1▷\` | 呼んだ関数の中は一気に進めて、次の行で止まる |
+| 行番号を押す（◆） | その行が次に実行される時点へ移る。もう一度押すと外れる |
+
+「この行がなぜ実行されないのか」と思ったら、その行とその手前の行に ◆ を付けて、どこまで来ているかを見てください。来ていない行があれば、その手前の条件がどうなっているかをウォッチで確かめます。`,
+    ),
+    text(
+      `## End of Part 1
+
+That is all of Part 1. With ticks, sensors, \`if\`, variables, functions and debugging, you can write any robot. Part 2 uses them to work out how to win (it is still being written).`,
+      `## 第 1 部のおわりに
+
+第 1 部はここまでです。tick、センサー、\`if\`、変数、関数、デバッグがそろえば、どんなロボットでも書けます。第 2 部では、これを使って勝つための作戦を考えます（これから書きます）。`,
+    ),
+    { kind: 'see', topics: ['debugging-help', 'errors'] },
+  ],
+};
+
 export const BOOK: readonly BookPart[] = [
   {
     id: 'part-1',
     title: { en: 'Part 1: Thinking in programs', ja: '第 1 部 プログラムで考える' },
-    chapters: [WHAT_A_PROGRAM_IS, MAKING_IT_MOVE, TICKS],
+    chapters: [WHAT_A_PROGRAM_IS, MAKING_IT_MOVE, TICKS, LOOKING_AROUND, IF, REMEMBERING, FUNCTIONS, DEBUGGING],
   },
 ];
 

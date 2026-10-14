@@ -23,8 +23,19 @@ export interface Timeline {
   ticks: number;
 }
 
+/** The sensors a table of readings can show: see readingsRows. */
+export type ReadingSensor = 'enemy_visible' | 'enemy_distance' | 'enemy_angle' | 'hp';
+
+/** What a robot's sensors read on some ticks of a real match, as a table. */
+export interface Readings {
+  stage: Stage;
+  program: string;
+  ticks: readonly number[];
+  sensors: readonly ReadingSensor[];
+}
+
 /** A diagram drawn by the book itself: see figures.ts. */
-export type FigureId = 'tick-steps' | 'program-vs-tick';
+export type FigureId = 'tick-steps' | 'program-vs-tick' | 'angles';
 
 /** A picture of the game's screens: see shots.ts. */
 export type ShotId = 'program' | 'debug';
@@ -34,6 +45,9 @@ export type BookBlock =
   | { kind: 'code'; code: string }
   | { kind: 'scene'; scene: Scene; caption: Text }
   | { kind: 'timeline'; timeline: Timeline; caption: Text }
+  | { kind: 'readings'; readings: Readings; caption: Text }
+  /** A program with a mistake in it, and what the game says about it, in the language of the page. */
+  | { kind: 'error'; program: string; caption: Text }
   | { kind: 'figure'; figure: FigureId; caption: Text }
   | { kind: 'shot'; shot: ShotId; caption: Text }
   /** Where the help says more: the ids of its topics. */

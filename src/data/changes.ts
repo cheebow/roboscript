@@ -12,8 +12,8 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-14',
-    en: 'The RoboScript book has begun (book.html, BOOK in the start menu): a read for someone who has never written a program. First, three chapters: What a program is, Making it move, and Time goes in ticks. More chapters, and Part 2 on winning, are to come.',
-    ja: '「RoboScript の本」を始めました（book.html。起動メニューの「本」）。プログラムを書いたことがない人向けの読み物です。まずは「プログラムってなに？」「動かしてみる」「時間は tick で進む」の 3 章です。続きと、勝つための第 2 部はこれから書きます。',
+    en: 'The RoboScript book has begun (book.html, BOOK in the start menu): a read for someone who has never written a program. First, the eight chapters of Part 1, Thinking in programs: ticks, sensors, if, variables, functions and debugging. Part 2, on winning, is to come.',
+    ja: '「RoboScript の本」を始めました（book.html。起動メニューの「本」）。プログラムを書いたことがない人向けの読み物です。まずは第 1 部「プログラムで考える」の 8 章。tick、センサー、if、変数、関数、デバッグまでを扱います。勝つための第 2 部はこれから書きます。',
   },
   {
     date: '2026-10-10',

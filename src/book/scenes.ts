@@ -6,7 +6,7 @@ import { stageLoadout, tutorialMatch } from '../tutorial/match';
 import { type Stage, stageTeams } from '../tutorial/types';
 import { createElement } from '../ui/dom';
 import { BattleView } from '../view/battle_view';
-import type { Scene, Timeline } from './types';
+import type { ReadingSensor, Readings, Scene, Timeline } from './types';
 
 // The book's pictures of matches: each is a real match, played from its
 // stage, its program and its seed when the page is read, so a picture always
@@ -26,6 +26,21 @@ export function recordFor(stage: Stage, program: string, ticks: number): { recor
 export function timelineRows(timeline: Timeline): (readonly number[])[] {
   const { recording } = recordFor(timeline.stage, timeline.program, timeline.ticks);
   return recording.snapshots.slice(1, timeline.ticks + 1).map((snapshot) => snapshot.robots[0].executedLines);
+}
+
+/** What ALPHA's sensors read on each of the ticks asked for, one row a tick, in the order of the sensors. */
+export function readingsRows(readings: Readings): (boolean | number)[][] {
+  const { recording } = recordFor(readings.stage, readings.program, Math.max(...readings.ticks));
+  return readings.ticks.map((tick) => {
+    const robot = recording.snapshots[tick].robots[0];
+    const value: Record<ReadingSensor, boolean | number> = {
+      enemy_visible: robot.enemyVisible,
+      enemy_distance: robot.enemyDistance,
+      enemy_angle: robot.enemyAngle,
+      hp: robot.hp,
+    };
+    return readings.sensors.map((sensor) => value[sensor]);
+  });
 }
 
 /**

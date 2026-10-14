@@ -34,7 +34,7 @@ export const HELP: readonly HelpSection[] = [
 - In a **CONTEST**, gather many robots for a league or a tournament.
 - In **CHALLENGE**, solve set puzzles and collect stars.
 - New here? Start with the **TUTORIAL**: it teaches the language one step at a time.
-- New to programming? **The RoboScript book** (book.html, BOOK in the start menu) can be read through, from how a robot's program thinks to how to win.
+- New to programming? Try **the RoboScript book** (book.html, BOOK in the start menu).
 
 The start menu comes up when the page opens, its lines grouped under LEARN, SOLO, TEAM BATTLE and HELP & SETTINGS; ⏻ at the left of the top bar brings it back at any time. The tabs at the top switch screens.`, ja: `RoboScript は、ロボットの動きを **プログラムで決めて** 戦わせるゲームです。試合中にロボットを操作することはありません。どう動くかは、試合の前に書いたプログラムがすべて決めます。
 
@@ -43,7 +43,7 @@ The start menu comes up when the page opens, its lines grouped under LEARN, SOLO
 - **大会** で、たくさんのロボットを集めてリーグ戦やトーナメントをします。
 - **チャレンジ** で、条件つきの課題を解いて星を集めます。
 - 初めてなら **チュートリアル** から始めましょう。一歩ずつ書き方を学べます。
-- プログラムを書くのが初めてなら、**RoboScript の本**（book.html。起動メニューの「本」）も読んでみてください。ロボットのプログラムの考え方から勝ち方まで、通して読めます。
+- プログラムを書くのが初めてなら、**RoboScript の本**（book.html。起動メニューの「本」）もどうぞ。
 
 ページを開くと起動メニューが出ます（「まなぶ」「個人戦」「チーム戦」「ヘルプと設定」に分かれています）。上部バー左端の ⏻ でいつでも戻れます。上のタブで画面を切り替えられます。` } },
       { id: 'program-screen', title: { en: `The program screen`, ja: `プログラムの画面` }, body: { en: `The screen for writing code, trying it in a match, and fixing it.

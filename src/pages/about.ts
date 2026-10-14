@@ -158,12 +158,12 @@ export function renderAbout(): HTMLElement {
   const readLink = createElement('a', '', inLanguage({ en: 'the help page', ja: 'ヘルプのページ' }));
   readLink.href = './help.html';
   const bookText = createElement('span', '', inLanguage({
-    en: '. New to programming? Read it through, from a first program to winning, in ',
-    ja: '。プログラムを書くのが初めてなら、はじめてのプログラムから勝ち方まで通して読める ',
+    en: '. New to programming? Try ',
+    ja: '。プログラムを書くのが初めてなら、',
   }));
-  const bookLink = createElement('a', '', inLanguage({ en: 'the RoboScript book', ja: 'RoboScript の本' }));
+  const bookLink = createElement('a', '', inLanguage({ en: 'the RoboScript book', ja: '「RoboScript の本」' }));
   bookLink.href = './book.html';
-  readFirst.append(readText, readLink, bookText, bookLink, inLanguage({ en: '.', ja: ' もどうぞ。' }));
+  readFirst.append(readText, readLink, bookText, bookLink, inLanguage({ en: '.', ja: 'もどうぞ。' }));
 
   main.append(hero, shot, pillars, featuresTitle, list, readFirst);
   return main;

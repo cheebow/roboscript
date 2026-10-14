@@ -17,6 +17,9 @@ import type { BookBlock, BookChapter, BookPart } from './types';
 // The text of the book. Each chapter is a run of blocks; the text blocks use
 // the little markup of the help (see renderMarkup). A number the text gives
 // about a program of examples.ts is checked by tests/book.test.ts.
+//
+// The Japanese is written as Japanese, not as a translation of the English:
+// short sentences, plain words, nothing said that the reader can see anyway.
 
 function text(en: string, ja: string): BookBlock {
   return { kind: 'text', text: { en, ja } };
@@ -35,73 +38,69 @@ const WHAT_A_PROGRAM_IS: BookChapter = {
   title: { en: 'What a program is', ja: 'プログラムってなに？' },
   blocks: [
     text(
-      `In RoboScript you never steer your robot. Before the match you write down what it should do, and in the match it does exactly that, by itself. That written list of what to do is a **program**.
+      `In RoboScript you cannot steer your robot during a match. It moves by the **program** you wrote before the match.
 
-A program is like a recipe. A recipe says "cut the onion, then fry it, then add salt", one step after another, and a cook follows it from the top. A robot follows its program from the top in the same way.`,
-      `RoboScript では、試合中にロボットを操作しません。試合の前に「どう動くか」を書いておき、試合ではロボットがその通りに、ひとりで動きます。この「やることを書いたもの」が **プログラム** です。
+A program is like a recipe. You cut the onion, fry it, add salt, in that order from the top; a robot runs its program from the top line down in the same way.`,
+      `RoboScript では、試合中にロボットを操作できません。ロボットは、試合の前に書いておいた **プログラム** のとおりに動きます。
 
-プログラムは料理のレシピに似ています。レシピには「玉ねぎを切る」「炒める」「塩を入れる」と手順が順に書いてあり、料理する人は上から順にその通りに進めます。ロボットも、プログラムを上から順にその通りに進めます。`,
+プログラムは、料理のレシピのようなものです。「玉ねぎを切る」「炒める」「塩を入れる」と上から順に進めるように、ロボットもプログラムを上の行から順に実行します。`,
     ),
     text(
-      `## A robot does what is written, and nothing else
+      `## It does what is written, and nothing else
 
-There is one big difference from a cook. A cook who sees the pan is burning turns the heat down without being told. A robot never does anything that is not written. It does not guess what you meant, and it does not notice what you forgot to write.
+A cook turns the heat down when the pan starts to burn, without being told. A robot does not. It does nothing that is not written, and it never notices what you forgot to write.
 
-That may sound hard, but it is what makes the game fun. When the robot does something odd, the reason is always somewhere in the program. Find it, fix it, and the robot gets better.`,
+In return, when a robot does something odd, the cause is always somewhere in its program. Finding it and fixing it is what the game is about.`,
       `## 書いたことしかしない
 
-料理する人とは、一つ大きく違うところがあります。人は、鍋が焦げそうなら言われなくても火を弱めます。ロボットは、書いていないことは決してしません。「たぶんこうしたいんだろう」と察してはくれないし、書き忘れたことに気づいてもくれません。
+人なら、鍋が焦げそうになれば言われなくても火を弱めます。ロボットはそうはいきません。書いていないことはしないし、書き忘れたことにも気づきません。
 
-難しそうに聞こえますが、ここがこのゲームのおもしろいところです。ロボットが変な動きをしたら、その理由は必ずプログラムのどこかにあります。見つけて直せば、ロボットはそのぶん強くなります。`,
+そのかわり、ロボットがおかしな動きをしたら、原因は必ずプログラムのどこかにあります。そこを見つけて直すのが、このゲームのおもしろさです。`,
     ),
     text(
-      `## Your first program
+      `## A first program
 
-Here is a whole program. It is only three lines.`,
+A program of three lines:`,
       `## はじめてのプログラム
 
-これで一つのプログラムです。たった 3 行です。`,
+3 行だけのプログラムです。`,
     ),
     code(FIRST_PROGRAM),
     text(
-      `Read it in words, from the top:
+      `- \`loop\`: repeat the two lines below, for ever
+- \`turn enemy\`: turn towards the enemy
+- \`fire\`: shoot
 
-- \`loop\`: do the lines under me (the ones moved to the right) again and again, for ever.
-- \`turn enemy\`: turn your body towards the enemy.
-- \`fire\`: shoot.
+It turns towards the enemy and shoots, again and again until the match is over. The lines inside \`loop\` start with four spaces.`,
+      `- \`loop\`: 下の 2 行をずっと繰り返す
+- \`turn enemy\`: 敵の方へ回る
+- \`fire\`: 撃つ
 
-So the robot turns towards the enemy, shoots, turns towards it again, shoots again, and so on until the match is over. The words of a program are English, in small letters. The lines inside \`loop\` start with four spaces; that is how the program shows which lines belong to it.`,
-      `上から言葉に直すと、こうなります。
-
-- \`loop\`: 下の、右に下げて書いた行を、ずっと繰り返す。
-- \`turn enemy\`: 車体を敵の方へ回す。
-- \`fire\`: 撃つ。
-
-つまりこのロボットは、敵の方へ回って撃ち、また回って撃ち……と、試合が終わるまで続けます。プログラムの言葉は英語の小文字です。\`loop\` の中の行は、先頭に半角の空白を 4 つ入れて書きます。こうして「どの行が \`loop\` の中か」を表します。`,
+敵の方へ回って撃つ、を試合が終わるまで繰り返します。\`loop\` の中の行は、頭に半角スペースを 4 つ入れて書きます。`,
     ),
     text(
-      `## The same program, the same match
+      `## Same program, same match
 
-A match has no luck in it that you cannot see. With the same robots, the same map and the same **seed** (a number shown at the top right of the battle view), a match plays out exactly the same every time. So when you change one line and run the match again, whatever is different was made by that line. That is what lets you improve a robot step by step.`,
+With the same robots, the same map and the same **seed** (the number at the top right of the battle view), a match comes out exactly the same every time. Change one line, run the match again, and whatever is different was made by that line. That is how you improve a robot a little at a time.`,
       `## 同じプログラムなら、同じ試合
 
-試合には、見えない運はありません。同じロボット、同じマップ、同じ **seed**（戦闘画面の右上に出る数）なら、何度試合をしても、まったく同じ試合になります。ですから、1 行だけ直してもう一度試合をしたとき、違いが出たら、それはその 1 行のせいです。だから少しずつロボットを良くしていけます。`,
+ロボット、マップ、**seed**（戦闘画面の右上に出ている数）が同じなら、試合は何度やってもまったく同じになります。1 行直して試合をやり直したとき、何かが変わったら、それはその 1 行のせいです。だから少しずつ直していけます。`,
     ),
     { kind: 'shot', shot: 'program', caption: caption(
-      'The program screen: the editor where you write (middle), the match (right) and the log of what happened (below).',
-      'プログラムの画面。真ん中がプログラムを書くエディタ、右が試合、下が試合で起きたことの記録（ログ）です。',
+      'The program screen: the editor in the middle, the match on the right, the log (what happened in the match) below.',
+      'プログラムの画面。真ん中がエディタ、右が試合、下がログ（試合で起きたことの記録）。',
     ) },
     text(
       `## How to read this book
 
-Part 1 is about how to think in programs: what happens when a line runs, how a robot looks around and decides. Part 2 is about winning: how the built-in robots fight, the parts, the challenges.
+Part 1 explains how a program runs and how a robot looks around and decides what to do. Part 2 is about winning: how the built-in robots fight, the parts, the challenges.
 
-Every program in the book really works. Open the PROGRAM screen of the game, write one into the editor and press RUN, and you will see what the book says. Changing it a little and seeing what happens is the quickest way to learn.`,
+Every program in the book works as it is. Write it into the editor of the PROGRAM screen and press RUN. Then change it a little and see what happens: that is the quickest way to learn.`,
       `## この本の読み方
 
-第 1 部は、プログラムでの考え方の話です。1 行を実行すると何が起きるか、ロボットがどうやって周りを見て決めるかを説明します。第 2 部は勝つための話で、内蔵ロボットの戦い方、パーツ、チャレンジを扱います。
+第 1 部では、プログラムがどう実行されるか、ロボットがどうやって周りを見て動きを決めるかを説明します。第 2 部は勝つための話です。内蔵ロボットの戦い方、パーツ、チャレンジを取り上げます。
 
-本に出てくるプログラムは、どれも本当に動きます。ゲームの「プログラム」の画面を開いてエディタに書き写し、「実行」を押せば、本に書いてある通りになるのが見られます。少し書きかえて、何が変わるか試すのが一番の近道です。`,
+本に出てくるプログラムは、どれもそのまま動きます。ゲームの「プログラム」画面のエディタに書き写して「実行」を押してみてください。少し書きかえて、どう変わるか試すと早く身につきます。`,
     ),
     { kind: 'see', topics: ['welcome', 'program-screen', 'basics'] },
   ],
@@ -112,94 +111,94 @@ const MAKING_IT_MOVE: BookChapter = {
   title: { en: 'Making it move', ja: '動かしてみる' },
   blocks: [
     text(
-      `## One line: one shot
+      `## One line, one shot
 
-The smallest program is a single line.`,
+The shortest program is one line.`,
       `## 1 行で 1 発
 
-一番小さいプログラムは、1 行だけです。`,
+いちばん短いプログラムは 1 行です。`,
     ),
     code(ONE_SHOT),
     text(
-      `The robot shoots once, straight ahead of its gun, and then stands still for the rest of the match. The program had one line; after it there is nothing more to do. The log says so: "program finished".`,
-      `ロボットは砲塔の向いている方へ 1 発撃ち、あとは試合が終わるまで何もしません。プログラムは 1 行だけで、その先にはもうやることがないからです。ログにも「プログラムが終わった」と出ます。`,
+      `The robot fires once and then does nothing more: after that one line, the program is over. The log says so.`,
+      `ロボットは 1 発撃って、あとは何もしません。1 行で、プログラムが終わってしまうからです。ログにも、プログラムが終わったことが出ます。`,
     ),
     { kind: 'scene', scene: { stage: RANGE, program: ONE_SHOT, tick: 12 }, caption: caption(
-      'ALPHA (right) has fired its one shot at the target. The bullet is on its way.',
-      'ALPHA（右）が 1 発だけ撃ったところ。弾が的（左）へ向かって飛んでいます。',
+      'The one shot of ALPHA (right) on its way to the target (left).',
+      'ALPHA（右）が撃った 1 発が、的（左）へ飛んでいるところ。',
     ) },
     text(
-      `## Again and again: loop
+      `## Keep shooting: loop
 
-To keep shooting, put \`fire\` inside a \`loop\`. The lines inside a \`loop\` are written four spaces in from it, and run again and again, for the whole match.`,
-      `## 何度でも: loop
+To keep shooting, put \`fire\` inside a \`loop\`.`,
+      `## 撃ち続ける: loop
 
-撃ち続けるには、\`fire\` を \`loop\` の中に入れます。\`loop\` の中の行は 4 つ下げて書き、試合の間ずっと繰り返されます。`,
+撃ち続けたいときは、\`fire\` を \`loop\` の中に入れます。`,
     ),
     code(KEEP_FIRING),
     { kind: 'scene', scene: { stage: RANGE, program: KEEP_FIRING, tick: 40 }, caption: caption(
-      'With loop, ALPHA keeps shooting: the first shot has hit, the next is on its way.',
-      'loop があるので、ALPHA は撃ち続けます。最初の弾は当たり、次の弾が飛んでいます。',
+      'With loop it keeps shooting: the first shot has hit, the second is on its way.',
+      'loop があるので撃ち続けます。1 発目はもう当たり、2 発目が飛んでいます。',
     ) },
     text(
-      `## The commands
+      `## Commands
 
-These are the commands that make a robot do something. The words after them (\`left\`, \`enemy\`…) say which way.
+The commands that make a robot move:
 
 | Command | What it does |
 |---|---|
 | \`turn left\` / \`turn right\` | turns the body a little (6 degrees) |
-| \`turn left 90\` | turns the body 90 degrees, however long it takes |
+| \`turn left 90\` | turns the body 90 degrees |
 | \`turn enemy\` | turns the body towards the enemy |
-| \`aim enemy\` | turns only the gun on top towards the enemy |
+| \`aim enemy\` | turns only the gun towards the enemy |
 | \`fire\` | shoots |
-| \`guard\` | braces against a bullet: it does half the damage |
-| \`wait\` | does nothing for a moment |
-| \`drive forward\` / \`drive backward\` / \`drive stop\` | starts driving, or stops |`,
+| \`guard\` | braces: a bullet that hits does half the damage |
+| \`wait\` | waits a moment |
+| \`drive forward\` / \`drive backward\` / \`drive stop\` | drives forward / backward / stops |`,
       `## 命令
 
-ロボットに何かをさせる命令を並べます。後ろの言葉（\`left\`、\`enemy\` など）は、どちらへ、を表します。
+ロボットを動かす命令です。
 
 | 命令 | すること |
 |---|---|
 | \`turn left\` / \`turn right\` | 車体を少し（6 度）回す |
-| \`turn left 90\` | 車体を 90 度回す（回り切るまで続く） |
+| \`turn left 90\` | 車体を 90 度回す |
 | \`turn enemy\` | 車体を敵の方へ回す |
-| \`aim enemy\` | 上に載った砲塔だけを敵の方へ回す |
+| \`aim enemy\` | 砲塔だけを敵の方へ回す |
 | \`fire\` | 撃つ |
-| \`guard\` | 身構える。当たった弾のダメージが半分になる |
-| \`wait\` | 少しの間、何もしない |
-| \`drive forward\` / \`drive backward\` / \`drive stop\` | 前へ / 後ろへ走り出す、止まる |`,
+| \`guard\` | 身構える（当たった弾のダメージが半分になる） |
+| \`wait\` | 少し待つ |
+| \`drive forward\` / \`drive backward\` / \`drive stop\` | 前へ走る / 後ろへ走る / 止まる |`,
     ),
     text(
-      `## Driving goes on by itself
+      `## Driving is a setting
 
-\`drive\` is a little different from the rest. It does not drive a set distance: it switches the driving on, and the robot keeps going until a \`drive stop\` (or a wall). So this one line is enough to drive across the field, even though the program ends at once.`,
+\`drive\` is a little different from the other commands. It does not drive a set distance: it switches driving on, and the robot keeps going until it is stopped (or hits a wall). So this one line is enough to drive on and on.`,
       `## 走るのは「設定」
 
-\`drive\` だけは、ほかの命令と少し違います。決まった距離を走るのではなく、「走る」に切りかえるだけです。\`drive stop\` を実行するまで（または壁にぶつかるまで）、ロボットは走り続けます。ですから、次の 1 行だけでも、プログラムはすぐに終わるのに、ロボットはフィールドを走っていきます。`,
+\`drive\` だけは、ほかの命令と少し違います。決まった距離を走るのではなく、「走る」状態に切りかえるだけです。止めるまで（または壁にぶつかるまで）走り続けます。なので、次の 1 行だけでも、ロボットはずっと走っていきます。`,
     ),
     code(DRIVE_ON),
     { kind: 'scene', scene: { stage: TRACK, program: DRIVE_ON, tick: 90 }, caption: caption(
-      'Three seconds in: the program ended at once, but ALPHA is still driving towards the goal.',
-      '3 秒後。プログラムはとっくに終わっていますが、ALPHA はゴールに向かって走り続けています。',
+      'Three seconds in. The program ended long ago, but ALPHA is still driving.',
+      '3 秒後。プログラムはとっくに終わっていますが、ALPHA は走り続けています。',
     ) },
     text(
-      `Put two commands one after another, and the robot does them in that order. This one turns a quarter turn to the left, then drives straight on.`,
-      `命令を続けて書けば、その順に行います。次のプログラムは、左に 90 度回ってから、まっすぐ走ります。`,
+      `Two commands one after another run in that order. This program turns left 90 degrees, then drives straight on.`,
+      `命令を 2 つ並べると、その順に実行します。これは、左に 90 度回ってから、まっすぐ走るプログラムです。`,
     ),
     code(TURN_THEN_DRIVE),
     { kind: 'scene', scene: { stage: QUARTER, program: TURN_THEN_DRIVE, tick: 75 }, caption: caption(
-      'ALPHA started facing right. It turned left, to face the top, and is driving up to the goal.',
-      'ALPHA は右を向いて始まりました。左に回って上を向き、ゴールに向かって走っています。',
+      'ALPHA started facing right, turned left to face up, and is driving to the goal.',
+      'ALPHA は右向きで始まり、左に回って上を向き、ゴールへ走っています。',
     ) },
     text(
       `## When a line is wrong
 
-Write a word the game does not know, or forget the spaces in front of a line inside \`loop\`, and the match does not start. The line turns red and the log says what is wrong. That is not a failure: the game is telling you where to look. Fix the line and press RUN again.`,
+Write a word the game does not know, or forget the spaces in front of a line inside \`loop\`, and the match does not start. The line turns red, and the log says what is wrong. Fix it and press RUN again.`,
       `## 書きまちがえたら
 
-知らない言葉を書いたり、\`loop\` の中の行の前の空白を忘れたりすると、試合が始まりません。その行が赤くなり、ログに何がおかしいかが出ます。これは失敗ではなく、ゲームが「ここを見て」と教えてくれているのです。直してもう一度「実行」を押しましょう。`,
+知らない言葉を書いたり、\`loop\` の中の行の字下げを忘れたりすると、試合は始まりません。その行が赤くなり、どこがおかしいかがログに出ます。直してから、もう一度「実行」を押してください。`,
     ),
     { kind: 'see', topics: ['moving', 'errors'] },
   ],
@@ -210,178 +209,182 @@ const TICKS: BookChapter = {
   title: { en: 'Time goes in ticks', ja: '時間は tick で進む' },
   blocks: [
     text(
-      `This chapter is the most important one in Part 1. It is about the biggest difference between a robot's program and the programs you may know, and once it is clear, many puzzling things a robot does make sense.`,
-      `この章は、第 1 部で一番大事な章です。ロボットのプログラムと、ふつうのプログラムとの一番大きな違いの話です。ここが分かると、ロボットの「なんで？」という動きの多くに説明がつきます。`,
+      `The most important chapter of Part 1. A robot's program does not run the way ordinary programs do. Once this is clear, most of the puzzling things a robot does make sense.`,
+      `第 1 部でいちばん大事な章です。ロボットのプログラムは、ふつうのプログラムと進み方が違います。ここが分かると、ロボットの「なんで？」の多くが説明できるようになります。`,
     ),
     text(
       `## An ordinary program runs at once
 
-Most programs — a calculator, a web page, a game's own code — run from start to end as fast as the computer can: thousands of lines in a blink. Nobody can see the lines go by.
+An ordinary program, such as a calculator or a web page, runs from start to end in one go. Thousands of lines take no time at all.
 
-A robot's program is different. It runs **along with the clock of the match**. The match goes forward in small steps called **ticks**: 30 ticks make one second. In each tick, every robot does one thing, then everything moves on to the next tick. Like the pictures of a flip book, the ticks one after another make the match.`,
+A robot's program runs a little at a time, **along with the clock of the match**. Match time goes in **ticks**: 30 ticks make a second. In each tick, each robot does one action. Like a flip book, the ticks one after another make the match.`,
       `## ふつうのプログラムは一瞬で終わる
 
-電卓、ウェブページ、ゲームそのものを動かすプログラムなど、ふつうのプログラムは、始めから終わりまで、コンピュータにできる限りの速さで進みます。何千行でも一瞬です。行が進んでいくのを目で見ることはできません。
+電卓やウェブページのような、ふつうのプログラムは、始めから終わりまで一気に進みます。何千行あっても一瞬です。
 
-ロボットのプログラムは違います。**試合の時計に合わせて** 進みます。試合は **tick**（ティック）という小さな区切りで進み、30 tick で 1 秒です。1 tick ごとに、どのロボットも 1 つのことをして、全体が次の tick へ進みます。パラパラ漫画の 1 枚 1 枚のように、tick が積み重なって試合になります。`,
+ロボットのプログラムは、**試合の時計に合わせて** 少しずつ進みます。試合の時間は **tick**（ティック）という単位で進み、30 tick が 1 秒です。ロボットは 1 tick ごとに 1 つずつ行動します。パラパラ漫画のように、tick が積み重なって試合になります。`,
     ),
     { kind: 'figure', figure: 'program-vs-tick', caption: caption(
-      'The same five lines. An ordinary program runs them all at once; a robot runs them a few at a time, tick by tick.',
-      '同じ 5 行でも、ふつうのプログラムは一度に全部進み、ロボットのプログラムは tick ごとに少しずつ進みます。',
+      'The same five lines: an ordinary program runs them all at once; a robot\'s runs a few of them each tick.',
+      '同じ 5 行でも、ふつうのプログラムは一度に全部進み、ロボットのプログラムは tick ごとに少しずつ進む。',
     ) },
     text(
-      `## One action ends the tick
+      `## One action, and the tick is over
 
-Which lines run in one tick? The rule is short:
+How far the program gets in one tick follows a short rule:
 
-- The lines that make the robot do something — \`turn\`, \`aim\`, \`face\`, \`fire\`, \`guard\`, \`wait\` — are **actions**. When the program runs an action, **that tick is over**. The next tick goes on from the next line.
-- The other lines — \`drive\`, \`if\`, \`set\`, \`label\`, \`loop\` and so on — **take no time**. After one of them, the program goes straight on to the next line, in the same tick.
+- \`turn\`, \`aim\`, \`face\`, \`fire\`, \`guard\` and \`wait\` are **actions**. When the program runs an action, that tick is over. The next tick starts from the next line.
+- \`drive\`, \`if\`, \`set\`, \`label\`, \`loop\` and the like **take no time**. The program goes on to the next line in the same tick.
 
-So in each tick, the program runs on until it has done one action. Let us see it with a real program.`,
-      `## 行動を 1 つしたら、その tick はおしまい
+Here it is with a real program.`,
+      `## 行動を 1 つしたら、その tick は終わり
 
-1 tick で、どこまで行が進むのでしょう。決まりは短いです。
+1 tick でどこまで進むかは、次の決まりで決まります。
 
-- ロボットに何かをさせる行、つまり \`turn\`、\`aim\`、\`face\`、\`fire\`、\`guard\`、\`wait\` は **行動** です。行動を 1 つ実行すると、**その tick はおしまい** です。次の tick は、その次の行から続きます。
-- それ以外の行、つまり \`drive\`、\`if\`、\`set\`、\`label\`、\`loop\` などは **時間がかかりません**。実行したら、同じ tick のまま、すぐ次の行へ進みます。
+- \`turn\`、\`aim\`、\`face\`、\`fire\`、\`guard\`、\`wait\` は **行動** です。行動を 1 つ実行すると、その tick は終わりです。次の tick は、その次の行から始まります。
+- \`drive\`、\`if\`、\`set\`、\`label\`、\`loop\` などは **時間がかかりません**。同じ tick のまま次の行へ進みます。
 
-つまりプログラムは、1 tick ごとに「行動を 1 つするところまで」進みます。本物のプログラムで見てみましょう。`,
+実際のプログラムで見てみましょう。`,
     ),
     code(TICK_BY_TICK),
     { kind: 'timeline', timeline: { stage: RANGE, program: TICK_BY_TICK, ticks: 6 }, caption: caption(
-      'Which line ran on which tick, taken from a real match. A filled dot is the action that ended the tick; a hollow one took no time.',
-      '本物の試合で、どの行がどの tick に実行されたか。塗った丸はその tick を終えた行動、白抜きの丸は時間のかからない行です。',
+      'Which line ran on which tick in a real match. A filled dot is the action that ended the tick; a hollow one took no time.',
+      '本物の試合で、どの行がどの tick に実行されたかを表にしたもの。● はその tick を終えた行動、○ は時間のかからない行。',
     ) },
     text(
-      `Read the chart column by column:
+      `Column by column:
 
-- **Tick 1**: line 1, \`turn left\`, is an action. The tick ends there.
-- **Tick 2**: line 2, \`drive forward\`, takes no time, so the program goes straight on to line 3, \`fire\`, in the same tick. Driving and shooting start together.
+- **Tick 1**: line 1, \`turn left\`. An action, so the tick ends here.
+- **Tick 2**: line 2, \`drive forward\`, takes no time, so the program goes on to \`fire\` on line 3. It starts driving and shoots in the same tick.
 - **Tick 3**: line 4, \`wait\`.
-- **Tick 4**: line 5, \`turn right\`. That was the last line: the program is over.
-- **Tick 5 on**: no line runs any more. But the robot is still driving, because \`drive forward\` switched the driving on and nothing switched it off.`,
-      `表を、左の列から順に読んでみます。
+- **Tick 4**: line 5, \`turn right\`. The last line: the program ends here.
+- **Tick 5 on**: no line is left to run. The robot still drives, though: \`drive forward\` set it going and nothing stopped it.`,
+      `表を左の列から見ていきます。
 
-- **tick 1**: 1 行目の \`turn left\` は行動です。ここでこの tick は終わります。
-- **tick 2**: 2 行目の \`drive forward\` は時間がかからないので、同じ tick のまま 3 行目の \`fire\` まで進みます。走り出すのと撃つのが同時です。
+- **tick 1**: 1 行目の \`turn left\`。行動なので、ここでこの tick は終わり。
+- **tick 2**: 2 行目の \`drive forward\` は時間がかからないので、そのまま 3 行目の \`fire\` まで進む。走り出すのと撃つのが同じ tick。
 - **tick 3**: 4 行目の \`wait\`。
-- **tick 4**: 5 行目の \`turn right\`。これが最後の行なので、プログラムは終わりです。
-- **tick 5 から**: もうどの行も実行されません。でもロボットは走り続けています。\`drive forward\` で走りに切りかえ、だれも止めていないからです。`,
+- **tick 4**: 5 行目の \`turn right\`。最後の行なので、プログラムはここで終わり。
+- **tick 5 以降**: 実行する行はもうありません。それでもロボットは走り続けます。\`drive forward\` で走り出したまま、止める命令がないからです。`,
     ),
     text(
       `## What happens in one tick
 
-In every tick, all the robots go through the same steps, in the same order:`,
+Every tick, all the robots go through the same steps in the same order.`,
       `## 1 tick の中で起きること
 
-どの tick でも、すべてのロボットが同じ手順を、同じ順番で進みます。`,
+どの tick も、全部のロボットが同じ順番で進みます。`,
     ),
     { kind: 'figure', figure: 'tick-steps', caption: caption(
-      'One tick: every robot looks, then every program thinks, then all of them move and shoot at the same moment.',
-      '1 tick の流れ。全員が見て、全員のプログラムが考えて、それから全員が同時に動き、撃ちます。',
+      'One tick: every robot looks, every program thinks, and then all of them move and shoot together.',
+      '1 tick の流れ。全員が周りを見て、全員のプログラムが考えてから、全員がいっせいに動いて撃つ。',
     ) },
     text(
-      `Two things follow from this:
+      `Two things follow:
 
-- **What a robot sees is what was there at the start of the tick.** The sensors (the robot's eyes and ears, Chapter 4) are read before the program thinks. If your robot turns in this tick, it sees the result in the next one.
-- **Nobody goes first.** All the robots move together. Your robot cannot see what the enemy will do in this tick and dodge it; it can only react in the next.`,
-      `ここから、二つのことが分かります。
+- **A robot sees what was there at the start of the tick.** The sensors (Chapter 4) are read before the program runs. If the robot turns in this tick, it sees the result in the next.
+- **Nobody moves first.** All the robots move together, so a robot cannot see what the enemy does in this tick and dodge it. It can react only in the next.`,
+      `ここから分かることが 2 つあります。
 
-- **ロボットが見ているのは、その tick の始めの様子です。** センサー（ロボットの目や耳。第 4 章）は、プログラムが考える前に読まれます。この tick で回っても、その結果が見えるのは次の tick です。
-- **どちらが先、はありません。** 全員が同時に動きます。敵がこの tick に何をするかを見てから避けることはできず、反応できるのは次の tick です。`,
+- **ロボットが見ているのは、その tick の始めの様子です。** センサー（第 4 章）はプログラムより先に読まれます。この tick で向きを変えても、それが見えるのは次の tick です。
+- **先に動く方はいません。** 全員がいっせいに動くので、敵がこの tick にすることを見てからよけることはできません。反応できるのは次の tick です。`,
     ),
     text(
       `## Lines that take many ticks
 
-Some lines are actions that go on for more than one tick. \`turn left 90\` turns 6 degrees a tick (with the standard legs) until it has turned 90: that is 15 ticks, half a second, all on one line.`,
+Some actions take more than a tick. \`turn left 90\` turns 6 degrees a tick (with standard legs), so turning 90 degrees takes 15 ticks, half a second. All that time, the program stays on this one line.`,
       `## 何 tick もかかる行
 
-行動の中には、1 tick では終わらないものもあります。\`turn left 90\` は、1 tick に 6 度ずつ（標準の脚のとき）、90 度回り切るまで回ります。15 tick、つまり 0.5 秒のあいだ、ずっとこの 1 行です。`,
+1 tick では終わらない行動もあります。\`turn left 90\` は 1 tick に 6 度ずつ（標準の脚の場合）回るので、90 度回るのに 15 tick（0.5 秒）かかります。その間、プログラムはずっとこの 1 行にいます。`,
     ),
     code(LONG_TURN),
     { kind: 'timeline', timeline: { stage: RANGE, program: LONG_TURN, ticks: 17 }, caption: caption(
-      'Line 1 is still running for 15 ticks. Only then does the program get to fire.',
-      '1 行目が 15 tick のあいだ続き、そのあとでやっと fire に進みます。',
+      'Line 1 runs for 15 ticks; fire comes only on tick 16.',
+      '1 行目が 15 tick 続いて、16 tick 目にやっと fire。',
     ) },
     text(
-      `\`face enemy\` is another: it turns until the robot faces the enemy. With the enemy right behind, that is half a turn — 30 ticks, a whole second.
+      `\`face enemy\` is the same: it keeps turning until the robot faces the enemy. With the enemy right behind, that is half a turn: 30 ticks, a whole second.
 
-**While a line like this runs, the program stays on it.** For that second the robot cannot shoot, cannot guard, and does not even look at whether a bullet is coming. Usually that is fine. But in a close fight, a second is long.
+**While such a line runs, the program goes no further.** For that second the robot can neither shoot nor guard, and does not notice a bullet coming. Usually that does not matter, but in a close fight a second is long.
 
-\`turn enemy\` turns for one tick only. Put it in a \`loop\` with other lines, and the robot can check things on every tick while it turns a little at a time. Which to use is one of the first choices that make a robot strong or weak; Chapter 5 comes back to it.`,
-      `\`face enemy\` も同じ仲間で、敵の方を向くまで回り続けます。敵が真後ろなら半回転で、30 tick、まるまる 1 秒かかります。
+\`turn enemy\` turns for one tick only. Put it in a \`loop\` with other lines, and the robot turns a little at a time while it checks its surroundings every tick. Which of the two you use changes how strong a robot is; Chapter 5 comes back to this.`,
+      `\`face enemy\` も同じで、敵の方を向くまで回り続けます。敵が真後ろにいれば半回転で 30 tick、まる 1 秒です。
 
-**こういう行が続いている間、プログラムはその行から先へ進みません。** その 1 秒のあいだ、ロボットは撃つことも、身構えることもできず、弾が飛んできているかを確かめることすらしません。たいていはそれで困りません。でも近くで撃ち合っているときの 1 秒は長いのです。
+**こういう行を実行している間は、プログラムが先へ進みません。** その 1 秒、ロボットは撃つことも身構えることもできず、弾が飛んできても気づきません。ふだんは問題になりませんが、近くで撃ち合っているときの 1 秒は長いです。
 
-\`turn enemy\` は 1 tick だけ回ります。ほかの行と一緒に \`loop\` に入れれば、少しずつ回りながら、tick ごとにいろいろ確かめられます。どちらを使うかは、ロボットの強さを分ける最初の選択の一つです。第 5 章でもう一度取り上げます。`,
+\`turn enemy\` なら 1 tick だけ回ります。ほかの行といっしょに \`loop\` に入れておけば、少しずつ向きを変えながら、tick ごとに周りを確かめられます。どちらを使うかで、ロボットの強さが変わってきます。この話は第 5 章でもう一度します。`,
     ),
     { kind: 'scene', scene: { stage: BEHIND, program: FACE_BEHIND, tick: 15 }, caption: caption(
-      'Half a second into face enemy: ALPHA has turned a quarter of the way round to the target behind it, and can do nothing else until it is done.',
-      'face enemy の途中（0.5 秒後）。ALPHA は後ろの的へ向かって 4 分の 1 回ったところで、回り切るまでほかのことはできません。',
+      'Half a second into face enemy: ALPHA has turned 90 degrees towards the target behind it, and can do nothing else until it is round.',
+      'face enemy の途中（0.5 秒後）。ALPHA は後ろの的の方へ 90 度回ったところで、回り終わるまでほかのことはできない。',
     ) },
     text(
       `## A round of a loop
 
-How long does one round of a \`loop\` take? It depends on how many actions are in it. \`loop\` itself takes no time; the actions inside take a tick each.`,
+The \`loop\` line itself takes no time. How long a round takes depends on how many actions are inside.`,
       `## loop の 1 周にかかる時間
 
-\`loop\` の 1 周には、どれだけ時間がかかるのでしょう。中にある行動の数で決まります。\`loop\` の行そのものは時間がかからず、中の行動が 1 つにつき 1 tick かかります。`,
+\`loop\` の行そのものは時間がかかりません。1 周にかかる時間は、中にある行動の数で決まります。`,
     ),
     code(TWO_TICK_LOOP),
     { kind: 'timeline', timeline: { stage: RANGE, program: TWO_TICK_LOOP, ticks: 6 }, caption: caption(
-      'Two actions in the loop, so a round takes two ticks: turn on one, fire on the next.',
-      'loop の中に行動が 2 つあるので、1 周に 2 tick。回る tick と撃つ tick が交互に来ます。',
+      'Two actions, so two ticks a round: a tick to turn, a tick to shoot, by turns.',
+      '行動が 2 つなので、1 周に 2 tick。回る tick と撃つ tick が交互に来る。',
     ) },
     text(
-      `Now the other way round: a \`loop\` with **no action** in it.`,
-      `では反対に、中に **行動がない** \`loop\` はどうなるでしょう。`,
+      `And a \`loop\` with no action in it?`,
+      `では、中に行動がない \`loop\` はどうなるでしょう。`,
     ),
     code(NO_ACTION_LOOP),
     text(
-      `\`drive forward\` takes no time, so the program never gets to the end of the tick: it goes round and round the loop within one tick. To stop that, the game counts the lines: after 1000 lines with no action, the robot does nothing for that tick, and the log says "too many lines without an action". (Here the robot does still drive, since the driving was switched on.)
+      `\`drive forward\` takes no time, so the program goes round and round the \`loop\` within one tick, and the tick never ends. So the game cuts it off after 1000 lines without an action: the robot does nothing that tick, and the log shows a warning. (Driving is a setting, so the robot keeps driving.)
 
-So remember: **every \`loop\` needs an action in it** — \`wait\` will do if there is nothing else to do.`,
-      `\`drive forward\` は時間がかからないので、プログラムはいつまでも tick の終わりにたどり着けず、1 tick の中で loop を回り続けます。これを止めるため、ゲームは行を数えています。行動のないまま 1000 行進んだら、その tick はロボットは何もせず、ログに「行動のない行が多すぎる」と出ます。（この例では、走りには切りかえてあるので、走ることだけは続けます。）
+**Always put at least one action in a \`loop\`.** If there is nothing to do, \`wait\` is enough.`,
+      `\`drive forward\` は時間がかからないので、プログラムは 1 tick の中で \`loop\` を回り続け、tick が終わりません。そこでゲームは、行動のないまま 1000 行進んだところで打ち切り、その tick は何もしなかったことにします。ログには警告が出ます。（走るのは「設定」なので、ロボットは走り続けています。）
 
-ですから **\`loop\` の中には必ず行動を入れる** と覚えておきましょう。ほかにすることがなければ \`wait\` で構いません。`,
+**\`loop\` の中には、必ず行動を 1 つは入れましょう。** することがなければ \`wait\` で十分です。`,
     ),
     text(
-      `## A shot takes time to land
+      `## From shot to hit
 
-Time matters to bullets too. A bullet flies 400 a second, so a target 350 away is hit about 0.8 seconds (24 ticks) after \`fire\`. In that time a moving enemy can be somewhere else. And a gun needs time between shots (0.8 seconds with the standard gun): a \`fire\` before it is ready does not shoot, but it still uses up the tick.`,
-      `## 撃ってから当たるまでにも時間がかかる
+Bullets take time too. A bullet goes 400 a second, so a target 350 away is hit about 0.8 seconds (24 ticks) after the shot. By then a moving enemy may be somewhere else.
 
-弾にも時間がかかります。弾は 1 秒に 400 進むので、350 離れた的に当たるのは、\`fire\` から約 0.8 秒（24 tick）後です。その間に、動いている敵は別の場所へ行っているかもしれません。また、銃は次の弾まで間があきます（標準の銃で 0.8 秒）。撃てるようになる前の \`fire\` は弾が出ませんが、その tick は使ってしまいます。`,
+And after a shot, the standard gun cannot shoot again for 0.8 seconds. A \`fire\` in that time fires nothing, and the tick goes by.`,
+      `## 撃ってから当たるまで
+
+弾が飛ぶのにも時間がかかります。弾は 1 秒に 400 進むので、350 離れた的に当たるのは、撃ってから約 0.8 秒（24 tick）後です。その間に、動いている敵は場所を変えているかもしれません。
+
+また、標準の銃は 1 発撃つと 0.8 秒たたないと次を撃てません。その間に \`fire\` を実行しても弾は出ず、tick だけが過ぎます。`,
     ),
     text(
-      `## Seeing ticks in the game
+      `## Watching ticks in the game
 
-The DEBUG button plays a match so that you can follow it. The yellow line is the one that runs next; the pale green lines are the ones that ran in the tick being shown. The \`1▶\` button goes on one line at a time while debugging, and one tick at a time otherwise. Going through a match tick by tick with your own program is the best way to get used to all this.`,
+Run a match with DEBUG and you can follow how the program goes. The yellow line runs next; the pale green lines ran in the current tick. The \`1▶\` button goes on one line at a time while debugging, and one tick at a time otherwise. Step through your own program a tick at a time, and you will soon get used to it.`,
       `## ゲームの中で tick を見る
 
-「デバッグ」ボタンで試合をすると、プログラムの進み方を追いかけられます。黄色の行は次に実行する行、薄い緑の行は表示中の tick で実行した行です。\`1▶\` ボタンは、デバッグ中は 1 行ずつ、それ以外では 1 tick ずつ進みます。自分のプログラムで試合を 1 tick ずつ進めてみるのが、慣れる一番の方法です。`,
+「デバッグ」で試合をすると、プログラムがどう進むかを追いかけられます。黄色の行は次に実行する行、薄い緑の行は今の tick で実行した行です。\`1▶\` ボタンを押すと、デバッグ中は 1 行ずつ、それ以外のときは 1 tick ずつ進みます。自分のプログラムを 1 tick ずつ進めてみると、すぐに慣れます。`,
     ),
     { kind: 'shot', shot: 'debug', caption: caption(
-      'Debugging: the match goes on as the program is followed line by line. The yellow line runs next; the green lines ran in this tick.',
-      'デバッグ中の画面。プログラムを 1 行ずつ追うのに合わせて試合が進みます。黄色の行が次に実行する行、緑の行がこの tick で実行した行です。',
+      'Debugging: the yellow line runs next; the green lines ran in this tick.',
+      'デバッグ中の画面。黄色が次に実行する行、緑がこの tick で実行した行。',
     ) },
     text(
       `## In short
 
-- The match goes in ticks: 30 a second.
-- In each tick, the program runs on until it does one action, and the tick is over.
+- A match goes in ticks: 30 make a second.
+- Each tick, the program runs on until it does one action.
 - \`drive\`, \`if\`, \`set\`, \`label\` and \`loop\` take no time.
 - \`drive\` is a setting: the robot keeps driving while it does other actions.
-- Some lines (\`turn left 90\`, \`face enemy\`) take many ticks, and the program does nothing else meanwhile.
+- \`turn left 90\` and \`face enemy\` take many ticks, and the program does nothing else meanwhile.
 - Every \`loop\` needs an action in it.
-- What a robot sees is what was there at the start of the tick.`,
+- A robot sees what was there at the start of the tick.`,
       `## まとめ
 
-- 試合は tick で進む。1 秒は 30 tick。
-- 1 tick ごとに、プログラムは行動を 1 つするところまで進み、その tick は終わる。
+- 試合は tick で進む。30 tick で 1 秒。
+- プログラムは、1 tick ごとに行動を 1 つするところまで進む。
 - \`drive\`、\`if\`、\`set\`、\`label\`、\`loop\` は時間がかからない。
 - \`drive\` は設定。ほかの行動をしている間も走り続ける。
-- \`turn left 90\` や \`face enemy\` のように何 tick もかかる行があり、その間はほかのことをしない。
+- \`turn left 90\` や \`face enemy\` は何 tick もかかり、その間ほかのことはしない。
 - \`loop\` の中には必ず行動を入れる。
 - ロボットが見ているのは、その tick の始めの様子。`,
     ),

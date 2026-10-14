@@ -110,7 +110,7 @@ export const en = {
   'boot.choice.help': 'HELP',
   'boot.choice.help.what': 'how to play, and the guide to the language',
   'boot.choice.book': 'BOOK',
-  'boot.choice.book.what': 'read it through: from a first program to winning (opens a page)',
+  'boot.choice.book.what': 'an introduction to programs, and how to win (opens a tab)',
   // Commentary of the arena
   'commentary.start.1': 'The match is on: {first} against {second}!',
   'commentary.start.2': '{first} and {second} take the field. Here we go!',
@@ -785,7 +785,7 @@ export const ja: Record<MessageKey, string> = {
   'boot.choice.help': 'ヘルプ',
   'boot.choice.help.what': '使い方とスクリプトの解説',
   'boot.choice.book': '本',
-  'boot.choice.book.what': '通して読む入門書と攻略本（別のページで開く）',
+  'boot.choice.book.what': 'プログラムの入門と攻略（別のタブで開く）',
   // アリーナの実況
   'commentary.start.1': '試合開始！ {first} 対 {second}！',
   'commentary.start.2': '{first} と {second} がフィールドに。いよいよです！',

@@ -75,13 +75,7 @@ export function renderBookPage(): HTMLElement {
   const nav = createElement('nav', 'help-page-nav book-nav');
   const content = createElement('main', 'help-page-content book-content');
 
-  content.append(
-    createElement('h1', 'about-section-title', inLanguage({ en: 'The RoboScript book', ja: 'RoboScript の本' })),
-    renderMarkup(inLanguage({
-      en: 'A book to read from the start: Part 1 explains how a robot\'s program thinks, for someone who has never written a program; Part 2 is about how to win. Every program in it works: write one into the game and see.',
-      ja: 'はじめから順に読む本です。第 1 部では、プログラムを書いたことがない人に向けて、ロボットのプログラムの考え方を説明します。第 2 部は勝ち方の話です。出てくるプログラムはどれも本当に動くので、ゲームに書き写して試してみてください。',
-    })),
-  );
+  content.append(createElement('h1', 'about-section-title', inLanguage({ en: 'The RoboScript book', ja: 'RoboScript の本' })));
 
   for (const part of BOOK) {
     nav.append(createElement('h2', '', inLanguage(part.title)));

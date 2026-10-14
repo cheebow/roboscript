@@ -8,9 +8,10 @@ import type { MatchupProgress } from '../book/matchup_worker';
 import { type MatchupRecord, matchCount } from '../book/matchups';
 import { createSceneFrame, readingsRows, timelineRows } from '../book/scenes';
 import { SHOTS } from '../book/shots';
-import type { BookBlock, BookChapter, Matchup } from '../book/types';
+import type { BookBlock, BookChapter, BookRobot, Matchup } from '../book/types';
 import { CHALLENGES, describeCondition, describeGoal } from '../challenge';
 import { type Loadout, PARTS, type Slot, STANDARD_LOADOUT, partsOf, statsOf } from '../data/parts';
+import { findTeamTemplate } from '../data/team_templates';
 import { findTemplate } from '../data/templates';
 import { partSummary } from '../i18n/parts';
 import { compileScript } from '../ai/roboscript';
@@ -57,7 +58,7 @@ function readingsTable(sensors: readonly string[], ticks: readonly number[], row
 
 /** A built-in robot's program, folded away: it is long, and the text says what it does. */
 function templateCode(id: string): HTMLElement {
-  const template = findTemplate(id);
+  const template = findTemplate(id) ?? findTeamTemplate(id);
   if (template === undefined) throw new Error(`The book names a built-in robot there is not: ${id}`);
   const lines = template.source.replace(/\n$/, '').split('\n').length;
   const details = createElement('details', 'book-template');
@@ -68,8 +69,10 @@ function templateCode(id: string): HTMLElement {
   return details;
 }
 
-function nameOf(id: string): string {
-  return findTemplate(id)?.name ?? id;
+/** A robot's name: a template's, a team template's, or the book's own robot's. */
+function nameOf(robot: string | BookRobot): string {
+  if (typeof robot !== 'string') return inLanguage(robot.name);
+  return findTemplate(robot)?.name ?? findTeamTemplate(robot)?.name ?? robot;
 }
 
 /**
@@ -81,9 +84,13 @@ function matchupTable(matchup: Matchup): HTMLElement {
   const box = createElement('div', 'book-matchup');
   const count = matchCount(matchup);
   const arenas = matchup.arenas.length;
-  const what = createElement('p', 'book-caption', inLanguage({
+  const size = matchup.teamSize;
+  const what = createElement('p', 'book-caption', inLanguage(size === undefined ? {
     en: `${nameOf(matchup.robot)} against each robot: ${arenas} maps × ${matchup.seeds.length} seeds × both starting places, ${count} matches in all.`,
     ja: `${nameOf(matchup.robot)} と各ロボットを、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 先手後手を入れかえて、全部で ${count} 試合。`,
+  } : {
+    en: `${nameOf(matchup.robot)} against each team, ${size} a side, every machine with a Light body and a Pistol: ${arenas} maps × ${matchup.seeds.length} seeds × both ends, ${count} matches in all.`,
+    ja: `${nameOf(matchup.robot)} と各チームを、${size} 対 ${size}（どの機体も車体 Light・銃 Pistol）で、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 陣地を入れかえて、全部で ${count} 試合。`,
   }));
   const button = createElement('button', 'tool-button book-matchup-play', inLanguage({ en: 'Play the matches', ja: '試合をして確かめる' }));
   button.type = 'button';

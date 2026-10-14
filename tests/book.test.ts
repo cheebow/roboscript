@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
-import { BOOK, CHAPTERS, MATCHUP_ARENAS, RIVALS, matchupOf } from '../src/book/chapters';
+import { BOOK, CHAPTERS, MATCHUP_ARENAS, MATCHUP_SEEDS, RIVALS, TEAMS, TEAM_ARENAS, TEAM_SIZE, growMatchupOf, matchupOf, teamMatchupOf } from '../src/book/chapters';
 import { matchCount, matchupRecords } from '../src/book/matchups';
 import { BROADSIDE } from '../src/book/stages';
 import { CHALLENGES, type ChallengeResult, linesOf, playChallenge } from '../src/challenge';
-import { ARENAS } from '../src/data/arenas';
-import { TEAM_TEMPLATES } from '../src/data/team_templates';
+import { ARENAS, CASTLE_ARENAS } from '../src/data/arenas';
+import { TEAM_TEMPLATES, findTeamTemplate } from '../src/data/team_templates';
+import { TEAM_DEFAULT_LOADOUT, castleHpFor, teamCostLimitFor } from '../src/data/castle';
+import { prepareCastleFight } from '../src/arena/castle_match';
+import { Simulation } from '../src/sim/simulation';
 import { COST_LIMIT, PARTS, SLOTS, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../src/data/parts';
 import { TEMPLATES } from '../src/data/templates';
 import type { Stage } from '../src/tutorial/types';
@@ -17,6 +20,11 @@ import {
   DRIVE_ON,
   FACE_BEHIND,
   FIRE_FIRST,
+  GROW_1,
+  GROW_2,
+  GROW_3,
+  GROW_4,
+  GROW_HIDE,
   GUARD_AT_HIT,
   GUARD_FIRST,
   GUARD_ON_SIGHT,
@@ -130,6 +138,12 @@ describe('the book page', () => {
       if (block.kind !== 'scene') continue;
       const { recording } = recordFor(block.scene.stage, block.scene.program, block.scene.tick);
       expect(recording.snapshots.length, block.scene.program).toBeGreaterThan(block.scene.tick);
+    }
+  });
+
+  it('points only to chapters there are', () => {
+    for (const text of allText()) {
+      for (const [, number] of text.matchAll(/(?:Chapter |第 )(\d+)/g)) expect(Number(number), text.slice(0, 60)).toBeLessThanOrEqual(CHAPTERS.length);
     }
   });
 
@@ -676,5 +690,136 @@ describe('what the chapter on the challenges says', () => {
     expect(captain?.source).toContain('signal 1 to 2');
     expect(captain?.source).toContain('self_id');
     expect(play('base-call-by-name', captain?.source ?? '')).toMatchObject({ cleared: true });
+  });
+});
+
+describe('what the chapter on the base battle says', () => {
+  it('plays real team templates on real base maps', () => {
+    for (const id of TEAMS) expect(findTeamTemplate(id), id).toBeDefined();
+    for (const id of TEAM_ARENAS) expect(CASTLE_ARENAS.some((arena) => arena.id === id), id).toBe(true);
+    for (const block of BLOCKS) if (block.kind === 'template') expect(TEMPLATES.some((each) => each.id === block.template) || findTeamTemplate(block.template) !== undefined, block.template).toBe(true);
+  });
+
+  it('a base has 200 HP; 3 machines share a limit of 32; every machine starts with a Light body and a Pistol, cost 10', () => {
+    expect(castleHpFor(TEAM_SIZE)).toBe(200);
+    expect(teamCostLimitFor(TEAM_SIZE)).toBe(32);
+    expect(TEAM_DEFAULT_LOADOUT).toMatchObject({ body: 'light', gun: 'pistol' });
+    expect(costOf(TEAM_DEFAULT_LOADOUT)).toBe(10);
+  });
+
+  it('BaseSplit splits by self_id; BaseCall gathers with signal 1; BaseCaptain calls machine 2 alone', () => {
+    expect(findTeamTemplate('castle_split')?.source).toContain('if self_id == 1');
+    expect(findTeamTemplate('castle_call')?.source).toContain('signal 1');
+    expect(findTeamTemplate('castle_call')?.source).toContain('ally_signal');
+    expect(findTeamTemplate('base_captain')?.source).toContain('signal 1 to 2');
+  });
+
+  /** Every match of the first team against the second, from both ends, as the tables play them. */
+  const matches = (first: string, second: string) =>
+    TEAM_ARENAS.flatMap((arena) =>
+      MATCHUP_SEEDS.flatMap((seed) =>
+        [true, false].map((firstAtFront) => {
+          const kit = Array.from({ length: TEAM_SIZE }, () => TEAM_DEFAULT_LOADOUT);
+          const a = { name: 'A', source: findTeamTemplate(first)?.source ?? '', loadouts: kit };
+          const b = { name: 'B', source: findTeamTemplate(second)?.source ?? '', loadouts: kit };
+          const definition = CASTLE_ARENAS.find((each) => each.id === arena);
+          if (definition === undefined) throw new Error(arena);
+          const prepared = prepareCastleFight(firstAtFront ? [a, b] : [b, a], definition, TEAM_SIZE, seed);
+          if (!prepared.ok) throw new Error(prepared.problems.join(' '));
+          const simulation = new Simulation(prepared.fight.config);
+          while (simulation.result === null) simulation.step();
+          const [own, other] = firstAtFront ? [0, 1] : [1, 0];
+          const alive = (team: number) => simulation.robots.filter((robot, index) => Math.floor(index / TEAM_SIZE) === team && robot.alive).length;
+          const baseHp = (team: number) => simulation.bases.find((base) => base.team === team)?.hp ?? 0;
+          return {
+            arena,
+            won: simulation.result.winnerTeam === own,
+            reason: simulation.result.reason,
+            seconds: simulation.tick / MATCH_DEFAULTS.tickRate,
+            alive: [alive(own), alive(other)],
+            bases: [baseHp(own), baseHp(other)],
+          };
+        }),
+      ),
+    );
+
+  it('the ring: BaseRunner, BaseTurtle and BaseSplit each beat the next in every match', () => {
+    for (const [winner, loser] of [['castle_runner', 'castle_turtle'], ['castle_turtle', 'castle_split'], ['castle_split', 'castle_runner']]) {
+      const record = matchupRecords(teamMatchupOf(winner as (typeof TEAMS)[number])).find((each) => each.opponent === loser);
+      expect(record, `${winner} against ${loser}`).toMatchObject({ wins: 12, losses: 0, draws: 0 });
+    }
+  });
+
+  it('BaseRunner against BaseTurtle: the base falls within 15 seconds or so; on Castle Lanes the runners are all destroyed, and win on time with 60 off the base', () => {
+    for (const match of matches('castle_runner', 'castle_turtle')) {
+      expect(match.won).toBe(true);
+      if (match.arena === 'castle_lanes') {
+        expect(match).toMatchObject({ reason: 'timeout', alive: [0, TEAM_SIZE], bases: [200, 140] });
+      } else {
+        expect(match.reason).toBe('base destroyed');
+        expect(match.seconds).toBeLessThan(16);
+      }
+    }
+  });
+
+  it('BaseTurtle against BaseSplit: time up every match, both bases untouched', () => {
+    for (const match of matches('castle_turtle', 'castle_split')) expect(match).toMatchObject({ won: true, reason: 'timeout', bases: [200, 200] });
+  });
+
+  it('BaseSplit against BaseRunner: its base is sometimes worn down, but the runners are all destroyed every time and their base falls', () => {
+    const played = matches('castle_split', 'castle_runner');
+    for (const match of played) {
+      expect(match).toMatchObject({ won: true, reason: 'base destroyed' });
+      expect(match.alive[1]).toBe(0);
+    }
+    expect(played.some((match) => match.bases[0] < 200)).toBe(true);
+  });
+
+  it('BaseCall beats most teams, and loses more than it wins to BaseRunner', () => {
+    const records = matchupRecords(teamMatchupOf('castle_call'));
+    expect(records.filter((record) => record.wins > record.losses).length).toBeGreaterThanOrEqual(5);
+    const runner = records.find((record) => record.opponent === 'castle_runner');
+    expect((runner?.losses ?? 0) > (runner?.wins ?? 0)).toBe(true);
+  });
+});
+
+describe('what the chapter on growing a strategy says', () => {
+  const rounds = [GROW_1, GROW_2, GROW_3, GROW_4, GROW_HIDE].map((source) => matchupRecords(growMatchupOf({ en: '', ja: '' }, source)));
+  const wins = (records: { wins: number }[]) => records.reduce((sum, record) => sum + record.wins, 0);
+  const against = (records: { opponent: string; wins: number; losses: number }[], id: string) => {
+    const record = records.find((each) => each.opponent === id);
+    if (record === undefined) throw new Error(id);
+    return record;
+  };
+  const [first, second, third, fourth, hiding] = rounds;
+
+  it('plays the same 96 matches as Chapter 9', () => {
+    expect(matchCount(growMatchupOf({ en: '', ja: '' }, GROW_1))).toBe(96);
+  });
+
+  it('wins 56, then 63, 68 and 76; hiding brings it down to 61', () => {
+    expect(rounds.map(wins)).toEqual([56, 63, 68, 76, 61]);
+  });
+
+  it('round 1 loses to StrafeBot, CoverBot and HitAndHideBot, and beats the rest', () => {
+    const lost = first.filter((record) => record.losses > record.wins).map((record) => record.opponent);
+    expect(lost.sort()).toEqual(['cover_bot', 'hit_and_hide_bot', 'strafe_bot']);
+  });
+
+  it('round 2: StrafeBot from 5 wins to 11, and everyone beaten before still beaten', () => {
+    expect([against(first, 'strafe_bot').wins, against(second, 'strafe_bot').wins]).toEqual([5, 11]);
+    for (const record of first) if (record.wins > record.losses) expect(against(second, record.opponent).wins > against(second, record.opponent).losses, record.opponent).toBe(true);
+  });
+
+  it('round 3: the first wins against HitAndHideBot; round 4: from 2 to 9', () => {
+    expect(against(second, 'hit_and_hide_bot').wins).toBe(0);
+    expect(against(third, 'hit_and_hide_bot').wins).toBe(2);
+    expect(against(fourth, 'hit_and_hide_bot').wins).toBe(9);
+  });
+
+  it('CoverBot is never beaten by round 4; hiding loses to AggressiveBot, beaten every time before', () => {
+    expect(against(fourth, 'cover_bot').wins).toBe(0);
+    expect(against(fourth, 'aggressive_bot')).toMatchObject({ wins: 12, losses: 0 });
+    expect(against(hiding, 'aggressive_bot').losses).toBeGreaterThanOrEqual(10);
   });
 });

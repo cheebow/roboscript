@@ -1,5 +1,6 @@
 import type { Text } from '../tutorial/types';
-import { COST_LIMIT } from '../data/parts';
+import { TEAM_DEFAULT_LOADOUT, castleHpFor, teamCostLimitFor } from '../data/castle';
+import { COST_LIMIT, costOf } from '../data/parts';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
 import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHELTER, SHOT_AT, TRACK } from '../tutorial/stages';
 import {
@@ -12,6 +13,11 @@ import {
   FACE_BEHIND,
   FIRE_FIRST,
   FIRST_PROGRAM,
+  GROW_1,
+  GROW_2,
+  GROW_3,
+  GROW_4,
+  GROW_HIDE,
   GUARD_AT_HIT,
   GUARD_FIRST,
   GUARD_ON_SIGHT,
@@ -39,6 +45,7 @@ import {
   VALUE_THAT_TAKES_TIME,
   WITHIN_RANGE,
 } from './examples';
+import { matchCount } from './matchups';
 import { BROADSIDE } from './stages';
 import type { BookBlock, BookChapter, BookPart, Matchup } from './types';
 
@@ -1533,6 +1540,276 @@ In these four, your team is the same program running on each machine. Chapter 14
   ],
 };
 
+/** The team templates the base battle tables play against. */
+export const TEAMS = ['castle_rush', 'castle_split', 'castle_call', 'base_captain', 'castle_turtle', 'castle_rally', 'castle_runner', 'castle_formation', 'castle_decoy'] as const;
+export const TEAM_ARENAS = ['castle_plain', 'castle_lanes', 'castle_bastion'] as const;
+export const TEAM_SIZE = 3;
+
+/** A team template against all the others, 3 a side. */
+export function teamMatchupOf(team: (typeof TEAMS)[number]): Matchup {
+  return { robot: team, opponents: TEAMS.filter((other) => other !== team), arenas: TEAM_ARENAS, seeds: MATCHUP_SEEDS, teamSize: TEAM_SIZE };
+}
+
+const BASE_BATTLE: BookChapter = {
+  id: 'base-battle',
+  title: { en: 'Base battle strategies', ja: '基地戦の作戦' },
+  blocks: [
+    text(
+      `In the base battle, teams of 1 to 5 robots a side each defend a base. Choose TEAM BATTLE on the start menu: PROGRAM to write and try a team, WATCH to pit teams against each other.`,
+      `基地戦では、片側 1〜5 台のチームが、それぞれ自分の基地を守って戦います。起動メニューの「チーム戦」から入ります。「プログラム」でチームを書いて試し、「観戦」でチーム同士を戦わせます。`,
+    ),
+    text(
+      `## What decides the match
+
+- A team loses when its base's HP reaches 0. That alone: with every robot destroyed, a team is still in the match while its base stands.
+- At time up, the team whose base has more HP left wins. With the bases even, the HP of the robots still standing decides.
+- A base has ${castleHpFor(TEAM_SIZE)} HP. Only the enemy's bullets wear it down, each by the damage of the shot.
+- The parts of a team share one cost limit: 10 × robots + 2, ${teamCostLimitFor(TEAM_SIZE)} for ${TEAM_SIZE}. Every machine starts with a Light body and a Pistol, cost ${costOf(TEAM_DEFAULT_LOADOUT)}.
+
+So the base, not the robots, is what to aim at. Destroying every enemy robot does not win on its own; and shelling the base can win even while the enemy is still all there.`,
+      `## 勝ち負けの決まり方
+
+- 基地の HP が 0 になったチームの負けです。負けはそれだけで、ロボットが全部やられても、基地が残っていれば試合は続きます。
+- 時間切れのときは、基地の HP が多く残っている方の勝ちです。基地の HP が同じなら、残っているロボットの HP の合計で決まります。
+- 基地の HP は ${castleHpFor(TEAM_SIZE)} です。削れるのは敵の弾だけで、当たった弾の威力だけ減ります。
+- パーツのコストは、チーム全体で 1 つの上限です。10 × 台数 + 2 で、${TEAM_SIZE} 台なら ${teamCostLimitFor(TEAM_SIZE)}。どの機体も最初は車体 Light・銃 Pistol で、コスト ${costOf(TEAM_DEFAULT_LOADOUT)} です。
+
+ねらうのはロボットではなく基地です。敵のロボットを全部倒しても、それだけでは勝てません。逆に、敵がそろっていても、基地を撃ち続ければ勝てます。`,
+    ),
+    text(
+      `## One program, three robots
+
+A team has one program, and every machine runs its own copy of it. Written as it is, all three do the same thing. To give them different jobs, use \`self_id\`: the machine's number, 1, 2 or 3.
+
+BaseSplit leaves machine 1 at home to guard the base, and sends the others to attack:`,
+      `## 1 本のプログラムで 3 台を動かす
+
+チームのプログラムは 1 本で、どの機体も同じプログラムを自分の分だけ実行します。そのままでは 3 台とも同じ動きです。役割を分けるには \`self_id\` を使います。機体の番号で、1、2、3 のどれかです。
+
+BaseSplit は、1 番を基地の守りに残し、ほかの 2 台で攻めます。`,
+    ),
+    { kind: 'template', template: 'castle_split' },
+    text(
+      `\`if self_id == 1\` splits the program in two: the guard's part above, the attackers' below. \`base_distance\` and \`face base\` are about your own base, \`enemy_base_distance\` and \`face enemy_base\` about the enemy's.`,
+      `\`if self_id == 1\` で、プログラムを 2 つに分けています。上が守りの分、下が攻めの分です。\`base_distance\` と \`face base\` は自分の基地、\`enemy_base_distance\` と \`face enemy_base\` は敵の基地についての語です。`,
+    ),
+    text(
+      `## Telling each other
+
+A machine sees only what its own sensor sees. To pass on what it has found, it uses the team's radio. \`signal 1\` puts the number 1 on the radio, and from the next tick every machine reads it as \`ally_signal\`. What a number means is up to you.
+
+BaseCall uses it to gather: whoever sees an enemy sends \`signal 1\`, and the others head for it.`,
+      `## 知らせ合う
+
+機体に見えるのは、自分のセンサーに映るものだけです。見つけたことを仲間に伝えるには、チームの無線を使います。\`signal 1\` で無線に 1 という数を流すと、次の tick から全員の \`ally_signal\` が 1 になります。数の意味は自分で決めます。
+
+BaseCall はこれで集まります。敵を見つけた機体が \`signal 1\` を流し、ほかの機体がそこへ向かいます。`,
+    ),
+    { kind: 'template', template: 'castle_call' },
+    text(
+      `\`signal\` alone reaches everyone. \`signal 1 to 2\` reaches machine 2 alone. BaseCaptain's keeper calls only machine 2 home when an enemy comes, and the rest keep attacking: the way to clear the challenge "Call by name" (Chapter 13).`,
+      `\`signal\` だけだと全員に届きます。\`signal 1 to 2\` なら 2 番だけに届きます。BaseCaptain の守りは、敵が来たら 2 番だけを呼び戻し、残りは攻め続けます。第 13 章のチャレンジ「名指しで呼べ」の解き方です。`,
+    ),
+    { kind: 'template', template: 'base_captain' },
+    text(
+      `## Attack or defend
+
+The team programs each show one way of fighting.
+
+| Team | How it fights |
+|---|---|
+| BaseRush | All three run for the enemy base and shell it. Enemies in the way are shot. |
+| BaseRunner | Nothing but the base: it never shoots a robot. |
+| BaseTurtle | All three wall in their own base. At time up the base decides, so the enemy has to come. |
+| BaseSplit | Machine 1 guards, the others attack. |
+| BaseCall | Gathers on whoever sees an enemy. |
+| BaseRally | Attacks while the team is whole; once one falls, the rest go home to defend. |
+
+As with the robots of Chapter 9, no team beats them all. Played 3 a side, these three go round in a ring:`,
+      `## 攻めるか、守るか
+
+チームのプログラムは、それぞれ 1 つの戦い方の見本です。
+
+| チーム | 戦い方 |
+|---|---|
+| BaseRush | 3 台で敵の基地へ走って撃つ。じゃまな敵は撃つ |
+| BaseRunner | 基地だけをねらい、ロボットは撃たない |
+| BaseTurtle | 3 台で自分の基地を囲んで守る。時間切れは基地の HP で決まるので、敵は来るしかない |
+| BaseSplit | 1 番が守り、ほかが攻める |
+| BaseCall | 敵を見つけた機体のところへ集まる |
+| BaseRally | そろっている間は攻め、1 台やられたら全員で戻って守る |
+
+第 9 章のロボットと同じで、どのチームにも勝つチームはありません。3 対 3 で戦わせると、この 3 つは勝ち越しが一回りします。`,
+    ),
+    { kind: 'figure', figure: 'team-rivals', caption: caption(
+      'Played 3 a side, each team won all 12 of its matches against the next: BaseRunner against BaseTurtle, BaseTurtle against BaseSplit, BaseSplit against BaseRunner.',
+      '3 対 3 で、どの組も 12 戦全勝だった。BaseRunner は BaseTurtle に、BaseTurtle は BaseSplit に、BaseSplit は BaseRunner に勝つ。',
+    ) },
+    text(
+      `- **BaseRunner beats BaseTurtle.** On most maps the base fell within about 15 seconds. On Castle Lanes the runners were all shot down, but they had taken 60 off the base first: at time up, the base with more HP left won. Even with no robot left, a team can win.
+- **BaseTurtle beats BaseSplit.** Every match ran to time up with both bases untouched. The attackers were shot down before they reached the base, and the turtles had more HP left.
+- **BaseSplit beats BaseRunner.** The runners never shoot back. They sometimes wore BaseSplit's base down, but were all destroyed every time, and their own base fell first.
+
+Press the button to play the matches yourself:`,
+      `- **BaseRunner は BaseTurtle に勝つ。** たいていのマップで、15 秒ほどで基地が落ちました。Castle Lanes では BaseRunner が全滅しましたが、その前に基地を 60 削っていたので、時間切れで基地の HP が多い BaseRunner の勝ちです。ロボットが残っていなくても勝てます。
+- **BaseTurtle は BaseSplit に勝つ。** どの試合も、どちらの基地も無傷のまま時間切れでした。攻めの 2 台は基地にたどり着く前に倒され、残ったロボットの HP で BaseTurtle が上回りました。
+- **BaseSplit は BaseRunner に勝つ。** BaseRunner は撃ち返しません。BaseSplit の基地が削られることもありましたが、BaseRunner は毎回全滅し、先に自分の基地を落とされました。
+
+ボタンを押すと、実際に試合をして確かめられます。`,
+    ),
+    { kind: 'matchup', matchup: teamMatchupOf('castle_runner') },
+    { kind: 'matchup', matchup: teamMatchupOf('castle_turtle') },
+    { kind: 'matchup', matchup: teamMatchupOf('castle_split') },
+    text(
+      `BaseCall beats most teams: gathering on whoever sees an enemy, it fights with more machines than the enemy has there. Against BaseRunner, which never shoots, it loses more than it wins.`,
+      `BaseCall は、たいていのチームに勝ち越します。敵を見つけた機体のところへ集まるので、その場では敵より多い数で戦えます。ただ、撃ってこない BaseRunner には負け越します。`,
+    ),
+    { kind: 'matchup', matchup: teamMatchupOf('castle_call') },
+    text(
+      `## Hints for your own team
+
+- Decide first what to aim at: the enemy base, or the enemy robots.
+- Defending only does not lose at time up, but someone who shells the base from outside your range beats it.
+- Recovering by hiding is of little use here (Chapter 11). A base never recovers.
+- Parts can differ from machine to machine. Give one machine a Cannon to shell the base from far, for example, and keep the cost down elsewhere.`,
+      `## 自分のチームを作るときに
+
+- まず、ねらうのは敵の基地か、敵のロボットかを決めます。
+- 守るだけなら時間切れで負けにくいのですが、射程の外から基地を撃ってくる相手には負けます。
+- 隠れて回復する手は、ここではあまり効きません（第 11 章）。基地は回復しません。
+- パーツは機体ごとに変えられます。たとえば 1 台だけ Cannon にして遠くから基地を撃たせ、ほかでコストを抑える、という手もあります。`,
+    ),
+    { kind: 'see', topics: ['team-screen', 'team-words'] },
+  ],
+};
+
+const ROUND_1: Text = { en: 'Round 1', ja: '1 回目' };
+
+/** A robot of the growing chapter against the rivals of Chapter 9. */
+export function growMatchupOf(name: Text, source: string): Matchup {
+  return { robot: { name, source }, opponents: RIVALS, arenas: MATCHUP_ARENAS, seeds: MATCHUP_SEEDS };
+}
+
+const GROWING: BookChapter = {
+  id: 'growing',
+  title: { en: 'Growing your own strategy', ja: '自分の作戦を育てる' },
+  blocks: [
+    text(
+      `A strong robot is seldom written in one go. Write a simple one, let it fight, see where it loses, and change one thing. Then let it fight again. This chapter follows a robot through that, round by round.`,
+      `強いロボットは、一度には書けません。単純なものを書いて戦わせ、どこで負けるかを見て、1 か所だけ直す。そしてまた戦わせる。この章では、1 台のロボットをそうやって育てていきます。`,
+    ),
+    text(
+      `## Round 1: find it and shoot
+
+To start, the robot of Chapter 13's hints: it drives about until it sees the enemy, then stops, aims and fires.`,
+      `## 1 回目: 見つけて撃つ
+
+最初は、第 13 章のヒントにも出てきた形です。敵が見えるまで走り回り、見えたら止まって、狙って撃ちます。`,
+    ),
+    code(GROW_1),
+    text(
+      `Against the 8 built-in robots of Chapter 9, in the same ${matchCount(growMatchupOf(ROUND_1, GROW_1))} matches as there:`,
+      `第 9 章と同じ ${matchCount(growMatchupOf(ROUND_1, GROW_1))} 試合で、内蔵ロボット 8 体と戦わせてみます。`,
+    ),
+    { kind: 'matchup', matchup: growMatchupOf(ROUND_1, GROW_1) },
+    text(
+      `It won 56. Look at what it lost: StrafeBot, CoverBot and HitAndHideBot. StrafeBot drives across its fire, so it is the first to deal with.`,
+      `56 勝しました。負けた相手を見ます。StrafeBot、CoverBot、HitAndHideBot です。まず、横に走って弾をよける StrafeBot から手を付けます。`,
+    ),
+    text(
+      `## Round 2: shoot where it is going
+
+A robot driving across is missed by a shot at where it is now (Chapter 10). Change \`aim enemy\` to \`aim lead\`, and \`aim_angle\` to \`lead_angle\` with it:`,
+      `## 2 回目: 行く先を撃つ
+
+横に走る相手は、今いる場所を撃っても当たりません（第 10 章）。\`aim enemy\` を \`aim lead\` に、それに合わせて \`aim_angle\` を \`lead_angle\` にします。`,
+    ),
+    code(GROW_2),
+    { kind: 'matchup', matchup: growMatchupOf({ en: 'Round 2', ja: '2 回目' }, GROW_2) },
+    text(
+      `Against StrafeBot it went from 5 wins to 11, and 63 in all. Nothing it beat before was lost.`,
+      `StrafeBot には 5 勝から 11 勝になり、全部で 63 勝。前に勝てていた相手には、変わらず勝てています。`,
+    ),
+    text(
+      `## Round 3: guard
+
+Now add the guard of Chapter 11, just before a hit. It goes first in the loop, so that it is looked at on every tick:`,
+      `## 3 回目: guard する
+
+次は、第 11 章の「当たる直前の guard」を足します。毎 tick 確かめるように、loop のいちばん上に置きます。`,
+    ),
+    code(GROW_3),
+    { kind: 'matchup', matchup: growMatchupOf({ en: 'Round 3', ja: '3 回目' }, GROW_3) },
+    text(
+      `68 wins. A little better against several robots, and the first wins against HitAndHideBot.`,
+      `68 勝。いくつかの相手に少しずつ強くなり、HitAndHideBot から初めて勝ちを取りました。`,
+    ),
+    text(
+      `## Round 4: go to whoever shot you
+
+HitAndHideBot shoots, then hides out of sight. Shot by an enemy it cannot see, this robot only drives on. Make it turn the way the shot came from, and go there:`,
+      `## 4 回目: 撃ってきた方へ行く
+
+HitAndHideBot は撃っては見えない所へ隠れます。このロボットは、見えない相手に撃たれても走り回るだけです。撃たれたら弾の来た方を向いて、そちらへ行くようにします。`,
+    ),
+    code(GROW_4),
+    { kind: 'matchup', matchup: growMatchupOf({ en: 'Round 4', ja: '4 回目' }, GROW_4) },
+    text(
+      `Against HitAndHideBot, from 2 wins to 9, and 76 in all. In four rounds, 56 has become 76.`,
+      `HitAndHideBot には 2 勝から 9 勝、全部で 76 勝になりました。4 回で、56 勝が 76 勝です。`,
+    ),
+    text(
+      `## A change that made it worse
+
+CoverBot it still never beats. CoverBot hides and recovers, so this one tried the same: below 100 HP, hide and rest until back over 180.`,
+      `## 弱くなった直し方
+
+CoverBot には、まだ 1 度も勝てません。CoverBot は隠れて回復するので、こちらもまねをしてみました。HP が 100 を切ったら隠れて、180 を超えるまで休みます。`,
+    ),
+    code(GROW_HIDE),
+    { kind: 'matchup', matchup: growMatchupOf({ en: 'The hiding one', ja: '隠れる版' }, GROW_HIDE) },
+    text(
+      `61 wins: fewer than before. The table says where: AggressiveBot, beaten every time before, now wins nearly every match. It chases a robot that goes off to hide, and shoots it in the back.
+
+Not every change makes a robot stronger. Change one thing at a time, and let it fight the same matches again: then you can tell which change did what. Throw away a change that does not help.`,
+      `61 勝で、前より減りました。表を見ると、どこで減ったかが分かります。前は全勝していた AggressiveBot に、ほとんど負けています。隠れに行くロボットを追いかけて、後ろから撃ってくるからです。
+
+直せば必ず強くなるわけではありません。1 回に 1 か所だけ直して、同じ試合でもう一度戦わせる。そうすれば、どの直しが何を変えたかが分かります。効かなかった直しは、元に戻します。`,
+    ),
+    text(
+      `## The game's tools for it
+
+| Tool | Use it to |
+|---|---|
+| Arena, SERIES | play 20 matches against one robot at once, over every map, and count the wins |
+| ANALYSIS | see a match in numbers: shots hit, damage taken, HP over time, where the hits landed |
+| DEBUG | follow a lost match line by line, to see what the robot was thinking (Chapter 8) |
+| Garage | keep each version under a name of its own, to go back to or play against |
+| Contest | play many robots at once, in a league or a tournament |
+| Sharing | give a robot to someone, and play theirs |`,
+      `## 育てるための道具
+
+| 道具 | 使いみち |
+|---|---|
+| アリーナの「連戦」 | 1 体の相手と、全マップで 20 試合をまとめて戦わせ、勝ち数を数える |
+| 分析 | 試合を数字で見る。命中、受けたダメージ、HP の推移、当たった場所 |
+| デバッグ | 負けた試合を 1 行ずつ追って、ロボットが何を考えていたかを見る（第 8 章） |
+| ガレージ | 直すたびに名前を変えて保存しておく。戻したり、新旧で戦わせたりできる |
+| 大会 | たくさんのロボットを、リーグ戦かトーナメントで一度に戦わせる |
+| 共有 | 自分のロボットを人に渡し、人のロボットと戦う |`,
+    ),
+    text(
+      `## On from here
+
+This robot still loses to CoverBot. How would you beat it? Look at CoverBot's program in Chapter 9, and try something. When it wins, put it in a contest against the built-in robots, and then against a friend's.`,
+      `## ここから先は
+
+このロボットは、まだ CoverBot に勝てません。どうすれば勝てるでしょう。第 9 章で CoverBot のプログラムを読んで、試してみてください。勝てるようになったら、大会で内蔵ロボットと戦わせ、それから友だちのロボットとも戦わせてみましょう。`,
+    ),
+    { kind: 'see', topics: ['arena-screen', 'contest-screen', 'garage-help', 'sharing'] },
+  ],
+};
+
 export const BOOK: readonly BookPart[] = [
   {
     id: 'part-1',
@@ -1542,7 +1819,7 @@ export const BOOK: readonly BookPart[] = [
   {
     id: 'part-2',
     title: { en: 'Part 2: Strategies for winning', ja: '第 2 部 勝つための作戦' },
-    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER, CHALLENGES_CHAPTER],
+    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER, CHALLENGES_CHAPTER, BASE_BATTLE, GROWING],
   },
 ];
 

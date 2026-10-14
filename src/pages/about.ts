@@ -163,7 +163,16 @@ export function renderAbout(): HTMLElement {
   }));
   const bookLink = createElement('a', '', inLanguage({ en: 'the RoboScript book', ja: '「RoboScript の本」' }));
   bookLink.href = './book.html';
-  readFirst.append(readText, readLink, bookText, bookLink, inLanguage({ en: '.', ja: 'もどうぞ。' }));
+  readFirst.append(
+    readText,
+    readLink,
+    bookText,
+    bookLink,
+    inLanguage({
+      en: ': it reads through from your first program to the base battle, with real matches to look at and play.',
+      ja: 'もどうぞ。はじめてのプログラムから基地戦の作戦まで、本物の試合を見ながら通して読めます。',
+    }),
+  );
 
   main.append(hero, shot, pillars, featuresTitle, list, readFirst);
   return main;

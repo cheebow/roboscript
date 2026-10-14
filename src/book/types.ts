@@ -35,16 +35,25 @@ export interface Readings {
 }
 
 /** A diagram drawn by the book itself: see figures.ts. */
-export type FigureId = 'tick-steps' | 'program-vs-tick' | 'angles' | 'rivals' | 'spread';
+export type FigureId = 'tick-steps' | 'program-vs-tick' | 'angles' | 'rivals' | 'spread' | 'team-rivals';
 
-/** A built-in robot against others, played when the reader asks: see matchups.ts. */
+/** A robot of the book's own, by a name to show it by. */
+export interface BookRobot {
+  name: Text;
+  source: string;
+}
+
+/** A robot or a team against others, played when the reader asks: see matchups.ts. */
 export interface Matchup {
-  /** Template ids. */
-  robot: string;
+  /** A template id (a team template's, in a base battle), or a robot of the book's own. */
+  robot: string | BookRobot;
+  /** Template ids (team templates', in a base battle). */
   opponents: readonly string[];
-  /** Arena ids (ARENAS). */
+  /** Arena ids: ARENAS, or CASTLE_ARENAS in a base battle. */
   arenas: readonly string[];
   seeds: readonly number[];
+  /** Machines a side, for a base battle with the default parts; one on one without it. */
+  teamSize?: number;
 }
 
 /** A picture of the game's screens: see shots.ts. */

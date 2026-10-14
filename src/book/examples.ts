@@ -276,3 +276,102 @@ export const ANY_GUN = `loop
     else
         turn left
 `;
+
+/** Chapter 15, the first version: looks for the enemy, turning at walls; once it sees it, stops, aims and fires. */
+export const GROW_1 = `loop
+    if enemy_visible
+        drive stop
+        if aim_angle > 2 or aim_angle < -2
+            aim enemy
+        else
+            fire
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+
+/** Chapter 15, the second: aims at where the enemy will be. */
+export const GROW_2 = `loop
+    if enemy_visible
+        drive stop
+        if lead_angle > 2 or lead_angle < -2
+            aim lead
+        else
+            fire
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+
+/** Chapter 15, the third: guards just before a hit. */
+export const GROW_3 = `loop
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else if enemy_visible
+        drive stop
+        if lead_angle > 2 or lead_angle < -2
+            aim lead
+        else
+            fire
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+
+/** Chapter 15, the fourth: shot by an enemy it cannot see, it goes the way the shot came from. */
+export const GROW_4 = `loop
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else if enemy_visible
+        drive stop
+        if lead_angle > 2 or lead_angle < -2
+            aim lead
+        else
+            fire
+    else if hit
+        face hit
+        drive forward
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+
+/** Chapter 15, a change that made it worse: below 100 HP, it hides and rests until it is back over 180. */
+export const GROW_HIDE = `set resting = 0
+loop
+    if hp < 100
+        set resting = 1
+    if hp > 180
+        set resting = 0
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else if resting == 1 and hidden
+        drive stop
+        wait
+    else if resting == 1 and cover_visible
+        face cover
+        drive forward
+        wait
+    else if enemy_visible
+        drive stop
+        if lead_angle > 2 or lead_angle < -2
+            aim lead
+        else
+            fire
+    else if hit
+        face hit
+        drive forward
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;

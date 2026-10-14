@@ -167,6 +167,39 @@ function rivals(): SVGSVGElement {
   return root;
 }
 
+/** Three team templates that each beat the next, round in a ring, 3 a side. */
+function teamRivals(): SVGSVGElement {
+  const root = canvas(460, 290);
+  const [width, height] = [130, 40];
+  // Top, bottom right, bottom left: each beats the next.
+  const places: [string, number, number][] = [
+    ['BaseRunner', 165, 20],
+    ['BaseTurtle', 300, 220],
+    ['BaseSplit', 30, 220],
+  ];
+  for (const [name, x, y] of places) {
+    root.append(
+      svg('rect', { x, y, width, height, class: 'book-fig-box accent' }),
+      svg('text', { x: x + width / 2, y: y + 25, class: 'book-fig-title', 'text-anchor': 'middle' }, name),
+    );
+  }
+  const beats = inLanguage({ en: 'beats', ja: 'に勝ち越す' });
+  const arrows: [number, number, number, number, number, number, string][] = [
+    [270, 60, 345, 220, 322, 132, 'start'],
+    [300, 240, 160, 240, 230, 266, 'middle'],
+    [115, 220, 190, 60, 138, 132, 'end'],
+  ];
+  for (const [x1, y1, x2, y2, tx, ty, anchor] of arrows) {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const head = (turn: number) => `${x2 - 8 * Math.cos(angle + turn)},${y2 - 8 * Math.sin(angle + turn)}`;
+    root.append(
+      svg('path', { d: `M${x1},${y1} L${x2},${y2} M${head(0.5)} L${x2},${y2} L${head(-0.5)}`, class: 'book-fig-line' }),
+      svg('text', { x: tx, y: ty, class: 'book-fig-note', 'text-anchor': anchor }, beats),
+    );
+  }
+  return root;
+}
+
 /**
  * How far a shot can stray, to scale: a target the width of a robot, 350
  * away, and the widest a shot goes either side, standing and on the move.
@@ -197,7 +230,7 @@ function spread(): SVGSVGElement {
 }
 
 export function createFigure(id: FigureId): SVGSVGElement {
-  return id === 'tick-steps' ? tickSteps() : id === 'angles' ? angles() : id === 'rivals' ? rivals() : id === 'spread' ? spread() : programVsTick();
+  return id === 'tick-steps' ? tickSteps() : id === 'angles' ? angles() : id === 'rivals' ? rivals() : id === 'team-rivals' ? teamRivals() : id === 'spread' ? spread() : programVsTick();
 }
 
 /**

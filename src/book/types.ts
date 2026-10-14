@@ -65,6 +65,12 @@ export type BookBlock =
   | { kind: 'matchup'; matchup: Matchup }
   /** The parts of a slot, from the game's own list. */
   | { kind: 'parts'; slot: 'body' | 'legs' | 'gun' | 'sensor' }
+  /**
+   * A challenge of the game, as the game has it (its title, what to do, its
+   * conditions), with hints that tell more and more: the first shown, the
+   * others folded away until opened.
+   */
+  | { kind: 'challenge'; challenge: string; hints: readonly Text[] }
   /** Where the help says more: the ids of its topics. */
   | { kind: 'see'; topics: readonly string[] };
 

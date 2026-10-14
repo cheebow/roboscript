@@ -12,8 +12,8 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-14',
-    en: 'The RoboScript book has begun (book.html, BOOK in the start menu): a read for someone who has never written a program. Part 1, Thinking in programs, covers ticks, sensors, if, variables, functions and debugging; Part 2, Strategies for winning, covers how the built-in robots match up, shooting, defence and recovery, and choosing parts. The tables of how the built-in robots fare are played right in the page when you press the button. The rest of Part 2 (the challenges, the base battle, growing a strategy) is to come.',
-    ja: '「RoboScript の本」を始めました（book.html。起動メニューの「本」）。プログラムを書いたことがない人向けの読み物です。第 1 部「プログラムで考える」では tick、センサー、if、変数、関数、デバッグを、第 2 部「勝つための作戦」では内蔵ロボットの相性、撃ち合い、守りと回復、パーツ選びを扱います。内蔵ロボットの対戦表は、ボタンを押すとページの中で実際に試合をして作ります。第 2 部の続き（チャレンジ攻略、基地戦、作戦の育て方）はこれから書きます。',
+    en: 'The RoboScript book has begun (book.html, BOOK in the start menu): a read for someone who has never written a program. Part 1, Thinking in programs, covers ticks, sensors, if, variables, functions and debugging; Part 2, Strategies for winning, covers how the built-in robots match up, shooting, defence and recovery, choosing parts, and hints for every challenge. The tables of how the built-in robots fare are played right in the page when you press the button. The rest of Part 2 (the base battle, growing a strategy) is to come.',
+    ja: '「RoboScript の本」を始めました（book.html。起動メニューの「本」）。プログラムを書いたことがない人向けの読み物です。第 1 部「プログラムで考える」では tick、センサー、if、変数、関数、デバッグを、第 2 部「勝つための作戦」では内蔵ロボットの相性、撃ち合い、守りと回復、パーツ選び、チャレンジのヒントを扱います。内蔵ロボットの対戦表は、ボタンを押すとページの中で実際に試合をして作ります。第 2 部の続き（基地戦、作戦の育て方）はこれから書きます。',
   },
   {
     date: '2026-10-10',

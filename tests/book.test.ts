@@ -4,8 +4,10 @@ import { compileScript } from '../src/ai/roboscript';
 import { BOOK, CHAPTERS, MATCHUP_ARENAS, RIVALS, matchupOf } from '../src/book/chapters';
 import { matchCount, matchupRecords } from '../src/book/matchups';
 import { BROADSIDE } from '../src/book/stages';
+import { CHALLENGES, type ChallengeResult, linesOf, playChallenge } from '../src/challenge';
 import { ARENAS } from '../src/data/arenas';
-import { COST_LIMIT, PARTS, SLOTS, STANDARD_LOADOUT, type Slot, statsOf } from '../src/data/parts';
+import { TEAM_TEMPLATES } from '../src/data/team_templates';
+import { COST_LIMIT, PARTS, SLOTS, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../src/data/parts';
 import { TEMPLATES } from '../src/data/templates';
 import type { Stage } from '../src/tutorial/types';
 import {
@@ -67,6 +69,7 @@ function allText(): string[] {
     ...BOOK.flatMap((part) => [part.title.en, part.title.ja]),
     ...CHAPTERS.flatMap((chapter) => [chapter.title.en, chapter.title.ja]),
     ...BLOCKS.flatMap((block) => ('text' in block ? [block.text.en, block.text.ja] : 'caption' in block ? [block.caption.en, block.caption.ja] : [])),
+    ...BLOCKS.flatMap((block) => (block.kind === 'challenge' ? block.hints.flatMap((hint) => [hint.en, hint.ja]) : [])),
   ];
 }
 
@@ -469,5 +472,209 @@ describe('what the chapter on parts says', () => {
     const page = inLanguage('ja', renderBookPage);
     const rows = page.querySelectorAll('#parts table.book-parts tr');
     expect(rows.length).toBe(PARTS.length + SLOTS.length);
+  });
+});
+
+describe('what the chapter on the challenges says', () => {
+  const hinted = BLOCKS.flatMap((block) => (block.kind === 'challenge' ? [block] : []));
+
+  it('has hints for every challenge of the game, in its order, once each', () => {
+    expect(hinted.map((block) => block.challenge)).toEqual(CHALLENGES.map((challenge) => challenge.id));
+    for (const block of hinted) {
+      expect(block.hints.length, block.challenge).toBeGreaterThan(0);
+      for (const hint of block.hints) expect(hint.en.trim() !== '' && hint.ja.trim() !== '', block.challenge).toBe(true);
+    }
+  });
+
+  it.each(['en', 'ja'] as const)('shows each challenge with its first hint open and the rest folded, in %s', (language) => {
+    const page = inLanguage(language, renderBookPage);
+    const shown = page.querySelectorAll('.book-challenge');
+    expect(shown).toHaveLength(CHALLENGES.length);
+    shown.forEach((box, at) => {
+      expect(box.querySelector('h3')?.textContent).toContain(CHALLENGES[at].title[language]);
+      expect(box.querySelectorAll('div.book-hint')).toHaveLength(1);
+      expect(box.querySelectorAll('details.book-hint')).toHaveLength(hinted[at].hints.length - 1);
+    });
+  });
+
+  // The programs the hints lead to are kept here, out of the book: the hints tell the way, not the answer.
+  const find = (id: string) => {
+    const challenge = CHALLENGES.find((each) => each.id === id);
+    if (challenge === undefined) throw new Error(`no challenge ${id}`);
+    return challenge;
+  };
+  const template = (id: string) => {
+    const found = TEMPLATES.find((each) => each.id === id);
+    if (found === undefined) throw new Error(`no template ${id}`);
+    return found.source;
+  };
+  const play = (id: string, source: string, parts = {}): ChallengeResult => {
+    const result = playChallenge(find(id), source, parts);
+    if ('errors' in result) throw new Error(result.errors.join(' '));
+    return result;
+  };
+  /** Stands where it is, and aims and fires. */
+  const STAND = 'loop\n    aim enemy\n    fire\n';
+  /** Drives at the enemy until it is in range, then stops and shoots. */
+  const CLOSE_IN = `loop
+    if enemy_visible and enemy_distance < weapon_range - 50
+        drive stop
+        aim enemy
+        fire
+    else if enemy_visible
+        face enemy
+        drive forward
+        wait
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+  /** Looks for the enemy, turning at walls; once it sees it, stops, aims and fires. */
+  const HUNT = `loop
+    if enemy_visible
+        drive stop
+        if aim_angle > 2 or aim_angle < -2
+            aim enemy
+        else
+            fire
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+  /** The hunter that also turns to whoever shot it. */
+  const HUNT_THE_SHOOTER = HUNT.replace('    else\n        drive forward', '    else if hit\n        face hit\n        drive forward\n    else\n        drive forward');
+
+  it('first win: standing draws; searching without turning at walls draws; searching and turning, aiming first, wins', () => {
+    expect(play('first-win', STAND)).toMatchObject({ cleared: false });
+    expect(play('first-win', STAND).why?.en).toMatch(/draw/i);
+    expect(play('first-win', SEARCH_AND_SHOOT)).toMatchObject({ cleared: false });
+    expect(play('first-win', HUNT)).toMatchObject({ cleared: true });
+  });
+
+  it('pistol: driving at DumbBot loses; waiting for it wins', () => {
+    expect(play('pistol', CLOSE_IN)).toMatchObject({ cleared: false });
+    expect(play('pistol', STAND)).toMatchObject({ cleared: true });
+  });
+
+  it('untouchable: the standard gun reaches 400, a Cannon 520 and costs 4; 3 lines with a Cannon and a part of cost 2 clear it', () => {
+    expect(statsOf(STANDARD_LOADOUT).weaponRange).toBe(400);
+    const cannon = PARTS.find((part) => part.slot === 'gun' && part.id === 'cannon');
+    expect(cannon?.cost).toBe(4);
+    expect(statsOf({ ...STANDARD_LOADOUT, gun: 'cannon' }).weaponRange).toBe(520);
+    expect(costOf({ ...STANDARD_LOADOUT, gun: 'cannon' })).toBeGreaterThan(COST_LIMIT);
+    expect(linesOf(STAND)).toBe(3);
+    expect(play('untouchable', STAND)).toMatchObject({ cleared: false });
+    expect(play('untouchable', STAND, { gun: 'cannon', sensor: 'scope' })).toMatchObject({ cleared: true });
+    expect(play('untouchable', STAND, { gun: 'cannon', body: 'light' })).toMatchObject({ cleared: true });
+  });
+
+  it('short route: 5 lines get round the block, turning left or right', () => {
+    for (const way of ['left', 'right']) {
+      const source = `loop\n    drive forward\n    if blocked\n        turn ${way}\n    wait\n`;
+      expect(linesOf(source)).toBe(5);
+      expect(play('short-route', source), way).toMatchObject({ cleared: true });
+    }
+  });
+
+  it('against the clock: driving at SentryBot loses; standing and shooting wins in about 10 seconds', () => {
+    expect(play('speed-sentry', CLOSE_IN)).toMatchObject({ cleared: false });
+    const standing = play('speed-sentry', STAND);
+    expect(standing.cleared).toBe(true);
+    expect(standing.record.seconds).toBeGreaterThan(9.5);
+    expect(standing.record.seconds).toBeLessThan(11);
+  });
+
+  it('hide and heal: hiding once hurt clears it; hiding from the start does not', () => {
+    expect(play('hide-and-heal', HIDE_AND_REST)).toMatchObject({ cleared: true });
+    const atOnce = `loop
+    if hidden
+        drive stop
+        wait
+    else
+        face cover
+        drive forward
+        wait
+`;
+    expect(play('hide-and-heal', atOnce)).toMatchObject({ cleared: false });
+  });
+
+  it('iron guard: the guarding of Chapter 11 wins but guards too few times; one action a round clears it', () => {
+    const chapter11 = play('guard-wall', GUARD_AT_HIT);
+    expect(chapter11.cleared).toBe(false);
+    expect(chapter11.why?.en).toMatch(/guard/i);
+    expect(chapter11.record.hp).toBeGreaterThan(0);
+    const oneAction = `loop
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else if aim_angle > 2 or aim_angle < -2
+        aim enemy
+    else
+        fire
+`;
+    expect(play('guard-wall', oneAction)).toMatchObject({ cleared: true });
+  });
+
+  it('short sight: shooting only what it sees loses; turning to the shooter wins', () => {
+    expect(statsOf({ ...STANDARD_LOADOUT, sensor: 'short' }).sensorRange).toBe(300);
+    expect(play('short-sight', HUNT)).toMatchObject({ cleared: false });
+    expect(play('short-sight', HUNT_THE_SHOOTER)).toMatchObject({ cleared: true });
+  });
+
+  it('strafe buster: SentryBot\'s program wins in about 11 seconds; standing and shooting wins untouched in 37', () => {
+    const sentry = play('strafe-buster', template('sentry_bot'));
+    expect(sentry.cleared).toBe(true);
+    expect(Math.round(sentry.record.seconds)).toBe(11);
+    const standing = play('strafe-buster', STAND);
+    expect(standing.cleared).toBe(true);
+    expect(standing.record.hp).toBe(statsOf(STANDARD_LOADOUT).maxHp);
+    expect(Math.round(standing.record.seconds)).toBe(37);
+  });
+
+  it('light and fast: driving at AggressiveBot loses; standing wins with 40 HP; StrafeBot\'s program with 140', () => {
+    expect(play('light-body', CLOSE_IN)).toMatchObject({ cleared: false });
+    expect(play('light-body', STAND)).toMatchObject({ cleared: true, record: { hp: 40 } });
+    expect(play('light-body', template('strafe_bot'))).toMatchObject({ cleared: true, record: { hp: 140 } });
+  });
+
+  it('sharpshooter: DumbBot has 200 HP; aiming first clears it with the standard gun; a Cannon, at 45 a shot, in 8 shots or fewer', () => {
+    expect(statsOf(STANDARD_LOADOUT).maxHp).toBe(200);
+    expect(statsOf(STANDARD_LOADOUT).shotDamage).toBe(20);
+    expect(statsOf({ ...STANDARD_LOADOUT, gun: 'cannon' }).shotDamage).toBe(45);
+    expect(play('sharpshooter', HUNT)).toMatchObject({ cleared: true });
+    const cannon = play('sharpshooter', HUNT, { gun: 'cannon', body: 'light' });
+    expect(cannon.cleared).toBe(true);
+    expect(find('sharpshooter').stars[0]).toEqual({ kind: 'shots', max: 8 });
+    expect(cannon.starsMet[0]).toBe(true);
+  });
+
+  it('putting it all together: driving at SentryBot loses; standing wins with 40 HP; CoverBot\'s program with 162', () => {
+    expect(play('final', CLOSE_IN)).toMatchObject({ cleared: false });
+    expect(play('final', STAND)).toMatchObject({ cleared: true, record: { hp: 40 } });
+    expect(play('final', template('cover_bot'))).toMatchObject({ cleared: true, record: { hp: 162 } });
+  });
+
+  it('the champion: Short, Heavy; SentryBot\'s program wins with Sprint, Cannon and Scope, and loses without the Sprint', () => {
+    expect(find('champion').stage.botLoadout).toMatchObject({ body: 'heavy', sensor: 'short' });
+    expect(statsOf({ ...STANDARD_LOADOUT, sensor: 'scope' }).sensorRange).toBeGreaterThan(520);
+    expect(play('champion', template('sentry_bot'), { legs: 'sprint', gun: 'cannon', sensor: 'scope' })).toMatchObject({ cleared: true });
+    expect(play('champion', template('sentry_bot'), { gun: 'cannon', sensor: 'scope' })).toMatchObject({ cleared: false });
+  });
+
+  it('bring the base down: shelling the base alone brings it down without a hit taken', () => {
+    const challenge = find('castle-fall');
+    expect(challenge.answer).not.toContain('enemy_visible');
+    expect(play('castle-fall', challenge.answer)).toMatchObject({ cleared: true, starsMet: [true, true] });
+    expect(challenge.stars[1]).toEqual({ kind: 'noHit' });
+  });
+
+  it('call by name: BaseCaptain calls machine 2 alone with signal 1 to 2, and clears it', () => {
+    const captain = TEAM_TEMPLATES.find((each) => each.id === 'base_captain');
+    expect(captain?.source).toContain('signal 1 to 2');
+    expect(captain?.source).toContain('self_id');
+    expect(play('base-call-by-name', captain?.source ?? '')).toMatchObject({ cleared: true });
   });
 });

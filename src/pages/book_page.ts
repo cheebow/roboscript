@@ -9,7 +9,8 @@ import { type MatchupRecord, matchCount } from '../book/matchups';
 import { createSceneFrame, readingsRows, timelineRows } from '../book/scenes';
 import { SHOTS } from '../book/shots';
 import type { BookBlock, BookChapter, Matchup } from '../book/types';
-import { type Slot, STANDARD_LOADOUT, partsOf, statsOf } from '../data/parts';
+import { CHALLENGES, describeCondition, describeGoal } from '../challenge';
+import { type Loadout, PARTS, type Slot, STANDARD_LOADOUT, partsOf, statsOf } from '../data/parts';
 import { findTemplate } from '../data/templates';
 import { partSummary } from '../i18n/parts';
 import { compileScript } from '../ai/roboscript';
@@ -170,6 +171,58 @@ function partsTable(slot: Slot): HTMLElement {
   return table;
 }
 
+const SLOT_NAMES: Record<Slot, Text> = {
+  body: { en: 'body', ja: '車体' },
+  legs: { en: 'legs', ja: '脚' },
+  gun: { en: 'gun', ja: '銃' },
+  sensor: { en: 'sensor', ja: 'センサー' },
+};
+
+/** "gun Pistol, sensor Short". */
+function partsNamed(parts: Partial<Loadout>): string {
+  return Object.entries(parts)
+    .map(([slot, id]) => `${inLanguage(SLOT_NAMES[slot as Slot])} ${PARTS.find((part) => part.slot === slot && part.id === id)?.name ?? id}`)
+    .join(inLanguage({ en: ', ', ja: '、' }));
+}
+
+/**
+ * A challenge as the game has it, and the hints: the first one in the open,
+ * the others folded away, so that the reader takes no more than is needed.
+ */
+function challengeHints(id: string, hints: readonly Text[]): HTMLElement {
+  const index = CHALLENGES.findIndex((challenge) => challenge.id === id);
+  if (index < 0) throw new Error(`The book names a challenge there is not: ${id}`);
+  const challenge = CHALLENGES[index];
+  const box = createElement('section', 'book-challenge');
+  const conditions = [describeGoal(challenge.goal), ...(challenge.require ?? []).map(describeCondition)].map(inLanguage);
+  const terms = createElement('p', 'book-challenge-terms');
+  terms.append(
+    createElement('strong', '', inLanguage({ en: 'To clear: ', ja: 'クリア条件: ' })),
+    conditions.join(inLanguage({ en: ', ', ja: '、' })),
+  );
+  if (challenge.parts !== undefined) {
+    terms.append(createElement('br', ''), createElement('strong', '', inLanguage({ en: 'Fixed parts: ', ja: '固定パーツ: ' })), partsNamed(challenge.parts));
+  }
+  box.append(
+    createElement('h3', '', inLanguage({ en: `${index + 1}. ${challenge.title.en}`, ja: `${index + 1}. ${challenge.title.ja}` })),
+    createElement('p', 'book-challenge-brief', inLanguage(challenge.brief)),
+    terms,
+  );
+  hints.forEach((hint, at) => {
+    const label = inLanguage({ en: `Hint ${at + 1}`, ja: `ヒント ${at + 1}` });
+    if (at === 0) {
+      const first = createElement('div', 'book-hint');
+      first.append(createElement('div', 'book-hint-label', label), renderMarkup(inLanguage(hint)));
+      box.append(first);
+    } else {
+      const folded = createElement('details', 'book-hint');
+      folded.append(createElement('summary', 'book-hint-label', label), renderMarkup(inLanguage(hint)));
+      box.append(folded);
+    }
+  });
+  return box;
+}
+
 function renderBlock(block: BookBlock): HTMLElement {
   switch (block.kind) {
     case 'text':
@@ -207,6 +260,8 @@ function renderBlock(block: BookBlock): HTMLElement {
       return matchupTable(block.matchup);
     case 'parts':
       return partsTable(block.slot);
+    case 'challenge':
+      return challengeHints(block.challenge, block.hints);
     case 'see': {
       const english = currentLanguage() === 'en';
       const see = createElement('p', 'book-see', english ? 'More in the help: ' : 'くわしくはヘルプの');

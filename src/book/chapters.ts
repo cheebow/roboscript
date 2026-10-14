@@ -1268,6 +1268,271 @@ When you change the parts, change the program to suit. Put on a Cannon for its l
   ],
 };
 
+function challenge(id: string, ...hints: [string, string][]): BookBlock {
+  return { kind: 'challenge', challenge: id, hints: hints.map(([en, ja]) => ({ en, ja })) };
+}
+
+const CHALLENGES_CHAPTER: BookChapter = {
+  id: 'challenges',
+  title: { en: 'Clearing the challenges', ja: 'チャレンジ攻略' },
+  blocks: [
+    text(
+      `The challenges are matches with conditions. Choose CHALLENGE on the start menu to play them.
+
+This chapter gives hints for each one, each hint telling more than the one before. Think with the first, and open the next when you are stuck. An example answer is in the game itself: "Show an example answer" on the challenge screen.
+
+Every number below comes from playing the challenge.`,
+      `チャレンジは、条件つきの試合です。起動メニューの「チャレンジ」から遊べます。
+
+この章では、チャレンジごとにヒントを書きます。ヒントは後ろほどくわしくなります。まず 1 つ目で考えて、行き詰まったら次を開いてください。答えのプログラムは、ゲームのチャレンジ画面の「解答例を見る」にあります。
+
+ここに出てくる数は、どれも実際にチャレンジを試した結果です。`,
+    ),
+    text(
+      `## Worth knowing for any of them
+
+- **Closing in is not always the way.** Against several of them, a robot that drove at the enemy lost, and one that stood still and shot won. Shots on the move go wide (Chapter 10), and some robots come to you anyway.
+- **Look at the tables of Chapter 9.** A built-in robot that beats your opponent has a program worth reading.`,
+      `## どのチャレンジにも効くこと
+
+- **近づけばいいとは限りません。** いくつかのチャレンジで、相手に向かって走っていくロボットは負け、止まって撃つロボットは勝ちました。走りながらの弾はぶれますし（第 10 章）、向こうから来てくれる相手もいます。
+- **第 9 章の対戦表を見ましょう。** 相手に勝ち越している内蔵ロボットがいれば、そのプログラムが参考になります。`,
+    ),
+    text(`## One on one`, `## 1 対 1`),
+    challenge(
+      'first-win',
+      [
+        `The sparring partner does not come to you. Stand and shoot, and the match ends in a draw.`,
+        `練習相手は、こちらへは来ません。その場で撃っているだけだと、引き分けで終わります。`,
+      ],
+      [
+        `Drive about while you cannot see it, and stop and shoot once you can: the shape of Chapter 5. On its own, though, that drives into a wall and stays there (Chapter 8). Turn when the way is blocked.`,
+        `見えないうちは走って探し、見えたら止まって撃ちます。第 5 章の形です。ただ、それだけだと壁にぶつかって止まったままになります（第 8 章）。前がふさがったら曲がりましょう。`,
+      ],
+      [
+        `Aim before you fire: \`aim enemy\` until \`aim_angle\` is between -2 and 2, then \`fire\`.`,
+        `撃つ前に狙いを合わせます。\`aim_angle\` が -2 から 2 の間に入るまで \`aim enemy\`、入ったら \`fire\` です。`,
+      ],
+    ),
+    challenge(
+      'pistol',
+      [
+        `DumbBot comes to you. There is no need to go to it.`,
+        `DumbBot は自分から近づいてきます。こちらから行く必要はありません。`,
+      ],
+      [
+        `A robot that drove at DumbBot lost. Stand still, and shoot once it is in range.`,
+        `試しにこちらから近づいていくロボットで戦ったら、負けました。止まって待ち、射程に入ってきたら撃ちましょう。`,
+      ],
+    ),
+    challenge(
+      'untouchable',
+      [
+        `The standard gun reaches 400. BRAVO, 480 away, is out of its range.`,
+        `標準の銃の射程は 400 です。480 先の BRAVO には届きません。`,
+      ],
+      [
+        `A Cannon reaches 520. But it costs 4: to stay within the cost limit, take a part of cost 2 somewhere else (Chapter 12).`,
+        `射程 520 の Cannon なら届きます。ただ Cannon はコスト 4 なので、ほかのどこかをコスト 2 のパーツにしないと、上限を超えます（第 12 章）。`,
+      ],
+      [
+        `BRAVO does not move, so you need not move either. Aiming and firing takes 3 lines.`,
+        `BRAVO は動かないので、こちらも動く必要はありません。狙って撃つだけなら 3 行です。`,
+      ],
+    ),
+    challenge(
+      'short-route',
+      [
+        `The goal is beyond the block. Turn whenever you run into something, and you find your way round.`,
+        `ゴールはブロックの向こうです。ぶつかったら曲がる、を繰り返せば回り込めます。`,
+      ],
+      [
+        `\`blocked\` tells you the way ahead is blocked (Chapter 4). It takes 5 lines, turning left or turning right.`,
+        `前がふさがっているかは \`blocked\` で分かります（第 4 章）。5 行で書けます。左に曲がっても右に曲がっても着きます。`,
+      ],
+    ),
+    challenge(
+      'speed-sentry',
+      [
+        `It is a race against the clock, but rushing in does not pay. SentryBot shoots at where you are going: a robot that drove at it lost.`,
+        `時間との勝負ですが、急いで近づくのは逆効果です。SentryBot は、こちらが動いていく先を狙って撃ちます。近づいていくロボットは負けました。`,
+      ],
+      [
+        `Stand still and trade shots, and you win in about 10 seconds.`,
+        `止まって撃ち合えば、10 秒ほどで勝てます。`,
+      ],
+    ),
+    challenge(
+      'hide-and-heal',
+      [
+        `HP comes back only while you stand still where no enemy can see you (Chapter 11).`,
+        `HP が戻るのは、敵のだれからも見えない場所で止まっているときだけです（第 11 章）。`,
+      ],
+      [
+        `\`face cover\` turns you to a hiding place, and \`drive forward\` takes you there. \`hidden\` tells you when you are out of sight.`,
+        `\`face cover\` で隠れ場所の方を向き、\`drive forward\` で行けます。見えなくなったかどうかは \`hidden\` で分かります。`,
+      ],
+      [
+        `With full HP there is nothing to get back: a robot that hid from the start did not clear it. Trade shots first, and hide once your HP is down.`,
+        `HP が満タンのままでは回復しません。初めから隠れたロボットは、クリアになりませんでした。撃ち合って HP が減ってから隠れます。`,
+      ],
+    ),
+    challenge(
+      'guard-wall',
+      [
+        `Guard only just before the hit (Chapter 11): \`bullet_incoming and bullet_distance < 36\`.`,
+        `guard は当たる直前に（第 11 章）。\`bullet_incoming and bullet_distance < 36\` が目安です。`,
+      ],
+      [
+        `The program of Chapter 11 that guards just before the hit wins here, but guards fewer than 3 times. Its \`else\` has \`aim enemy\` and \`fire\` one after the other, two ticks in which it does not look at the bullets (Chapter 3).`,
+        `第 11 章の「当たる直前だけ guard」のプログラムでも勝てますが、ガードは 3 回に届きませんでした。\`else\` の中に \`aim enemy\` と \`fire\` が続けて書いてあるので、その 2 tick の間は弾を確かめていないからです（第 3 章）。`,
+      ],
+      [
+        `Do one action a time round the loop, and it looks at the bullets every tick: \`aim enemy\` if the aim is off, \`fire\` if it is on, split with \`if\`.`,
+        `1 回の loop で行動を 1 つだけにすると、毎 tick 弾を確かめられます。狙いがずれていたら \`aim enemy\`、合っていたら \`fire\` と、\`if\` で分けます。`,
+      ],
+    ),
+    challenge(
+      'short-sight',
+      [
+        `CowardBot keeps its distance, and the Short sensor sees only 300 away: you can be shot by an enemy you cannot see. A robot that only shoots what it sees lost.`,
+        `CowardBot は離れようとします。Short センサーは 300 までしか見えないので、見えない相手から撃たれることがあります。見えたら撃つ、だけのロボットは負けました。`,
+      ],
+      [
+        `\`hit\` is true on the tick you are hit. Turn the way the bullet came from with \`face hit\`, and drive that way (Chapter 11).`,
+        `撃たれた tick には \`hit\` が本当になります。\`face hit\` で弾の来た方を向き、そちらへ走りましょう（第 11 章）。`,
+      ],
+    ),
+    challenge(
+      'strafe-buster',
+      [
+        `In the tables of Chapter 9, the robot that beats StrafeBot is SentryBot. Read its program.`,
+        `第 9 章の対戦表で、StrafeBot に勝ち越していたのは SentryBot です。そのプログラムを読んでみましょう。`,
+      ],
+      [
+        `A shot at where a robot driving across is now passes behind it. Shoot at where it is going, with \`aim lead\` (Chapter 10). SentryBot's program as it is won in about 11 seconds.`,
+        `横に走る相手の今いる場所を撃っても、弾は後ろを通り過ぎます。\`aim lead\` で行く先を狙いましょう（第 10 章）。SentryBot のプログラムをそのまま使うと、11 秒ほどで勝てました。`,
+      ],
+      [
+        `Another way: 3 lines that only stand, aim and fire won without taking a single hit. It took 37 seconds, though.`,
+        `別の手もあります。動かずに狙って撃つだけの 3 行でも、1 発も受けずに勝てました。ただし 37 秒かかります。`,
+      ],
+    ),
+    challenge(
+      'light-body',
+      [
+        `AggressiveBot heads straight for you. A robot that drove at it lost.`,
+        `AggressiveBot は、まっすぐこちらへ向かってきます。こちらから近づいていくロボットは負けました。`,
+      ],
+      [
+        `Stand still and shoot it as it comes, and you win, though with only 40 HP left.`,
+        `止まって待ち、来たところを撃てば勝てます。ただ、HP は 40 しか残りませんでした。`,
+      ],
+      [
+        `Light suits a strategy of moving about (Chapter 12). With StrafeBot's program, it won with 140 HP left.`,
+        `Light は動き回る作戦に向いています（第 12 章）。StrafeBot のプログラムを使うと、HP を 140 残して勝てました。`,
+      ],
+    ),
+    challenge(
+      'sharpshooter',
+      [
+        `DumbBot has 200 HP, and a shot of the standard gun does 20: 10 of your 15 shots must hit. Stand still, and fire only once the aim is on (Chapter 10).`,
+        `DumbBot の HP は 200、標準の銃は 1 発 20 なので、15 発のうち 10 発を当てる必要があります。止まって、狙いが合ってから撃ちましょう（第 10 章）。`,
+      ],
+      [
+        `A Cannon shot does 45, so 5 hits are enough. With one, it cleared in 8 shots or fewer, for a star. It costs 4: take a part of cost 2 somewhere else (Chapter 12).`,
+        `1 発 45 の Cannon なら、5 発当てれば倒せます。Cannon では 8 発以内に収まり、星も取れました。コスト 4 なので、どこかをコスト 2 のパーツにします（第 12 章）。`,
+      ],
+    ),
+    challenge(
+      'final',
+      [
+        `SentryBot stops once you are in range, and shoots at where you are going (Chapter 9). A robot that drove at it lost.`,
+        `SentryBot は射程に入ると止まって、こちらの行く先を狙います（第 9 章）。近づいていくロボットは負けました。`,
+      ],
+      [
+        `Stand still and trade shots, and you win, but with 40 HP left: only just enough.`,
+        `止まって撃ち合えば勝てますが、残る HP はちょうど 40。ぎりぎりです。`,
+      ],
+      [
+        `In Chapter 9, the robot that beats SentryBot is CoverBot. Fight hiding and recovering as it does, and it won with 162 HP left.`,
+        `第 9 章で、SentryBot に勝ち越していたのは CoverBot でした。CoverBot のように隠れて回復しながら戦うと、HP を 162 残して勝てました。`,
+      ],
+    ),
+    challenge(
+      'champion',
+      [
+        `The champion's sensor is Short: it sees nothing further than 300 away.`,
+        `チャンピオンのセンサーは Short です。300 より遠くは見えません。`,
+      ],
+      [
+        `With a Cannon, reaching 520, and a Scope, seeing far, you can shoot it from where it cannot see you. But once hit, it comes the way the shot came from.`,
+        `射程 520 の Cannon と、遠くまで見える Scope を付ければ、見えない所から撃てます。ただ、撃たれたチャンピオンは、弾の来た方へ向かってきます。`,
+      ],
+      [
+        `Its body is Heavy, slow to drive. SentryBot's program with Sprint legs, a Cannon and a Scope won. Without the Sprint legs, it lost.`,
+        `チャンピオンの車体は Heavy で、走るのが遅いです。SentryBot のプログラムに、Sprint の脚と Cannon と Scope を付けたら勝てました。脚を Sprint にしないと負けました。`,
+      ],
+    ),
+    text(
+      `## Base battles
+
+In these four, your team is the same program running on each machine. Chapter 14 says more about the base battle.`,
+      `## 基地戦
+
+この 4 つは基地戦です。チームのロボットは、どれも同じプログラムで動きます。基地戦については第 14 章でくわしく書きます。`,
+    ),
+    challenge(
+      'castle-solo',
+      [
+        `The enemy runs straight for your base. \`face enemy_base\` turns you towards its base, for the race the other way.`,
+        `相手はまっすぐこちらの基地へ走ってきます。こちらも相手の基地へ向かうなら、\`face enemy_base\` でそちらを向けます。`,
+      ],
+      [
+        `Once \`enemy_base_distance\` is less than \`weapon_range\`, stop and shoot the base: \`face enemy_base\` then \`aim ahead\` and \`fire\`. If the enemy comes close on the way, deal with it first.`,
+        `\`enemy_base_distance\` が \`weapon_range\` より小さくなったら、止まって基地を撃ちます。\`face enemy_base\` で向いて、\`aim ahead\` と \`fire\` です。途中で相手が近くに来たら、先にそちらと撃ち合いましょう。`,
+      ],
+    ),
+    challenge(
+      'castle-hold',
+      [
+        `An enemy with your base in range shoots only the base. By the time it is at the walls, it is too late.`,
+        `基地を射程に入れた敵は、基地しか撃ちません。基地の前まで来られてからでは間に合いません。`,
+      ],
+      [
+        `While \`enemy_base_distance\` is large, go forward; at some point, stop and wait there. Shoot an enemy once it is in range.`,
+        `\`enemy_base_distance\` が大きいうちは前へ出て、ある所まで来たら止まって待ちます。敵が射程に入ったら撃ちます。`,
+      ],
+    ),
+    challenge(
+      'castle-fall',
+      [
+        `The defenders' Short sensors see 300 away. Your Cannon reaches 520.`,
+        `守りの 2 台は Short センサーで、300 より遠くは見えません。こちらの Cannon は 520 まで届きます。`,
+      ],
+      [
+        `You need not fight the defenders at all. Head for their base, and stop and shoot it once it is in range. That way the base fell without a single hit taken.`,
+        `守りと撃ち合う必要はありません。基地へ向かい、射程に入ったら止まって基地を撃ちます。こうすると、1 発も受けずに基地を落とせました。`,
+      ],
+    ),
+    challenge(
+      'base-call-by-name',
+      [
+        `Your three machines run the same program. \`self_id\` tells each which number it is: split the jobs with it (Chapter 14).`,
+        `3 台は同じプログラムで動きます。\`self_id\` で自分が何番かが分かるので、それで役割を分けます（第 14 章）。`,
+      ],
+      [
+        `When the keeper sees an enemy, it calls one machine home with \`signal 1 to 2\`: only machine 2 gets it, as \`ally_signal\`. A \`signal\` without \`to\` reaches everyone.`,
+        `守りが敵を見つけたら、\`signal 1 to 2\` で 1 台だけを呼び戻します。受け取るのは 2 番だけで、\`ally_signal\` に入ります。\`to\` を付けない \`signal\` は全員に届きます。`,
+      ],
+      [
+        `The team program BaseCaptain is written this way.`,
+        `内蔵のチームプログラム BaseCaptain が、この形で書かれています。`,
+      ],
+    ),
+  ],
+};
+
 export const BOOK: readonly BookPart[] = [
   {
     id: 'part-1',
@@ -1277,7 +1542,7 @@ export const BOOK: readonly BookPart[] = [
   {
     id: 'part-2',
     title: { en: 'Part 2: Strategies for winning', ja: '第 2 部 勝つための作戦' },
-    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER],
+    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER, CHALLENGES_CHAPTER],
   },
 ];
 

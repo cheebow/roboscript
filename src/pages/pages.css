@@ -457,3 +457,30 @@ body {
   stroke: var(--syntax-value);
   stroke-width: 1.5;
 }
+
+.book-challenge {
+  margin: 18px 0 26px;
+  padding: 2px 16px 10px;
+  border-left: 2px solid var(--border);
+}
+
+.book-challenge h3 {
+  margin: 12px 0 6px;
+}
+
+.book-challenge-terms {
+  color: var(--muted);
+}
+
+.book-hint {
+  margin: 8px 0;
+}
+
+.book-hint-label {
+  color: var(--syntax-variable);
+  font-weight: bold;
+}
+
+summary.book-hint-label {
+  cursor: pointer;
+}

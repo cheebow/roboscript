@@ -2,6 +2,7 @@ import type { Text } from '../tutorial/types';
 import { TEAM_DEFAULT_LOADOUT, castleHpFor, teamCostLimitFor } from '../data/castle';
 import { COST_LIMIT, costOf } from '../data/parts';
 import { ROBOT_DEFAULTS } from '../data/robot_defaults';
+import { SAMPLE_AI } from '../data/templates/sample';
 import { BEHIND, CORNER, FAR, HIDDEN, MOVING, QUARTER, RANGE, SHELTER, SHOT_AT, TRACK } from '../tutorial/stages';
 import {
   AIM_AHEAD,
@@ -31,6 +32,7 @@ import {
   NO_ACTION_LOOP,
   NO_GUARD,
   ONE_SHOT,
+  SAMPLE_SOONER,
   SEARCH_AND_SHOOT,
   SEARCH_AND_SHOOT_IN_FUNCTIONS,
   SHOOT_ON_THE_MOVE,
@@ -47,7 +49,7 @@ import {
 } from './examples';
 import { matchCount } from './matchups';
 import { BROADSIDE } from './stages';
-import type { BookBlock, BookChapter, BookPart, Matchup } from './types';
+import type { BookBlock, BookChapter, BookPart, Matchup, Replay } from './types';
 
 // The text of the book. Each chapter is a run of blocks; the text blocks use
 // the little markup of the help (see renderMarkup). A number the text gives
@@ -847,7 +849,9 @@ The \`label TURN\` and \`label GO\` above change nothing about how the robot mov
 | \`1▷\` | goes through a called function in one go, and stops at the next line |
 | Click a line number (◆) | goes to where that line runs next. Click again to take it off |
 
-When you wonder why a line never runs, put a ◆ on it and on the lines before it, and see how far the program gets. Where it stops getting, look in Watch at the condition just before.`,
+When you wonder why a line never runs, put a ◆ on it and on the lines before it, and see how far the program gets. Where it stops getting, look in Watch at the condition just before.
+
+Chapter 15 goes through the debugger, the log and the analysis on a real match.`,
       `## 道具のまとめ
 
 | 道具 | 使いどころ |
@@ -859,7 +863,9 @@ When you wonder why a line never runs, put a ◆ on it and on the lines before i
 | \`1▷\` | 呼んだ関数の中は一気に進めて、次の行で止まる |
 | 行番号を押す（◆） | その行が次に実行される時点へ移る。もう一度押すと外れる |
 
-「この行がなぜ実行されないのか」と思ったら、その行とその手前の行に ◆ を付けて、どこまで来ているかを見てください。来ていない行があれば、その手前の条件がどうなっているかをウォッチで確かめます。`,
+「この行がなぜ実行されないのか」と思ったら、その行とその手前の行に ◆ を付けて、どこまで来ているかを見てください。来ていない行があれば、その手前の条件がどうなっているかをウォッチで確かめます。
+
+第 15 章では、本物の試合を使って、デバッガ・ログ・分析をひととおり使います。`,
     ),
     text(
       `## End of Part 1
@@ -1683,6 +1689,294 @@ Press the button to play the matches yourself:`,
   ],
 };
 
+/** The match Chapter 15 looks into: the game's Sample loses to DumbBot by one shot. */
+export const LOST_MATCH: Replay = { program: SAMPLE_AI, bravo: 'dumb_bot', arena: 'open_field', seed: 1 };
+/** The same match with the Sample changed. */
+export const WON_MATCH: Replay = { ...LOST_MATCH, program: SAMPLE_SOONER };
+
+/** A robot of Chapter 15 against DumbBot. */
+export function againstDumbBot(name: Text, source: string): Matchup {
+  return { robot: { name, source }, opponents: ['dumb_bot'], arenas: MATCHUP_ARENAS, seeds: MATCHUP_SEEDS };
+}
+
+const SAMPLE_NAME: Text = { en: 'Sample', ja: 'Sample' };
+const SOONER_NAME: Text = { en: 'Sample with attack(320)', ja: 'attack(320) にした Sample' };
+
+const FINDING_OUT: BookChapter = {
+  id: 'finding-out',
+  title: { en: 'Finding out why it lost', ja: '負けた理由を探す' },
+  blocks: [
+    text(
+      `A lost match always has a reason. The game has three tools for finding it.
+
+| Tool | What it tells you |
+|---|---|
+| Analysis | how the whole match went, and where one robot got ahead |
+| Log | what happened, in order |
+| Debugger | at one moment, which lines ran, and what the variables and sensors held |
+
+Use them in that order: the analysis to see roughly where, the log to see what happened there, and the debugger to find the line behind it. This chapter does that with one match.`,
+      `負けた試合には、かならず理由があります。ゲームには、それを探す道具が 3 つあります。
+
+| 道具 | 分かること |
+|---|---|
+| 分析 | 試合全体のようす。どこで差がついたか |
+| ログ | 何が、どの順に起きたか |
+| デバッガ | ある瞬間に、どの行が動いたか。変数やセンサーがどんな値だったか |
+
+使う順もこのとおりです。分析で大まかな場所の見当をつけ、ログでそこで何が起きたかを確かめ、デバッガで原因の行を見つけます。この章では、1 つの試合を例に、この順で使ってみます。`,
+    ),
+    text(
+      `## The match
+
+The game's own Sample (as ALPHA) against DumbBot (as BRAVO), on Open Field, with seed 1. The Sample drives up to the enemy and fires, much as DumbBot does. Yet it hardly ever wins.`,
+      `## 例の試合
+
+ゲームに最初から入っている Sample（ALPHA）と、DumbBot（BRAVO）の試合です。マップは Open Field、seed は 1 です。Sample は DumbBot と同じように、敵に近づいて撃ちます。なのに、ほとんど勝てません。`,
+    ),
+    { kind: 'template', template: 'sample' },
+    { kind: 'matchup', matchup: againstDumbBot(SAMPLE_NAME, SAMPLE_AI) },
+    text(
+      `To watch the same match in the game:
+
+- Open \`index.html?seed=1\`: with \`?seed=1\` at the end, every match gets seed 1.
+- Choose the one-robot PROGRAM in the start menu.
+- In ALPHA's main.bot, choose Sample from LOAD TEMPLATE; in BRAVO's, DumbBot.
+- Set the map to Open Field, and press DEBUG.`,
+      `同じ試合は、ゲームでも見られます。
+
+- \`index.html?seed=1\` を開く。最後に \`?seed=1\` を付けると、どの試合も seed 1 になります。
+- 起動メニューで、個人戦の「プログラム」を選ぶ。
+- ALPHA の main.bot で「テンプレート」から Sample を、BRAVO の main.bot で DumbBot を選ぶ。
+- マップを Open Field にして、「デバッグ」を押す。`,
+    ),
+    text(
+      `## Analysis: where did it fall behind?
+
+After a match, the ANALYSIS tab beside the log shows this. Here it is for our match.`,
+      `## 分析：どこで差がついたか
+
+試合のあと、ログのとなりの「分析」タブを開くと、次のような表とグラフが出ます。例の試合の分析です。`,
+    ),
+    { kind: 'replay', replay: LOST_MATCH, tick: 75, panel: { kind: 'analysis' }, caption: caption(
+      'The analysis of the match. Press the chart or a dot on the map, and the picture above goes to that moment.',
+      '例の試合の分析。グラフや地図の点を押すと、上の絵がその時点に変わる。',
+    ) },
+    text(
+      `| Column | What it counts |
+|---|---|
+| hits | shots that hit / shots fired |
+| dealt | damage done to the enemy |
+| taken | damage taken |
+| guarded | hits taken while guarding |
+| recovered | HP got back by resting out of sight |
+| driven | how far the robot drove |
+| enemy in sight | of the time it was standing, how much of it it could see the enemy |
+
+The Sample fired 10 and hit with 9; DumbBot fired 10 and hit with all 10. They aim about as well as each other: the difference is one shot. A shot takes 20, so 10 shots bring a robot down, and the one that starts firing first gets its tenth shot in first.
+
+On the chart of HP, ALPHA's line goes down first. Press where it first drops: the picture shows the moment DumbBot's first shot hit, while the Sample had not hit yet.
+
+The analysis is not only on the program screen. When you watch a match in the arena, a contest or the team battle, the ANALYSIS button above the battle view opens it.
+
+What to suspect when the numbers look like this:
+
+| You see | Suspect |
+|---|---|
+| few hits | firing on the move, or at an enemy going sideways (Chapter 10) |
+| little time with the enemy in sight | the way it looks for the enemy: it loses it behind cover |
+| much damage taken, nothing guarded | no \`guard\` (Chapter 11) |
+| very far driven | going round and round the same place |`,
+      `| 列 | 数えているもの |
+|---|---|
+| 命中 | 当たった数 / 撃った数 |
+| 与ダメージ | 敵に与えたダメージ |
+| 被ダメージ | 受けたダメージ |
+| ガード | ガード中に受けた弾の数 |
+| 回復 | 隠れて取りもどした HP |
+| 走行距離 | 走った長さ |
+| 敵が見えた時間 | 生きていた時間のうち、敵が見えていた割合 |
+
+Sample は 10 発撃って 9 発、DumbBot は 10 発撃って 10 発当てました。狙いの良さは同じくらいで、差は 1 発です。弾 1 発で 20 減るので、10 発当てれば倒せます。先に撃ち始めた方が、先に 10 発目を当てます。
+
+HP の推移のグラフでは、ALPHA の線が先に下がります。最初に下がったところを押してみてください。DumbBot の最初の弾が当たった瞬間で、Sample の弾はまだ当たっていません。
+
+分析はプログラム画面だけのものではありません。アリーナ・大会・基地戦の観戦で見ている試合も、戦闘画面の上の「分析」ボタンで開けます。
+
+数字がこうなっていたら、ここを疑います。
+
+| こう見えたら | 疑うところ |
+|---|---|
+| 命中が少ない | 動きながら撃っている。横に動く敵を撃っている（第 10 章） |
+| 敵が見えた時間が短い | 敵の探し方。物陰で見失っている |
+| 被ダメージが多いのに、ガードが 0 | \`guard\` を使っていない（第 11 章） |
+| 走行距離がとても長い | 同じ所をぐるぐる回っている |`,
+    ),
+    text(
+      `## Log: what happened, in order
+
+The log is on the program screen, bottom left. Here is the start of our match.`,
+      `## ログ：何がどの順に起きたか
+
+ログは、プログラム画面の左下にあります。例の試合のはじめの部分です。`,
+    ),
+    { kind: 'replay', replay: LOST_MATCH, tick: 60, panel: { kind: 'log', until: 100 }, caption: caption(
+      'The first seconds of the log. Press a row, and the picture goes to that moment; rows after it are pale.',
+      '例の試合のはじめのログ。行を押すと、上の絵がその時点に変わる。それより後の行は薄くなる。',
+    ) },
+    text(
+      `A row is one thing that happened: when (in seconds), which robot, what kind of thing, and what.
+
+| Kind | When |
+|---|---|
+| SENSOR | the robot comes to see the enemy (enemy detected), or loses it (enemy lost); it starts or stops recovering in hiding |
+| AI | its \`label\` changes (label TRACK -> ATTACK) |
+| ACTION | it turns, drives, fires… An action that goes on from the same line shows once, and again only after a second without it. Every \`fire\` shows |
+| HIT | a shot hits: damage is what it took, hp what is left; (guarded) if it was guarding |
+| WARNING | the program has got into trouble: see below |
+| SYSTEM | the start of the match (its seed), and the end (who won, and how) |
+| ERROR | the program is written wrong, and does not run |
+
+In our match, at 2.000 seconds DumbBot goes from TRACK to ATTACK and fires. The Sample fires first at 2.500, and at that same moment DumbBot's first shot hits it (hp=180). DumbBot started firing half a second sooner.
+
+In the game, pressing a row goes to that moment, and the line that did it turns yellow in the editor.
+
+The warnings are worth knowing:
+
+| Warning | What happened | What to do |
+|---|---|---|
+| program finished | the program got to its last line and stopped | put it all in a \`loop\` (Chapter 1) |
+| too many lines without an action | 1000 lines went by without an action: the robot does nothing that tick | put an action on every way through the loop (Chapter 3) |
+| program stopped: its calls went too deep | functions called functions too deep | do not let functions call each other round |
+| out of ammo | no shots left | do not fire from too far to hit |
+| out of guards | every \`guard\` used up | guard just before a hit (Chapter 11) |
+| signal to N: no teammate has that number | in a base battle, a \`signal\` to a number nobody has | check the number (Chapter 14) |`,
+      `1 行が 1 つの出来事です。左から、時刻（秒）、ロボット、種類、内容です。
+
+| 種類 | 出るとき |
+|---|---|
+| センサー | 敵が見えた（enemy detected）、見えなくなった（enemy lost）。隠れて回復し始めた、やめた |
+| AI | \`label\` が変わった（label TRACK -> ATTACK） |
+| 行動 | 回った、走った、撃った、など。同じ行の同じ行動が続くときは最初だけ出て、1 秒以上あいたらまた出る。\`fire\` は毎回出る |
+| 命中 | 弾が当たった。damage は受けたダメージ、hp は残り。ガード中なら (guarded) |
+| 警告 | プログラムが困ったことになった。下の表 |
+| システム | 試合の始まり（seed）と終わり（勝ったロボットと、決まり方） |
+| エラー | 書きまちがいで、プログラムが動かない |
+
+例の試合では、2.000 秒に DumbBot の label が TRACK から ATTACK に変わり、撃ち始めます。Sample が最初に撃つのは 2.500 秒で、その同じ時刻に DumbBot の最初の弾が当たっています（hp=180）。DumbBot の方が 0.5 秒早く撃ち始めていました。
+
+ゲームでは、ログの行を押すとその時点へ移り、その出来事を起こした行がエディタで黄色になります。
+
+警告は、知っておくと役に立ちます。
+
+| 警告の文 | 何が起きたか | どうするか |
+|---|---|---|
+| program finished | プログラムが最後の行まで行って止まった | 全体を \`loop\` に入れる（第 1 章） |
+| too many lines without an action | 行動のないまま 1000 行を超えた。その tick は何もしない | loop のどの道にも行動を入れる（第 3 章） |
+| program stopped: its calls went too deep | 関数が関数を呼んで、深くなりすぎた | 関数どうしが呼び合わないようにする |
+| out of ammo | 弾がなくなった | 当たらない遠くから撃たない |
+| out of guards | \`guard\` を使い切った | 当たる直前だけ guard する（第 11 章） |
+| signal to N: no teammate has that number | 基地戦で、いない番号に \`signal\` した | 番号を確かめる（第 14 章） |`,
+    ),
+    text(
+      `## Debugger: the program at one moment
+
+Press DEBUG instead of RUN, and the screen shows what the program is doing. The picture is a match of two Samples, stopped with a ◆ on line 15.`,
+      `## デバッガ：その瞬間のプログラムを見る
+
+「実行」の代わりに「デバッグ」を押すと、プログラムが何をしているかが画面に出ます。下の絵は、Sample どうしの試合を、15 行目に ◆ を付けて止めたところです。`,
+    ),
+    { kind: 'shot', shot: 'debugger', caption: caption(
+      'The program screen while debugging. The numbers are explained below.',
+      'デバッグ中のプログラム画面。番号の説明は下の表。',
+    ) },
+    text(
+      `| | Part | What it is for |
+|---|---|---|
+| 1 | DEBUG | plays the whole match first, then shows it from the start. RUN can be paused and stepped a tick at a time too, but 2 to 6 show only while debugging |
+| 2 | The message | with a ◆ on a line: how many times it runs in the match, and which of them this is |
+| 3 | Numbers left of the lines | in how many ticks the line ran in this match. A line without one never ran |
+| 4 | ◆ | press a line number to put it on: the match goes to the next time that line runs. Press again to take it off |
+| 5 | Yellow and green lines | yellow is the line that runs next; pale green, the lines already run in this tick |
+| 6 | Marks on the field | the \`label\` under each robot. The robot looked at sees the tinted ground; while it sees the enemy, a line runs to it and a frame goes round it; once it loses it, a cross marks where it was last seen |
+| 7 | The buttons | PLAY / PAUSE (Space). \`◀1\` \`1▶\` go one line back or on (← →); in RUN, one tick. \`1▷\` runs through a function the line calls. \`◀◆\` \`◆▶\` go to the last or next time the ◆ line runs |
+| 8 | Seek bar | drag to any moment. Every time the ◆ line runs is marked on it |
+| 9 | ANALYSIS tab | the analysis in place of the log |
+| 10 | Log | rows after the moment shown are pale |
+| 11 | INSPECTOR | where the robot is, its HP, heading, drive, label, shots left, guards left, time to the next shot… ALPHA / BRAVO above it pick the robot to look at, for this, the marks and the watch |
+| 12 | WATCH | the variables and the sensors. A function's parameter shows as \`attack.distance\`. While paused, a sensor shows what the yellow line will read |
+
+\`1▶\` follows the robot whose main.bot is open in the editor.`,
+      `| | 部分 | 使いどころ |
+|---|---|---|
+| 1 | 「デバッグ」 | 試合を最後まで計算してから、最初から見せる。「実行」でも一時停止や 1 tick ずつの移動はできるが、2〜6 はデバッグのときだけ出る |
+| 2 | 上のメッセージ | ◆ を付けた行が、この試合で何回実行され、今が何回目か |
+| 3 | 行番号の左の数字 | その行が、この試合で何 tick 実行されたか。数字のない行は、一度も実行されていない |
+| 4 | ◆ | 行番号を押すと付く。その行が次に実行される時点へ移る。もう一度押すと外れる |
+| 5 | 黄色の行と緑の行 | 黄色は次に実行する行。薄い緑は、今の tick ですでに通った行 |
+| 6 | 戦闘画面の印 | ロボットの下に \`label\`。見ているロボットの見える範囲に色が付き、敵が見えている間は敵への線と、敵を囲む枠が出る。見失うと、最後に見た場所に × |
+| 7 | ボタン | 再生・一時停止（スペース）。\`◀1\` \`1▶\` は 1 行戻る・進む（← →）。「実行」では 1 tick。\`1▷\` は、その行が呼ぶ関数の中を一気に進める。\`◀◆\` \`◆▶\` は ◆ の行が前に・次に実行される時点へ |
+| 8 | 再生位置 | つまんで好きな時点へ動かす。◆ の行が実行された時点に印が出る |
+| 9 | 「分析」タブ | ログの代わりに分析を出す |
+| 10 | ログ | 今より後の行は薄く出る |
+| 11 | 状態 | 位置、HP、向き、走行、ラベル、弾、ガード、次弾まで、など。上の ALPHA / BRAVO で、見るロボットを選ぶ。戦闘画面の印とウォッチも、そのロボットのものになる |
+| 12 | ウォッチ | 変数とセンサーの値。関数の引数は \`attack.distance\` のように出る。一時停止中のセンサーは、黄色の行がこれから読む値 |
+
+\`1▶\` で進むのは、エディタで main.bot を開いている方のロボットです。`,
+    ),
+    text(
+      `## Using it on our match
+
+The log said DumbBot fires at 2.000 seconds, and the Sample only at 2.500. What was the Sample doing in between?
+
+- Put a ◆ on line 15 (\`fire\`). The match goes to 2.500 seconds: the first time the Sample fires.
+- Press DumbBot's first \`fire\` row in the log, at 2.000 seconds.
+- Go on with \`1▶\`. The Sample reads line 12, \`if enemy_distance < distance\`, and goes on to the \`else\`, lines 16 to 18: it keeps driving.
+- Look at the watch there: \`attack.distance\` is 250, and the distance to the enemy is just under 300.`,
+      `## 例の試合で使ってみる
+
+ログによれば、DumbBot は 2.000 秒に撃ち始め、Sample は 2.500 秒まで撃っていません。その間、Sample は何をしていたのでしょう。
+
+- 15 行目（\`fire\`）の行番号を押して、◆ を付ける。試合は 2.500 秒へ移る。Sample が初めて撃つ時点です。
+- ログで、2.000 秒の DumbBot の最初の \`fire\` の行を押す。
+- \`1▶\` で進める。Sample は 12 行目の \`if enemy_distance < distance\` を読んで、\`else\` の側（16〜18 行目）へ進む。まだ走り続けています。
+- そこでウォッチを見る。\`attack.distance\` は 250、敵までの距離は 300 を少し切ったところです。`,
+    ),
+    { kind: 'replay', replay: LOST_MATCH, tick: 60, caption: caption(
+      'At 2.000 seconds: DumbBot (BRAVO) has stopped and fires; the Sample (ALPHA) is still driving in.',
+      '2.000 秒。DumbBot（BRAVO）は止まって撃ち始めた。Sample（ALPHA）はまだ近づいている。',
+    ) },
+    text(
+      `That is the reason. DumbBot fires from closer than 300; the Sample waits until it is closer than 250. While it drives the last 50, it is shot at and cannot shoot back.
+
+The line to change is the one that calls \`attack\`, in the \`loop\` at the end: make \`attack(250)\` into \`attack(320)\`.`,
+      `これが理由です。DumbBot は 300 より近ければ撃ちます。Sample は 250 より近づくまで撃ちません。最後の 50 を進む間、撃たれるだけで撃ち返せないのです。
+
+直すのは、最後の \`loop\` の中で \`attack\` を呼んでいる行です。\`attack(250)\` を \`attack(320)\` に変えます。`,
+    ),
+    text(
+      `Why not 300, the same as DumbBot? Try it: of the 12 matches, 10 are draws. The two start firing at the same moment and go down at the same moment. With 320, the Sample fires first.`,
+      `DumbBot と同じ 300 ではだめなのでしょうか。試すと、12 試合のうち 10 試合が引き分けになります。同時に撃ち始めて、同時に倒れるのです。320 にすると、Sample の方が先に撃ちます。`,
+    ),
+    { kind: 'matchup', matchup: againstDumbBot(SOONER_NAME, SAMPLE_SOONER) },
+    { kind: 'replay', replay: WON_MATCH, tick: 57, panel: { kind: 'analysis' }, caption: caption(
+      'The same match with attack(320). Now it is DumbBot whose HP goes down first.',
+      'attack(320) にした同じ試合。今度は DumbBot の HP が先に下がる。',
+    ) },
+    text(
+      `## In short
+
+- The analysis tells you where to look; the log, what happened there; the debugger, which line made it happen.
+- Change one thing, and play the same matches again to see what it did. The next chapter grows a robot that way.`,
+      `## まとめ
+
+- 分析でどこを見るかを決め、ログでそこで何が起きたかを確かめ、デバッガでどの行が起こしたかを見つける。
+- 直すのは 1 か所だけ。同じ試合をもう一度して、何が変わったかを確かめる。次の章では、このやり方でロボットを育てていきます。`,
+    ),
+    { kind: 'see', topics: ['debugging-help', 'program-screen', 'keys'] },
+  ],
+};
+
 const ROUND_1: Text = { en: 'Round 1', ja: '1 回目' };
 
 /** A robot of the growing chapter against the rivals of Chapter 9. */
@@ -1782,8 +2076,8 @@ Not every change makes a robot stronger. Change one thing at a time, and let it 
 | Tool | Use it to |
 |---|---|
 | Arena, SERIES | play 20 matches against one robot at once, over every map, and count the wins |
-| ANALYSIS | see a match in numbers: shots hit, damage taken, HP over time, where the hits landed |
-| DEBUG | follow a lost match line by line, to see what the robot was thinking (Chapter 8) |
+| ANALYSIS | see a match in numbers: shots hit, damage taken, HP over time, where the hits landed (Chapter 15) |
+| DEBUG | follow a lost match line by line, to see what the robot was thinking (Chapters 8 and 15) |
 | Garage | keep each version under a name of its own, to go back to or play against |
 | Contest | play many robots at once, in a league or a tournament |
 | Sharing | give a robot to someone, and play theirs |`,
@@ -1792,8 +2086,8 @@ Not every change makes a robot stronger. Change one thing at a time, and let it 
 | 道具 | 使いみち |
 |---|---|
 | アリーナの「連戦」 | 1 体の相手と、全マップで 20 試合をまとめて戦わせ、勝ち数を数える |
-| 分析 | 試合を数字で見る。命中、受けたダメージ、HP の推移、当たった場所 |
-| デバッグ | 負けた試合を 1 行ずつ追って、ロボットが何を考えていたかを見る（第 8 章） |
+| 分析 | 試合を数字で見る。命中、受けたダメージ、HP の推移、当たった場所（第 15 章） |
+| デバッグ | 負けた試合を 1 行ずつ追って、ロボットが何を考えていたかを見る（第 8 章、第 15 章） |
 | ガレージ | 直すたびに名前を変えて保存しておく。戻したり、新旧で戦わせたりできる |
 | 大会 | たくさんのロボットを、リーグ戦かトーナメントで一度に戦わせる |
 | 共有 | 自分のロボットを人に渡し、人のロボットと戦う |`,
@@ -1819,7 +2113,7 @@ export const BOOK: readonly BookPart[] = [
   {
     id: 'part-2',
     title: { en: 'Part 2: Strategies for winning', ja: '第 2 部 勝つための作戦' },
-    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER, CHALLENGES_CHAPTER, BASE_BATTLE, GROWING],
+    chapters: [BUILT_IN_ROBOTS, SHOOTING, DEFENCE, PARTS_CHAPTER, CHALLENGES_CHAPTER, BASE_BATTLE, FINDING_OUT, GROWING],
   },
 ];
 

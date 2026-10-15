@@ -57,7 +57,25 @@ export interface Matchup {
 }
 
 /** A picture of the game's screens: see shots.ts. */
-export type ShotId = 'program' | 'debug';
+export type ShotId = 'program' | 'debug' | 'debugger';
+
+/**
+ * A match as the program screen plays it: ALPHA's program against a built-in
+ * robot as BRAVO, on a map, with a seed. The reader can play the same match
+ * in the game (the seed goes in the address, as ?seed=1).
+ */
+export interface Replay {
+  /** ALPHA's program. */
+  program: string;
+  /** BRAVO: a template id. */
+  bravo: string;
+  /** An arena id of ARENAS. */
+  arena: string;
+  seed: number;
+}
+
+/** What a replay shows beside the picture of its moment: the game's own analysis, or its log up to a tick. */
+export type ReplayPanel = { kind: 'analysis' } | { kind: 'log'; until: number };
 
 export type BookBlock =
   | { kind: 'text'; text: Text }
@@ -69,6 +87,12 @@ export type BookBlock =
   | { kind: 'error'; program: string; caption: Text }
   | { kind: 'figure'; figure: FigureId; caption: Text }
   | { kind: 'shot'; shot: ShotId; caption: Text }
+  /**
+   * A real match with the game's analysis or log beside a picture of one
+   * moment of it: pressing the chart, a hit or a row of the log shows that
+   * moment, as in the game.
+   */
+  | { kind: 'replay'; replay: Replay; tick: number; panel?: ReplayPanel; caption: Text }
   /** A built-in robot's program, as the game has it now, folded away until opened. */
   | { kind: 'template'; template: string }
   | { kind: 'matchup'; matchup: Matchup }

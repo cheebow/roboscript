@@ -1,18 +1,21 @@
 import type { ProgramFeatures } from '../ai/features';
 import { EFFECT_LIFETIMES, MATCH_DEFAULTS } from '../data/match_defaults';
-import type { Loadout } from '../data/parts';
+import { type Loadout, STANDARD_LOADOUT } from '../data/parts';
 import { type Recording, recordMatch } from '../debug/recorder';
 import { stageLoadout, tutorialMatch } from '../tutorial/match';
 import { type Stage, stageTeams } from '../tutorial/types';
 import { createElement } from '../ui/dom';
 import { BattleView } from '../view/battle_view';
-import type { ReadingSensor, Readings, Scene, Timeline } from './types';
+import { type ReplayedMatch, playReplay } from './replays';
+import type { ReadingSensor, Readings, Replay, Scene, Timeline } from './types';
 
 // The book's pictures of matches: each is a real match, played from its
 // stage, its program and its seed when the page is read, so a picture always
 // shows what the game does now.
 
 const NO_FEATURES: ProgramFeatures = { cover: false, bullets: false, lead: false };
+/** A replay's robots both have the standard parts, as on the program screen. */
+const REPLAY_LOADOUTS: readonly Loadout[] = [STANDARD_LOADOUT, STANDARD_LOADOUT];
 
 /** Plays the match of a scene or a timeline far enough to show `ticks` of it: what comes after makes no difference. */
 export function recordFor(stage: Stage, program: string, ticks: number): { recording: Recording; loadouts: Loadout[] } {
@@ -71,4 +74,44 @@ export function createSceneFrame(scene: Scene, label: string): HTMLElement {
   };
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(frame);
   return frame;
+}
+
+/** A picture of a book's whole match that can be moved to any of its moments. */
+export interface ReplayFrame {
+  element: HTMLElement;
+  /** Shows that moment; the match is played the first time something is shown. */
+  show(tick: number): void;
+}
+
+/**
+ * A frame for a moment of a replay, drawn as the debugger draws it: the
+ * labels under the robots, ALPHA's line of sight and its marks.
+ */
+export function createReplayFrame(replay: Replay, tick: number, label: string): ReplayFrame {
+  const element = createElement('div', 'book-scene');
+  element.setAttribute('role', 'img');
+  element.setAttribute('aria-label', label);
+  const canvas = createElement('canvas', 'book-scene-canvas');
+  element.append(canvas);
+  let shown = tick;
+  let drawn: { match: ReplayedMatch; view: BattleView } | null = null;
+  const draw = () => {
+    if (element.clientWidth === 0) return;
+    drawn ??= { match: playReplay(replay), view: new BattleView(canvas, EFFECT_LIFETIMES) };
+    const { recording, features } = drawn.match;
+    drawn.view.render(recording.snapshots[Math.min(shown, recording.snapshots.length - 1)], recording.arena, recording.stats, REPLAY_LOADOUTS, {
+      sensorOf: 0,
+      marks: features[0],
+      coverRoutes: features.map((each) => each.cover),
+      overrun: 0,
+    });
+  };
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(element);
+  return {
+    element,
+    show: (at) => {
+      shown = at;
+      draw();
+    },
+  };
 }

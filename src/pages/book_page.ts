@@ -6,9 +6,10 @@ import { BOOK, CHAPTERS } from '../book/chapters';
 import { createFigure, createTimeline } from '../book/figures';
 import type { MatchupProgress } from '../book/matchup_worker';
 import { type MatchupRecord, matchCount } from '../book/matchups';
-import { createSceneFrame, readingsRows, timelineRows } from '../book/scenes';
+import { analyzeReplay, playReplay } from '../book/replays';
+import { createReplayFrame, createSceneFrame, readingsRows, timelineRows } from '../book/scenes';
 import { SHOTS } from '../book/shots';
-import type { BookBlock, BookChapter, BookRobot, Matchup } from '../book/types';
+import type { BookBlock, BookChapter, BookRobot, Matchup, Replay, ReplayPanel, ShotId } from '../book/types';
 import { CHALLENGES, describeCondition, describeGoal } from '../challenge';
 import { type Loadout, PARTS, type Slot, STANDARD_LOADOUT, partsOf, statsOf } from '../data/parts';
 import { findTeamTemplate } from '../data/team_templates';
@@ -19,6 +20,8 @@ import { formatError } from '../ai/script_error';
 import { HELP } from '../help/topics';
 import { currentLanguage } from '../i18n/language';
 import type { Text } from '../tutorial/types';
+import { AnalysisView } from '../ui/analysis_view';
+import { DebugLogView } from '../ui/debug_log';
 import { createElement } from '../ui/dom';
 import { renderMarkup } from '../ui/markup';
 import { type PageText, inLanguage, startPage } from './page';
@@ -85,9 +88,10 @@ function matchupTable(matchup: Matchup): HTMLElement {
   const count = matchCount(matchup);
   const arenas = matchup.arenas.length;
   const size = matchup.teamSize;
+  const alone = matchup.opponents.length === 1 ? nameOf(matchup.opponents[0]) : null;
   const what = createElement('p', 'book-caption', inLanguage(size === undefined ? {
-    en: `${nameOf(matchup.robot)} against each robot: ${arenas} maps × ${matchup.seeds.length} seeds × both starting places, ${count} matches in all.`,
-    ja: `${nameOf(matchup.robot)} と各ロボットを、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 先手後手を入れかえて、全部で ${count} 試合。`,
+    en: `${nameOf(matchup.robot)} against ${alone ?? 'each robot'}: ${arenas} maps × ${matchup.seeds.length} seeds × both starting places, ${count} matches in all.`,
+    ja: `${nameOf(matchup.robot)} と${alone === null ? '各ロボット' : ` ${alone} `}を、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 先手後手を入れかえて、全部で ${count} 試合。`,
   } : {
     en: `${nameOf(matchup.robot)} against each team, ${size} a side, every machine with a Light body and a Pistol: ${arenas} maps × ${matchup.seeds.length} seeds × both ends, ${count} matches in all.`,
     ja: `${nameOf(matchup.robot)} と各チームを、${size} 対 ${size}（どの機体も車体 Light・銃 Pistol）で、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 陣地を入れかえて、全部で ${count} 試合。`,
@@ -230,6 +234,57 @@ function challengeHints(id: string, hints: readonly Text[]): HTMLElement {
   return box;
 }
 
+/** A picture of the game's screens, in the language of the page where there is one for each, with its numbers over it. */
+function shotPicture(id: ShotId, alt: string): HTMLElement {
+  const shot = SHOTS[id];
+  const image = createElement('img', 'book-shot');
+  image.src = typeof shot.image === 'string' ? shot.image : inLanguage(shot.image);
+  image.alt = alt;
+  image.loading = 'lazy';
+  if (shot.marks === undefined) return image;
+  const box = createElement('div', 'book-shot-box');
+  box.append(image);
+  for (const mark of shot.marks) {
+    const number = createElement('span', 'book-shot-mark', `${mark.n}`);
+    number.style.left = `${mark.x}%`;
+    number.style.top = `${mark.y}%`;
+    number.setAttribute('aria-hidden', 'true');
+    box.append(number);
+  }
+  return box;
+}
+
+/**
+ * A whole match, at one moment, with the game's analysis or log beside it:
+ * pressing the chart, a hit or a row moves the picture to that moment, as the
+ * game moves the battle view.
+ */
+function replayFigure(replay: Replay, tick: number, panel: ReplayPanel | undefined, label: string): HTMLElement {
+  const box = createElement('div', 'book-replay');
+  const frame = createReplayFrame(replay, tick, label);
+  box.append(frame.element);
+  if (panel?.kind === 'analysis') {
+    const { recording } = playReplay(replay);
+    const analysis = new AnalysisView((at) => {
+      frame.show(at);
+      analysis.update(at);
+    });
+    analysis.show(analyzeReplay(replay), recording.arena);
+    analysis.update(tick);
+    box.append(analysis.element);
+  } else if (panel?.kind === 'log') {
+    const events = playReplay(replay).recording.events.filter((event) => event.tick <= panel.until);
+    const rows = createElement('div', 'book-log');
+    const log = new DebugLogView(rows, (event) => {
+      frame.show(event.tick);
+      log.update(events, panel.until, event.tick);
+    });
+    log.update(events, panel.until, tick);
+    box.append(rows);
+  }
+  return box;
+}
+
 function renderBlock(block: BookBlock): HTMLElement {
   switch (block.kind) {
     case 'text':
@@ -254,13 +309,10 @@ function renderBlock(block: BookBlock): HTMLElement {
       );
       return figure(shown, block.caption);
     }
-    case 'shot': {
-      const image = createElement('img', 'book-shot');
-      image.src = SHOTS[block.shot];
-      image.alt = inLanguage(block.caption);
-      image.loading = 'lazy';
-      return figure(image, block.caption);
-    }
+    case 'shot':
+      return figure(shotPicture(block.shot, inLanguage(block.caption)), block.caption);
+    case 'replay':
+      return figure(replayFigure(block.replay, block.tick, block.panel, inLanguage(block.caption)), block.caption);
     case 'template':
       return templateCode(block.template);
     case 'matchup':

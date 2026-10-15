@@ -1,3 +1,5 @@
+import { SAMPLE_AI } from '../data/templates/sample';
+
 // The programs of the book that its text says something exact about: how
 // many ticks a line takes, which lines run together. tests/book.test.ts plays
 // each one and checks that the game still does what the text says.
@@ -277,7 +279,7 @@ export const ANY_GUN = `loop
         turn left
 `;
 
-/** Chapter 15, the first version: looks for the enemy, turning at walls; once it sees it, stops, aims and fires. */
+/** Chapter 16, the first version: looks for the enemy, turning at walls; once it sees it, stops, aims and fires. */
 export const GROW_1 = `loop
     if enemy_visible
         drive stop
@@ -292,7 +294,7 @@ export const GROW_1 = `loop
         wait
 `;
 
-/** Chapter 15, the second: aims at where the enemy will be. */
+/** Chapter 16, the second: aims at where the enemy will be. */
 export const GROW_2 = `loop
     if enemy_visible
         drive stop
@@ -307,7 +309,7 @@ export const GROW_2 = `loop
         wait
 `;
 
-/** Chapter 15, the third: guards just before a hit. */
+/** Chapter 16, the third: guards just before a hit. */
 export const GROW_3 = `loop
     if bullet_incoming and bullet_distance < 36
         guard
@@ -324,7 +326,7 @@ export const GROW_3 = `loop
         wait
 `;
 
-/** Chapter 15, the fourth: shot by an enemy it cannot see, it goes the way the shot came from. */
+/** Chapter 16, the fourth: shot by an enemy it cannot see, it goes the way the shot came from. */
 export const GROW_4 = `loop
     if bullet_incoming and bullet_distance < 36
         guard
@@ -344,7 +346,7 @@ export const GROW_4 = `loop
         wait
 `;
 
-/** Chapter 15, a change that made it worse: below 100 HP, it hides and rests until it is back over 180. */
+/** Chapter 16, a change that made it worse: below 100 HP, it hides and rests until it is back over 180. */
 export const GROW_HIDE = `set resting = 0
 loop
     if hp < 100
@@ -375,3 +377,8 @@ loop
             turn left
         wait
 `;
+
+/** Chapter 15: the Sample with the one number changed, so that it starts firing before DumbBot does. */
+export const SAMPLE_SOONER = SAMPLE_AI.replace('attack(250)', 'attack(320)');
+/** Chapter 15: the number DumbBot's, which only makes the two fire at the same moment. */
+export const SAMPLE_SAME = SAMPLE_AI.replace('attack(250)', 'attack(300)');

@@ -303,6 +303,50 @@ body {
   border: 1px solid var(--border);
 }
 
+/* A screen with numbers over it, which the text goes through. */
+.book-shot-box {
+  position: relative;
+  max-width: 720px;
+}
+
+.book-shot-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 9px;
+  background: var(--syntax-value);
+  color: var(--background);
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+/* A whole match with the game's analysis or log under the picture of its moment. */
+.book-replay {
+  max-width: 640px;
+}
+
+.book-replay .analysis {
+  border: 1px solid var(--border);
+  border-top: none;
+  background: var(--panel);
+  overflow-x: auto;
+}
+
+.book-log {
+  max-height: 380px;
+  overflow: auto;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-top: none;
+  background: var(--panel);
+  font-size: 12px;
+}
+
 .book-figure-svg {
   display: block;
   width: 100%;

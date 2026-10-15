@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
-import { BOOK, CHAPTERS, MATCHUP_ARENAS, MATCHUP_SEEDS, RIVALS, TEAMS, TEAM_ARENAS, TEAM_SIZE, growMatchupOf, matchupOf, teamMatchupOf } from '../src/book/chapters';
+import { BOOK, CHAPTERS, LOST_MATCH, MATCHUP_ARENAS, MATCHUP_SEEDS, RIVALS, TEAMS, TEAM_ARENAS, TEAM_SIZE, WON_MATCH, againstDumbBot, growMatchupOf, matchupOf, teamMatchupOf } from '../src/book/chapters';
+import { analyzeReplay, playReplay } from '../src/book/replays';
+import { SHOTS } from '../src/book/shots';
 import { matchCount, matchupRecords } from '../src/book/matchups';
 import { BROADSIDE } from '../src/book/stages';
 import { CHALLENGES, type ChallengeResult, linesOf, playChallenge } from '../src/challenge';
@@ -11,7 +13,9 @@ import { TEAM_DEFAULT_LOADOUT, castleHpFor, teamCostLimitFor } from '../src/data
 import { prepareCastleFight } from '../src/arena/castle_match';
 import { Simulation } from '../src/sim/simulation';
 import { COST_LIMIT, PARTS, SLOTS, STANDARD_LOADOUT, type Slot, costOf, statsOf } from '../src/data/parts';
-import { TEMPLATES } from '../src/data/templates';
+import { TEMPLATES, findTemplate } from '../src/data/templates';
+import { SAMPLE_AI } from '../src/data/templates/sample';
+import { type MessageKey, t } from '../src/i18n/messages';
 import type { Stage } from '../src/tutorial/types';
 import {
   AIM_AHEAD,
@@ -35,6 +39,8 @@ import {
   NO_ACTION_LOOP,
   NO_GUARD,
   ONE_SHOT,
+  SAMPLE_SAME,
+  SAMPLE_SOONER,
   SEARCH_AND_SHOOT,
   SEARCH_AND_SHOOT_IN_FUNCTIONS,
   SHOOT_ON_THE_MOVE,
@@ -90,8 +96,8 @@ describe('the book page', () => {
     }
     // Every picture is there, with its caption.
     const pictures = BLOCKS.filter((block) => 'caption' in block).length;
-    expect(page.querySelectorAll('figure.book-figure figcaption')).toHaveLength(pictures);
-    expect(page.querySelectorAll('.book-scene')).toHaveLength(BLOCKS.filter((block) => block.kind === 'scene').length);
+    expect(page.querySelectorAll('figure.book-figure > figcaption')).toHaveLength(pictures);
+    expect(page.querySelectorAll('.book-scene')).toHaveLength(BLOCKS.filter((block) => block.kind === 'scene' || block.kind === 'replay').length);
     expect(page.querySelectorAll('table.book-readings')).toHaveLength(BLOCKS.filter((block) => block.kind === 'readings').length);
     expect(page.querySelectorAll('.book-error-message').length).toBeGreaterThanOrEqual(BLOCKS.filter((block) => block.kind === 'error').length);
     expect(page.querySelectorAll('.book-figure-svg')).toHaveLength(
@@ -821,5 +827,137 @@ describe('what the chapter on growing a strategy says', () => {
     expect(against(fourth, 'cover_bot').wins).toBe(0);
     expect(against(fourth, 'aggressive_bot')).toMatchObject({ wins: 12, losses: 0 });
     expect(against(hiding, 'aggressive_bot').losses).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('what the chapter on finding out why it lost says', () => {
+  const chapter = CHAPTERS.find((each) => each.id === 'finding-out')!;
+  const chapterText = (language: Language) => chapter.blocks.flatMap((block) => ('text' in block ? [block.text[language]] : [])).join('\n');
+  const lost = playReplay(LOST_MATCH).recording;
+  const won = playReplay(WON_MATCH).recording;
+  const firstHurt = (recording: typeof lost, robot: number) => recording.snapshots.findIndex((snapshot) => snapshot.robots[robot].hp < 200);
+  const firstFire = (recording: typeof lost, robotId: string) =>
+    recording.events.find((event) => event.type === 'action' && event.message === 'fire' && event.robotId === robotId)!;
+
+  it('comes between the base battle and growing a strategy, as Chapter 15', () => {
+    expect(CHAPTERS.indexOf(chapter)).toBe(14);
+    expect(CHAPTERS[15].id).toBe('growing');
+  });
+
+  it('plays the Sample against DumbBot on Open Field with seed 1, as the program screen names them; the Sample loses', () => {
+    expect(LOST_MATCH.program).toBe(findTemplate('sample')?.source);
+    expect(findTemplate('sample')?.name).toBe('Sample');
+    expect(findTemplate(LOST_MATCH.bravo)?.name).toBe('DumbBot');
+    expect(ARENAS.find((arena) => arena.id === LOST_MATCH.arena)?.name).toBe('Open Field');
+    expect(LOST_MATCH.seed).toBe(1);
+    expect(lost.snapshots.at(-1)?.result?.winnerId).toBe('BRAVO');
+  });
+
+  it('the Sample beats DumbBot once in 12; with 300, 10 of 12 are draws; with 320 it wins 11', () => {
+    const against = (source: string) => matchupRecords(againstDumbBot({ en: 'x', ja: 'x' }, source))[0];
+    expect(against(SAMPLE_AI)).toMatchObject({ wins: 1, losses: 11, draws: 0 });
+    expect(against(SAMPLE_SAME)).toMatchObject({ draws: 10 });
+    expect(against(SAMPLE_SOONER)).toMatchObject({ wins: 11, losses: 1 });
+  });
+
+  it('the analysis: the Sample hit with 9 of 10, DumbBot with 10 of 10; a shot takes 20 of 200; the Sample is hurt first', () => {
+    const [alpha, bravo] = analyzeReplay(LOST_MATCH).robots;
+    expect([alpha.hits, alpha.shots, bravo.hits, bravo.shots]).toEqual([9, 10, 10, 10]);
+    expect(ROBOT_DEFAULTS.shotDamage).toBe(20);
+    expect(ROBOT_DEFAULTS.maxHp).toBe(200);
+    expect(firstHurt(lost, 0)).toBeLessThan(firstHurt(lost, 1));
+    // The analysis is shown at the moment of the first hit: the Sample has been hit, DumbBot not yet.
+    const shown = chapter.blocks.find((block) => block.kind === 'replay' && block.replay === LOST_MATCH && block.panel?.kind === 'analysis');
+    expect(shown?.kind === 'replay' && shown.tick).toBe(firstHurt(lost, 0));
+  });
+
+  it('the log: DumbBot goes to ATTACK and fires at 2.000 seconds; the Sample fires first at 2.500, as it is first hit (hp=180)', () => {
+    const attack = lost.events.find((event) => event.robotId === 'BRAVO' && event.message === 'label TRACK -> ATTACK');
+    expect(attack?.timestamp).toBe(2);
+    expect(firstFire(lost, 'BRAVO').timestamp).toBe(2);
+    expect(firstFire(lost, 'ALPHA').timestamp).toBe(2.5);
+    const hit = lost.events.find((event) => event.type === 'hit' && event.robotId === 'BRAVO');
+    expect(hit?.timestamp).toBe(2.5);
+    expect(hit?.message).toContain('hp=180');
+    // All of it in the part of the log the book shows.
+    for (const block of chapter.blocks) if (block.kind === 'replay' && block.panel?.kind === 'log') expect(block.panel.until).toBeGreaterThanOrEqual(hit!.tick);
+  });
+
+  it('the debugger: line 15 first runs at 2.500; at 2.000 the Sample goes by line 12 to the else, with distance 250 and the enemy just under 300', () => {
+    expect(SAMPLE_AI.split('\n')[14].trim()).toBe('fire');
+    expect(SAMPLE_AI.split('\n')[11].trim()).toBe('if enemy_distance < distance');
+    expect(SAMPLE_AI.split('\n').slice(15, 18).map((line) => line.trim())).toEqual(['else', 'label TRACK', 'drive forward']);
+    expect(SAMPLE_AI).toContain('attack(250)');
+    const at = firstFire(lost, 'BRAVO').tick;
+    expect(lost.snapshots.findIndex((snapshot) => snapshot.robots[0].executedLines.includes(15)) / MATCH_DEFAULTS.tickRate).toBe(2.5);
+    const lines = lost.snapshots[at].robots[0].executedLines;
+    expect(lines).toContain(12);
+    expect(lines).toContain(17);
+    expect(lines).not.toContain(15);
+    // DumbBot fires from closer than 300: the Sample reads the same distance, so it is under 300 and not yet under 250.
+    expect(findTemplate('dumb_bot')?.source).toContain('if enemy_distance < 300');
+    const distance = lost.snapshots[at].robots[0].enemyDistance;
+    expect(distance).toBeGreaterThan(290);
+    expect(distance).toBeLessThan(300);
+  });
+
+  it('with attack(320) the Sample fires first, and DumbBot is hurt first', () => {
+    expect(SAMPLE_SOONER).toContain('attack(320)');
+    expect(firstFire(won, 'ALPHA').tick).toBeLessThan(firstFire(won, 'BRAVO').tick);
+    expect(firstHurt(won, 1)).toBeLessThan(firstHurt(won, 0));
+    expect(won.snapshots.at(-1)?.result?.winnerId).toBe('ALPHA');
+  });
+
+  it('shows each moment of its matches before the match is over', () => {
+    for (const block of chapter.blocks) {
+      if (block.kind !== 'replay') continue;
+      expect(playReplay(block.replay).recording.snapshots.length).toBeGreaterThan(block.tick);
+      expect(compileScript(block.replay.program).ok).toBe(true);
+    }
+  });
+
+  it('names the game\'s buttons, columns and kinds of row as the game does, in both languages', () => {
+    const keys: MessageKey[] = [
+      'toolbar.run', 'toolbar.debug', 'editor.loadTemplate', 'analysis.tab.analysis', 'panel.inspector', 'panel.watch', 'transport.play', 'transport.pause',
+      'analysis.accuracy', 'analysis.dealt', 'analysis.taken', 'analysis.guarded', 'analysis.recovered', 'analysis.distance', 'analysis.sighted',
+      'log.type.sensor', 'log.type.ai', 'log.type.action', 'log.type.hit', 'log.type.warning', 'log.type.system', 'log.type.error',
+    ];
+    for (const language of ['en', 'ja'] as const) {
+      useLanguage(language);
+      try {
+        const written = chapterText(language).toLowerCase();
+        for (const key of keys) expect(written, `${language} ${key}`).toContain(t(key).toLowerCase());
+      } finally {
+        useLanguage('en');
+      }
+    }
+  });
+
+  it('quotes the warnings as the game words them', () => {
+    const reporter = Object.values(import.meta.glob('../src/sim/event_reporter.ts', { query: '?raw', import: 'default', eager: true }))[0] as string;
+    for (const warning of ['program finished', 'too many lines without an action', 'program stopped: its calls went too deep', 'out of ammo', 'out of guards', 'no teammate has that number']) {
+      expect(reporter).toContain(warning);
+      expect(chapterText('ja')).toContain(warning);
+    }
+  });
+
+  it('numbers the picture of the debugger 1 to 12, and goes through every number', () => {
+    expect(SHOTS.debugger.marks?.map((mark) => mark.n)).toEqual(Array.from({ length: 12 }, (_, at) => at + 1));
+    for (const language of ['en', 'ja'] as const) {
+      for (let n = 1; n <= 12; n++) expect(chapterText(language)).toMatch(new RegExp(`^\\| ${n} \\|`, 'm'));
+    }
+    const page = inLanguage('ja', renderBookPage);
+    expect(page.querySelectorAll('.book-shot-mark')).toHaveLength(12);
+    expect(page.querySelector('#finding-out img.book-shot')?.getAttribute('src')).toContain('ja');
+  });
+
+  it('puts the game\'s own analysis and log in the page', () => {
+    const page = inLanguage('ja', renderBookPage);
+    const section = page.querySelector('#finding-out')!;
+    expect(section.querySelectorAll('.book-replay .analysis-table')).toHaveLength(2);
+    const rows = section.querySelectorAll('.book-log .log-row');
+    expect(rows.length).toBe(lost.events.filter((event) => event.tick <= 100).length);
+    // Rows after the moment shown are pale.
+    expect(section.querySelectorAll('.book-log .log-row.future').length).toBe(lost.events.filter((event) => event.tick > 60 && event.tick <= 100).length);
   });
 });

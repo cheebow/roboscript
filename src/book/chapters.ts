@@ -166,7 +166,7 @@ The shortest program is one line.`,
     ),
     { kind: 'scene', scene: { stage: RANGE, program: ONE_SHOT, tick: 12 }, caption: caption(
       'The one shot of ALPHA (right) on its way to the target (left).',
-      'ALPHA（右）が撃った 1 発が、的（左）へ飛んでいるところ。',
+      'ALPHA（右）が撃った 1 発が、的（左）へ飛んでいるところ。この本では、プログラムを動かす自分のロボットを ALPHA と呼ぶ。',
     ) },
     text(
       `## Keep shooting: loop
@@ -205,7 +205,7 @@ The commands that make a robot move:
 | \`turn left\` / \`turn right\` | 車体を少し（6 度）回す |
 | \`turn left 90\` | 車体を 90 度回す |
 | \`turn enemy\` | 車体を敵の方へ回す |
-| \`aim enemy\` | 砲塔だけを敵の方へ回す |
+| \`aim enemy\` | 砲塔（車体の上の銃）だけを敵の方へ回す |
 | \`fire\` | 撃つ |
 | \`guard\` | 身構える（当たった弾のダメージが半分になる） |
 | \`wait\` | 少し待つ |
@@ -266,8 +266,8 @@ A robot's program runs a little at a time, **along with the clock of the match**
 ロボットのプログラムは、**試合の時計に合わせて** 少しずつ進みます。試合の時間は **tick**（ティック）という単位で進み、30 tick が 1 秒です。ロボットは 1 tick ごとに 1 つずつ行動します。パラパラ漫画のように、tick が積み重なって試合になります。`,
     ),
     { kind: 'figure', figure: 'program-vs-tick', caption: caption(
-      'The same five lines: an ordinary program runs them all at once; a robot\'s runs a few of them each tick.',
-      '同じ 5 行でも、ふつうのプログラムは一度に全部進み、ロボットのプログラムは tick ごとに少しずつ進む。',
+      'The same five lines (the numbers are line numbers): an ordinary program runs them all at once; a robot\'s runs a few of them each tick. Why 2 and 3 share a tick comes next.',
+      '同じ 5 行（数字は行番号）でも、ふつうのプログラムは一度に全部進み、ロボットのプログラムは tick ごとに少しずつ進む。2 と 3 が同じ tick になるわけは、次の節で。',
     ) },
     text(
       `## One action, and the tick is over
@@ -275,7 +275,7 @@ A robot's program runs a little at a time, **along with the clock of the match**
 How far the program gets in one tick follows a short rule:
 
 - \`turn\`, \`aim\`, \`face\`, \`fire\`, \`guard\` and \`wait\` are **actions**. When the program runs an action, that tick is over. The next tick starts from the next line.
-- \`drive\`, \`if\`, \`set\`, \`label\`, \`loop\` and the like **take no time**. The program goes on to the next line in the same tick.
+- \`drive\`, \`if\`, \`set\`, \`label\`, \`loop\` and the like **take no time**. The program goes on to the next line in the same tick. (\`if\`, \`set\` and \`label\` come in later chapters.)
 
 Here it is with a real program.`,
       `## 行動を 1 つしたら、その tick は終わり
@@ -283,7 +283,7 @@ Here it is with a real program.`,
 1 tick でどこまで進むかは、次の決まりで決まります。
 
 - \`turn\`、\`aim\`、\`face\`、\`fire\`、\`guard\`、\`wait\` は **行動** です。行動を 1 つ実行すると、その tick は終わりです。次の tick は、その次の行から始まります。
-- \`drive\`、\`if\`、\`set\`、\`label\`、\`loop\` などは **時間がかかりません**。同じ tick のまま次の行へ進みます。
+- \`drive\`、\`if\`、\`set\`、\`label\`、\`loop\` などは **時間がかかりません**。同じ tick のまま次の行へ進みます。（\`if\`、\`set\`、\`label\` はあとの章で出てきます。）
 
 実際のプログラムで見てみましょう。`,
     ),
@@ -454,11 +454,11 @@ There are two kinds of sensor:
 - Numbers: \`enemy_distance\` (how far the enemy is), \`enemy_angle\` (which way it is), \`hp\` (your HP), \`reload\` (seconds until you can shoot again) and so on
 
 These are the ones you will use most. The help lists them all.`,
-      `## 本当かうそか、と数
+      `## true か false か、と数
 
 センサーには 2 種類あります。
 
-- 本当かうそかを表すもの: \`enemy_visible\`（敵が見えている）、\`blocked\`（前がふさがっている）、\`bullet_incoming\`（当たるコースの弾が来ている）、\`hit\`（撃たれた）など
+- true（はい）か false（いいえ）で答えるもの: \`enemy_visible\`（敵が見えている）、\`blocked\`（前がふさがっている）、\`bullet_incoming\`（当たるコースの弾が来ている）、\`hit\`（撃たれた）など
 - 数を表すもの: \`enemy_distance\`（敵までの距離）、\`enemy_angle\`（敵のいる方向）、\`hp\`（自分の HP）、\`reload\`（次に撃てるまでの秒数）など
 
 よく使うのはこのあたりです。全部の一覧はヘルプにあります。`,
@@ -466,10 +466,14 @@ These are the ones you will use most. The help lists them all.`,
     text(
       `## Values that change
 
-Here are the sensors of a robot that just stands there, read in a real match. The other robot drives about.`,
+Try it with a robot that just stands there. Its program only waits and uses no sensors at all, yet the sensors are still read every tick.
+
+The table below comes from a real match against a target that drives about. It shows three of ALPHA's sensors, \`enemy_visible\`, \`enemy_distance\` and \`enemy_angle\`, every few ticks. While debugging you can see the same values in the watch.`,
       `## 変わっていく値
 
-何もせずに立っているロボットのセンサーを、本物の試合で読んでみます。相手は動き回る的です。`,
+何もせずに立っているロボットで試してみます。プログラムは待つだけで、センサーは使っていません。それでもセンサーの値は、毎 tick 読み直されています。
+
+下の表は、動き回る的を相手に本物の試合をして、ALPHA のセンサーのうち \`enemy_visible\`、\`enemy_distance\`、\`enemy_angle\` の 3 つを、何 tick かおきに書き出したものです。デバッグ中なら、同じ値をウォッチで見られます。`,
     ),
     code(JUST_LOOK),
     { kind: 'readings', readings: { stage: MOVING, program: JUST_LOOK, ticks: [1, 10, 20, 30, 40], sensors: ['enemy_visible', 'enemy_distance', 'enemy_angle'] }, caption: caption(
@@ -506,7 +510,7 @@ The sensors see all the way round, but not through obstacles.`,
     ),
     { kind: 'scene', scene: { stage: HIDDEN, program: JUST_LOOK, tick: 1 }, caption: caption(
       'The target (top left) is behind the block, so ALPHA (bottom right) cannot see it: enemy_visible is false.',
-      '的（左上）は障害物の陰にいるので、ALPHA（右下）からは見えない。enemy_visible はうそ（false）。',
+      '的（左上）は障害物の陰にいるので、ALPHA（右下）からは見えない。enemy_visible は false。',
     ) },
     text(
       `While the enemy is out of sight, \`enemy_distance\` and \`enemy_angle\` point to where it was last seen. If it has never been seen, they are 0.`,
@@ -554,7 +558,7 @@ It drives on, checking every tick whether it can see the enemy, and when it can,
 |---|---|
 | \`enemy_distance < 300\` | the enemy is nearer than 300 |
 | \`hp <= 100\` | HP is 100 or less |
-| \`ammo == 0\` | no bullets left |
+| \`ammo == 0\` | no bullets left (there are only so many) |
 | \`reload != 0\` | the gun is not ready yet |
 | \`enemy_visible and enemy_distance < 300\` | in sight, and nearer than 300 |
 | \`blocked or hit\` | the way is blocked, or you were hit |
@@ -567,7 +571,7 @@ It drives on, checking every tick whether it can see the enemy, and when it can,
 |---|---|
 | \`enemy_distance < 300\` | 敵までの距離が 300 より小さい |
 | \`hp <= 100\` | HP が 100 以下 |
-| \`ammo == 0\` | 弾がもうない |
+| \`ammo == 0\` | 弾を撃ち尽くした（弾の数には限りがある） |
 | \`reload != 0\` | まだ撃てない |
 | \`enemy_visible and enemy_distance < 300\` | 見えていて、しかも 300 より近い |
 | \`blocked or hit\` | 前がふさがっているか、撃たれた |
@@ -612,7 +616,7 @@ Which is better depends on the opponent. What matters here is that **changing th
       `撃ち続けてくる相手と戦わせると、結果がはっきり分かれます。
 
 - 撃つのが先の方は、敵がいつも見えているので、\`guard\` が一度も実行されません。撃ち合いになり、同じ tick に倒れて引き分けです。
-- \`guard\` が先の方は、弾が来るたびに \`guard\` します。ただ \`guard\` は 1 試合に 4 回までで、使うたびに次の弾が少し遅れます。この相手には撃ち負けました。
+- \`guard\` が先の方は、弾が来るたびに \`guard\` します。ただ \`guard\` は 1 試合に 4 回までで、使うたびに、自分が次に撃てるのが少し遅くなります。この相手には撃ち負けました。
 
 どちらがいいかは相手しだいです。大事なのは、**順番を入れかえただけで、別のロボットになる** ことです。`,
     ),
@@ -757,8 +761,8 @@ turn_by(-45)
     ),
     code(WITHIN_RANGE),
     text(
-      `The number after \`return\` is the value of the function. \`margin()\` is how much room is left before the edge of the gun's range: above 0, the enemy is in range. The robot drives until it is, then stops and shoots.`,
-      `\`return\` のあとに書いた数が、関数の値になります。\`margin()\` は「射程まであとどれだけ余裕があるか」で、プラスなら敵が射程に入っています。射程に入るまで走り、入ったら止まって撃ちます。`,
+      `The number after \`return\` is the value of the function. \`weapon_range\` is a sensor: how far the gun's bullets reach (its range). \`margin()\` is how much room is left before the edge of the gun's range: above 0, the enemy is in range. The robot drives until it is, then stops and shoots.`,
+      `\`return\` のあとに書いた数が、関数の値になります。\`weapon_range\` は、銃の弾が届く距離（射程）を表すセンサーです。\`margin()\` は「射程まであとどれだけ余裕があるか」で、プラスなら敵が射程に入っています。射程に入るまで走り、入ったら止まって撃ちます。`,
     ),
     { kind: 'scene', scene: { stage: FAR, program: WITHIN_RANGE, tick: 120 }, caption: caption(
       'ALPHA (right) stopped once the target was in range, and is shooting.',
@@ -774,7 +778,7 @@ A function used as a value, as in the condition of an \`if\`, cannot have action
     ),
     { kind: 'error', program: VALUE_THAT_TAKES_TIME, caption: caption(
       'A function with an action in it, used in a condition.',
-      '行動の入った関数を条件に使うと、こう言われる。',
+      '行動の入った関数を条件に使うと、このエラーが出る。',
     ) },
     text(
       `A function called as a line of its own, as \`attack()\` was, can have actions in it and take as many ticks as it likes.`,
@@ -926,7 +930,7 @@ To start with the conclusion: there is no robot that beats every other. These fo
     ) },
     text(
       `Under each robot below is a button, **Play the matches**. Press it, and this page plays that robot against the other seven, right here: on ${MATCHUP_ARENAS.length} maps, with ${MATCHUP_SEEDS.length} seeds, from both starting places — ${MATCHUP_ARENAS.length * MATCHUP_SEEDS.length * 2} matches against each. The same matches always come out the same.`,
-      `下の各ロボットの節にある「試合をして確かめる」を押すと、そのロボットとほかの 7 体を、このページの中で実際に戦わせます。マップ ${MATCHUP_ARENAS.length} つで、seed を ${MATCHUP_SEEDS.length} つ、先手と後手を入れかえて、相手 1 体あたり ${MATCHUP_ARENAS.length * MATCHUP_SEEDS.length * 2} 試合です。同じ試合は、何度やっても同じ結果になります。`,
+      `下の各ロボットの節にある「試合をして確かめる」を押すと、そのロボットとほかの 7 体を、このページの中で実際に戦わせます。マップ ${MATCHUP_ARENAS.length} つで、seed を ${MATCHUP_SEEDS.length} つ、スタート位置を入れかえて、相手 1 体あたり ${MATCHUP_ARENAS.length * MATCHUP_SEEDS.length * 2} 試合です。同じ試合は、何度やっても同じ結果になります。`,
     ),
     ...rival(
       'dumb_bot',
@@ -1156,7 +1160,7 @@ const DEFENCE: BookChapter = {
 When to use it makes all the difference. Here are three robots, each trading shots with one that keeps shooting:`,
       `## guard は当たる瞬間に
 
-\`guard\` すると、その tick に当たった弾のダメージが半分になります。ただし 1 試合に ${ROBOT_DEFAULTS.maxGuards} 回までで、使うたびに次の弾が ${ROBOT_DEFAULTS.guardRecovery} 秒遅れます。
+\`guard\` すると、その tick に当たった弾のダメージが半分になります。ただし 1 試合に ${ROBOT_DEFAULTS.maxGuards} 回までで、使うたびに、自分が次に撃てるのが ${ROBOT_DEFAULTS.guardRecovery} 秒遅くなります。
 
 いつ使うかで、結果が大きく変わります。撃ち続けてくる相手に、3 通りのロボットで撃ち合わせてみました。`,
     ),
@@ -1168,12 +1172,12 @@ When to use it makes all the difference. Here are three robots, each trading sho
 - **Guard as soon as a bullet comes** (\`bullet_incoming\`): a bullet seen is not yet a bullet that hits, so guarding then saves nothing. It wasted all four guards, its shots were put off, and it lost.
 - **Guard only just before the hit** (\`bullet_distance < 36\`): it won, with 10 HP left.
 
-A small difference decided the match. \`bullet_distance < 36\` stands for "about to hit": it is what GuardBot uses.`,
+A small difference decided the match. \`bullet_distance\` is how far the nearest bullet on course to hit you is. A bullet goes about 13 a tick, so 36 means it hits in about 3 ticks. GuardBot uses this number too.`,
       `- **guard しない**: 撃ち合って、同じ tick に倒れて引き分け。
 - **弾が来たらすぐ guard**（\`bullet_incoming\`）: 弾が見えても、その tick に当たるわけではないので、ダメージは減りません。4 回を無駄に使い、撃つのも遅れて、負けました。
 - **当たる直前だけ guard**（\`bullet_distance < 36\`）: HP を 10 残して勝ちました。
 
-ほんの少しの差で、勝ち負けが分かれました。\`bullet_distance < 36\` は「もうすぐ当たる」の目安で、GuardBot が使っている数です。`,
+ほんの少しの差で、勝ち負けが分かれました。\`bullet_distance\` は、当たるコースの弾のうち、いちばん近いものまでの距離です。弾は 1 tick に約 13 進むので、36 は「あと 3 tick ほどで当たる」近さです。GuardBot もこの数を使っています。`,
     ),
     text(
       `## Turn to whoever shot you
@@ -1181,7 +1185,7 @@ A small difference decided the match. \`bullet_distance < 36\` stands for "about
 Sometimes the shot comes from an enemy you cannot see. \`hit\` is true on the tick you are hit, and \`turn hit\` or \`face hit\` turns you the way the bullet came from. That is how GuardBot and SentryBot find an enemy shooting from behind cover.`,
       `## 撃たれた方を向く
 
-見えない相手から撃たれることもあります。\`hit\` は撃たれた tick に本当になり、\`turn hit\` や \`face hit\` で、弾が来た方へ向けます。GuardBot と SentryBot は、こうして物陰から撃ってくる相手を探します。`,
+見えない相手から撃たれることもあります。\`hit\` は撃たれた tick に true になり、\`turn hit\` や \`face hit\` で、弾が来た方へ向けます。GuardBot と SentryBot は、こうして物陰から撃ってくる相手を探します。`,
     ),
     text(
       `## Hide and recover
@@ -1327,8 +1331,8 @@ Every number below comes from playing the challenge.`,
         `見えないうちは走って探し、見えたら止まって撃ちます。第 5 章の形です。ただ、それだけだと壁にぶつかって止まったままになります（第 8 章）。前がふさがったら曲がりましょう。`,
       ],
       [
-        `Aim before you fire: \`aim enemy\` until \`aim_angle\` is between -2 and 2, then \`fire\`.`,
-        `撃つ前に狙いを合わせます。\`aim_angle\` が -2 から 2 の間に入るまで \`aim enemy\`、入ったら \`fire\` です。`,
+        `Aim before you fire. \`aim_angle\` is how far (in degrees) the turret points off the enemy; 0 is dead on. \`aim enemy\` until \`aim_angle\` is between -2 and 2, then \`fire\`.`,
+        `撃つ前に狙いを合わせます。\`aim_angle\` は、砲塔の向きと敵の方向のずれ（度）で、0 なら狙いがぴったりです。\`aim_angle\` が -2 から 2 の間に入るまで \`aim enemy\`、入ったら \`fire\` です。`,
       ],
     ),
     challenge(
@@ -1345,8 +1349,8 @@ Every number below comes from playing the challenge.`,
     challenge(
       'untouchable',
       [
-        `The standard gun reaches 400. BRAVO, 480 away, is out of its range.`,
-        `標準の銃の射程は 400 です。480 先の BRAVO には届きません。`,
+        `The standard gun reaches 400. The other robot, BRAVO, is 480 away: out of its range.`,
+        `標準の銃の射程は 400 です。480 先にいる相手の BRAVO には届きません。`,
       ],
       [
         `A Cannon reaches 520. But it costs 4: to stay within the cost limit, take a part of cost 2 somewhere else (Chapter 12).`,
@@ -1361,7 +1365,7 @@ Every number below comes from playing the challenge.`,
       'short-route',
       [
         `The goal is beyond the block. Turn whenever you run into something, and you find your way round.`,
-        `ゴールはブロックの向こうです。ぶつかったら曲がる、を繰り返せば回り込めます。`,
+        `ゴールは障害物の向こうです。ぶつかったら曲がる、を繰り返せば回り込めます。`,
       ],
       [
         `\`blocked\` tells you the way ahead is blocked (Chapter 4). It takes 5 lines, turning left or turning right.`,
@@ -1391,7 +1395,7 @@ Every number below comes from playing the challenge.`,
       ],
       [
         `With full HP there is nothing to get back: a robot that hid from the start did not clear it. Trade shots first, and hide once your HP is down.`,
-        `HP が満タンのままでは回復しません。初めから隠れたロボットは、クリアになりませんでした。撃ち合って HP が減ってから隠れます。`,
+        `HP が満タンのままでは回復しません。初めから隠れたロボットは、クリアできませんでした。撃ち合って HP が減ってから隠れます。`,
       ],
     ),
     challenge(
@@ -1402,11 +1406,11 @@ Every number below comes from playing the challenge.`,
       ],
       [
         `The program of Chapter 11 that guards just before the hit wins here, but guards fewer than 3 times. Its \`else\` has \`aim enemy\` and \`fire\` one after the other, two ticks in which it does not look at the bullets (Chapter 3).`,
-        `第 11 章の「当たる直前だけ guard」のプログラムでも勝てますが、ガードは 3 回に届きませんでした。\`else\` の中に \`aim enemy\` と \`fire\` が続けて書いてあるので、その 2 tick の間は弾を確かめていないからです（第 3 章）。`,
+        `第 11 章の「当たる直前だけ guard」のプログラムでも勝てますが、guard は 3 回に届きませんでした。\`else\` の中に \`aim enemy\` と \`fire\` が続けて書いてあるので、その 2 tick の間は弾を確かめていないからです（第 3 章）。`,
       ],
       [
         `Do one action a time round the loop, and it looks at the bullets every tick: \`aim enemy\` if the aim is off, \`fire\` if it is on, split with \`if\`.`,
-        `1 回の loop で行動を 1 つだけにすると、毎 tick 弾を確かめられます。狙いがずれていたら \`aim enemy\`、合っていたら \`fire\` と、\`if\` で分けます。`,
+        `loop の 1 周で行動を 1 つだけにすると、毎 tick 弾を確かめられます。狙いがずれていたら \`aim enemy\`、合っていたら \`fire\` と、\`if\` で分けます。`,
       ],
     ),
     challenge(
@@ -1417,7 +1421,7 @@ Every number below comes from playing the challenge.`,
       ],
       [
         `\`hit\` is true on the tick you are hit. Turn the way the bullet came from with \`face hit\`, and drive that way (Chapter 11).`,
-        `撃たれた tick には \`hit\` が本当になります。\`face hit\` で弾の来た方を向き、そちらへ走りましょう（第 11 章）。`,
+        `撃たれた tick には \`hit\` が true になります。\`face hit\` で弾の来た方を向き、そちらへ走りましょう（第 11 章）。`,
       ],
     ),
     challenge(
@@ -1457,8 +1461,8 @@ Every number below comes from playing the challenge.`,
         `DumbBot の HP は 200、標準の銃は 1 発 20 なので、15 発のうち 10 発を当てる必要があります。止まって、狙いが合ってから撃ちましょう（第 10 章）。`,
       ],
       [
-        `A Cannon shot does 45, so 5 hits are enough. With one, it cleared in 8 shots or fewer, for a star. It costs 4: take a part of cost 2 somewhere else (Chapter 12).`,
-        `1 発 45 の Cannon なら、5 発当てれば倒せます。Cannon では 8 発以内に収まり、星も取れました。コスト 4 なので、どこかをコスト 2 のパーツにします（第 12 章）。`,
+        `A Cannon shot does 45, so 5 hits are enough. Clear it in 8 shots or fewer for a star (a harder extra goal beyond clearing); with a Cannon it did. It costs 4: take a part of cost 2 somewhere else (Chapter 12).`,
+        `1 発 45 の Cannon なら、5 発当てれば倒せます。8 発以内でクリアすると星がもらえます（星は、クリア条件より難しいおまけの目標）。Cannon では 8 発以内に収まりました。コスト 4 なので、どこかをコスト 2 のパーツにします（第 12 章）。`,
       ],
     ),
     challenge(
@@ -1506,8 +1510,8 @@ In these four, your team is the same program running on each machine. Chapter 14
         `相手はまっすぐこちらの基地へ走ってきます。こちらも相手の基地へ向かうなら、\`face enemy_base\` でそちらを向けます。`,
       ],
       [
-        `Once \`enemy_base_distance\` is less than \`weapon_range\`, stop and shoot the base: \`face enemy_base\` then \`aim ahead\` and \`fire\`. If the enemy comes close on the way, deal with it first.`,
-        `\`enemy_base_distance\` が \`weapon_range\` より小さくなったら、止まって基地を撃ちます。\`face enemy_base\` で向いて、\`aim ahead\` と \`fire\` です。途中で相手が近くに来たら、先にそちらと撃ち合いましょう。`,
+        `Once \`enemy_base_distance\` is less than \`weapon_range\`, stop and shoot the base: \`face enemy_base\`, then \`aim ahead\` (turn the turret to where the body faces) and \`fire\`. If the enemy comes close on the way, deal with it first.`,
+        `\`enemy_base_distance\` が \`weapon_range\` より小さくなったら、止まって基地を撃ちます。\`face enemy_base\` で向いて、\`aim ahead\`（砲塔を車体の正面に向ける）と \`fire\` です。途中で相手が近くに来たら、先にそちらと撃ち合いましょう。`,
       ],
     ),
     challenge(
@@ -1601,7 +1605,7 @@ BaseSplit は、1 番を基地の守りに残し、ほかの 2 台で攻めま�
     { kind: 'template', template: 'castle_split' },
     text(
       `\`if self_id == 1\` splits the program in two: the guard's part above, the attackers' below. \`base_distance\` and \`face base\` are about your own base, \`enemy_base_distance\` and \`face enemy_base\` about the enemy's.`,
-      `\`if self_id == 1\` で、プログラムを 2 つに分けています。上が守りの分、下が攻めの分です。\`base_distance\` と \`face base\` は自分の基地、\`enemy_base_distance\` と \`face enemy_base\` は敵の基地についての語です。`,
+      `\`if self_id == 1\` で、プログラムを 2 つに分けています。上が守りの分、下が攻めの分です。\`base_distance\` と \`face base\` は自分の基地を、\`enemy_base_distance\` と \`face enemy_base\` は敵の基地を指します。`,
     ),
     text(
       `## Telling each other
@@ -1649,7 +1653,7 @@ As with the robots of Chapter 9, no team beats them all. Played 3 a side, these 
 | BaseCall | 敵を見つけた機体のところへ集まる |
 | BaseRally | そろっている間は攻め、1 台やられたら全員で戻って守る |
 
-第 9 章のロボットと同じで、どのチームにも勝つチームはありません。3 対 3 で戦わせると、この 3 つは勝ち越しが一回りします。`,
+第 9 章のロボットと同じで、どのチームにも勝つチームはありません。3 対 3 で戦わせると、この 3 つは、じゃんけんのような三すくみになります。`,
     ),
     { kind: 'figure', figure: 'team-rivals', caption: caption(
       'Played 3 a side, each team won all 12 of its matches against the next: BaseRunner against BaseTurtle, BaseTurtle against BaseSplit, BaseSplit against BaseRunner.',
@@ -1865,7 +1869,7 @@ The warnings are worth knowing:
 | program finished | the program got to its last line and stopped | put it all in a \`loop\` (Chapter 1) |
 | too many lines without an action | 1000 lines went by without an action: the robot does nothing that tick | put an action on every way through the loop (Chapter 3) |
 | program stopped: its calls went too deep | functions called functions too deep | do not let functions call each other round |
-| out of ammo | no shots left | do not fire from too far to hit |
+| out of ammo | no shots left (there are only so many) | do not waste shots from too far to hit |
 | out of guards | every \`guard\` used up | guard just before a hit (Chapter 11) |
 | signal to N: no teammate has that number | in a base battle, a \`signal\` to a number nobody has | check the number (Chapter 14) |`,
       `1 行が 1 つの出来事です。左から、時刻（秒）、ロボット、種類、内容です。
@@ -1891,7 +1895,7 @@ The warnings are worth knowing:
 | program finished | プログラムが最後の行まで行って止まった | 全体を \`loop\` に入れる（第 1 章） |
 | too many lines without an action | 行動のないまま 1000 行を超えた。その tick は何もしない | loop のどの道にも行動を入れる（第 3 章） |
 | program stopped: its calls went too deep | 関数が関数を呼んで、深くなりすぎた | 関数どうしが呼び合わないようにする |
-| out of ammo | 弾がなくなった | 当たらない遠くから撃たない |
+| out of ammo | 弾がなくなった（弾の数には限りがある） | 届かない所や外れやすい所から撃って、むだにしない |
 | out of guards | \`guard\` を使い切った | 当たる直前だけ guard する（第 11 章） |
 | signal to N: no teammate has that number | 基地戦で、いない番号に \`signal\` した | 番号を確かめる（第 14 章） |`,
     ),
@@ -2200,10 +2204,10 @@ To start, the robot of Chapter 13's hints: it drives about until it sees the ene
     text(
       `## Round 2: shoot where it is going
 
-A robot driving across is missed by a shot at where it is now (Chapter 10). Change \`aim enemy\` to \`aim lead\`, and \`aim_angle\` to \`lead_angle\` with it:`,
+A robot driving across is missed by a shot at where it is now (Chapter 10). Change \`aim enemy\` to \`aim lead\`, and \`aim_angle\` to \`lead_angle\` (how far the turret points off where the enemy will be) with it:`,
       `## 2 回目: 行く先を撃つ
 
-横に走る相手は、今いる場所を撃っても当たりません（第 10 章）。\`aim enemy\` を \`aim lead\` に、それに合わせて \`aim_angle\` を \`lead_angle\` にします。`,
+横に走る相手は、今いる場所を撃っても当たりません（第 10 章）。\`aim enemy\` を \`aim lead\` に、それに合わせて \`aim_angle\` を \`lead_angle\`（砲塔の向きと、弾が届くころに敵がいる場所とのずれ）にします。`,
     ),
     code(GROW_2),
     { kind: 'matchup', matchup: growMatchupOf({ en: 'Round 2', ja: '2 回目' }, GROW_2) },

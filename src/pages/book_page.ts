@@ -104,7 +104,7 @@ function matchupTable(matchup: Matchup): HTMLElement {
   const alone = matchup.opponents.length === 1 ? nameOf(matchup.opponents[0]) : null;
   const what = createElement('p', 'book-caption', inLanguage(size === undefined ? {
     en: `${nameOf(matchup.robot)} against ${alone ?? 'each robot'}: ${arenas} maps × ${matchup.seeds.length} seeds × both starting places, ${count} matches in all.`,
-    ja: `${nameOf(matchup.robot)} と${alone === null ? '各ロボット' : ` ${alone} `}を、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 先手後手を入れかえて、全部で ${count} 試合。`,
+    ja: `${nameOf(matchup.robot)} と${alone === null ? '各ロボット' : ` ${alone} `}を、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × スタート位置を入れかえて、全部で ${count} 試合。`,
   } : {
     en: `${nameOf(matchup.robot)} against each team, ${size} a side, every machine with a Light body and a Pistol: ${arenas} maps × ${matchup.seeds.length} seeds × both ends, ${count} matches in all.`,
     ja: `${nameOf(matchup.robot)} と各チームを、${size} 対 ${size}（どの機体も車体 Light・銃 Pistol）で、マップ ${arenas} つ × seed ${matchup.seeds.length} つ × 陣地を入れかえて、全部で ${count} 試合。`,

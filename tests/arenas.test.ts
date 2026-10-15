@@ -181,5 +181,5 @@ describe.each(HIDERS)('%s against the clock', (hiderId) => {
     // A match that runs out the clock goes to the robot with more hp: hiding is no way to a draw.
     expect(timeouts).toBeGreaterThan(0);
     expect(timeouts / matches).toBeLessThan(MOST_TIMEOUTS[hiderId]);
-  }, 60_000); // Matches that run out the clock take a while to simulate.
+  }, 180_000); // Matches that run out the clock take a while to simulate, slower still on CI.
 });

@@ -208,14 +208,16 @@ function spread(): SVGSVGElement {
   const distance = 350;
   const target = ROBOT_DEFAULTS.radius;
   const scale = 1.4;
-  const root = canvas(600, 300);
-  const [x0, y0] = [70, 150];
+  const root = canvas(700, 300);
+  const [x0, y0] = [40, 150];
   const x1 = x0 + distance * scale;
+  // The labels go right of the target, clear of it.
+  const labelX = x1 + target * scale + 10;
   const cone = (degrees: number, accent: boolean, label: Text, labelY: number) => {
     const side = Math.tan((degrees * Math.PI) / 180) * distance * scale;
     root.append(
       svg('path', { d: `M${x0},${y0} L${x1},${y0 - side} L${x1},${y0 + side} Z`, class: accent ? 'book-fig-cone accent' : 'book-fig-cone' }),
-      svg('text', { x: x1 + 12, y: labelY, class: 'book-fig-note' }, `${inLanguage(label)} ±${degrees}°`),
+      svg('text', { x: labelX, y: labelY, class: 'book-fig-note' }, `${inLanguage(label)} ±${degrees}°`),
     );
   };
   cone(ROBOT_DEFAULTS.movingShotSpread, false, { en: 'on the move', ja: '走りながら' }, y0 - Math.tan((ROBOT_DEFAULTS.movingShotSpread * Math.PI) / 180) * distance * scale + 4);

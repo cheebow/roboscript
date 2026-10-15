@@ -8,6 +8,11 @@ body {
   min-height: 100%;
 }
 
+/* A link to a heading leaves it below the header (page.ts measures it). */
+html {
+  scroll-padding-top: calc(var(--page-header-height, 0px) + 12px);
+}
+
 body {
   font-size: 14px;
 }

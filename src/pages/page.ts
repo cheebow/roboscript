@@ -27,12 +27,23 @@ export function startPage(title: PageText, render: () => HTMLElement): void {
   } catch {
     useLanguage(detectLanguage(null, navigator.language));
   }
+  // A link to a heading on the page scrolls it to just below the header,
+  // which stays at the top: as tall as it is, two lines of it on a phone.
+  const headerHeight = new ResizeObserver(([entry]) => keepClearOf(entry.target as HTMLElement));
   const show = () => {
     document.documentElement.lang = currentLanguage();
     document.title = inLanguage(title);
-    document.body.replaceChildren(pageHeader(show), render(), pageFooter());
+    const header = pageHeader(show);
+    document.body.replaceChildren(header, render(), pageFooter());
+    headerHeight.disconnect();
+    headerHeight.observe(header);
+    keepClearOf(header);
   };
   show();
+}
+
+function keepClearOf(header: HTMLElement): void {
+  document.documentElement.style.setProperty('--page-header-height', `${header.offsetHeight}px`);
 }
 
 /** The game, the pages and the language toggle, along the top. */

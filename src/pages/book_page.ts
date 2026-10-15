@@ -303,7 +303,7 @@ function renderBlock(block: BookBlock): HTMLElement {
     case 'text':
       return renderMarkup(inLanguage(block.text));
     case 'code':
-      return programCode(block.code);
+      return programCode(typeof block.code === 'string' ? block.code : inLanguage(block.code));
     case 'scene':
       return figure(createSceneFrame(block.scene, inLanguage(block.caption)), block.caption);
     case 'timeline':

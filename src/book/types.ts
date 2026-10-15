@@ -79,7 +79,8 @@ export type ReplayPanel = { kind: 'analysis' } | { kind: 'log'; until: number };
 
 export type BookBlock =
   | { kind: 'text'; text: Text }
-  | { kind: 'code'; code: string }
+  /** A program; a Text when its comments are written in the language of the page. */
+  | { kind: 'code'; code: string | Text }
   | { kind: 'scene'; scene: Scene; caption: Text }
   | { kind: 'timeline'; timeline: Timeline; caption: Text }
   | { kind: 'readings'; readings: Readings; caption: Text }

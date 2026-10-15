@@ -127,7 +127,9 @@ describe('the book page', () => {
   it('writes its programs as programs, not in the text, and every one of them compiles', () => {
     const programs = BLOCKS.flatMap((block) =>
       block.kind === 'code'
-        ? [block.code]
+        ? typeof block.code === 'string'
+          ? [block.code]
+          : [block.code.en, block.code.ja]
         : block.kind === 'scene'
           ? [block.scene.program]
           : block.kind === 'timeline'

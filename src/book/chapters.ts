@@ -66,7 +66,7 @@ function text(en: string, ja: string): BookBlock {
   return { kind: 'text', text: { en, ja } };
 }
 
-function code(source: string): BookBlock {
+function code(source: string | Text): BookBlock {
   return { kind: 'code', code: source };
 }
 
@@ -136,12 +136,16 @@ With the same robots, the same map and the same **seed** (the number at the top 
 
 Part 1 explains how a program runs and how a robot looks around and decides what to do. Part 2 is about winning: how the built-in robots fight, the parts, the challenges.
 
-Every program in the book works as it is. Write it into the editor of the PROGRAM screen and press RUN. Then change it a little and see what happens: that is the quickest way to learn.`,
+Every program in the book works as it is. Write it into the editor of the PROGRAM screen and press RUN. Then change it a little and see what happens: that is the quickest way to learn.
+
+At the top left of the PROGRAM screen, PROJECT shows two robots, ALPHA and BRAVO. Each has a \`main.bot\` (its program) and a \`config\` (its parts). In this book ALPHA is your robot: write the book's programs into ALPHA's \`main.bot\`. BRAVO is the other side. In Part 1 it is mostly a **target**: a robot that never shoots back. Some targets stand still, and some drive about.`,
       `## この本の読み方
 
 第 1 部では、プログラムがどう実行されるか、ロボットがどうやって周りを見て動きを決めるかを説明します。第 2 部は勝つための話です。内蔵ロボットの戦い方、パーツ、チャレンジを取り上げます。
 
-本に出てくるプログラムは、どれもそのまま動きます。ゲームの「プログラム」画面のエディタに書き写して「実行」を押してみてください。少し書きかえて、どう変わるか試すと早く身につきます。`,
+本に出てくるプログラムは、どれもそのまま動きます。ゲームの「プログラム」画面のエディタに書き写して「実行」を押してみてください。少し書きかえて、どう変わるか試すと早く身につきます。
+
+「プログラム」画面の左上の「プロジェクト」には、ALPHA と BRAVO の 2 台がいます。どちらも \`main.bot\`（プログラム）と \`config\`（パーツ）を持っています。この本では、ALPHA が自分のロボットです。本のプログラムは ALPHA の \`main.bot\` に書きます。BRAVO は相手で、第 1 部ではたいてい **的** です。的は撃ち返してきません。止まっている的と、動き回る的があります。`,
     ),
     { kind: 'see', topics: ['welcome', 'program-screen', 'basics'] },
   ],
@@ -166,7 +170,7 @@ The shortest program is one line.`,
     ),
     { kind: 'scene', scene: { stage: RANGE, program: ONE_SHOT, tick: 12 }, caption: caption(
       'The one shot of ALPHA (right) on its way to the target (left).',
-      'ALPHA（右）が撃った 1 発が、的（左）へ飛んでいるところ。この本では、プログラムを動かす自分のロボットを ALPHA と呼ぶ。',
+      'ALPHA（右）が撃った 1 発が、的（左）へ飛んでいるところ。',
     ) },
     text(
       `## Keep shooting: loop
@@ -240,6 +244,30 @@ Write a word the game does not know, or forget the spaces in front of a line ins
       `## 書きまちがえたら
 
 知らない言葉を書いたり、\`loop\` の中の行の字下げを忘れたりすると、試合は始まりません。その行が赤くなり、どこがおかしいかがログに出ます。直してから、もう一度「実行」を押してください。`,
+    ),
+    text(
+      `## Notes in a program: comments
+
+From \`#\` to the end of the line is a **comment**: a note for people reading the program. The robot skips it, so it does nothing.`,
+      `## プログラムにメモを書く: コメント
+
+\`#\` から行の終わりまでは **コメント** です。プログラムを読む人のためのメモで、ロボットは読み飛ばします。書いても動きは変わりません。`,
+    ),
+    code({
+      en: `# Turn to the enemy and keep shooting
+loop
+    turn enemy  # turn towards the enemy
+    fire
+`,
+      ja: `# 敵の方へ回って撃ち続ける
+loop
+    turn enemy  # 敵の方へ回る
+    fire
+`,
+    }),
+    text(
+      `The built-in robots in Chapter 9 say with comments what each part does. Write comments in your own programs too, and they are easier to read later.`,
+      `第 9 章で読む内蔵ロボットにも、ところどころに英語のコメントで説明が書いてあります。自分のプログラムにも書いておくと、あとで読み返すときに分かりやすくなります。`,
     ),
     { kind: 'see', topics: ['moving', 'errors'] },
   ],
@@ -333,10 +361,10 @@ Every tick, all the robots go through the same steps in the same order.`,
     text(
       `## Lines that take many ticks
 
-Some actions take more than a tick. \`turn left 90\` turns 6 degrees a tick (with standard legs), so turning 90 degrees takes 15 ticks, half a second. All that time, the program stays on this one line.`,
+Some actions take more than a tick. \`turn left 90\` turns 6 degrees a tick (with the standard legs; legs are one of the parts, which you can change in Chapter 12), so turning 90 degrees takes 15 ticks, half a second. All that time, the program stays on this one line.`,
       `## 何 tick もかかる行
 
-1 tick では終わらない行動もあります。\`turn left 90\` は 1 tick に 6 度ずつ（標準の脚の場合）回るので、90 度回るのに 15 tick（0.5 秒）かかります。その間、プログラムはずっとこの 1 行にいます。`,
+1 tick では終わらない行動もあります。\`turn left 90\` は 1 tick に 6 度ずつ（標準の脚の場合。脚はパーツの 1 つで、第 12 章で取りかえられます）回るので、90 度回るのに 15 tick（0.5 秒）かかります。その間、プログラムはずっとこの 1 行にいます。`,
     ),
     code(LONG_TURN),
     { kind: 'timeline', timeline: { stage: RANGE, program: LONG_TURN, ticks: 17 }, caption: caption(
@@ -451,7 +479,7 @@ The sensors are read again at the start of every tick (Chapter 3). The same \`en
 There are two kinds of sensor:
 
 - Yes or no: \`enemy_visible\` (the enemy is in sight), \`blocked\` (the way ahead is blocked), \`bullet_incoming\` (a bullet is coming at you), \`hit\` (you were hit) and so on
-- Numbers: \`enemy_distance\` (how far the enemy is), \`enemy_angle\` (which way it is), \`hp\` (your HP), \`reload\` (seconds until you can shoot again) and so on
+- Numbers: \`enemy_distance\` (how far the enemy is), \`enemy_angle\` (which way it is), \`hp\` (your HP: how much more you can take; at 0 you are out), \`reload\` (seconds until you can shoot again) and so on
 
 These are the ones you will use most. The help lists them all.`,
       `## true か false か、と数
@@ -459,7 +487,7 @@ These are the ones you will use most. The help lists them all.`,
 センサーには 2 種類あります。
 
 - true（はい）か false（いいえ）で答えるもの: \`enemy_visible\`（敵が見えている）、\`blocked\`（前がふさがっている）、\`bullet_incoming\`（当たるコースの弾が来ている）、\`hit\`（撃たれた）など
-- 数を表すもの: \`enemy_distance\`（敵までの距離）、\`enemy_angle\`（敵のいる方向）、\`hp\`（自分の HP）、\`reload\`（次に撃てるまでの秒数）など
+- 数を表すもの: \`enemy_distance\`（敵までの距離）、\`enemy_angle\`（敵のいる方向）、\`hp\`（自分の HP。体力のことで、0 になると倒れる）、\`reload\`（次に撃てるまでの秒数）など
 
 よく使うのはこのあたりです。全部の一覧はヘルプにあります。`,
     ),
@@ -468,12 +496,12 @@ These are the ones you will use most. The help lists them all.`,
 
 Try it with a robot that just stands there. Its program only waits and uses no sensors at all, yet the sensors are still read every tick.
 
-The table below comes from a real match against a target that drives about. It shows three of ALPHA's sensors, \`enemy_visible\`, \`enemy_distance\` and \`enemy_angle\`, every few ticks. While debugging you can see the same values in the watch.`,
+The table below comes from a real match against a target that drives about. It shows three of ALPHA's sensors, \`enemy_visible\`, \`enemy_distance\` and \`enemy_angle\`, every few ticks. While debugging, the WATCH at the bottom right shows the same values (Chapter 6).`,
       `## 変わっていく値
 
 何もせずに立っているロボットで試してみます。プログラムは待つだけで、センサーは使っていません。それでもセンサーの値は、毎 tick 読み直されています。
 
-下の表は、動き回る的を相手に本物の試合をして、ALPHA のセンサーのうち \`enemy_visible\`、\`enemy_distance\`、\`enemy_angle\` の 3 つを、何 tick かおきに書き出したものです。デバッグ中なら、同じ値をウォッチで見られます。`,
+下の表は、動き回る的を相手に本物の試合をして、ALPHA のセンサーのうち \`enemy_visible\`、\`enemy_distance\`、\`enemy_angle\` の 3 つを、何 tick かおきに書き出したものです。デバッグ中は、画面右下の「ウォッチ」でも同じ値を見られます（第 6 章）。`,
     ),
     code(JUST_LOOK),
     { kind: 'readings', readings: { stage: MOVING, program: JUST_LOOK, ticks: [1, 10, 20, 30, 40], sensors: ['enemy_visible', 'enemy_distance', 'enemy_angle'] }, caption: caption(
@@ -678,8 +706,8 @@ set ticks = ticks + 1
       `\`while\` を 1 周するたびに \`wait\` で 1 tick たち、\`ticks\` が 1 増えます。60 になったら \`while\` を抜けて止まります。60 tick は 2 秒なので、ちょうど 2 秒走って止まるプログラムです。`,
     ),
     { kind: 'scene', scene: { stage: TRACK, program: TIMED_DRIVE, tick: 90 }, caption: caption(
-      'Stopped after two seconds, 200 on from where it started.',
-      '2 秒走り、出発点から 200 進んだところで止まっている。',
+      'The standard legs go 100 a second, so after two seconds it has stopped 200 on from where it started.',
+      '標準の脚は 1 秒に 100 進むので、2 秒走って、出発点から 200 進んだところで止まっている。',
     ) },
     text(
       `## Comparing with the tick before`,
@@ -909,10 +937,10 @@ const BUILT_IN_ROBOTS: BookChapter = {
   title: { en: 'Reading the built-in robots', ja: '内蔵ロボットを読む' },
   blocks: [
     text(
-      `The game comes with built-in robots, each with a strategy of its own. You can send them into the ARENA, or load one as a template and change it. This chapter looks at eight of them: how each fights, and whom it beats and loses to.
+      `The game comes with built-in robots, each with a strategy of its own. You can watch them fight on the ARENA screen, or load one with LOAD TEMPLATE on the PROGRAM screen and change it. This chapter looks at eight of them: how each fights, and whom it beats and loses to.
 
 Their programs are shown as the game has them, folded away because they are long. Open one and read it: it uses nothing but what Part 1 covered.`,
-      `ゲームには、作戦の違う内蔵ロボットが入っています。アリーナで戦わせたり、テンプレートとして読み込んで書きかえたりできます。この章では 8 体を取り上げて、それぞれの戦い方と、得意な相手・苦手な相手を見ていきます。
+      `ゲームには、作戦の違う内蔵ロボットが入っています。「アリーナ」の画面で戦わせたり、プログラム画面の「テンプレート」から読み込んで書きかえたりできます。この章では 8 体を取り上げて、それぞれの戦い方と、得意な相手・苦手な相手を見ていきます。
 
 プログラムは、ゲームに入っているものをそのまま載せています。長いので畳んであります。開いて読んでみてください。第 1 部で見た書き方だけでできています。`,
     ),
@@ -1237,8 +1265,8 @@ const PARTS_CHAPTER: BookChapter = {
   title: { en: 'Choosing parts', ja: 'パーツ選び' },
   blocks: [
     text(
-      `A robot takes a part in each of four places: body, legs, gun and sensor. On the PROGRAM screen, open a robot's \`config\` to choose them.`,
-      `ロボットには、車体・脚・銃・センサーの 4 か所にパーツを付けられます。プログラムの画面で、ロボットの \`config\` を開くと選べます。`,
+      `A robot takes a part in each of four places: body, legs, gun and sensor. On the PROGRAM screen, open the robot's \`config\` under PROJECT at the top left (Chapter 1) to choose them.`,
+      `ロボットには、車体・脚・銃・センサーの 4 か所にパーツを付けられます。プログラム画面の左上の「プロジェクト」で、ロボットの \`config\` を開くと選べます（第 1 章）。`,
     ),
     text(
       `## The cost limit
@@ -1275,10 +1303,10 @@ Each part has a cost, and the four together may cost at most ${COST_LIMIT}. Ever
     text(
       `## Fit the program to the parts
 
-When you change the parts, change the program to suit. Put on a Cannon for its long range while the program still closes in to 300 before shooting, and the Cannon's strength is wasted. With the sensors \`weapon_range\`, \`sensor_range\` and \`max_speed\`, you can write a program that suits any parts.`,
+When you change the parts, change the program to suit. Put on a Cannon for its long range while the program still closes in to 300 before shooting, and the Cannon's strength is wasted. With the sensors \`weapon_range\` (how far the gun reaches), \`sensor_range\` (how far the sensor sees) and \`max_speed\` (how fast the legs go), you can write a program that suits any parts.`,
       `## プログラムをパーツに合わせる
 
-パーツを替えたら、プログラムも合わせます。射程の長い Cannon を付けたのに、プログラムが「300 まで近づいてから撃つ」のままでは、長所が生きません。センサーの \`weapon_range\`、\`sensor_range\`、\`max_speed\` を使うと、どのパーツにも合うプログラムが書けます。`,
+パーツを替えたら、プログラムも合わせます。射程の長い Cannon を付けたのに、プログラムが「300 まで近づいてから撃つ」のままでは、長所が生きません。センサーの \`weapon_range\`（銃の射程）、\`sensor_range\`（センサーの見える距離）、\`max_speed\`（脚の速さ）を使うと、どのパーツにも合うプログラムが書けます。`,
     ),
     code(ANY_GUN),
     text(
@@ -1390,8 +1418,8 @@ Every number below comes from playing the challenge.`,
         `HP が戻るのは、敵のだれからも見えない場所で止まっているときだけです（第 11 章）。`,
       ],
       [
-        `\`face cover\` turns you to a hiding place, and \`drive forward\` takes you there. \`hidden\` tells you when you are out of sight.`,
-        `\`face cover\` で隠れ場所の方を向き、\`drive forward\` で行けます。見えなくなったかどうかは \`hidden\` で分かります。`,
+        `\`face cover\` turns you to a hiding place, as \`face enemy\` does to the enemy, and \`drive forward\` takes you there. \`hidden\` tells you when you are out of sight.`,
+        `\`face cover\` で（\`face enemy\` と同じように）隠れ場所の方を向き、\`drive forward\` で行けます。見えなくなったかどうかは \`hidden\` で分かります。`,
       ],
       [
         `With full HP there is nothing to get back: a robot that hid from the start did not clear it. Trade shots first, and hide once your HP is down.`,
@@ -1543,8 +1571,8 @@ In these four, your team is the same program running on each machine. Chapter 14
         `3 台は同じプログラムで動きます。\`self_id\` で自分が何番かが分かるので、それで役割を分けます（第 14 章）。`,
       ],
       [
-        `When the keeper sees an enemy, it calls one machine home with \`signal 1 to 2\`: only machine 2 gets it, as \`ally_signal\`. A \`signal\` without \`to\` reaches everyone.`,
-        `守りが敵を見つけたら、\`signal 1 to 2\` で 1 台だけを呼び戻します。受け取るのは 2 番だけで、\`ally_signal\` に入ります。\`to\` を付けない \`signal\` は全員に届きます。`,
+        `When the keeper sees an enemy, it calls one machine home with \`signal 1 to 2\`, which sends the number 1 to machine 2 alone over the team radio. Machine 2 finds it in \`ally_signal\`, the sensor that holds what the radio brought. A \`signal\` without \`to\` reaches everyone (Chapter 14).`,
+        `守り役の機体が敵を見つけたら、\`signal 1 to 2\` で 1 台だけを呼び戻します。これは、チームの無線で 2 番の機体だけに 1 という数を送る命令です。2 番は、届いた数を \`ally_signal\` というセンサーで受け取ります。\`to\` を付けない \`signal\` は全員に届きます（第 14 章）。`,
       ],
       [
         `The team program BaseCaptain is written this way.`,
@@ -1968,10 +1996,10 @@ The log said DumbBot fires at 2.000 seconds, and the Sample only at 2.500. What 
       '2.000 秒。DumbBot（BRAVO）は止まって撃ち始めた。Sample（ALPHA）はまだ近づいている。',
     ) },
     text(
-      `That is the reason. DumbBot fires from closer than 300; the Sample waits until it is closer than 250. While it drives the last 50, it is shot at and cannot shoot back.
+      `That is the reason. DumbBot's program (Chapter 9) fires once the enemy is closer than 300; the Sample waits until it is closer than 250. While it drives the last 50, it is shot at and cannot shoot back.
 
 The line to change is the one that calls \`attack\`, in the \`loop\` at the end: make \`attack(250)\` into \`attack(320)\`.`,
-      `これが理由です。DumbBot は 300 より近ければ撃ちます。Sample は 250 より近づくまで撃ちません。最後の 50 を進む間、撃たれるだけで撃ち返せないのです。
+      `これが理由です。DumbBot のプログラム（第 9 章）は、敵が 300 より近ければ撃ちます。Sample は 250 より近づくまで撃ちません。最後の 50 を進む間、撃たれるだけで撃ち返せないのです。
 
 直すのは、最後の \`loop\` の中で \`attack\` を呼んでいる行です。\`attack(250)\` を \`attack(320)\` に変えます。`,
     ),
@@ -2076,7 +2104,7 @@ On to the debugger. Stop anywhere while it is driving in (TRACK), and look:
 
 - The pale green lines, run in this tick: lines 1 to 3 and 8 to 10. Not one of them is an action. The program goes round and round them, and after 1000 lines the tick ends with nothing done.
 - The numbers left of the lines: 59 for lines 9 and 10, the ticks it was driving in. Lines 11 and on have none.
-- ROTATION in the inspector: 180 all the way in. It never turns.
+- ROTATION in the inspector: 180 (facing left) all the way in. It never turns.
 
 The way in (TRACK) has no action. The robot still drives, as \`drive forward\` is a setting, so it looks all right; but nothing turns it to the enemy. Once it is closer than 300, it turns first, and fires a tick later. DumbBot turns to the enemy (\`turn enemy\`) on every tick of its way in, so it fires on the very tick the enemy comes closer than 300. One tick sooner, it gets its tenth shot in first.
 
@@ -2090,7 +2118,7 @@ To mend it, move \`turn enemy\` up above the if (line 3). Now both ways have an 
 
 - 薄い緑の行（今の tick に通った行）は、1〜3 行目と 8〜10 行目。行動の行が 1 つもありません。プログラムはここをぐるぐる回り、1000 行を超えたところで、何もしないままその tick が終わります。
 - 行番号の左の数字は、9 行目と 10 行目が 59。近づいていた tick の数です。11 行目から下には数字がありません。
-- 状態の「向き」は、近づく間ずっと 180 のまま。一度も向きを変えていません。
+- 状態の「向き」は、近づく間ずっと 180（左向き）のまま。一度も向きを変えていません。
 
 近づく道（TRACK）には、行動がないのです。\`drive forward\` は設定なので走り続け、見た目はちゃんと近づいています。でも、敵の方を向く行がありません。300 を切ってから向きを変え、撃つのはその次の tick です。DumbBot は近づく間も毎 tick \`turn enemy\` しているので、300 を切ったその tick に撃てます。1 tick 早い方が、先に 10 発目を当てます。
 

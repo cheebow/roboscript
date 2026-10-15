@@ -16,6 +16,18 @@ function runFrames(count = 3): void {
   }
 }
 
+/** Presses COPY on the log, and gives back what it put on the clipboard. */
+function copyLog(): string {
+  let copied = '';
+  const original = navigator;
+  vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: (text: string) => ((copied = text), Promise.resolve()) } });
+  const button = document.getElementById('log-copy') as HTMLButtonElement;
+  expect(button.disabled).toBe(false);
+  button.click();
+  vi.stubGlobal('navigator', original);
+  return copied;
+}
+
 beforeAll(async () => {
   // The page without its script tag: the app is started below, by hand.
   document.body.innerHTML = html.slice(html.indexOf('<body>') + '<body>'.length, html.indexOf('</body>')).replace(/<script[\s\S]*?<\/script>/g, '');
@@ -64,9 +76,15 @@ describe('the app, on the real page', () => {
     expect(entries.at(-1)?.classList.contains('menu-sub')).toBe(true);
     expect(entries.slice(0, -1).every((entry) => entry.classList.contains('menu-item'))).toBe(true);
     expect(entries.length).toBeGreaterThan(2);
+    expect((document.getElementById('log-copy') as HTMLButtonElement).disabled).toBe(true);
     click('run');
     runFrames(10);
     expect(document.getElementById('message')?.textContent ?? '').not.toContain('error');
+    // COPY gives the match as text: both teams' programs, and the log to its end.
+    const copied = copyLog();
+    expect(copied).toContain('ALPHA');
+    expect(copied).toContain('BRAVO');
+    expect(copied).toContain('match started seed=');
     click('debug');
     runFrames(5);
     click('transport-play');
@@ -152,6 +170,7 @@ describe('the app, on the real page', () => {
     expect(document.getElementById('app')?.dataset.screen).toBe('program');
     click('run');
     runFrames(5);
+    expect(copyLog()).toMatch(/Open Field|Center Block|Long Wall|Bare Ground|Bunkers|Corridor|Cross|Pillars|Zigzag/);
     click('screen-team-edit');
     runFrames();
     click('reset');

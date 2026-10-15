@@ -15,7 +15,7 @@ const X_POST = 'https://x.com/intent/post';
 const COPIED_FOR = 2000;
 
 /** Has the button say it copied, then go back to its own label. */
-function sayCopied(button: HTMLButtonElement): void {
+export function sayCopied(button: HTMLButtonElement): void {
   const label = button.dataset.label ?? button.textContent ?? '';
   button.dataset.label = label;
   button.textContent = t('share.copied');

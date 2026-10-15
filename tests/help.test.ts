@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGE, allWords } from '../src/ai/reference';
 import { HELP, WORDS_TOPIC } from '../src/help/topics';
+import { type Language, useLanguage } from '../src/i18n/language';
+import { type MessageKey, t } from '../src/i18n/messages';
 
 describe('the help', () => {
   it('has both parts, each topic with a title and a text in both languages', () => {
@@ -12,6 +14,19 @@ describe('the help', () => {
       expect(topic.body.en.trim(), topic.id).not.toBe('');
       expect(topic.body.ja.trim(), topic.id).not.toBe('');
     }
+  });
+
+  it('tells every kind of log row and every column of the analysis, by the names the screen gives them', () => {
+    const topic = HELP.flatMap((section) => section.topics).find((each) => each.id === 'log-help')!;
+    const kinds = ['system', 'hit', 'warning', 'error', 'action', 'sensor', 'ai'];
+    const columns = ['accuracy', 'dealt', 'taken', 'guarded', 'recovered', 'distance', 'sighted'];
+    for (const language of ['en', 'ja'] as Language[]) {
+      useLanguage(language);
+      for (const kind of kinds) expect(topic.body[language], kind).toContain(`| ${t(`log.type.${kind}` as MessageKey)} |`);
+      for (const column of columns) expect(topic.body[language], column).toContain(t(`analysis.${column}` as MessageKey));
+      expect(topic.body[language]).toContain(`**${t('log.copy')}**`);
+    }
+    useLanguage('en');
   });
 
   it('has topics with ids of their own', () => {

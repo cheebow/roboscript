@@ -53,7 +53,7 @@ The start menu comes up when the page opens, its lines grouped under LEARN, SOLO
 - **The battle view** (right): the match, seen from above.
 - **RUN** works out the whole match, then plays it. **DEBUG** plays the same match so you can follow the program line by line. **RESET** goes back to before the match.
 - Under the battle view are play / pause, one step back or on, the seek bar and the playback speed.
-- Below, the **log** lists what happened in the match, and the **analysis** tab beside it shows the hits, the damage and HP over time. **Inspector** and **Watch** show the robot's numbers. Click a log row to go to that moment.
+- Below, the **log** lists what happened in the match, and the **analysis** tab beside it shows the hits, the damage and HP over time. **Inspector** and **Watch** show the robot's numbers. Click a log row to go to that moment. **COPY** copies the match as text (see "The log and the analysis").
 - **MAP** at the top chooses where to fight.
 
 When the program has a mistake, the match does not start: the line turns red, and the log says why.`, ja: `コードを書き、試合で試して、直していく画面です。
@@ -63,7 +63,7 @@ When the program has a mistake, the match does not start: the line turns red, an
 - **戦闘画面**（右）: 試合を上から見た図です。
 - **実行** を押すと、試合を最後まで計算してから再生します。**デバッグ** では、同じ試合をプログラムの 1 行ずつ追いながら再生できます。**リセット** で試合の前に戻ります。
 - 戦闘画面の下には、再生 / 一時停止、1 つ戻る / 進む、シークバー、再生の速さのボタンがあります。
-- 下段の **ログ** には、試合の出来事が出ます。隣の **分析** タブでは、命中やダメージ、HP の推移を見られます。**状態** と **ウォッチ** には、ロボットの値が出ます。ログの行を押すと、その時点へ移ります。
+- 下段の **ログ** には、試合の出来事が出ます。隣の **分析** タブでは、命中やダメージ、HP の推移を見られます。**状態** と **ウォッチ** には、ロボットの値が出ます。ログの行を押すと、その時点へ移ります。**コピー** で試合を文字でコピーできます（「ログと分析」を参照）。
 - 上の **マップ** で戦う場所を選びます。
 
 プログラムにエラーがあると、試合は始まりません。エラーのある行が赤くなり、ログに理由が出ます。` } },
@@ -466,6 +466,101 @@ loop
         drive forward
         wait
 \`\`\`` } },
+      { id: 'log-help', title: { en: `The log and the analysis`, ja: `ログと分析` }, body: { en: `What happens in a match shows at the bottom of the program screen. The **LOG** and **ANALYSIS** tabs switch between the two.
+
+**The log**
+
+One row is one event: the match time in seconds, the robot, the kind, and what happened. Click a row to go to that moment.
+
+| Kind | When |
+|---|---|
+| SYSTEM | The match starts (with its seed) and ends (who won, and how) |
+| HIT | A bullet hit: the robot hit, the damage and the HP left; (guarded) if it was guarding |
+| WARNING | The program may not be going the way you meant |
+| ERROR | The program has a mistake, and the match does not start |
+| ACTION | Firing, turning, driving and so on. Turning, aiming and driving show only when they start being used |
+| SENSOR | The enemy came into sight or was lost; resting out of sight started or ended |
+| AI | A \`label\` changed |
+
+After **RUN** only SYSTEM, HIT, WARNING and ERROR show; after **DEBUG**, all of them.
+
+The main warnings:
+- **too many lines without an action**: 1000 lines went by without an action, so the robot did nothing that tick. Make sure every way through the \`loop\` has an action (\`turn\`, \`aim\`, \`fire\`, \`guard\`, \`wait\`...).
+- **program finished**: the program got to its last line and ended. Put what should go on inside a \`loop\`.
+- **out of ammo** / **out of guards**: the robot has used up its bullets / guards.
+
+**The analysis**
+
+| Column | What it is |
+|---|---|
+| hits | Hits / shots fired |
+| dealt / taken | The damage done to the enemy, and the damage taken |
+| guarded | Bullets taken while guarding |
+| recovered | HP got back by resting out of sight |
+| driven | How far the robot drove |
+| enemy in sight | The share of the match the enemy could be seen |
+
+Below are the HP over the match and where the hits landed. Click the chart, or a dot on the map, to go to that moment.
+
+Some ways to read it:
+- **guarded is 0**: the \`guard\` line may never run. While debugging, see whether a count shows to the left of that line.
+- **few hits**: if the enemy moves, try \`aim lead\`; see whether you shoot from too far.
+- **little time with the enemy in sight**: look again at how the robot searches.
+
+**Where to look first**
+
+The analysis tells you where the match was lost. The log tells you what happened at that time. Debugging shows the program at that moment, line by line. There is more in chapter 15 of the RoboScript book, "Finding out why it lost".
+
+**Copying**
+
+**COPY** in the heading copies the match as text: the map and seed, the result, the parts and the numbers of the analysis, both programs (in the tutorial and the challenges, only yours), and the whole log (with the rows RUN leaves out). Paste it into a chat with an AI to ask why the match went as it did.`, ja: `試合で起きたことは、プログラムの画面の下段に出ます。**ログ** と **分析** のタブで切り替えます。
+
+**ログ**
+
+1 行が 1 つの出来事です。左から、試合の時刻（秒）、ロボット、種類、中身の順に並びます。行を押すと、その時点へ移ります。
+
+| 種類 | 出るとき |
+|---|---|
+| システム | 試合の始まり（seed）と終わり（勝ったロボットと終わり方） |
+| 命中 | 弾が当たった。当たったロボット、ダメージ、残りの HP。ガード中なら (guarded) |
+| 警告 | プログラムが思った通りに進んでいないかもしれない |
+| エラー | プログラムに誤りがあって、試合が始まらない |
+| 行動 | 撃つ、回る、走るなど。回る・狙う・走るは、使い始めたときだけ出る |
+| センサー | 敵が見えた・見失った。隠れて回復を始めた・やめた |
+| AI | \`label\` が変わった |
+
+**実行** では、システム・命中・警告・エラーだけが出ます。**デバッグ** では全部出ます。
+
+おもな警告:
+- **too many lines without an action**: 行動のないまま 1000 行進んだので、その tick は何もしませんでした。\`loop\` の中のどの道にも、行動（\`turn\`、\`aim\`、\`fire\`、\`guard\`、\`wait\` など）があるようにします。
+- **program finished**: 最後の行まで行って、プログラムが終わりました。続けたいことは \`loop\` の中に書きます。
+- **out of ammo** / **out of guards**: 弾 / ガードを使い切りました。
+
+**分析**
+
+| 列 | 中身 |
+|---|---|
+| 命中 | 当たった数 / 撃った数 |
+| 与ダメージ・被ダメージ | 相手に与えたダメージと、受けたダメージ |
+| ガード | ガードして受けた弾の数 |
+| 回復 | 隠れて取り戻した HP |
+| 走行距離 | 走った道のり |
+| 敵が見えた時間 | 試合のうち、敵が見えていた時間の割合 |
+
+下に、HP の推移のグラフと、弾が当たった場所の図があります。グラフや図の点を押すと、その時点へ移ります。
+
+読み方の例:
+- **ガードが 0**: \`guard\` の行が一度も通っていないのかもしれません。デバッグで、その行の左に通った回数が出ているか見ます。
+- **命中が少ない**: 敵が動いているなら \`aim lead\` を試します。遠くから撃ちすぎていないかも見ます。
+- **敵が見えた時間が短い**: 敵の探し方を見直します。
+
+**探す順番**
+
+分析で、どこで差がついたかをつかみます。次にログで、その時刻に何が起きたかを見ます。最後にデバッグで、その時点のプログラムを 1 行ずつ追います。くわしくは、RoboScript の本の第 15 章「負けた理由を探す」にあります。
+
+**コピー**
+
+見出しの **コピー** を押すと、試合を文字でコピーします。入るのは、マップと seed、結果、パーツと分析の数字、両方のプログラム（チュートリアルとチャレンジでは自分のだけ）、ログの全部（実行では出ない行も）です。AI とのチャットに貼り付けて、負けた理由を聞くのにも使えます。` } },
       { id: 'debugging-help', title: { en: `Debugging`, ja: `デバッグのしかた` }, body: { en: `- Run with **DEBUG**, and the line that runs next (yellow) and the lines run so far in this tick (pale green) are shown.
 - \`1▶\` goes on one line, \`◀1\` back one. \`1▷\` (step over) runs through any function the line calls.
 - **Click a line number** to mark the line ◆ and jump to the next moment it runs. The seek bar shows every moment it ran; \`◆▶\` / \`◀◆\` go to the next / previous.

@@ -56,6 +56,8 @@ import type { WatchingScreen } from './watch_screen';
 import { Inspector } from './inspector';
 import { PartsView } from './parts_view';
 import { type ProjectFile, ProjectPanel } from './project_panel';
+import { formatMatchReport, type ReportedProgram } from './match_report';
+import { sayCopied } from './share_box';
 import { RobotWorkspace } from './robot_workspace';
 import { Splitters } from './splitters';
 import { Toolbar } from './toolbar';
@@ -181,6 +183,10 @@ class App {
   private partsStale: boolean[] = ROBOT_IDS.map(() => false);
   /** The parts the robots carry in the match being shown. */
   private matchLoadouts: readonly Loadout[] = [];
+  /** The programs and the map of the match being shown, for COPY on the log. */
+  private matchPrograms: readonly ReportedProgram[] = [];
+  private matchArenaName: string | null = null;
+  private readonly copyLogButton = requireElement<HTMLButtonElement>('log-copy');
   private shownFile: ProjectFile = codeFileOf(PLAYER_INDEX);
 
   /** The team battle's editing, kept apart from the duel's. */
@@ -324,6 +330,7 @@ class App {
     requireElement('analysis-button').addEventListener('click', () => this.toggleWatchedAnalysis());
     requireElement('log-tab-log').addEventListener('click', () => this.showAnalysisTab(false));
     requireElement('log-tab-analysis').addEventListener('click', () => this.showAnalysisTab(true));
+    this.copyLogButton.addEventListener('click', () => this.copyLog());
     const toggle = requireElement('commentary-toggle');
     toggle.classList.toggle('selected', this.commentaryOn);
     toggle.addEventListener('click', () => {
@@ -411,6 +418,24 @@ class App {
     requireElement('analysis-body').hidden = !shown;
     requireElement('log-tab-log').classList.toggle('selected', !shown);
     requireElement('log-tab-analysis').classList.toggle('selected', shown);
+  }
+
+  /** Copies the program screen's match as text: its programs, the numbers of its analysis and its log, all of it. */
+  private copyLog(): void {
+    const text = formatMatchReport({
+      recording: this.replay?.recording ?? null,
+      arenaName: this.matchArenaName,
+      loadouts: this.matchLoadouts,
+      programs: this.matchPrograms,
+      // Every row, also after RUN, which shows only some: a whole match's log is short enough to paste.
+      events: this.replay?.recording.events ?? this.events,
+    });
+    navigator.clipboard?.writeText(text).then(
+      () => sayCopied(this.copyLogButton),
+      () => {
+        // No clipboard: nothing to fall back on but the log itself, which can be selected by hand.
+      },
+    );
   }
 
   /** The analysis and the run counts of the program screen's match: worked out once a match, when first wanted. */
@@ -577,6 +602,9 @@ class App {
     const workspace = this.tutorialWorkspace;
     workspace.flush();
     workspace.stale = false;
+    // The training robot's program is not shown in the game (the champion's is the puzzle): only the player's own.
+    this.matchPrograms = [{ name: ROBOT_IDS[PLAYER_INDEX], source: workspace.source }];
+    this.matchArenaName = null;
     const { loadout } = coach;
     // A castle stage fields the same parts on every machine: the team's pooled cost is what counts.
     const stageSize = coach.stage.teamSize;
@@ -667,6 +695,8 @@ class App {
       workspace.stale = false;
     }
     this.partsStale.fill(false);
+    this.matchPrograms = this.workspaces.map((workspace) => ({ name: workspace.robotId, source: workspace.source }));
+    this.matchArenaName = this.arena.name;
 
     const brains: RobotBrain[] = [];
     const features: ProgramFeatures[] = [];
@@ -725,6 +755,8 @@ class App {
       workspace.stale = false;
     }
     this.team.partsStale.clear();
+    this.matchPrograms = workspaces.map((workspace, team) => ({ name: ROBOT_IDS[team], source: workspace.source }));
+    this.matchArenaName = this.team.castleArena.name;
 
     // Errors are shown on the editors' lines, so each team's program is compiled here first.
     const faults: Fault[] = [];
@@ -1286,6 +1318,7 @@ class App {
       );
     });
     this.logView.update(this.events, replay?.reachedTick ?? 0, replay?.tick ?? 0);
+    this.copyLogButton.disabled = this.events.length === 0;
     const analyzed = replay === null ? null : this.analysisOf(replay);
     if (replay === null && this.analyzed !== null) {
       this.analyzed = null;

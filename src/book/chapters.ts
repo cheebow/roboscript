@@ -1993,7 +1993,9 @@ What we just did, as steps:
 | 4. Debugger | see which lines were running then |
 | 5. Mend and check | change one thing, and compare on the same match and the same table of matches |
 
-Change only one thing: change two, and you cannot tell which of them did it. Compare on the same match: with another seed, you cannot tell whether your change did it or the match just went differently.`,
+Change only one thing: change two, and you cannot tell which of them did it. Compare on the same match: with another seed, you cannot tell whether your change did it or the match just went differently.
+
+To ask someone else, or an AI, press **COPY** in the heading of the log. It copies the match as text: the map and seed, the numbers of the analysis, both programs and the whole log. Paste that, and ask why it lost.`,
       `## 探し方の手順
 
 ここまでのやり方を、手順にまとめておきます。
@@ -2006,7 +2008,9 @@ Change only one thing: change two, and you cannot tell which of them did it. Com
 | 4. デバッガ | そのとき、どの行が動いていたかを見る |
 | 5. 直して確かめる | 1 か所だけ直して、同じ試合と同じ対戦表で比べる |
 
-直すのは 1 か所だけにします。2 か所いっぺんに変えると、どちらが効いたのか分かりません。比べるのは同じ試合で。seed が変わると、直したから変わったのか、試合の流れが変わっただけなのかが分かりません。`,
+直すのは 1 か所だけにします。2 か所いっぺんに変えると、どちらが効いたのか分かりません。比べるのは同じ試合で。seed が変わると、直したから変わったのか、試合の流れが変わっただけなのかが分かりません。
+
+人や AI に聞くときは、ログの見出しの **コピー** を押します。マップと seed、分析の数字、両方のプログラム、ログの全部が、文字でコピーされます。それを貼り付けて、なぜ負けたのか聞いてみましょう。`,
     ),
     text(
       `## From what you see to where to look
@@ -2156,7 +2160,7 @@ guard は 4 回まで使えるのに、使えたのは 1 回でした。もっ�
 - 行番号の左に数字がない行は、一度も通っていない。行が多すぎるという警告は、行動のない道があるしるし。
 - 直すのは 1 か所だけ。同じ試合をもう一度して、何が変わったかを確かめる。次の章では、このやり方でロボットを育てていきます。`,
     ),
-    { kind: 'see', topics: ['debugging-help', 'program-screen', 'keys'] },
+    { kind: 'see', topics: ['log-help', 'debugging-help', 'program-screen', 'keys'] },
   ],
 };
 

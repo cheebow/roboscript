@@ -22,6 +22,8 @@ import {
   GUARD_AT_HIT,
   GUARD_FIRST,
   GUARD_ON_SIGHT,
+  GUARD_ON_TOP,
+  GUARD_UNDER,
   HIDE_AND_REST,
   JUST_LOOK,
   KEEP_FIRING,
@@ -39,7 +41,9 @@ import {
   STUCK,
   TICK_BY_TICK,
   TIMED_DRIVE,
+  TRACK_NO_ACTION,
   TURN_AND_CHECK,
+  TURN_FIRST,
   TURN_THEN_DRIVE,
   TWO_TICK_LOOP,
   UNSTUCK,
@@ -1699,7 +1703,20 @@ export function againstDumbBot(name: Text, source: string): Matchup {
   return { robot: { name, source }, opponents: ['dumb_bot'], arenas: MATCHUP_ARENAS, seeds: MATCHUP_SEEDS };
 }
 
+/** The two cases of Chapter 15, played as the match above. */
+export const TRACK_CASE: Replay = { ...LOST_MATCH, program: TRACK_NO_ACTION };
+export const GUARD_CASE: Replay = { ...LOST_MATCH, program: GUARD_UNDER };
+export const GUARD_FIXED: Replay = { ...LOST_MATCH, program: GUARD_ON_TOP };
+/** The log of the first case is shown where the robot fires, a tick after DumbBot. */
+export const TRACK_CASE_SHOWN = 61;
+/** The analysis of the second is shown where the first shot hits it. */
+export const GUARD_CASE_SHOWN = 79;
+
 const SAMPLE_NAME: Text = { en: 'Sample', ja: 'Sample' };
+const TRACK_NO_ACTION_NAME: Text = { en: "Case 1's robot", ja: '実例 1 のロボット' };
+const TURN_FIRST_NAME: Text = { en: 'Case 1 mended', ja: '実例 1 を直したロボット' };
+const GUARD_UNDER_NAME: Text = { en: "Case 2's robot", ja: '実例 2 のロボット' };
+const GUARD_ON_TOP_NAME: Text = { en: 'Case 2 mended', ja: '実例 2 を直したロボット' };
 const SOONER_NAME: Text = { en: 'Sample with attack(320)', ja: 'attack(320) にした Sample' };
 
 const FINDING_OUT: BookChapter = {
@@ -1715,7 +1732,7 @@ const FINDING_OUT: BookChapter = {
 | Log | what happened, in order |
 | Debugger | at one moment, which lines ran, and what the variables and sensors held |
 
-Use them in that order: the analysis to see roughly where, the log to see what happened there, and the debugger to find the line behind it. This chapter does that with one match.`,
+Use them in that order: the analysis to see roughly where, the log to see what happened there, and the debugger to find the line behind it. This chapter first does that with one match, then puts it into steps, and goes through two more cases.`,
       `負けた試合には、かならず理由があります。ゲームには、それを探す道具が 3 つあります。
 
 | 道具 | 分かること |
@@ -1724,7 +1741,7 @@ Use them in that order: the analysis to see roughly where, the log to see what h
 | ログ | 何が、どの順に起きたか |
 | デバッガ | ある瞬間に、どの行が動いたか。変数やセンサーがどんな値だったか |
 
-使う順もこのとおりです。分析で大まかな場所の見当をつけ、ログでそこで何が起きたかを確かめ、デバッガで原因の行を見つけます。この章では、1 つの試合を例に、この順で使ってみます。`,
+使う順もこのとおりです。分析で大まかな場所の見当をつけ、ログでそこで何が起きたかを確かめ、デバッガで原因の行を見つけます。この章では、まず 1 つの試合でこの順に使ってみます。そのあと手順にまとめて、実例をあと 2 つ見ます。`,
     ),
     text(
       `## The match
@@ -1785,7 +1802,7 @@ What to suspect when the numbers look like this:
 |---|---|
 | few hits | firing on the move, or at an enemy going sideways (Chapter 10) |
 | little time with the enemy in sight | the way it looks for the enemy: it loses it behind cover |
-| much damage taken, nothing guarded | no \`guard\` (Chapter 11) |
+| much damage taken, nothing guarded | no \`guard\` (Chapter 11), or the program never gets to it (Case 2 below) |
 | very far driven | going round and round the same place |`,
       `| 列 | 数えているもの |
 |---|---|
@@ -1809,7 +1826,7 @@ HP の推移のグラフでは、ALPHA の線が先に下がります。最初�
 |---|---|
 | 命中が少ない | 動きながら撃っている。横に動く敵を撃っている（第 10 章） |
 | 敵が見えた時間が短い | 敵の探し方。物陰で見失っている |
-| 被ダメージが多いのに、ガードが 0 | \`guard\` を使っていない（第 11 章） |
+| 被ダメージが多いのに、ガードが 0 | \`guard\` を使っていない（第 11 章）。または、guard の行まで来ていない（この章の実例 2） |
 | 走行距離がとても長い | 同じ所をぐるぐる回っている |`,
     ),
     text(
@@ -1964,13 +1981,179 @@ The line to change is the one that calls \`attack\`, in the \`loop\` at the end:
       'attack(320) にした同じ試合。今度は DumbBot の HP が先に下がる。',
     ) },
     text(
+      `## How to look
+
+What we just did, as steps:
+
+| Step | What to do |
+|---|---|
+| 1. The same match | make the lost match one you can watch again: the same map, the same seed |
+| 2. Analysis | look for the numbers that differ from the enemy's |
+| 3. Log | see what happened around the moments those numbers come from |
+| 4. Debugger | see which lines were running then |
+| 5. Mend and check | change one thing, and compare on the same match and the same table of matches |
+
+Change only one thing: change two, and you cannot tell which of them did it. Compare on the same match: with another seed, you cannot tell whether your change did it or the match just went differently.`,
+      `## 探し方の手順
+
+ここまでのやり方を、手順にまとめておきます。
+
+| 手順 | すること |
+|---|---|
+| 1. 同じ試合を出す | 負けた試合を、同じマップ・同じ seed でもう一度見られるようにする |
+| 2. 分析 | 相手とちがう数字を探す |
+| 3. ログ | その数字に関わる時刻に、何が起きたかを見る |
+| 4. デバッガ | そのとき、どの行が動いていたかを見る |
+| 5. 直して確かめる | 1 か所だけ直して、同じ試合と同じ対戦表で比べる |
+
+直すのは 1 か所だけにします。2 か所いっぺんに変えると、どちらが効いたのか分かりません。比べるのは同じ試合で。seed が変わると、直したから変わったのか、試合の流れが変わっただけなのかが分かりません。`,
+    ),
+    text(
+      `## From what you see to where to look
+
+Some odd ways to move, and what is often behind them:
+
+| You see | Often | Where to look |
+|---|---|---|
+| it sees the enemy, but does not turn to it or fire | it goes round a way with no action: past 1000 lines, it does nothing that tick (Chapter 3) | the warning too many lines without an action in the log; no action among the green lines |
+| it does not get away when shot at | it is in the middle of a line that takes many ticks, such as \`turn left 90\`, and does not look around (Chapter 3) | the number left of that line is bigger than you thought: one go counts many ticks |
+| what is inside an if never happens | an if above it takes those ticks first (Chapter 5) | no number left of the line. Look in the watch at the condition of the if above |
+| a variable never changes | its \`set\` is on a way the program never goes | the number left of the \`set\` line, and the value in the watch |
+| it starts firing later than the enemy | one more action, such as a turn, before it fires | the times of the first \`fire\` rows in the log |
+
+The next two cases are both in this table.`,
+      `## 症状から見当をつける
+
+動きがおかしいとき、よくある原因です。
+
+| こう見えたら | よくある原因 | 確かめるところ |
+|---|---|---|
+| 敵が見えているのに、向きを変えない・撃たない | 行動のない道を回っている。1000 行を超えると、その tick は何もしない（第 3 章） | ログの警告 too many lines without an action。緑の行に、行動の行がない |
+| 撃たれても逃げない | \`turn left 90\` のような何 tick も続く行の途中で、周りを確かめていない（第 3 章） | その行の左の数字が、思ったより大きい。1 回で何 tick も数える |
+| ある if の中が動かない | 上の if が先につかまえている（第 5 章） | 行番号の左に数字がない。上の if の条件をウォッチで見る |
+| 変数が変わらない | \`set\` の行が、通らない道にある | \`set\` の行の左の数字。ウォッチの値 |
+| 撃ち始めが相手より遅い | 撃つ前に、向きを変えるなどの行動が 1 つ多い | ログで、最初の \`fire\` の時刻を比べる |
+
+次の 2 つの実例は、どちらもこの表に出てきます。`,
+    ),
+    text(
+      `## Case 1: it does not turn to the enemy on the way in
+
+A robot written after DumbBot. When it sees the enemy, it drives up to it if it is further than 300, and stops and fires if it is closer.`,
+      `## 実例 1：近づく間、敵の方を向かない
+
+DumbBot をまねて書いたロボットです。敵が見えたら、300 より遠ければ近づき、近ければ止まって撃ちます。`,
+    ),
+    code(TRACK_NO_ACTION),
+    { kind: 'matchup', matchup: againstDumbBot(TRACK_NO_ACTION_NAME, TRACK_NO_ACTION) },
+    text(
+      `It does what DumbBot does, or so it seems; yet it wins 1 of 12. Let us look into it on the same Open Field, seed 1. To play it in the game, write it into ALPHA's main.bot, and do the rest as for the match above.
+
+The analysis says 9 hits of 10 against 10 of 10: again one shot apart. Now the log:`,
+      `DumbBot と同じことをしているはずなのに、12 試合で 1 勝しかできません。例の試合と同じ Open Field、seed 1 で調べます。ゲームで試すときは、ALPHA の main.bot にこのプログラムを書き、あとは例の試合と同じ手順です。
+
+分析では、命中は 9/10 と 10/10。今度も差は 1 発です。次はログです。`,
+    ),
+    { kind: 'replay', replay: TRACK_CASE, tick: TRACK_CASE_SHOWN, panel: { kind: 'log', until: 90 }, caption: caption(
+      'The first seconds. A warning at 0.033 seconds, as soon as the match starts.',
+      'はじめのログ。試合が始まってすぐ、0.033 秒に警告が出ている。',
+    ) },
+    text(
+      `Two things stand out:
+
+- At 0.033 seconds, the warning too many lines without an action.
+- At 2.000 seconds, when DumbBot starts firing, our robot is only now turning to the enemy (turn enemy). It fires on the next tick, at 2.033.
+
+On to the debugger. Stop anywhere while it is driving in (TRACK), and look:
+
+- The pale green lines, run in this tick: lines 1 to 3 and 8 to 10. Not one of them is an action. The program goes round and round them, and after 1000 lines the tick ends with nothing done.
+- The numbers left of the lines: 59 for lines 9 and 10, the ticks it was driving in. Lines 11 and on have none.
+- ROTATION in the inspector: 180 all the way in. It never turns.
+
+The way in (TRACK) has no action. The robot still drives, as \`drive forward\` is a setting, so it looks all right; but nothing turns it to the enemy. Once it is closer than 300, it turns first, and fires a tick later. DumbBot turns to the enemy (\`turn enemy\`) on every tick of its way in, so it fires on the very tick the enemy comes closer than 300. One tick sooner, it gets its tenth shot in first.
+
+To mend it, move \`turn enemy\` up above the if (line 3). Now both ways have an action, and the warning is gone.`,
+      `目につくのは 2 つです。
+
+- 0.033 秒に、警告 too many lines without an action（行動のないまま行が多すぎる）。
+- 2.000 秒、DumbBot が撃ち始めたとき、こちらはやっと turn enemy で敵の方を向いている。撃つのは次の tick、2.033 秒。
+
+デバッガで見てみます。近づいている途中（TRACK）のどこかで止めてください。
+
+- 薄い緑の行（今の tick に通った行）は、1〜3 行目と 8〜10 行目。行動の行が 1 つもありません。プログラムはここをぐるぐる回り、1000 行を超えたところで、何もしないままその tick が終わります。
+- 行番号の左の数字は、9 行目と 10 行目が 59。近づいていた tick の数です。11 行目から下には数字がありません。
+- 状態の「向き」は、近づく間ずっと 180 のまま。一度も向きを変えていません。
+
+近づく道（TRACK）には、行動がないのです。\`drive forward\` は設定なので走り続け、見た目はちゃんと近づいています。でも、敵の方を向く行がありません。300 を切ってから向きを変え、撃つのはその次の tick です。DumbBot は近づく間も毎 tick \`turn enemy\` しているので、300 を切ったその tick に撃てます。1 tick 早い方が、先に 10 発目を当てます。
+
+直すには、\`turn enemy\` を if の前（3 行目）に出します。これでどちらの道にも行動が入り、警告も出なくなります。`,
+    ),
+    code(TURN_FIRST),
+    { kind: 'matchup', matchup: againstDumbBot(TURN_FIRST_NAME, TURN_FIRST) },
+    text(
+      `Now 10 of the 12 are draws. It no longer loses, but it does not win either: it fires at 2.000 seconds, on the same tick as DumbBot, and the two go down together.`,
+      `12 試合のうち 10 試合が引き分けになりました。負けなくはなりましたが、勝てません。DumbBot と同じ 2.000 秒に撃ち始めて、同時に倒れるのです。`,
+    ),
+    text(
+      `## Case 2: the guard that never happens
+
+To get out of the draws, we add a guard to the mended robot (Chapter 11): when a bullet is about to hit, guard.`,
+      `## 実例 2：guard が一度も動かない
+
+引き分けから抜け出すために、実例 1 で直したロボットに guard を足しました（第 11 章）。弾が当たる直前なら guard します。`,
+    ),
+    code(GUARD_UNDER),
+    { kind: 'matchup', matchup: againstDumbBot(GUARD_UNDER_NAME, GUARD_UNDER) },
+    text(
+      `Just as before: 1 win, 1 loss, 10 draws. The analysis of the match:`,
+      `結果は足す前とまったく同じで、1 勝 1 敗 10 引き分けです。分析を見ます。`,
+    ),
+    { kind: 'replay', replay: GUARD_CASE, tick: GUARD_CASE_SHOWN, panel: { kind: 'analysis' }, caption: caption(
+      'The analysis, shown at the first hit. Nothing in guarded.',
+      '最初の弾が当たった時点の分析。ガードは 0。',
+    ) },
+    text(
+      `guarded is 0: it never guarded. There is no guard row in the log either. In the debugger:
+
+- Line 11, \`else if bullet_incoming…\`, has no number on its left. Not only the \`guard\` on line 12: the if itself was never read.
+- Go to 2.600 seconds, a tick before the first hit, and look in the watch: \`bullet_incoming\` is true, and so is \`enemy_visible\`.
+
+A bullet comes when the enemy fires, and then the enemy is in sight. So the if of line 2, \`if enemy_visible\`, takes all those ticks, and the program never gets to line 11. All 10 times a bullet came closer than 36, the enemy was in sight.
+
+To mend it, put the if of the guard at the top.`,
+      `ガードの列が 0 です。一度も guard していません。ログにも guard の行がありません。デバッガで見ます。
+
+- 11 行目の \`else if bullet_incoming…\` の左に、数字がない。12 行目の \`guard\` どころか、その if さえ一度も読まれていません。
+- 最初の弾が当たる 1 tick 前、2.600 秒に合わせてウォッチを見る。\`bullet_incoming\` は true、\`enemy_visible\` も true です。
+
+弾が飛んでくるのは、敵が撃ったとき。そのとき敵は見えています。だから 2 行目の \`if enemy_visible\` が先につかまえて、11 行目まで来ないのです。弾が 36 より近くまで来た 10 回とも、敵は見えていました。
+
+直すには、guard の if を一番上に置きます。`,
+    ),
+    code(GUARD_ON_TOP),
+    { kind: 'matchup', matchup: againstDumbBot(GUARD_ON_TOP_NAME, GUARD_ON_TOP) },
+    { kind: 'replay', replay: GUARD_FIXED, tick: GUARD_CASE_SHOWN, panel: { kind: 'analysis' }, caption: caption(
+      'With the guard on top, the same match: one guarded, and 10 HP left at the end.',
+      'guard を一番上にした同じ試合。ガードが 1 になり、最後に HP が 10 残る。',
+    ) },
+    text(
+      `9 wins and 3 losses. In our match it guarded once: the first shot, at 2.633 seconds, took 10 instead of 20. The rest went as before, and DumbBot went down first, leaving us 10 HP. That one guard is all the difference.
+
+It may guard 4 times, and guarded once. How to guard more often? Compare it with GuardBot's program (Chapter 9).`,
+      `9 勝 3 敗です。例の試合では、2.633 秒の最初の弾を guard で受けて、ダメージが 20 から 10 になりました。あとは同じように撃ち合い、DumbBot が先に倒れて、こちらは HP 10 で残ります。差はこの 1 回の guard だけです。
+
+guard は 4 回まで使えるのに、使えたのは 1 回でした。もっと使うにはどうすればよいか、GuardBot のプログラム（第 9 章）と比べてみてください。`,
+    ),
+    text(
       `## In short
 
 - The analysis tells you where to look; the log, what happened there; the debugger, which line made it happen.
+- A line with no number on its left never ran. The warning about too many lines points to a way with no action.
 - Change one thing, and play the same matches again to see what it did. The next chapter grows a robot that way.`,
       `## まとめ
 
 - 分析でどこを見るかを決め、ログでそこで何が起きたかを確かめ、デバッガでどの行が起こしたかを見つける。
+- 行番号の左に数字がない行は、一度も通っていない。行が多すぎるという警告は、行動のない道があるしるし。
 - 直すのは 1 か所だけ。同じ試合をもう一度して、何が変わったかを確かめる。次の章では、このやり方でロボットを育てていきます。`,
     ),
     { kind: 'see', topics: ['debugging-help', 'program-screen', 'keys'] },

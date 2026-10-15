@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { compileScript } from '../src/ai/roboscript';
-import { BOOK, CHAPTERS, LOST_MATCH, MATCHUP_ARENAS, MATCHUP_SEEDS, RIVALS, TEAMS, TEAM_ARENAS, TEAM_SIZE, WON_MATCH, againstDumbBot, growMatchupOf, matchupOf, teamMatchupOf } from '../src/book/chapters';
+import { BOOK, CHAPTERS, GUARD_CASE, GUARD_CASE_SHOWN, GUARD_FIXED, LOST_MATCH, TRACK_CASE, TRACK_CASE_SHOWN, MATCHUP_ARENAS, MATCHUP_SEEDS, RIVALS, TEAMS, TEAM_ARENAS, TEAM_SIZE, WON_MATCH, againstDumbBot, growMatchupOf, matchupOf, teamMatchupOf } from '../src/book/chapters';
 import { analyzeReplay, playReplay } from '../src/book/replays';
 import { SHOTS } from '../src/book/shots';
 import { matchCount, matchupRecords } from '../src/book/matchups';
@@ -32,6 +32,8 @@ import {
   GUARD_AT_HIT,
   GUARD_FIRST,
   GUARD_ON_SIGHT,
+  GUARD_ON_TOP,
+  GUARD_UNDER,
   HIDE_AND_REST,
   JUST_LOOK,
   KEEP_FIRING,
@@ -47,7 +49,9 @@ import {
   STUCK,
   TICK_BY_TICK,
   TIMED_DRIVE,
+  TRACK_NO_ACTION,
   TURN_AND_CHECK,
+  TURN_FIRST,
   TURN_THEN_DRIVE,
   TWO_TICK_LOOP,
   UNSTUCK,
@@ -951,13 +955,127 @@ describe('what the chapter on finding out why it lost says', () => {
     expect(page.querySelector('#finding-out img.book-shot')?.getAttribute('src')).toContain('ja');
   });
 
+
+  describe('its two cases', () => {
+    const trackCase = playReplay(TRACK_CASE).recording;
+    const guardCase = playReplay(GUARD_CASE).recording;
+    const guardFixed = playReplay(GUARD_FIXED).recording;
+    const turned = playReplay({ ...LOST_MATCH, program: TURN_FIRST }).recording;
+    const lineOf = (source: string, line: number) => source.split('\n')[line - 1].trim();
+    /** In how many ticks the line ran, as the number left of it says. */
+    const ranIn = (recording: typeof lost, line: number) => recording.snapshots.filter((snapshot) => snapshot.robots[0].executedLines.includes(line)).length;
+    const actions = ['turn', 'aim', 'fire', 'guard', 'wait', 'face'];
+
+    it('the tables of matches: 1-10-1; turning first, 10 draws; the guard under the if, the same; the guard on top, 9-3', () => {
+      const against = (source: string) => matchupRecords(againstDumbBot({ en: 'x', ja: 'x' }, source))[0];
+      expect(against(TRACK_NO_ACTION)).toMatchObject({ wins: 1, losses: 10, draws: 1 });
+      expect(against(TURN_FIRST)).toMatchObject({ wins: 1, losses: 1, draws: 10 });
+      expect(against(GUARD_UNDER)).toMatchObject({ wins: 1, losses: 1, draws: 10 });
+      expect(against(GUARD_ON_TOP)).toMatchObject({ wins: 9, losses: 3, draws: 0 });
+    });
+
+    it('case 1: lost by one shot, 9 of 10 against 10 of 10; the warning at 0.033 seconds, in the part of the log shown', () => {
+      expect(trackCase.snapshots.at(-1)?.result?.winnerId).toBe('BRAVO');
+      const [alpha, bravo] = analyzeReplay(TRACK_CASE).robots;
+      expect([alpha.hits, alpha.shots, bravo.hits, bravo.shots]).toEqual([9, 10, 10, 10]);
+      const warnings = trackCase.events.filter((event) => event.type === 'warning' && event.robotId === 'ALPHA');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].message).toContain('too many lines without an action');
+      expect(warnings[0].timestamp.toFixed(3)).toBe('0.033');
+      const shown = chapter.blocks.find((block) => block.kind === 'replay' && block.replay === TRACK_CASE);
+      expect(shown?.kind === 'replay' && shown.panel?.kind === 'log' && shown.panel.until).toBeGreaterThan(firstFire(trackCase, 'ALPHA').tick);
+    });
+
+    it('case 1: at 2.000 DumbBot fires and our robot turns (line 5); it fires at 2.033 (line 7), the moment shown', () => {
+      expect(lineOf(TRACK_NO_ACTION, 5)).toBe('turn enemy');
+      expect(lineOf(TRACK_NO_ACTION, 7)).toBe('fire');
+      expect(firstFire(trackCase, 'BRAVO').timestamp).toBe(2);
+      const turn = trackCase.events.find((event) => event.robotId === 'ALPHA' && event.message === 'turn enemy');
+      expect([turn?.timestamp, turn?.sourceLine]).toEqual([2, 5]);
+      const fire = firstFire(trackCase, 'ALPHA');
+      expect([fire.timestamp.toFixed(3), fire.sourceLine]).toEqual(['2.033', 7]);
+      expect(TRACK_CASE_SHOWN).toBe(fire.tick);
+    });
+
+    it('case 1: on the way in only lines 1-3 and 8-10 run, none an action; 59 ticks of lines 9 and 10, none from 11 on; ROTATION stays 180', () => {
+      const tracking = trackCase.snapshots.filter((snapshot) => snapshot.robots[0].label === 'TRACK');
+      expect(tracking).toHaveLength(59);
+      for (const snapshot of tracking) {
+        expect([...new Set(snapshot.robots[0].executedLines)].sort((a, b) => a - b)).toEqual([1, 2, 3, 8, 9, 10]);
+        expect(snapshot.robots[0].rotation).toBe(180);
+      }
+      for (const line of [1, 2, 3, 8, 9, 10]) expect(actions.some((action) => lineOf(TRACK_NO_ACTION, line).startsWith(action))).toBe(false);
+      expect([ranIn(trackCase, 9), ranIn(trackCase, 10)]).toEqual([59, 59]);
+      for (let line = 11; line <= 17; line++) expect(ranIn(trackCase, line)).toBe(0);
+      // DumbBot turns to the enemy on its way in.
+      expect(findTemplate('dumb_bot')?.source).toMatch(/turn enemy\n\n\s+if enemy_distance < 300/);
+    });
+
+    it('case 1 mended: turn enemy is line 3; no warning; it fires at 2.000 with DumbBot, and the two go down together', () => {
+      expect(lineOf(TURN_FIRST, 3)).toBe('turn enemy');
+      expect(TURN_FIRST.replace('        turn enemy\n', '')).toBe(TRACK_NO_ACTION.replace('            turn enemy\n', ''));
+      expect(turned.events.filter((event) => event.type === 'warning')).toHaveLength(0);
+      expect(firstFire(turned, 'ALPHA').tick).toBe(firstFire(turned, 'BRAVO').tick);
+      expect(firstFire(turned, 'ALPHA').timestamp).toBe(2);
+      expect(turned.snapshots.at(-1)?.result?.winnerId).toBeNull();
+    });
+
+    it('case 2: the mended robot with a guard under the if; guarded 0, no guard row; line 11 never read', () => {
+      expect(GUARD_UNDER.replace(/ {4}else if bullet_incoming.*\n.*guard\n/, '')).toBe(TURN_FIRST);
+      expect(lineOf(GUARD_UNDER, 2)).toBe('if enemy_visible');
+      expect(lineOf(GUARD_UNDER, 11)).toBe('else if bullet_incoming and bullet_distance < 36');
+      expect(lineOf(GUARD_UNDER, 12)).toBe('guard');
+      expect(GUARD_UNDER).toContain('bullet_incoming and bullet_distance < 36');
+      expect(analyzeReplay(GUARD_CASE).robots[0].guarded).toBe(0);
+      expect(guardCase.events.some((event) => event.message === 'guard')).toBe(false);
+      expect(ranIn(guardCase, 11)).toBe(0);
+      expect(ranIn(guardCase, 12)).toBe(0);
+    });
+
+    it('case 2: shown at the first hit; a tick before, at 2.600, a bullet is coming and the enemy in sight; so all 10 times', () => {
+      expect(GUARD_CASE_SHOWN).toBe(firstHurt(guardCase, 0));
+      const before = guardCase.snapshots[GUARD_CASE_SHOWN - 1].robots[0];
+      expect(((GUARD_CASE_SHOWN - 1) / MATCH_DEFAULTS.tickRate).toFixed(3)).toBe('2.600');
+      expect(before.incomingBullet).not.toBeNull();
+      expect(before.enemyVisible).toBe(true);
+      const close = guardCase.snapshots.filter((snapshot) => (snapshot.robots[0].incomingBullet?.distance ?? Infinity) < 36);
+      expect(close).toHaveLength(10);
+      expect(close.every((snapshot) => snapshot.robots[0].enemyVisible)).toBe(true);
+    });
+
+    it('case 2 mended: 9-3; one guard, at 2.633, the first shot taking 10 not 20; DumbBot down first, 10 HP left; 4 guards to use', () => {
+      expect(lineOf(GUARD_ON_TOP, 2)).toBe('if bullet_incoming and bullet_distance < 36');
+      expect(analyzeReplay(GUARD_FIXED).robots[0].guarded).toBe(1);
+      const guards = guardFixed.events.filter((event) => event.robotId === 'ALPHA' && event.message === 'guard');
+      expect(guards.map((event) => event.timestamp.toFixed(3))).toEqual(['2.633']);
+      const firstHit = guardFixed.events.find((event) => event.type === 'hit' && event.robotId === 'BRAVO');
+      expect(firstHit?.timestamp.toFixed(3)).toBe('2.633');
+      expect(firstHit?.message).toContain('damage=10');
+      const end = guardFixed.snapshots.at(-1)!;
+      expect(end.result?.winnerId).toBe('ALPHA');
+      expect(end.robots[0].hp).toBe(10);
+      expect(ROBOT_DEFAULTS.maxGuards).toBe(4);
+      expect(GUARD_CASE_SHOWN).toBe(guards[0].tick);
+    });
+  });
+
+  it('numbers the lines of its programs, without putting the numbers into the text', () => {
+    const page = inLanguage('ja', renderBookPage);
+    const listings = [...page.querySelectorAll('#finding-out pre.book-code')];
+    const shown = listings.find((listing) => listing.textContent === GUARD_UNDER.replace(/\n$/, ''));
+    expect(shown?.querySelectorAll('.book-code-line')).toHaveLength(GUARD_UNDER.trimEnd().split('\n').length);
+  });
+
   it('puts the game\'s own analysis and log in the page', () => {
     const page = inLanguage('ja', renderBookPage);
     const section = page.querySelector('#finding-out')!;
-    expect(section.querySelectorAll('.book-replay .analysis-table')).toHaveLength(2);
-    const rows = section.querySelectorAll('.book-log .log-row');
-    expect(rows.length).toBe(lost.events.filter((event) => event.tick <= 100).length);
+    expect(section.querySelectorAll('.book-replay .analysis-table')).toHaveLength(4);
+    const [first, second] = [...section.querySelectorAll('.book-log')];
+    expect(first.querySelectorAll('.log-row').length).toBe(lost.events.filter((event) => event.tick <= 100).length);
     // Rows after the moment shown are pale.
-    expect(section.querySelectorAll('.book-log .log-row.future').length).toBe(lost.events.filter((event) => event.tick > 60 && event.tick <= 100).length);
+    expect(first.querySelectorAll('.log-row.future').length).toBe(lost.events.filter((event) => event.tick > 60 && event.tick <= 100).length);
+    const trackCase = playReplay(TRACK_CASE).recording;
+    expect(second.querySelectorAll('.log-row').length).toBe(trackCase.events.filter((event) => event.tick <= 90).length);
+    expect(second.textContent).toContain('too many lines without an action');
   });
 });

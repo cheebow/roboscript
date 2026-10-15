@@ -60,6 +60,19 @@ function readingsTable(sensors: readonly string[], ticks: readonly number[], row
 }
 
 /** A built-in robot's program, folded away: it is long, and the text says what it does. */
+/** A program, with its lines numbered as the editor numbers them: the text goes by those numbers. */
+function programCode(source: string): HTMLElement {
+  const code = createElement('pre', 'markup-code book-code');
+  source
+    .replace(/\n$/, '')
+    .split('\n')
+    .forEach((line, at) => {
+      if (at > 0) code.append('\n');
+      code.append(createElement('span', 'book-code-line', line));
+    });
+  return code;
+}
+
 function templateCode(id: string): HTMLElement {
   const template = findTemplate(id) ?? findTeamTemplate(id);
   if (template === undefined) throw new Error(`The book names a built-in robot there is not: ${id}`);
@@ -67,7 +80,7 @@ function templateCode(id: string): HTMLElement {
   const details = createElement('details', 'book-template');
   details.append(
     createElement('summary', '', inLanguage({ en: `${template.name}'s program (${lines} lines)`, ja: `${template.name} のプログラム（${lines} 行）` })),
-    createElement('pre', 'markup-code book-code', template.source.replace(/\n$/, '')),
+    programCode(template.source),
   );
   return details;
 }
@@ -290,7 +303,7 @@ function renderBlock(block: BookBlock): HTMLElement {
     case 'text':
       return renderMarkup(inLanguage(block.text));
     case 'code':
-      return createElement('pre', 'markup-code book-code', block.code.replace(/\n$/, ''));
+      return programCode(block.code);
     case 'scene':
       return figure(createSceneFrame(block.scene, inLanguage(block.caption)), block.caption);
     case 'timeline':
@@ -304,7 +317,7 @@ function renderBlock(block: BookBlock): HTMLElement {
       if (compiled.ok) throw new Error(`A program of the book meant to be wrong compiles: ${block.program}`);
       const shown = createElement('div', 'book-error');
       shown.append(
-        createElement('pre', 'markup-code book-code', block.program.replace(/\n$/, '')),
+        programCode(block.program),
         ...compiled.errors.map((error) => createElement('div', 'book-error-message', formatError(error))),
       );
       return figure(shown, block.caption);

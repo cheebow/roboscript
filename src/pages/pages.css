@@ -275,6 +275,20 @@ body {
 
 .book-code {
   margin: 12px 0;
+  counter-reset: book-code-line;
+}
+
+/* The line numbers are not part of the text, so a copied program has none. */
+.book-code-line::before {
+  counter-increment: book-code-line;
+  content: counter(book-code-line);
+  display: inline-block;
+  width: 2.5ch;
+  margin-right: 1.5ch;
+  text-align: right;
+  color: var(--muted);
+  opacity: 0.6;
+  user-select: none;
 }
 
 .book-figure {
@@ -350,6 +364,13 @@ body {
   border-top: none;
   background: var(--panel);
   font-size: 12px;
+}
+
+/* A long message, a warning's, wraps under itself rather than run off to the side. */
+.book-log .log-message {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .book-figure-svg {

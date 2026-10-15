@@ -382,3 +382,87 @@ loop
 export const SAMPLE_SOONER = SAMPLE_AI.replace('attack(250)', 'attack(320)');
 /** Chapter 15: the number DumbBot's, which only makes the two fire at the same moment. */
 export const SAMPLE_SAME = SAMPLE_AI.replace('attack(250)', 'attack(300)');
+
+/** Chapter 15, first case: on the way in (TRACK) it has no action, so it never turns to the enemy and turns only once it is near. */
+export const TRACK_NO_ACTION = `loop
+    if enemy_visible
+        if enemy_distance < 300
+            label ATTACK
+            turn enemy
+            drive stop
+            fire
+        else
+            label TRACK
+            drive forward
+    else
+        label SEARCH
+        drive forward
+        if blocked
+            turn left
+        else
+            wait
+`;
+
+/** Chapter 15, first case mended: it turns to the enemy before it chooses, so both ways have an action. */
+export const TURN_FIRST = `loop
+    if enemy_visible
+        turn enemy
+        if enemy_distance < 300
+            label ATTACK
+            drive stop
+            fire
+        else
+            label TRACK
+            drive forward
+    else
+        label SEARCH
+        drive forward
+        if blocked
+            turn left
+        else
+            wait
+`;
+
+/** Chapter 15, second case: a guard added under the if that sees the enemy, which takes every tick a bullet comes. */
+export const GUARD_UNDER = `loop
+    if enemy_visible
+        turn enemy
+        if enemy_distance < 300
+            label ATTACK
+            drive stop
+            fire
+        else
+            label TRACK
+            drive forward
+    else if bullet_incoming and bullet_distance < 36
+        guard
+    else
+        label SEARCH
+        drive forward
+        if blocked
+            turn left
+        else
+            wait
+`;
+
+/** Chapter 15, second case mended: the guard first. */
+export const GUARD_ON_TOP = `loop
+    if bullet_incoming and bullet_distance < 36
+        guard
+    else if enemy_visible
+        turn enemy
+        if enemy_distance < 300
+            label ATTACK
+            drive stop
+            fire
+        else
+            label TRACK
+            drive forward
+    else
+        label SEARCH
+        drive forward
+        if blocked
+            turn left
+        else
+            wait
+`;

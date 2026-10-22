@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-22',
+    en: 'The help and the book now show a readable way to write radio protocols: name the numbers, as in set FOUND = 1, then signal FOUND and if ally_signal == FOUND. The recipes "Call the team when you find the enemy" and "Call one helper by name" are written that way.',
+    ja: 'ヘルプと本に、無線の取り決めを読みやすく書くやり方を足しました。set FOUND = 1 のように数に名前を付けて、signal FOUND・if ally_signal == FOUND と書きます。レシピの「見つけたら呼ぶ、呼ばれたら駆けつける」と「助けを 1 台だけ名指しで呼ぶ」もこの書き方にしました。',
+  },
+  {
+    date: '2026-10-22',
     en: 'Clearing a challenge now shows where your time lands among the reference records bundled with the game: a small picture of their spread, with a line at your clear. The list of challenges and your best get a "12/108 by speed" note too. The reference records were measured by playing every challenge with the built-in programs and many part choices.',
     ja: 'チャレンジをクリアすると、自分のタイムが「参照記録」の中のどのあたりかが見えるようになりました。記録のばらつきの小さな図に、自分のクリアの位置が線で入ります。チャレンジ一覧と自己ベストにも「速い順 12/108 位」が付きます。参照記録は、内蔵のプログラムとさまざまなパーツの組み合わせで全チャレンジを実際に遊んで計測したものです。',
   },

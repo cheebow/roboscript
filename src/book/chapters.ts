@@ -1675,12 +1675,12 @@ BaseSplit は、1 番を基地の守りに残し、ほかの 2 台で攻めま�
     text(
       `## Telling each other
 
-A machine sees only what its own sensor sees. To pass on what it has found, it uses the team's radio. \`signal 1\` puts the number 1 on the radio, and from the next tick every machine reads it as \`ally_signal\`. What a number means is up to you.
+A machine sees only what its own sensor sees. To pass on what it has found, it uses the team's radio. \`signal 1\` puts the number 1 on the radio, and from the next tick every machine reads it as \`ally_signal\`. What a number means is up to you. As the meanings pile up, give the numbers names: \`set FOUND = 1\` at the top, then \`signal FOUND\` and \`if ally_signal == FOUND\`, and the agreement reads itself. Keep 0 for "nothing" — it is what the radio starts with.
 
 BaseCall uses it to gather: whoever sees an enemy sends \`signal 1\`, and the others head for it.`,
       `## 知らせ合う
 
-機体に見えるのは、自分のセンサーに映るものだけです。見つけたことを仲間に伝えるには、チームの無線を使います。\`signal 1\` で無線に 1 という数を流すと、次の tick から全員の \`ally_signal\` が 1 になります。数の意味は自分で決めます。
+機体に見えるのは、自分のセンサーに映るものだけです。見つけたことを仲間に伝えるには、チームの無線を使います。\`signal 1\` で無線に 1 という数を流すと、次の tick から全員の \`ally_signal\` が 1 になります。数の意味は自分で決めます。取り決めが増えてきたら、先頭の \`set FOUND = 1\` で数に名前を付けましょう。\`signal FOUND\`・\`if ally_signal == FOUND\` と、取り決めがそのまま読めるようになります。0 は無線の初期値なので、「なにもなし」に取っておきます。
 
 BaseCall はこれで集まります。敵を見つけた機体が \`signal 1\` を流し、ほかの機体がそこへ向かいます。`,
     ),

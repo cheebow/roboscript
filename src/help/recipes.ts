@@ -616,13 +616,14 @@ loop
         id: 'call-team',
         title: { en: 'Call the team when you find the enemy', ja: '見つけたら呼ぶ、呼ばれたら駆けつける' },
         text: {
-          en: 'One number on the radio is a protocol: here 1 means "I see an enemy". Whoever sees one keeps calling and fights; whoever sees nothing but hears the call heads for its nearest teammate; and with no call, everyone marches on the base. A caller that loses sight takes the call back with `signal 0`.',
-          ja: '無線の数 1 つが取り決め（プロトコル）になります。ここでは 1 を「敵を見つけた」の意味にします。見えている機体は呼び続けて戦い、見えていない機体は呼ばれたら一番近い味方のところへ走り、だれも呼んでいなければ基地へ進みます。見失ったら `signal 0` で呼びを取り下げます。',
+          en: 'One number on the radio is a protocol. Naming it — `set FOUND = 1` at the top — lets the rest of the program say what it means: `signal FOUND`, `if ally_signal == FOUND`. Whoever sees an enemy keeps calling and fights; whoever sees nothing but hears the call heads for its nearest teammate; and with no call, everyone marches on the base. A caller that loses sight takes the call back with `signal 0` — 0 is the radio\'s starting value, kept for "nothing".',
+          ja: '無線の数 1 つが取り決め（プロトコル）になります。先頭の `set FOUND = 1` で数に名前を付けておくと、`signal FOUND`・`if ally_signal == FOUND` と、取り決めの意味がそのまま読めます。見えている機体は呼び続けて戦い、見えていない機体は呼ばれたら一番近い味方のところへ走り、だれも呼んでいなければ基地へ進みます。見失ったら `signal 0` で呼びを取り下げます。0 は無線の初期値なので、「なにもなし」に取っておきます。',
         },
-        code: `set called = 0
+        code: `set FOUND = 1
+set called = 0
 loop
     if enemy_visible
-        signal 1
+        signal FOUND
         set called = 1
         drive stop
         aim enemy
@@ -631,7 +632,7 @@ loop
         if called == 1
             signal 0
             set called = 0
-        if ally_signal == 1
+        if ally_signal == FOUND
             face ally
             drive forward
             wait
@@ -770,10 +771,11 @@ loop
         id: 'call-by-name',
         title: { en: 'Call one helper by name', ja: '助けを 1 台だけ名指しで呼ぶ' },
         text: {
-          en: 'Machine 1 keeps the base. When an enemy comes into reach, it calls machine 2 alone with `signal 1 to 2`; the others never hear it and march on. Machine 2 checks with `ally_signal_from` that the call is from machine 1, and comes back to help for the rest of the match. Calling everyone home would leave nobody attacking.',
-          ja: '1 号機は基地の番をします。敵が届くところに来たら、`signal 1 to 2` で 2 号機だけを呼びます。ほかの機体には届かないので、そのまま攻め続けます。2 号機は `ally_signal_from` で 1 号機からの呼び出しだと確かめて、そこからは基地へ戻って守ります。全員を呼び戻すと、攻める機体がいなくなります。',
+          en: 'Machine 1 keeps the base. When an enemy comes into reach, it calls machine 2 alone with `signal COME_BACK to 2` (the name stands for a number: `set COME_BACK = 1` at the top); the others never hear it and march on. Machine 2 checks with `ally_signal_from` that the call is from machine 1, and comes back to help for the rest of the match. Calling everyone home would leave nobody attacking.',
+          ja: '1 号機は基地の番をします。敵が届くところに来たら、`signal COME_BACK to 2` で 2 号機だけを呼びます（名前の中身は数で、先頭の `set COME_BACK = 1` で決めています）。ほかの機体には届かないので、そのまま攻め続けます。2 号機は `ally_signal_from` で 1 号機からの呼び出しだと確かめて、そこからは基地へ戻って守ります。全員を呼び戻すと、攻める機体がいなくなります。',
         },
-        code: `loop
+        code: `set COME_BACK = 1
+loop
     if self_id == 1
         label KEEPER
         if base_distance > 150
@@ -781,7 +783,7 @@ loop
             drive forward
             wait
         else if enemy_visible and enemy_distance < weapon_range
-            signal 1 to 2
+            signal COME_BACK to 2
             drive stop
             aim enemy
             fire
@@ -789,7 +791,7 @@ loop
             drive stop
             aim enemy
             wait
-    else if ally_signal == 1 and ally_signal_from == 1
+    else if ally_signal == COME_BACK and ally_signal_from == 1
         label HELP
         if enemy_visible and enemy_distance < weapon_range
             drive stop

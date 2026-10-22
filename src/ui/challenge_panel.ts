@@ -13,6 +13,9 @@ import {
   judgeChallenge,
 } from '../challenge';
 import { type Best, CHALLENGES_KEY, better, readChallengeProgress, writeChallengeProgress, type ChallengeProgress } from '../challenge/progress';
+import { placeAmong } from '../challenge/records';
+import { CHALLENGE_RECORDS } from '../data/challenge_records';
+import { renderRecordHistogram, showableRecords } from './record_histogram';
 import type { Stage, TutorialAction } from '../tutorial/types';
 import { ActionMenu } from './action_menu';
 import type { Coach } from './coach';
@@ -54,6 +57,8 @@ export class ChallengePanel implements Coach {
   private readonly header = createElement('div', 'tutorial-header');
   private readonly content = createElement('div', 'tutorial-content');
   private readonly status = createElement('div', 'tutorial-status');
+  /** Where this clear stands among the bundled reference records, under the status. */
+  private readonly distribution = createElement('div', 'challenge-distribution');
   private readonly previousButton: HTMLButtonElement;
   private readonly nextButton: HTMLButtonElement;
   private readonly listMenu: ActionMenu;
@@ -78,7 +83,8 @@ export class ChallengePanel implements Coach {
     const nav = createElement('div', 'tutorial-nav');
     nav.append(this.previousButton, this.nextButton);
 
-    container.replaceChildren(top, this.header, this.content, this.status, nav);
+    this.distribution.hidden = true;
+    container.replaceChildren(top, this.header, this.content, this.status, this.distribution, nav);
   }
 
   get challenge(): Challenge {
@@ -114,11 +120,13 @@ export class ChallengePanel implements Coach {
     if (result === null) return;
     this.pending = { result, replay };
     this.setStatus(t('tutorial.watching'), 'waiting');
+    this.clearDistribution();
   }
 
   matchRefused(why: 'errors' | 'cost'): void {
     this.pending = null;
     this.setStatus(t(why === 'cost' ? 'tutorial.fixCost' : 'tutorial.fixErrors'), 'problem');
+    this.clearDistribution();
   }
 
   acted(_action: TutorialAction): void {}
@@ -143,6 +151,7 @@ export class ChallengePanel implements Coach {
     this.pending = null;
     if (!result.cleared) {
       this.setStatus(result.why === null ? t('tutorial.notYet') : local(result.why), 'problem');
+      this.clearDistribution();
       return;
     }
     const { id } = this.challenge;
@@ -153,8 +162,34 @@ export class ChallengePanel implements Coach {
     this.save();
     const newBest = kept === best && before !== undefined && kept !== before;
     this.setStatus(t('challenge.cleared', { stars: starsText(result.stars), record: recordText(best) }) + (newBest ? t('challenge.newBest') : ''), 'done');
+    this.renderDistribution(result.record.seconds);
     this.renderList();
     this.renderHeader();
+  }
+
+  /** The reference records a clear is shown among; null when there are too few to say anything. */
+  private recordsOf(id: string): readonly number[] | null {
+    const record = CHALLENGE_RECORDS.challenges[id];
+    return record !== undefined && showableRecords(record.seconds) ? record.seconds : null;
+  }
+
+  private renderDistribution(seconds: number): void {
+    const population = this.recordsOf(this.challenge.id);
+    if (population === null) {
+      this.clearDistribution();
+      return;
+    }
+    const { quicker, count } = placeAmong(population, seconds);
+    this.distribution.replaceChildren(
+      createElement('p', 'challenge-place', t('challenge.place', { count, quicker, seconds: seconds.toFixed(1) })),
+      renderRecordHistogram(population, seconds),
+    );
+    this.distribution.hidden = false;
+  }
+
+  private clearDistribution(): void {
+    this.distribution.replaceChildren();
+    this.distribution.hidden = true;
   }
 
   open(): void {
@@ -168,6 +203,7 @@ export class ChallengePanel implements Coach {
     this.index = index;
     this.result = null;
     this.pending = null;
+    this.clearDistribution();
     this.progress.current = this.challenge.id;
     this.save();
     this.hooks.challengeChanged();
@@ -236,14 +272,25 @@ export class ChallengePanel implements Coach {
       createElement('div', 'tutorial-chapter', t('challenge.number', { number: this.index + 1, count: CHALLENGES.length })),
       createElement('h3', 'tutorial-title', `${local(challenge.title)}  ${starsText(best?.stars ?? 0)}`),
     );
-    if (best !== undefined) this.header.append(createElement('div', 'challenge-best', t('challenge.best', { stars: starsText(best.stars), record: recordText(best) })));
+    if (best !== undefined) this.header.append(createElement('div', 'challenge-best', t('challenge.best', { stars: starsText(best.stars), record: recordText(best) }) + this.placeText(challenge.id, best)));
+  }
+
+  /** "　速い順 12/108 位" after a best, when there are enough reference records to place it. */
+  private placeText(id: string, best: Best | undefined): string {
+    if (best === undefined) return '';
+    const population = this.recordsOf(id);
+    if (population === null) return '';
+    const { quicker, count } = placeAmong(population, best.seconds);
+    return `　${t('challenge.placeShort', { rank: quicker + 1, count })}`;
   }
 
   private renderList(): void {
     this.listMenu.setItems(
       CHALLENGES.map((challenge, at) => ({
         id: challenge.id,
-        label: `${starsText(this.progress.best[challenge.id]?.stars ?? 0)} ${t('challenge.item', { number: at + 1, title: local(challenge.title) })}`,
+        label:
+          `${starsText(this.progress.best[challenge.id]?.stars ?? 0)} ${t('challenge.item', { number: at + 1, title: local(challenge.title) })}` +
+          this.placeText(challenge.id, this.progress.best[challenge.id]),
       })),
     );
   }

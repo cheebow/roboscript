@@ -47,9 +47,9 @@ export function programSource(key: string, challenge: Challenge): string | null 
   return findTemplate(key)?.source ?? null;
 }
 
-/** Of the reference records, the share (in whole percent) that this many seconds beats. */
-export function percentileOf(population: readonly number[], seconds: number): number {
-  if (population.length === 0) return 0;
-  const slower = population.filter((each) => each > seconds).length;
-  return Math.round((slower / population.length) * 100);
+/** Where a record stands among the reference records: how many were strictly quicker, of how many. */
+export function placeAmong(population: readonly number[], seconds: number): { quicker: number; count: number } {
+  let quicker = 0;
+  for (const each of population) if (each < seconds) quicker += 1;
+  return { quicker, count: population.length };
 }

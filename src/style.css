@@ -2774,3 +2774,47 @@ summary:focus-visible,
   color: var(--muted);
   font-size: 12px;
 }
+
+.challenge-distribution {
+  margin: 6px 12px 0;
+}
+
+.challenge-distribution[hidden] {
+  display: none;
+}
+
+.challenge-place {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.record-histogram-box {
+  margin: 0;
+}
+
+.record-histogram {
+  display: block;
+  width: 100%;
+  height: 56px;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.record-histogram-bar {
+  fill: var(--syntax-command);
+  opacity: 0.55;
+}
+
+.record-histogram-me {
+  stroke: var(--syntax-value);
+  stroke-width: 1.5;
+}
+
+.record-histogram-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}

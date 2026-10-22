@@ -12,6 +12,11 @@ export interface Change {
 export const CHANGES: readonly Change[] = [
   {
     date: '2026-10-22',
+    en: 'Clearing a challenge now shows where your time lands among the reference records bundled with the game: a small picture of their spread, with a line at your clear. The list of challenges and your best get a "12/108 by speed" note too. The reference records were measured by playing every challenge with the built-in programs and many part choices.',
+    ja: 'チャレンジをクリアすると、自分のタイムが「参照記録」の中のどのあたりかが見えるようになりました。記録のばらつきの小さな図に、自分のクリアの位置が線で入ります。チャレンジ一覧と自己ベストにも「速い順 12/108 位」が付きます。参照記録は、内蔵のプログラムとさまざまなパーツの組み合わせで全チャレンジを実際に遊んで計測したものです。',
+  },
+  {
+    date: '2026-10-22',
     en: 'Three new challenges about writing less: A small victory (beat DumbBot in 5 lines), Three lines only (beat AggressiveBot in 3 — the stars are won with your parts), and The ten-line hunter (bring StrafeBot down in 10). The book has hints for each.',
     ja: '短く書くチャレンジを 3 問足しました。「小さな勝利」（5 行以内で DumbBot に勝つ）、「たった 3 行」（3 行以内で AggressiveBot に勝つ。星はパーツ選びで決まります）、「10 行の狩人」（10 行以内で StrafeBot を破壊する）。本にそれぞれのヒントがあります。',
   },

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "balance": "vitest run --config vitest.report.config.ts tests/balance.report.ts",
     "results": "vitest run --config vitest.report.config.ts tests/results.report.ts",
+    "records": "vitest run --config vitest.report.config.ts tests/challenge_records.report.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

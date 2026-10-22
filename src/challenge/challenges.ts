@@ -19,7 +19,7 @@ loop
 `;
 
 /** Looks for the enemy round obstacles; once it sees it, stands still, aims and fires. */
-const HUNTER = `loop
+export const HUNTER = `loop
     if enemy_visible
         drive stop
         if aim_angle > 2 or aim_angle < -2
@@ -34,7 +34,7 @@ const HUNTER = `loop
 `;
 
 /** The hunter that also drives at where a hit came from: for an enemy it cannot see. */
-const HIT_HUNTER = `loop
+export const HIT_HUNTER = `loop
     if bullet_incoming and bullet_distance < 36
         guard
     else if enemy_visible

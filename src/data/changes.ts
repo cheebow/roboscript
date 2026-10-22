@@ -11,6 +11,11 @@ export interface Change {
 
 export const CHANGES: readonly Change[] = [
   {
+    date: '2026-10-22',
+    en: 'Three new challenges about writing less: A small victory (beat DumbBot in 5 lines), Three lines only (beat AggressiveBot in 3 — the stars are won with your parts), and The ten-line hunter (bring StrafeBot down in 10). The book has hints for each.',
+    ja: '短く書くチャレンジを 3 問足しました。「小さな勝利」（5 行以内で DumbBot に勝つ）、「たった 3 行」（3 行以内で AggressiveBot に勝つ。星はパーツ選びで決まります）、「10 行の狩人」（10 行以内で StrafeBot を破壊する）。本にそれぞれのヒントがあります。',
+  },
+  {
     date: '2026-10-15',
     en: 'COPY in the heading of the log copies the match as text: the map and seed, the result, the parts and the numbers of the analysis, both programs and the whole log. Paste it into a chat with an AI to ask why the match went as it did. The help has a new page, The log and the analysis, on what the rows of the log and the columns of the analysis mean.',
     ja: 'ログの見出しに「コピー」を付けました。マップと seed、結果、パーツと分析の数字、両方のプログラム、ログの全部を、文字でコピーします。AI とのチャットに貼り付けて、負けた理由を聞くのにも使えます。ヘルプに「ログと分析」を足し、ログの行の種類や分析の列の意味を書きました。',

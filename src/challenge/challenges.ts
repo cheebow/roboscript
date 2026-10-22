@@ -53,6 +53,22 @@ const HIT_HUNTER = `loop
         wait
 `;
 
+/** Aims and fires, nothing else: enough against a robot that comes to you. */
+const AIM_AND_FIRE = 'loop\n    aim enemy\n    fire\n';
+
+/** The hunter cut down to 10 lines: the aim gate goes, the search and the turn at obstacles stay. */
+const LEAN_HUNTER = `loop
+    if enemy_visible
+        drive stop
+        aim enemy
+        fire
+    else
+        drive forward
+        if blocked
+            turn left
+        wait
+`;
+
 /** Every challenge, from the easiest. */
 export const CHALLENGES: readonly Challenge[] = [
   {
@@ -115,6 +131,21 @@ export const CHALLENGES: readonly Challenge[] = [
     stars: [{ kind: 'lines', max: 5 }, { kind: 'seconds', max: 15 }],
     start: START,
     answer: 'loop\n    drive forward\n    if blocked\n        turn left\n    wait\n',
+  },
+  {
+    id: 'small-victory',
+    title: { en: 'A small victory', ja: '小さな勝利' },
+    brief: {
+      en: 'Beat DumbBot with a program of 5 lines or fewer. It comes to you by itself: standing your ground and shooting may be enough.',
+      ja: '5 行以内のプログラムで DumbBot に勝ちましょう。DumbBot は自分から近づいてきます。その場で狙って撃つだけでも、勝てるかもしれません。',
+    },
+    stage: { arena: OPEN_FIELD, bot: DUMB_BOT, seed: 113 },
+    goal: { kind: 'win' },
+    require: [{ kind: 'lines', max: 5 }],
+    stars: [{ kind: 'lines', max: 3 }, { kind: 'hp', min: 100 }],
+    start: START,
+    answer: AIM_AND_FIRE,
+    answerParts: { gun: 'cannon', sensor: 'scope' },
   },
   {
     id: 'speed-sentry',
@@ -218,6 +249,21 @@ export const CHALLENGES: readonly Challenge[] = [
     answer: HUNTER,
   },
   {
+    id: 'three-lines',
+    title: { en: 'Three lines only', ja: 'たった 3 行' },
+    brief: {
+      en: 'Beat AggressiveBot with a program of 3 lines or fewer. With no room left in the code, the stars are won with your choice of parts.',
+      ja: '3 行以内のプログラムで AggressiveBot に勝ちましょう。コードに余地がないぶん、星はパーツ選びで決まります。',
+    },
+    stage: { arena: OPEN_FIELD, bot: AGGRESSIVE_BOT, seed: 114 },
+    goal: { kind: 'win' },
+    require: [{ kind: 'lines', max: 3 }],
+    stars: [{ kind: 'hp', min: 120 }, { kind: 'hp', min: 140 }],
+    start: START,
+    answer: AIM_AND_FIRE,
+    answerParts: { gun: 'cannon', sensor: 'scope' },
+  },
+  {
     id: 'sharpshooter',
     title: { en: 'Sharpshooter', ja: '狙撃手' },
     brief: {
@@ -231,6 +277,21 @@ export const CHALLENGES: readonly Challenge[] = [
     start: START,
     answer: HUNTER,
     answerParts: { gun: 'cannon', sensor: 'scope' },
+  },
+  {
+    id: 'ten-line-hunter',
+    title: { en: 'The ten-line hunter', ja: '10 行の狩人' },
+    brief: {
+      en: 'Destroy StrafeBot with a program of 10 lines or fewer. Standing to the end is not enough: this one is cleared only when StrafeBot goes down. Which lines earn their keep?',
+      ja: '10 行以内のプログラムで StrafeBot を破壊しましょう。時間切れまで立っているだけではクリアになりません。どの行を残すかが勝負です。',
+    },
+    stage: { arena: PILLARS, bot: STRAFE_BOT, seed: 115 },
+    goal: { kind: 'destroy' },
+    require: [{ kind: 'lines', max: 10 }],
+    stars: [{ kind: 'seconds', max: 70 }, { kind: 'hp', min: 150 }],
+    start: START,
+    answer: LEAN_HUNTER,
+    answerParts: { gun: 'rapid' },
   },
   {
     id: 'final',

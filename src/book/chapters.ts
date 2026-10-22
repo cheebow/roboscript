@@ -1401,6 +1401,17 @@ Every number below comes from playing the challenge.`,
       ],
     ),
     challenge(
+      'small-victory',
+      [
+        `DumbBot comes to you on its own. The lines that go looking for an enemy are not needed here.`,
+        `DumbBot は自分から近づいてきます。敵を探しに行く行は、ここではいりません。`,
+      ],
+      [
+        `Aiming and firing takes 3 lines, and wins with 60 HP left. For the star's 100 HP, end the fight sooner with a gun that reaches further: with a Cannon and a Scope it finished at exactly 100.`,
+        `狙って撃つだけなら 3 行で、HP を 60 残して勝てました。星の条件の HP 100 には、遠くまで届く銃で早めに倒します。Cannon と Scope を付けたら、ちょうど 100 残りました。`,
+      ],
+    ),
+    challenge(
       'speed-sentry',
       [
         `It is a race against the clock, but rushing in does not pay. SentryBot shoots at where you are going: a robot that drove at it lost.`,
@@ -1483,6 +1494,17 @@ Every number below comes from playing the challenge.`,
       ],
     ),
     challenge(
+      'three-lines',
+      [
+        `Three lines is just enough to aim and fire. With standard parts that wins as it is, at 100 HP.`,
+        `3 行は、狙って撃つのにちょうどの行数です。標準のパーツのままでも、HP を 100 残して勝てました。`,
+      ],
+      [
+        `The stars are in the parts. Heavy and Cannon each cost 4, one more than standard, so pay for them with a cost-2 sensor (Chapter 12). A Heavy body with a Short sensor kept 120 HP. A Cannon ends the match sooner, so fewer shots come back: with a Scope it kept 140.`,
+        `星はパーツで取ります。Heavy も Cannon もコスト 4 で標準より 1 高いので、センサーをコスト 2 にして払います（第 12 章）。Heavy の車体と Short のセンサーで HP が 120 残りました。Cannon なら試合が早く終わるぶん受ける弾も減って、Scope と組んで 140 残りました。`,
+      ],
+    ),
+    challenge(
       'sharpshooter',
       [
         `DumbBot has 200 HP, and a shot of the standard gun does 20: 10 of your 15 shots must hit. Stand still, and fire only once the aim is on (Chapter 10).`,
@@ -1491,6 +1513,21 @@ Every number below comes from playing the challenge.`,
       [
         `A Cannon shot does 45, so 5 hits are enough. Clear it in 8 shots or fewer for a star (a harder extra goal beyond clearing); with a Cannon it did. It costs 4: take a part of cost 2 somewhere else (Chapter 12).`,
         `1 発 45 の Cannon なら、5 発当てれば倒せます。8 発以内でクリアすると星がもらえます（星は、クリア条件より難しいおまけの目標）。Cannon では 8 発以内に収まりました。コスト 4 なので、どこかをコスト 2 のパーツにします（第 12 章）。`,
+      ],
+    ),
+    challenge(
+      'ten-line-hunter',
+      [
+        `Standing and shooting never brings StrafeBot down: a robot that only aimed and fired was still facing it when the 120 seconds ran out.`,
+        `その場で撃つだけでは StrafeBot を倒し切れません。狙って撃つだけのロボットは、120 秒たっても倒せていませんでした。`,
+      ],
+      [
+        `The hunter of Chapter 5 brings it down in about 42 seconds — but at 12 lines, two too many. Choose what to cut: without the two lines that wait for the aim to settle it still won; without the turn at obstacles it never got its kill.`,
+        `第 5 章の狩人なら 42 秒ほどで倒せます。ただし 12 行で、2 行オーバーです。削る行を選びましょう。狙いが合うまで待つ 2 行は、削っても勝てました。ふさがったら曲がる、を削ると倒し切れませんでした。`,
+      ],
+      [
+        `Against a robot that runs sideways, a fast-firing gun lands more hits: with a Rapid it won in about 65 seconds with 182 HP left, both stars.`,
+        `横に走る相手には、連射の利く銃がよく当たります。Rapid に替えると 65 秒ほど・HP 182 で勝てて、星が両方そろいました。`,
       ],
     ),
     challenge(

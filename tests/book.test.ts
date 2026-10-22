@@ -606,6 +606,14 @@ describe('what the chapter on the challenges says', () => {
     }
   });
 
+  it('a small victory: aiming and firing wins with 60 HP; with a Cannon and a Scope, at exactly 100', () => {
+    expect(linesOf(STAND)).toBe(3);
+    expect(play('small-victory', STAND)).toMatchObject({ cleared: true, record: { hp: 60 } });
+    const reach = play('small-victory', STAND, { gun: 'cannon', sensor: 'scope' });
+    expect(reach).toMatchObject({ cleared: true, record: { hp: 100 } });
+    expect(reach.stars).toBe(3);
+  });
+
   it('against the clock: driving at SentryBot loses; standing and shooting wins in about 10 seconds', () => {
     expect(play('speed-sentry', CLOSE_IN)).toMatchObject({ cleared: false });
     const standing = play('speed-sentry', STAND);
@@ -666,6 +674,16 @@ describe('what the chapter on the challenges says', () => {
     expect(play('light-body', template('strafe_bot'))).toMatchObject({ cleared: true, record: { hp: 140 } });
   });
 
+  it('three lines only: standard parts win at 100 HP; Heavy with Short keeps 120; a Cannon with a Scope keeps 140 and both stars', () => {
+    expect(play('three-lines', STAND)).toMatchObject({ cleared: true, record: { hp: 100 } });
+    expect(costOf({ ...STANDARD_LOADOUT, body: 'heavy', sensor: 'short' })).toBeLessThanOrEqual(COST_LIMIT);
+    expect(play('three-lines', STAND, { body: 'heavy', sensor: 'short' })).toMatchObject({ cleared: true, record: { hp: 120 } });
+    expect(costOf({ ...STANDARD_LOADOUT, gun: 'cannon', sensor: 'scope' })).toBeLessThanOrEqual(COST_LIMIT);
+    const cannon = play('three-lines', STAND, { gun: 'cannon', sensor: 'scope' });
+    expect(cannon).toMatchObject({ cleared: true, record: { hp: 140 } });
+    expect(cannon.stars).toBe(3);
+  });
+
   it('sharpshooter: DumbBot has 200 HP; aiming first clears it with the standard gun; a Cannon, at 45 a shot, in 8 shots or fewer', () => {
     expect(statsOf(STANDARD_LOADOUT).maxHp).toBe(200);
     expect(statsOf(STANDARD_LOADOUT).shotDamage).toBe(20);
@@ -675,6 +693,26 @@ describe('what the chapter on the challenges says', () => {
     expect(cannon.cleared).toBe(true);
     expect(find('sharpshooter').stars[0]).toEqual({ kind: 'shots', max: 8 });
     expect(cannon.starsMet[0]).toBe(true);
+  });
+
+  it('the ten-line hunter: standing never kills; the 12-line hunter kills in 42 s; the gate can go, the turn at obstacles cannot; a Rapid takes both stars', () => {
+    expect(play('ten-line-hunter', STAND)).toMatchObject({ cleared: false });
+    expect(linesOf(HUNT)).toBe(12);
+    const full = play('ten-line-hunter', HUNT);
+    expect(full.cleared).toBe(false);
+    expect(full.why?.en).toMatch(/lines/);
+    expect(Math.round(full.record.seconds)).toBe(42);
+    const lean = find('ten-line-hunter').answer;
+    expect(linesOf(lean)).toBe(10);
+    expect(play('ten-line-hunter', lean)).toMatchObject({ cleared: true });
+    // The other way to save two lines, keeping the aim gate and dropping the turn at obstacles, never gets the kill.
+    const keepGate = HUNT.replace('        if blocked\n            turn left\n', '');
+    expect(linesOf(keepGate)).toBe(10);
+    expect(play('ten-line-hunter', keepGate)).toMatchObject({ cleared: false });
+    const rapid = play('ten-line-hunter', lean, { gun: 'rapid' });
+    expect(rapid).toMatchObject({ cleared: true, record: { hp: 182 } });
+    expect(Math.round(rapid.record.seconds)).toBe(65);
+    expect(rapid.stars).toBe(3);
   });
 
   it('putting it all together: driving at SentryBot loses; standing wins with 40 HP; CoverBot\'s program with 162', () => {
